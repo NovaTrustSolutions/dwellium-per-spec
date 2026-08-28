@@ -10,8 +10,9 @@
  */
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { fluidOsStore, DEFAULT_FLUID_OS_STATE } from '../lib/fluidOsStore';
+import { installDockBackReceiver } from '../lib/popoutDock';
 import { personaWorkStore } from '../lib/agents/personaWorkStore';
 import { UserContext, type DwelliumUser } from '../context/UserContext';
 
@@ -248,6 +249,31 @@ describe('FluidOS cockpit', () => {
         expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
         expect(container.querySelector('.alpha-widget')).toBeInTheDocument();
         expect(fluidOsStore.getSnapshot().open).toBe(true);
+    });
+
+    it('dock-back from a popout re-opens a collapsed cockpit and the widget lands as a cockpit tab', () => {
+        const user = makeUser({ email: 'lisa@dwellium.com' });
+        const { rerender, container } = renderCockpitForUser(user);
+        act(() => { fluidOsStore.setOpen(false); }); // cockpit enabled but collapsed at dock time
+        const uninstall = installDockBackReceiver();
+        act(() => {
+            window.dispatchEvent(new MessageEvent('message', {
+                data: { type: 'qualia-dock-back', nonce: 'n1', component: 'alpha', title: 'Alpha', icon: 'layout-grid' },
+                origin: window.location.origin,
+            }));
+        });
+        uninstall();
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+        // The bus half opens a desktop window (WindowContext, mocked here);
+        // the now-open cockpit adopts it as a tab — same path as ⌘K above.
+        windowsState = [{ id: 'w-dock', component: 'alpha', title: 'Alpha', icon: 'layout-grid', minimized: false, zIndex: 1 }];
+        rerender(
+            <UserContext.Provider value={{ user, isAuthenticated: true } as any}>
+                <FluidOS />
+            </UserContext.Provider>
+        );
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
+        expect(container.querySelector('.alpha-widget')).toBeInTheDocument();
     });
 
     it('nav actions (Settings) open in-cockpit too — no collapse', () => {

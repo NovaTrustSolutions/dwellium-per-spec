@@ -39,10 +39,10 @@ import DictationHotkey from './DictationHotkey';
 import CommandPill from './CommandPill';
 import ShortcutSheet from './ShortcutSheet';
 import SyncStatusPill from './SyncStatusPill';
-import type { DockBackMessage } from '../PopupShell/PopupShell';
+import { installDockBackReceiver } from '../../lib/popoutDock';
 
 function ShellLayout() {
-    const { windows, closeWindow, openWindow } = useWindows();
+    const { windows, closeWindow } = useWindows();
 
     // Honcho runs in the background while signed in: an autonomous reflection loop
     // that keeps synthesizing over your memories even when the Honcho widget is closed.
@@ -117,26 +117,9 @@ function ShellLayout() {
         };
     }, []);
 
-    // ── Dock-back listener: popup sends postMessage → shell docks widget into quadrant ──
-    useEffect(() => {
-        const handleMessage = (e: MessageEvent) => {
-            try {
-                const msg = e.data as DockBackMessage;
-                if (msg?.type !== 'qualia-dock-back') return;
-                const { component, title, icon } = msg;
-                if (!component) return;
-                // Focus this window so user sees it
-                window.focus();
-                // Open the widget in the best available quadrant
-                openWindow(component, title || component, icon || 'layout-grid');
-                window.dispatchEvent(new CustomEvent('qualia-toast', {
-                    detail: `"${title}" docked back ↩`,
-                }));
-            } catch { /* ignore malformed messages */ }
-        };
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, [openWindow]);
+    // ── Dock-back receiver: popup asks to dock; routing (Cockpit tab /
+    // Holocron tab / Classic window) happens at receive time in popoutDock.ts ──
+    useEffect(() => installDockBackReceiver(), []);
 
     // Global keyboard shortcuts
     useEffect(() => {

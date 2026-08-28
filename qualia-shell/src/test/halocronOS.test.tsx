@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEvent, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, createEvent, fireEvent, render, screen, within } from '@testing-library/react';
 import { halocronOsStore } from '../lib/halocronOsStore';
 import { UserContext, type DwelliumUser } from '../context/UserContext';
 
@@ -82,6 +82,7 @@ vi.mock('../hooks/useIntegrations', () => ({
 
 import HalocronOS from '../components/Shell/HalocronOS';
 import { advisoryLensBus } from '../lib/busChannels';
+import { installDockBackReceiver } from '../lib/popoutDock';
 
 beforeEach(() => {
     localStorage.clear();
@@ -293,5 +294,21 @@ describe('Holocron tear-off tabs (pop out into own browser window)', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Open Alpha in its own window' }));
 
         expect(screen.getByTestId('hos-tab-w:alpha')).toBeInTheDocument();
+    });
+
+    it('dock-back from a popout lands as a Holocron tab with the shell OPEN — not a Classic window beneath', () => {
+        openHalocron();
+        act(() => { halocronOsStore.setOpen(false); }); // shell collapsed at dock time
+        const uninstall = installDockBackReceiver();
+        act(() => {
+            window.dispatchEvent(new MessageEvent('message', {
+                data: { type: 'qualia-dock-back', nonce: 'n1', component: 'beta', title: 'Beta', icon: '' },
+                origin: window.location.origin,
+            }));
+        });
+        uninstall();
+        expect(halocronOsStore.getSnapshot().open).toBe(true);
+        expect(screen.getByTestId('hos-tab-w:beta')).toBeInTheDocument();
+        expect(screen.getByText('Beta content')).toBeInTheDocument();
     });
 });

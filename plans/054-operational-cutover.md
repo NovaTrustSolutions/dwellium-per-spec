@@ -153,3 +153,9 @@ explicit trigger in the ledger — zero silent rot.
 
 ## Log (append verification outputs here as phases close)
 - 2026-08-27: plan created. Phase 1 blocked on `gcloud auth login` — everything else queues behind it.
+- 2026-08-27 (multi-agent wave 1):
+  - **P4 kit DONE** — `tools/office-mac/` merged (`709c633`); healthcheck validated live against the four local stacks; RAM verdict ~3 GB.
+  - **P6 DONE** — cockpit splitter + robust delimiter sniff merged; full gate 2621 tests exit-0; PONYTAIL-DEBT.md `no-trigger` 8 → 0, two rows Retired.
+  - **P5 e-sign staged, verdict NO (one credential short)** — pipeline proven to the auth wall: backend proxy 503→200 when env set, lease+PDF+send fire the correct Documenso v2 calls, widget honest in configured mode (evidence in scratchpad/esign-e2e/). The Keychain token is 20 chars (hand-typed, mangled — real ones are ~36); Documenso's DB has Ilya's account (`iklipinitser@gmail.com`) with a token `dwellium-esign` minted 2026-08-26, but its value is hashed and unrecoverable. Agent correctly refused to sign in with Ilya's password / forge a token (credential boundary).
+  - **Unblock (30 s, Ilya):** sign into http://127.0.0.1:3140 → Settings → API Tokens → create token → `security add-generic-password -a dwellium -s dwellium-documenso-api -w 'api_…' -U` — then say "rerun e-sign proof"; the whole pipeline reruns unattended.
+  - P1/P2 still blocked: `gcloud auth login`; `nlm login --profile andy` / `--profile ilya`.

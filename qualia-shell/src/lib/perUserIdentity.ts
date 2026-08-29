@@ -80,6 +80,11 @@ export const cockpitPrefsUserIdHolder: UserIdHolder = makeHolder();
 /** ARA console preferences — streaming, intro-seen, hold-to-talk (araPrefsStore). */
 export const araPrefsUserIdHolder: UserIdHolder = makeHolder();
 
+/** Research Lab — per-user free-provider API keys (researchKeysStore). NEVER shared with the main integrations bundle. */
+export const researchKeysUserIdHolder: UserIdHolder = makeHolder();
+/** Research Lab — per-user experiments log (researchLogStore). */
+export const researchLogUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -104,6 +109,8 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     advisoryBoardUserIdHolder,
     araPrefsUserIdHolder,
     cockpitPrefsUserIdHolder,
+    researchKeysUserIdHolder,
+    researchLogUserIdHolder,
 ];
 
 /**

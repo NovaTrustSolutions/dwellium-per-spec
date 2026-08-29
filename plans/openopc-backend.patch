@@ -1,0 +1,358 @@
+diff --git a/deploy/cloud-run.sh b/deploy/cloud-run.sh
+index 8fd77a9..96cd6b7 100755
+--- a/deploy/cloud-run.sh
++++ b/deploy/cloud-run.sh
+@@ -221,6 +221,12 @@ if [[ -n "${PENPOT_API_URL:-}" ]]; then
+     printf 'PENPOT_API_URL: "%s"\n' "${PENPOT_API_URL}" >> "${env_file}"
+ fi
+ 
++# OpenOPC runner base URL (non-secret). Unset = /api/opc answers 503 needsSetup;
++# set it to the OpenOPC HTTP runner shim you host on a sandbox/VM (tools/openopc/).
++if [[ -n "${OPC_RUNNER_URL:-}" ]]; then
++    printf 'OPC_RUNNER_URL: "%s"\n' "${OPC_RUNNER_URL}" >> "${env_file}"
++fi
++
+ 
+ # Preserve-unknowns merge: the live service's literal env vars are the source of
+ # truth for anything this script doesn't already know about. `gcloud run deploy
+diff --git a/src/app.ts b/src/app.ts
+index f5a8264..979e13e 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -73,6 +73,7 @@ import linkRoutes, { resolveBuiltinRedirect } from './routes/linkRoutes';
+ import designRoutes from './routes/designRoutes';
+ import remoteRoutes from './routes/remoteRoutes';
+ import schedulingRoutes, { calcomWebhookRouter } from './routes/schedulingRoutes';
++import opcRoutes from './routes/opcRoutes';
+ import { seedDefaultUsers } from './services/authService';
+ import { seedRecurringTasks, startScheduler } from './services/agentScheduler';
+ import { seedLessons } from './services/lessonsLearnedService';
+@@ -446,6 +447,7 @@ app.use('/api/remote', authenticate, remoteRoutes); // plan 053 — RustDesk rel
+ app.use('/api/scheduling', authenticate, schedulingRoutes); // plan 053 — cal.com API v2 proxy (503 until CALCOM_API_KEY is set)
+ app.use('/api/webhooks/calcom', calcomWebhookRouter); // plan 053 — cal.com booking webhook (HMAC-verified, no session auth)
+ app.use('/api/design', authenticate, designRoutes); // plan 053 — Penpot RPC proxy, read-only (503 until PENPOT_ACCESS_TOKEN is set)
++app.use('/api/opc', authenticate, opcRoutes); // OpenOPC AI-Company runner proxy (503 until OPC_RUNNER_URL is set) — Dwellium only relays to a runner you host
+ 
+ // ── Proprietary Features (5 features AppFolio doesn't have) ──
+ app.use('/api/lease-coach', leaseCoachRoutes);
+diff --git a/src/routes/opcRoutes.ts b/src/routes/opcRoutes.ts
+new file mode 100644
+index 0000000..50b2db8
+--- /dev/null
++++ b/src/routes/opcRoutes.ts
+@@ -0,0 +1,157 @@
++/**
++ * OpenOPC Routes — runner proxy for the Automation Hub "AI Company" (OpenOPC).
++ *
++ * Mounted at /api/opc behind `authenticate` (app.ts) and management-gated.
++ * Dwellium NEVER runs OpenOPC itself — OpenOPC agents execute code, edit files
++ * and drive a browser autonomously. This route only RELAYS to the OpenOPC
++ * runner the operator hosts on a sandbox/VM they control (OPC_RUNNER_URL — a
++ * thin HTTP shim over `opc exec --stream-json`, see tools/openopc/README.md).
++ * While OPC_RUNNER_URL is unset every route answers 503 `needsSetup: true`, so
++ * the frontend renders its install/setup state and we never call a runner that
++ * isn't there (mirrors remoteRoutes.ts / schedulingRoutes.ts).
++ *
++ *   POST /api/opc/runs                start a run ({ goal, mode, companyProfile, agentBackend, project })
++ *   GET  /api/opc/runs                list runs on the runner
++ *   GET  /api/opc/runs/:id/stream     SSE relay of the runner's `--stream-json` events
++ *   POST /api/opc/runs/:id/input      answer an escalation ({ escalationId, answer })
++ *
++ * An optional shared secret (OPC_RUNNER_TOKEN) is sent to the runner as a
++ * Bearer token — the runner sits on the operator's own network, not the public
++ * internet. The runner runs against an ISOLATED OpenOPC project dir with no
++ * Dwellium data and no tenant/financial data.
++ */
++import { Router, Request, Response } from 'express';
++import { requireRole } from '../services/authMiddleware';
++
++const router = Router();
++
++interface RunnerConfig { baseUrl: string; token?: string; }
++
++function runnerConfig(): RunnerConfig | null {
++    const baseUrl = process.env.OPC_RUNNER_URL;
++    if (!baseUrl) return null;
++    return { baseUrl: baseUrl.replace(/\/+$/, ''), token: process.env.OPC_RUNNER_TOKEN };
++}
++
++/** 503 body the frontend keys its needs-setup empty state on. */
++const NOT_CONFIGURED = {
++    success: false,
++    error: 'OpenOPC runner is not configured — set OPC_RUNNER_URL on the backend to your self-hosted OpenOPC runner shim (a sandbox/VM you control; see tools/openopc/README.md)',
++    needsSetup: true,
++} as const;
++
++function runnerHeaders(cfg: RunnerConfig, extra: Record<string, string> = {}): Record<string, string> {
++    const h: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
++    if (cfg.token) h.Authorization = `Bearer ${cfg.token}`;
++    return h;
++}
++
++/** Whitelist only the launch fields the runner needs — never forward arbitrary body. */
++function pickLaunch(body: unknown): Record<string, string> {
++    const b = (body && typeof body === 'object') ? body as Record<string, unknown> : {};
++    const out: Record<string, string> = {};
++    for (const key of ['goal', 'mode', 'companyProfile', 'agentBackend', 'project'] as const) {
++        if (typeof b[key] === 'string') out[key] = b[key] as string;
++    }
++    return out;
++}
++
++async function relayJson(res: Response, upstream: globalThis.Response): Promise<void> {
++    let body: unknown = null;
++    try { body = await upstream.json(); } catch { /* empty upstream body */ }
++    if (!upstream.ok) {
++        res.status(502).json({ success: false, error: `OpenOPC runner answered ${upstream.status}`, upstream: body });
++        return;
++    }
++    res.json({ success: true, data: (body as { data?: unknown })?.data ?? body });
++}
++
++router.post('/runs', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = runnerConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await fetch(`${cfg.baseUrl}/runs`, {
++            method: 'POST',
++            headers: runnerHeaders(cfg),
++            body: JSON.stringify(pickLaunch(req.body)),
++        });
++        await relayJson(res, upstream);
++    } catch (err) {
++        res.status(502).json({ success: false, error: `OpenOPC runner unreachable: ${err instanceof Error ? err.message : String(err)}` });
++    }
++});
++
++router.get('/runs', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = runnerConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await fetch(`${cfg.baseUrl}/runs`, { headers: runnerHeaders(cfg) });
++        await relayJson(res, upstream);
++    } catch (err) {
++        res.status(502).json({ success: false, error: `OpenOPC runner unreachable: ${err instanceof Error ? err.message : String(err)}` });
++    }
++});
++
++router.post('/runs/:id/input', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = runnerConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const escalationId = typeof req.body?.escalationId === 'string' ? req.body.escalationId : '';
++    const answer = typeof req.body?.answer === 'string' ? req.body.answer : '';
++    if (!answer) { res.status(400).json({ success: false, error: 'answer is required' }); return; }
++    try {
++        const upstream = await fetch(`${cfg.baseUrl}/runs/${encodeURIComponent(req.params.id)}/input`, {
++            method: 'POST',
++            headers: runnerHeaders(cfg),
++            body: JSON.stringify({ escalationId, answer }),
++        });
++        await relayJson(res, upstream);
++    } catch (err) {
++        res.status(502).json({ success: false, error: `OpenOPC runner unreachable: ${err instanceof Error ? err.message : String(err)}` });
++    }
++});
++
++router.get('/runs/:id/stream', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = runnerConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++
++    // SSE — relay the runner's newline/`data:`-framed stream-json verbatim.
++    res.status(200);
++    res.setHeader('Content-Type', 'text/event-stream');
++    res.setHeader('Cache-Control', 'no-cache, no-transform');
++    res.setHeader('Connection', 'keep-alive');
++    res.setHeader('X-Accel-Buffering', 'no'); // don't let a reverse proxy buffer SSE
++    (res as Response & { flushHeaders?: () => void }).flushHeaders?.();
++
++    let upstream: globalThis.Response;
++    try {
++        upstream = await fetch(`${cfg.baseUrl}/runs/${encodeURIComponent(req.params.id)}/stream`, {
++            headers: runnerHeaders(cfg, { Accept: 'text/event-stream' }),
++        });
++    } catch (err) {
++        res.write(`event: error\ndata: ${JSON.stringify({ error: `OpenOPC runner unreachable: ${err instanceof Error ? err.message : String(err)}` })}\n\n`);
++        res.end();
++        return;
++    }
++    if (!upstream.ok || !upstream.body) {
++        res.write(`event: error\ndata: ${JSON.stringify({ error: `OpenOPC runner answered ${upstream.status}` })}\n\n`);
++        res.end();
++        return;
++    }
++
++    const reader = (upstream.body as ReadableStream<Uint8Array>).getReader();
++    const decoder = new TextDecoder();
++    let closed = false;
++    const stop = () => { if (!closed) { closed = true; try { void reader.cancel(); } catch { /* already gone */ } } };
++    req.on('close', stop);
++    try {
++        for (;;) {
++            const { done, value } = await reader.read();
++            if (done) break;
++            res.write(decoder.decode(value, { stream: true }));
++        }
++    } catch { /* upstream dropped mid-run — end the SSE cleanly */ }
++    stop();
++    res.end();
++});
++
++export default router;
+diff --git a/tests/opcRoutes.test.ts b/tests/opcRoutes.test.ts
+new file mode 100644
+index 0000000..4c4efc4
+--- /dev/null
++++ b/tests/opcRoutes.test.ts
+@@ -0,0 +1,152 @@
++/**
++ * /api/opc (OpenOPC AI-Company runner proxy).
++ *
++ * OPC_RUNNER_URL unset → 503 needsSetup on every route (never a crash, never an
++ * open sink); configured + mocked runner → the start POST hits the runner with
++ * the whitelisted launch body, the escalation input is forwarded, and the
++ * stream route relays the runner's SSE bytes verbatim under text/event-stream.
++ * Auth + management role are checked before the env gate (mirrors
++ * schedulingRoutes.test.ts).
++ */
++import { makeApp, createTestUser, TestUser } from './helpers/harness';
++
++const ENV_KEYS = ['OPC_RUNNER_URL', 'OPC_RUNNER_TOKEN'] as const;
++const savedEnv: Record<string, string | undefined> = {};
++beforeAll(() => { for (const k of ENV_KEYS) savedEnv[k] = process.env[k]; });
++beforeEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
++afterAll(() => {
++    for (const k of ENV_KEYS) {
++        if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k];
++    }
++});
++
++function setRunnerEnv() {
++    process.env.OPC_RUNNER_URL = 'https://runner.test';
++    process.env.OPC_RUNNER_TOKEN = 'shim_token';
++}
++
++/** Minimal fetch stub — response-shaped, no undici dependency. */
++function jsonResponse(body: unknown, status = 200) {
++    return { ok: status >= 200 && status < 300, status, json: async () => body };
++}
++
++/** SSE-shaped fetch stub — a ReadableStream-like body with a getReader() over fixed chunks. */
++function sseResponse(chunks: string[], status = 200) {
++    const enc = new TextEncoder();
++    let i = 0;
++    return {
++        ok: status >= 200 && status < 300,
++        status,
++        body: {
++            getReader() {
++                return {
++                    read: async () => (i < chunks.length ? { done: false, value: enc.encode(chunks[i++]) } : { done: true, value: undefined }),
++                    cancel: async () => { /* no-op */ },
++                };
++            },
++        },
++    };
++}
++
++describe('/api/opc env gate (OpenOPC runner not configured)', () => {
++    let mgmt: TestUser;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++
++    it('503 with needsSetup:true on every route when OPC_RUNNER_URL is unset', async () => {
++        const calls = [
++            () => makeApp().get('/api/opc/runs').set('Authorization', mgmt.authHeader),
++            () => makeApp().post('/api/opc/runs').set('Authorization', mgmt.authHeader).send({ goal: 'x' }),
++            () => makeApp().get('/api/opc/runs/run_1/stream').set('Authorization', mgmt.authHeader),
++            () => makeApp().post('/api/opc/runs/run_1/input').set('Authorization', mgmt.authHeader).send({ escalationId: 'e', answer: 'yes' }),
++        ];
++        for (const call of calls) {
++            const r = await call();
++            expect(r.status).toBe(503);
++            expect(r.body.success).toBe(false);
++            expect(r.body.needsSetup).toBe(true);
++            expect(r.body.error).toMatch(/OPC_RUNNER_URL/);
++        }
++    });
++
++    it('401 without a session (authenticate runs before the env gate)', async () => {
++        expect((await makeApp().get('/api/opc/runs')).status).toBe(401);
++    });
++
++    it('403 for a tenant session (management-gated) — role checked before env', async () => {
++        const tenant = await createTestUser({ role: 'tenant' });
++        expect((await makeApp().get('/api/opc/runs').set('Authorization', tenant.authHeader)).status).toBe(403);
++    });
++});
++
++describe('/api/opc proxy (runner mocked)', () => {
++    let mgmt: TestUser;
++    const realFetch = (global as unknown as { fetch: typeof fetch }).fetch;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++    afterEach(() => { (global as unknown as { fetch: typeof fetch }).fetch = realFetch; });
++
++    it('POST /runs forwards ONLY whitelisted launch fields, with the Bearer token', async () => {
++        setRunnerEnv();
++        const calls: Array<{ url: string; method: string; body: unknown; headers: Record<string, string> }> = [];
++        (global as unknown as { fetch: unknown }).fetch = async (url: unknown, init?: RequestInit) => {
++            calls.push({ url: String(url), method: init?.method || 'GET', body: init?.body ? JSON.parse(String(init.body)) : null, headers: (init?.headers as Record<string, string>) || {} });
++            return jsonResponse({ data: { id: 'run_99' } });
++        };
++        const r = await makeApp().post('/api/opc/runs').set('Authorization', mgmt.authHeader)
++            .send({ goal: 'Draft an SOP', mode: 'company', companyProfile: 'corporate', agentBackend: 'native', project: 'dwellium', evil: 'rm -rf /' });
++        expect(r.status).toBe(200);
++        expect(r.body.data).toEqual({ id: 'run_99' });
++        expect(calls).toHaveLength(1);
++        expect(calls[0].url).toBe('https://runner.test/runs');
++        expect(calls[0].method).toBe('POST');
++        expect(calls[0].body).toEqual({ goal: 'Draft an SOP', mode: 'company', companyProfile: 'corporate', agentBackend: 'native', project: 'dwellium' });
++        expect(calls[0].headers.Authorization).toBe('Bearer shim_token');
++    });
++
++    it('POST /runs/:id/input forwards { escalationId, answer } to the runner', async () => {
++        setRunnerEnv();
++        const calls: Array<{ url: string; body: unknown }> = [];
++        (global as unknown as { fetch: unknown }).fetch = async (url: unknown, init?: RequestInit) => {
++            calls.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null });
++            return jsonResponse({ data: { ok: true } });
++        };
++        const r = await makeApp().post('/api/opc/runs/run_42/input').set('Authorization', mgmt.authHeader).send({ escalationId: 'esc_1', answer: 'yes' });
++        expect(r.status).toBe(200);
++        expect(calls[0].url).toBe('https://runner.test/runs/run_42/input');
++        expect(calls[0].body).toEqual({ escalationId: 'esc_1', answer: 'yes' });
++    });
++
++    it('POST /runs/:id/input without an answer → 400, runner never called', async () => {
++        setRunnerEnv();
++        let called = 0;
++        (global as unknown as { fetch: unknown }).fetch = async () => { called += 1; return jsonResponse({}); };
++        const r = await makeApp().post('/api/opc/runs/run_42/input').set('Authorization', mgmt.authHeader).send({ escalationId: 'e' });
++        expect(r.status).toBe(400);
++        expect(called).toBe(0);
++    });
++
++    it('GET /runs/:id/stream relays the runner SSE bytes verbatim under text/event-stream', async () => {
++        setRunnerEnv();
++        let streamUrl = '';
++        (global as unknown as { fetch: unknown }).fetch = async (url: unknown) => {
++            streamUrl = String(url);
++            return sseResponse([
++                'data: {"type":"session_created","seq":1}\n\n',
++                'data: {"type":"final","seq":2}\n\n',
++            ]);
++        };
++        const r = await makeApp().get('/api/opc/runs/run_7/stream').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.headers['content-type']).toMatch(/text\/event-stream/);
++        expect(streamUrl).toBe('https://runner.test/runs/run_7/stream');
++        expect(r.text).toContain('"type":"session_created"');
++        expect(r.text).toContain('"type":"final"');
++    });
++
++    it('runner 500 → 502 with the upstream body relayed', async () => {
++        setRunnerEnv();
++        (global as unknown as { fetch: unknown }).fetch = async () => jsonResponse({ error: 'boom' }, 500);
++        const r = await makeApp().get('/api/opc/runs').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(502);
++        expect(r.body.error).toMatch(/OpenOPC runner answered 500/);
++    });
++});

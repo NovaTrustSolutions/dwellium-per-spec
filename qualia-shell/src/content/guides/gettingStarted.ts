@@ -69,6 +69,8 @@ Open **Tools hub** (Filing Cabinet, or \`help: tools\`). Ten open-source tools l
 
 All AGPL tools run **unmodified**; every customisation lives inside Dwellium.
 
+For a whole **AI company** — not one tool — open **Automation Hub → AI Company (OpenOPC)** and click *Open console*: OpenOPC recruits an org of role agents and drives a live kanban toward your goal, escalating decisions to you. It runs in an OpenOPC runner **you** host on a sandbox/VM — those agents execute code and drive a browser, so it never runs inside Dwellium and never touches tenant or financial data.
+
 ## 7 · Stress-test a big decision (Advisory Board)
 
 Some calls are worth slowing down for: renewal pricing, hiring, taking on a property, changing an offer. The **5 Persona Advisory Board** on the Holocron **Home** page runs those through five strategic lenses that are made to disagree with each other, then gives you one decision brief.

@@ -624,6 +624,17 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 380,
         category: 'tools',
     },
+    'token-saver': {
+        id: 'token-saver',
+        label: 'Token Saver',
+        description: 'Whether the token-saver skill is active, and the estimated tokens and cost it has saved.',
+        tip: { tryThis: 'Check how much of your input was served from cache.', related: ['ai-spend', 'system-health'] },
+        icon: 'zap',
+        component: lazyWithReload(() => import('../components/TokenSaver/TokenSaver')),
+        minWidth: 420,
+        minHeight: 400,
+        category: 'tools',
+    },
     // P12-7 (gap items 8+9): connections + memory stack + agent context.
     'connections': {
         id: 'connections',

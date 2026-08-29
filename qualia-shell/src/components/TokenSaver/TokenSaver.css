@@ -1,0 +1,30 @@
+.tsv { padding: 16px; font-size: 13px; color: var(--text, #e6edf3); overflow-y: auto; height: 100%; }
+.tsv-muted { color: var(--text-dim, #8b98a5); padding: 12px 0; }
+.tsv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.tsv-head h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 14px; font-weight: 600; }
+.tsv-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; border: 1px solid; }
+.tsv-pill.on { color: #3ddc97; border-color: #3ddc97; background: rgba(61, 220, 151, .12); }
+.tsv-pill.off { color: #ff6b6b; border-color: #ff6b6b; background: rgba(255, 107, 107, .12); }
+.tsv-hero { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-bottom: 18px; }
+.tsv-ringbox { position: relative; width: 128px; height: 128px; flex: 0 0 auto; }
+.tsv-ring { transform: rotate(-90deg); }
+.tsv-track { stroke: rgba(255, 255, 255, .10); }
+.tsv-fill { stroke: #3ddc97; transition: stroke-dashoffset .9s cubic-bezier(.22, .9, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .tsv-fill { transition: none; } }
+.tsv-ctr { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.tsv-ctr strong { font-size: 22px; font-weight: 700; line-height: 1; }
+.tsv-ctr small { font-size: 10px; color: var(--text-dim, #8b98a5); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.tsv-ctr em { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim, #8b98a5); font-style: normal; margin-top: 2px; }
+.tsv-money strong { display: block; font-size: 26px; font-weight: 700; color: #3ddc97; }
+.tsv-money em { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--text-dim, #8b98a5); font-style: normal; margin-top: 2px; }
+.tsv-money span { display: block; font-size: 11px; color: var(--text-dim, #8b98a5); margin-top: 8px; }
+.tsv-bars { margin-bottom: 14px; }
+.tsv-bar { margin-bottom: 10px; }
+.tsv-barmeta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+.tsv-barmeta span:last-child { color: var(--text-dim, #8b98a5); font-variant-numeric: tabular-nums; }
+.tsv-track2 { height: 9px; border-radius: 5px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.tsv-fill2 { height: 100%; background: #3ddc97; border-radius: 5px; }
+.tsv-note { font-size: 11px; line-height: 1.6; color: var(--text-dim, #8b98a5);
+  border-top: 1px solid rgba(255, 255, 255, .09); padding-top: 10px; margin: 0; }

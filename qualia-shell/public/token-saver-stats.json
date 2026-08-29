@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-08-26T05:07:09.900190Z",
+  "scope": "dwellium",
+  "scope_label": "Dwellium",
+  "skill": {
+    "name": "token-saver",
+    "active": true,
+    "path": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/.claude/skills/token-saver/SKILL.md",
+    "installed_at": "2026-07-28T22:43:48Z"
+  },
+  "totals": {
+    "sessions": 1,
+    "model_calls": 1009,
+    "fresh_input_tokens": 184166,
+    "cache_read_tokens": 378106625,
+    "cache_creation_tokens": 26904992,
+    "output_tokens": 864133,
+    "billed_input_equivalent": 64899820
+  },
+  "savings": {
+    "cache_reuse_tokens_saved": 340295962,
+    "delegation_tokens_offloaded": 0,
+    "total_estimated_tokens_saved": 340295962,
+    "estimated_usd_saved": 1531.33,
+    "baseline_note": "Token-equivalents against a no-cache, no-delegation baseline. Cached input bills at roughly one tenth of fresh input, so reused context avoids about 90% of that cost. These are ESTIMATES derived from counters actually recorded on disk, not a billing statement.",
+    "confidence": "measured"
+  },
+  "recent_sessions": [
+    {
+      "session_id": "f68c24b6",
+      "started_at": "2026-08-23T23:10:49.268000Z",
+      "calls": 1009,
+      "fresh_input": 184166,
+      "cache_read": 378106625,
+      "output": 864133,
+      "saved_tokens": 340295962
+    }
+  ],
+  "ringer": {
+    "runs": 13,
+    "tasks": 40,
+    "worker_tokens": 1201731
+  },
+  "parse": {
+    "malformed_lines_skipped": 0,
+    "transcripts_read": 1
+  },
+  "assumptions": [
+    "Prices: input $5.00/M, output $25.00/M, cache read $0.50/M.",
+    "Cache reuse saving = cache_read_tokens * 0.9 (cached input bills at ~1/10 of fresh).",
+    "Delegation offload = tokens spent by Ringer workers, counted once against the global scope so the three dashboards do not double-count them."
+  ]
+}

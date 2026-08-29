@@ -58,6 +58,7 @@ import {
     Palette,
     Megaphone,
     QrCode,
+    FlaskConical,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -116,6 +117,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'history':        History,
     'palette':        Palette,        // plan 047 phase 2: Design Studio (Penpot)
     'monitor':        Monitor,        // plan 047 phase 2: Remote Support (RustDesk)
+    'flask-conical':  FlaskConical,   // Research Lab (labs tier — free-LLM sandbox)
 
     // ── Group Headers ──
     'building':       Building,

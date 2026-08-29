@@ -1,0 +1,133 @@
+/* ResearchLab — labs-tier research sandbox. Dark-shell styling to match sibling widgets. */
+.research-lab {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    overflow-y: auto;
+    padding: 12px;
+    font-size: 13px;
+    color: var(--text-primary, #eaeaea);
+}
+
+.rl-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(214, 254, 81, 0.45);
+    border-radius: 8px;
+    background: rgba(214, 254, 81, 0.08);
+    font-weight: 600;
+}
+
+.rl-tabs { display: flex; gap: 6px; }
+.rl-tab {
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+.rl-tab.active { background: rgba(255, 255, 255, 0.12); }
+
+.rl-pane { display: flex; flex-direction: column; gap: 10px; }
+.rl-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.rl-label select, .rl-label input, .rl-key-row input {
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    color: inherit;
+}
+
+.rl-prompt {
+    min-height: 90px;
+    resize: vertical;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    color: inherit;
+    font: inherit;
+}
+
+.rl-select-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rl-chip {
+    padding: 3px 9px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+}
+.rl-chip.active { background: rgba(214, 254, 81, 0.2); border-color: rgba(214, 254, 81, 0.6); }
+.rl-chip:disabled { opacity: 0.45; cursor: not-allowed; text-decoration: line-through; }
+
+.rl-models { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+
+.rl-notice { padding: 8px 10px; border: 1px solid rgba(255, 99, 99, 0.5); border-radius: 8px; background: rgba(255, 99, 99, 0.1); }
+.rl-warn { padding: 8px 10px; border: 1px solid rgba(255, 200, 80, 0.5); border-radius: 8px; background: rgba(255, 200, 80, 0.1); }
+.rl-warn-actions { display: flex; gap: 8px; margin-top: 6px; }
+
+.rl-run {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid rgba(214, 254, 81, 0.6);
+    border-radius: 8px;
+    background: rgba(214, 254, 81, 0.15);
+    color: inherit;
+    cursor: pointer;
+}
+.rl-run:disabled { opacity: 0.5; cursor: wait; }
+
+.rl-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.rl-result, .rl-log-entry {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+.rl-result-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; font-size: 12px; }
+.rl-text, .rl-error { white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 12px; max-height: 260px; overflow-y: auto; }
+.rl-error { color: #ff9d9d; }
+.rl-empty { opacity: 0.6; font-style: italic; }
+.rl-hint { display: flex; align-items: center; gap: 6px; font-size: 12px; opacity: 0.75; }
+
+.rl-provider-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+}
+.rl-provider-main { display: flex; flex-direction: column; gap: 2px; }
+.rl-provider-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 12px; }
+.rl-meta { font-size: 11px; opacity: 0.7; }
+.rl-note { font-style: italic; }
+.rl-badge {
+    padding: 1px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    font-size: 11px;
+}
+.rl-badge-ok { border-color: rgba(120, 220, 120, 0.6); color: #9fe89f; }
+.rl-badge-bad { border-color: rgba(255, 120, 120, 0.6); color: #ff9d9d; }
+
+.rl-key-row { display: flex; align-items: center; gap: 8px; }
+.rl-key-name { min-width: 190px; }
+.rl-key-row button, .rl-warn-actions button {
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+.rl-icon-btn { margin-left: auto; background: transparent; border: none; color: inherit; cursor: pointer; }

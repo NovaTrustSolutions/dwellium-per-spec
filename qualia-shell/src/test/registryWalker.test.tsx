@@ -51,7 +51,9 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + appflowy (plan 047 phase 3 / plan 053 — AppFlowy Workspace embed/launcher) → 66.
         //   + advisory-board (5 Persona Advisory Board — CRIT decision stress-test) → 67.
         //   + token-saver (token-saver skill status + estimated savings ring) → 68.
-        expect(ids.length).toBe(68);
+        //   + research-lab (labs-tier free-LLM sandbox, data-firewalled — see
+        //     researchLabImportGuard.test.ts) → 69.
+        expect(ids.length).toBe(69);
     });
 
     // Plan 047: every widget carries a first-open tip whose related ids resolve.

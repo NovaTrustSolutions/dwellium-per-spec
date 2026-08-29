@@ -777,6 +777,23 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         category: 'tools',
         tier: 'labs', // plan 046 D4: theme toy, no backend
     },
+    // Research Lab — sandboxed playground over the 31 free LLM providers from
+    // github.com/NovaTrustSolutions/awesome-freellm-apis. Hidden-door labs
+    // widget (⌘K + "labs:" only — labs widgets get NO Tools-hub row and NO
+    // dock entry). Structurally firewalled from all property/customer data:
+    // see researchLabImportGuard.test.ts + src/lib/researchLlm/guard.ts.
+    'research-lab': {
+        id: 'research-lab',
+        label: 'Research Lab',
+        description: 'Try 31 free LLM APIs side-by-side in a sandbox that never touches property data.',
+        tip: { tryThis: 'Add a Groq key (free, no card), then run one prompt on two providers side-by-side.', related: ['tools-hub', 'api-keys'] },
+        tier: 'labs',
+        icon: 'flask-conical',
+        component: lazyWithReload(() => import('../components/ResearchLab/ResearchLab')),
+        minWidth: 640,
+        minHeight: 480,
+        category: 'tools',
+    },
     // ═══════════════════════════════════════
     //  PLAN 047 — Onboarding surface (Tools hub + Guide)
     // ═══════════════════════════════════════

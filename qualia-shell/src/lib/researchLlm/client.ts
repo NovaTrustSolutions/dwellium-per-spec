@@ -107,7 +107,7 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
     } catch (err) {
         const latencyMs = Date.now() - started;
         if (err instanceof TypeError) {
-            return { ...base, latencyMs, corsBlocked: true, error: 'Browser-blocked (no CORS headers from this provider) — needs the research proxy (planned).' };
+            return { ...base, latencyMs, corsBlocked: true, error: 'This provider stopped allowing browser calls (it passed the 2026-08-29 CORS audit) — report it so it can be re-audited.' };
         }
         if ((err as Error)?.name === 'AbortError') return { ...base, latencyMs, error: 'Cancelled.' };
         return { ...base, latencyMs, error: String(err) };

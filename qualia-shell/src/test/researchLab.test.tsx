@@ -91,11 +91,11 @@ describe('ResearchLab widget', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Cohere' }));
         fireEvent.change(screen.getByLabelText('Cohere model id'), { target: { value: 'command-r' } });
         fireEvent.click(screen.getByRole('button', { name: /Run/ }));
-        expect(await screen.findByText(/Browser-blocked \(no CORS headers/)).toBeInTheDocument();
+        expect(await screen.findByText(/stopped allowing browser calls/)).toBeInTheDocument();
 
-        // Providers tab: honest badge, not pretending
+        // Providers tab: honest regression badge (the shipped set passed the 2026-08-29 CORS audit)
         fireEvent.click(screen.getByRole('tab', { name: /Providers/ }));
-        expect(screen.getByText('browser-blocked — needs the research proxy (planned)')).toBeInTheDocument();
+        expect(screen.getByText('stopped allowing browser calls')).toBeInTheDocument();
 
         // Playground: the chip is now selectable-but-disabled
         fireEvent.click(screen.getByRole('tab', { name: 'Playground' }));
@@ -110,11 +110,13 @@ describe('ResearchLab widget', () => {
         expect(screen.getByRole('alert').textContent).toMatch(/No API key set for Groq/);
     });
 
-    it('Providers tab lists all 31 rows with Cline honestly unusable', () => {
+    it('Providers tab lists the 21 browser-verified rows — excluded providers are simply absent (Ilya 2026-08-29)', () => {
         render(<ResearchLab />);
-        fireEvent.click(screen.getByRole('tab', { name: /Providers \(31\)/ }));
-        expect(screen.getByText('Cline')).toBeInTheDocument();
-        expect(screen.getByText('unusable')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('tab', { name: /Providers \(21\)/ }));
+        expect(screen.getByText('Groq')).toBeInTheDocument();
+        expect(screen.queryByText('Cline')).not.toBeInTheDocument();
+        expect(screen.queryByText('NVIDIA NIM')).not.toBeInTheDocument();
+        expect(screen.queryByText('unusable')).not.toBeInTheDocument();
         expect(screen.getAllByText(/Get key/)).not.toHaveLength(0);
     });
 });

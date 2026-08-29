@@ -11,10 +11,21 @@ import { defaultDockItems } from '../data/hierarchy';
 import { getIcon } from '../components/Sidebar/iconMap';
 
 describe('provider registry', () => {
-    it('carries all 31 providers (30 permanent + OpenRouter renewable)', () => {
-        expect(RESEARCH_PROVIDERS).toHaveLength(31);
-        expect(RESEARCH_PROVIDERS.filter(p => p.tier === 'permanent')).toHaveLength(30);
+    it('carries the 21 browser-CORS-verified providers (20 permanent + OpenRouter renewable) — Ilya 2026-08-29: exclude browser-refusing providers entirely', () => {
+        expect(RESEARCH_PROVIDERS).toHaveLength(21);
+        expect(RESEARCH_PROVIDERS.filter(p => p.tier === 'permanent')).toHaveLength(20);
         expect(RESEARCH_PROVIDERS.filter(p => p.tier === 'renewable').map(p => p.id)).toEqual(['openrouter']);
+    });
+    it('ships ONLY the browser-verified set — none of the excluded providers, no placeholders, no duplicate endpoints', () => {
+        const EXCLUDED = ['nvidia-nim', 'sambanova', 'kilo-code', 'ollama-cloud', 'opencode-zen', 'github-models', 'glhf-chat', 'cline', 'cloudflare-workers-ai', 'grok-xai'];
+        const ids = RESEARCH_PROVIDERS.map(p => p.id);
+        for (const bad of EXCLUDED) expect(ids).not.toContain(bad);
+        for (const p of RESEARCH_PROVIDERS) {
+            expect(p.baseUrl.startsWith('https://'), p.id).toBe(true);
+            expect(p.baseUrl.includes('{'), p.id).toBe(false);
+            expect(p.unusable ?? false, p.id).toBe(false);
+        }
+        expect(new Set(RESEARCH_PROVIDERS.map(p => p.baseUrl)).size).toBe(RESEARCH_PROVIDERS.length);
     });
     it('ids are unique', () => {
         const ids = RESEARCH_PROVIDERS.map(p => p.id);
@@ -25,17 +36,6 @@ describe('provider registry', () => {
             if (p.unusable) continue;
             expect(p.baseUrl, p.id).toMatch(/^https:\/\//);
         }
-    });
-    it('Cline is honestly unusable (README ships no base URL)', () => {
-        const cline = getResearchProvider('cline')!;
-        expect(cline.unusable).toBe(true);
-        expect(cline.baseUrl).toBe('');
-        expect(cline.note).toBeTruthy();
-    });
-    it('Cloudflare is flagged needsAccountId (the {account_id} placeholder)', () => {
-        const cf = getResearchProvider('cloudflare-workers-ai')!;
-        expect(cf.needsAccountId).toBe(true);
-        expect(cf.baseUrl).toContain('{account_id}');
     });
     it('Google Gemini uses the OpenAI-compat endpoint (documented substitution)', () => {
         const g = getResearchProvider('google-gemini')!;

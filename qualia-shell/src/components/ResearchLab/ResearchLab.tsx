@@ -135,7 +135,7 @@ export default function ResearchLab() {
                                 key={p.id}
                                 className={p.id in selected ? 'rl-chip active' : 'rl-chip'}
                                 disabled={cors[p.id] === 'blocked'}
-                                title={cors[p.id] === 'blocked' ? 'browser-blocked — needs the research proxy (planned)' : p.name}
+                                title={cors[p.id] === 'blocked' ? 'provider stopped allowing browser calls — re-audit needed' : p.name}
                                 onClick={() => toggleProvider(p)}
                             >
                                 {p.name}{keys[p.id] ? '' : ' (no key)'}
@@ -207,7 +207,7 @@ export default function ResearchLab() {
                                 {p.unusable
                                     ? <span className="rl-badge rl-badge-bad">unusable</span>
                                     : cors[p.id] === 'blocked'
-                                        ? <span className="rl-badge rl-badge-bad">browser-blocked — needs the research proxy (planned)</span>
+                                        ? <span className="rl-badge rl-badge-bad">stopped allowing browser calls</span>
                                         : cors[p.id] === 'ok'
                                             ? <span className="rl-badge rl-badge-ok">browser-direct ok</span>
                                             : <span className="rl-badge">CORS untested</span>}

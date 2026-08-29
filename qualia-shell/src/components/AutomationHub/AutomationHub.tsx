@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import './AutomationHub.css';
 import { API_BASE } from '../../config';
+import OpenOpcPanel from './OpenOpcPanel';
 
 type IconCmp = ComponentType<{ size?: number | string; className?: string; 'aria-hidden'?: boolean; 'aria-label'?: string; style?: CSSProperties }>;
 
@@ -248,6 +249,16 @@ const AUTOMATIONS_SEED: Automation[] = [
             'Each card gets turned into searchable text (title, description, checklists, comments, labels).',
             'Once done, you can search your entire Trello with natural language questions.',
             'Turn on the Daily schedule (2 AM) to keep the index fresh automatically.',
+        ]
+    }),
+    seedAutomation({
+        id: 'auto-opc-company', name: 'AI Company (OpenOPC)', description: 'Turn one brief into a self-built AI org: OpenOPC recruits role agents, drives a kanban work-item DAG (delegate → review → integrate → rework), escalates blockers to you, and learns per-role. Runs in an OpenOPC runner YOU host on a sandbox/VM — never inside Dwellium, never against tenant data.', category: 'software', icon: 'bot', setupTime: '1h', annualSaved: 'varies', integrations: ['OpenOPC runner', 'litellm', 'any LLM key'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, envVars: { OPC_RUNNER_URL: '', OPC_PROJECT: 'dwellium', OPC_MODE: 'company', OPC_COMPANY_PROFILE: 'corporate', OPC_AGENT_BACKEND: 'native' }, tags: ['ai', 'agentic', 'multi-agent'], requiresApproval: true, owner: 'andy', setupGuide: [
+            'OpenOPC agents run code, edit files and drive a browser on their own — host the runner on a SCRATCH sandbox/VM you control, never on a machine with Dwellium or tenant data.',
+            'On that sandbox, in a checkout of OpenOPC: create a venv and install it — "uv venv && uv pip install -e ." (or python -m venv + pip install -e .).',
+            'Create an isolated project: "opc project create dwellium".',
+            'Add an LLM key (any OpenAI-compatible provider) to .opc/config/llm_config.yaml. A live run needs an LLM key.',
+            'Stand up the thin HTTP runner shim (see tools/openopc/README.md) that wraps "opc exec --stream-json", then set OPC_RUNNER_URL on the Dwellium backend to point at it.',
+            'Back here, click "Open console" on this row, write a goal, pick task or company mode, and Launch. Watch the org chart, kanban, and escalation inbox update live.',
         ]
     }),
     // ══════════════════════════════════════════════
@@ -518,6 +529,7 @@ export default function AutomationHub() {
     const [newEnvKey, setNewEnvKey] = useState('');
     const [newEnvVal, setNewEnvVal] = useState('');
     const [helpId, setHelpId] = useState<string | null>(null);
+    const [consoleId, setConsoleId] = useState<string | null>(null);
     const [newIntegration, setNewIntegration] = useState('');
     const [newTag, setNewTag] = useState('');
 
@@ -799,6 +811,16 @@ export default function AutomationHub() {
                             ? (<><X size={14} aria-hidden /> Close</>)
                             : (<><SettingsIcon size={14} aria-hidden /> Settings</>)}
                     </button>
+                    {'OPC_RUNNER_URL' in auto.envVars && (
+                        <button
+                            className="ahub__btn ahub__btn--settings"
+                            onClick={() => setConsoleId(consoleId === auto.id ? null : auto.id)}
+                        >
+                            {consoleId === auto.id
+                                ? (<><X size={14} aria-hidden /> Close console</>)
+                                : (<><Bot size={14} aria-hidden /> Open console</>)}
+                        </button>
+                    )}
                     {auto.status !== 'draft' && (
                         <button
                             className="ahub__btn ahub__btn--toggle"
@@ -838,6 +860,11 @@ export default function AutomationHub() {
                             <Lightbulb size={14} aria-hidden /> Once everything above is done, just click <strong>▶ Launch</strong> to run it!
                         </div>
                     </div>
+                )}
+
+                {/* ===== OPENOPC CONSOLE ===== */}
+                {consoleId === auto.id && (
+                    <OpenOpcPanel envVars={auto.envVars} onClose={() => setConsoleId(null)} />
                 )}
 
                 {/* ===== FULL SETTINGS PANEL ===== */}

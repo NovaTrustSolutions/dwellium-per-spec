@@ -4,9 +4,11 @@
  * Documents view: local leases merged with the live Documenso envelope list —
  * status pills DRAFT/PENDING/COMPLETED/REJECTED/CANCELLED, per-document check
  * status / resend / cancel (confirm-gated) / signed-PDF / audit-log actions,
- * per-recipient signing-link copy, and an "Open in Documenso ↗" deep link into
- * the exact document. Send view: pick a template (live template list) OR a PDF
- * from the Dwellium files store, edit recipients (name/email/role/order), send.
+ * per-recipient signing-link copy, and an "Open in Documenso" action that opens
+ * the exact document INSIDE Dwellium (embedded Documenso panel — never a new tab;
+ * a self-host embeds, the cloud host falls back to a tab with an honest note).
+ * Send view: pick a template (live template list) OR a PDF from the Dwellium files
+ * store, edit recipients (name/email/role/order), send.
  *
  * While the backend has no DOCUMENSO_* env (503) it renders a clean "Connect
  * Documenso" needs-setup card pointing at the Tools hub — nothing here crashes
@@ -19,8 +21,10 @@ import {
     cancelEnvelope,
     checkEsignStatus,
     documensoAppUrl,
+    documensoConfiguredUrl,
     documensoDocumentUrl,
     downloadAuditLog,
+    isCloudDocumensoHost,
     downloadSignedPdf,
     listDocumensoEnvelopes,
     listEsignDocuments,
@@ -49,13 +53,128 @@ interface DraftRecipient { name: string; email: string; role: string }
 
 const ANDY_MESSAGE = 'Please review and sign at your earliest convenience. — AstraStrata Management';
 
-export default function ESign() {
+type ViteEnv = Record<string, string | undefined> | undefined;
+type Reach = 'checking' | 'up' | 'down';
+
+/** Reachability gate for the self-hosted Documenso, then the embedded frame (PhotoVault pattern). */
+function DocumensoFrame({ base, src }: { base: string; src: string }) {
+    const [reach, setReach] = useState<Reach>('checking');
+    const [loadFailed, setLoadFailed] = useState(false);
+    const loaded = useRef(false);
+
+    // no-cors fetch resolves when the server answers, rejects on a connection error.
+    const checkReach = useCallback(async () => {
+        setReach('checking');
+        setLoadFailed(false);
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 4000);
+            await fetch(base, { mode: 'no-cors', signal: ctrl.signal });
+            clearTimeout(t);
+            setReach('up');
+        } catch {
+            setReach('down');
+        }
+    }, [base]);
+    useEffect(() => { void checkReach(); }, [checkReach]);
+
+    // Watchdog: if the frame never fires onLoad, surface the tab note over a blank frame.
+    useEffect(() => {
+        if (reach !== 'up') return;
+        loaded.current = false;
+        const t = setTimeout(() => { if (!loaded.current) setLoadFailed(true); }, 8000);
+        return () => clearTimeout(t);
+    }, [reach, src]);
+
+    if (reach === 'checking') {
+        return <div className="esign__empty" data-state="panel-checking"><RefreshCw size={20} aria-hidden /><p>Checking Documenso…</p></div>;
+    }
+    if (reach === 'down') {
+        return (
+            <div className="esign__empty" data-state="panel-unreachable">
+                <PenLine size={28} aria-hidden />
+                <h3>Documenso isn’t reachable</h3>
+                <p>
+                    The self-hosted Documenso at <code>{base}</code> didn’t answer — it may be
+                    stopped or off the tailnet (tools/documenso/README.md).
+                </p>
+                <div className="esign__panel-actions">
+                    <button className="esign__btn" onClick={() => void checkReach()}>Retry</button>
+                    <button className="esign__btn esign__btn--ghost" onClick={() => window.open(src, '_blank', 'noopener,noreferrer')}>Open ↗</button>
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className="esign__frame-wrap">
+            {loadFailed && (
+                <p className="esign__muted" data-state="panel-load-failed" role="status">
+                    Documenso didn’t load in the frame —{' '}
+                    <button className="esign__linkbtn" onClick={() => window.open(src, '_blank', 'noopener,noreferrer')}>open it in a tab ↗</button>.
+                </p>
+            )}
+            <iframe
+                // key includes src so navigating to a specific doc reloads the frame to that path.
+                key={src}
+                className="esign__frame"
+                src={src}
+                title="Documenso e-signature"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals"
+                allow="clipboard-read; clipboard-write; fullscreen"
+                onLoad={() => { loaded.current = true; setLoadFailed(false); }}
+            />
+        </div>
+    );
+}
+
+/** Embedded Documenso panel: env-unset setup card / cloud-host tab caveat / self-host embed. */
+function DocumensoPanel({ env, src }: { env: ViteEnv; src: string }) {
+    const configured = documensoConfiguredUrl(env);
+    if (!configured) {
+        return (
+            <div className="esign__empty" data-state="panel-needs-setup">
+                <PenLine size={28} aria-hidden />
+                <h3>Connect Documenso</h3>
+                <p>
+                    Set <code>VITE_DOCUMENSO_URL</code> to your self-hosted Documenso to review and
+                    sign inside Dwellium — the panel embeds it here automatically once it&apos;s set.
+                    See tools/documenso/README.md.
+                </p>
+                <button className="esign__btn" onClick={() => openWidget('tools-hub')}>Open Tools hub</button>
+            </div>
+        );
+    }
+    if (isCloudDocumensoHost(configured)) {
+        return (
+            <div className="esign__empty" data-state="panel-cloud">
+                <PenLine size={28} aria-hidden />
+                <h3>Documenso opens in a tab</h3>
+                <p>
+                    The hosted Documenso can’t be embedded; self-host to keep it inside Dwellium
+                    (tools/documenso). Opening in a tab for now.
+                </p>
+                <button className="esign__btn" onClick={() => window.open(src, '_blank', 'noopener,noreferrer')}>
+                    Open Documenso <ExternalLink size={12} aria-hidden />
+                </button>
+            </div>
+        );
+    }
+    return <DocumensoFrame base={configured} src={src} />;
+}
+
+export default function ESign({
+    env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env,
+}: { env?: Record<string, string | undefined> } = {}) {
     usePerUserIdentity();
     const [state, setState] = useState<ViewState>({ kind: 'loading' });
     // Plan 055 phase 2 — the active view reopens where it was left.
     const [mem, patchMem] = useWidgetMemory('esign', { view: 'list' });
-    const view: 'list' | 'send' = mem.view === 'send' ? 'send' : 'list';
-    const setView = (v: 'list' | 'send'): void => patchMem({ view: v });
+    const view: 'list' | 'send' | 'panel' = mem.view === 'send' ? 'send' : mem.view === 'panel' ? 'panel' : 'list';
+    const setView = (v: 'list' | 'send' | 'panel'): void => patchMem({ view: v });
+    // Embedded-panel src (app root / a specific document / a signing link) — held in state so
+    // navigating to a specific doc reloads the frame to that path (plan: in-Dwellium Documenso).
+    const [panelSrc, setPanelSrc] = useState<string>(documensoAppUrl(env));
+    const openPanel = (src: string): void => { setPanelSrc(src); setView('panel'); };
     const [notice, setNotice] = useState<string | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
 
@@ -193,15 +312,22 @@ export default function ESign() {
             <div className="esign__head">
                 <h2 className="esign__title"><PenLine size={16} aria-hidden /> E-Sign</h2>
                 <div className="esign__head-actions">
-                    <a className="esign__link" href={documensoAppUrl()} target="_blank" rel="noreferrer">
-                        Open Documenso <ExternalLink size={12} aria-hidden />
+                    {view !== 'panel' && (
+                        <button className="esign__btn esign__btn--ghost" onClick={() => openPanel(documensoAppUrl(env))}>
+                            Open Documenso
+                        </button>
+                    )}
+                    {/* Power-user escape hatch — the default action embeds in Dwellium; this opens a tab. */}
+                    <a className="esign__link esign__link--tab" href={documensoAppUrl(env)} target="_blank" rel="noreferrer"
+                        title="Open Documenso in a new tab" aria-label="Open Documenso in a new tab">
+                        <ExternalLink size={12} aria-hidden />
                     </a>
                     {state.kind === 'ok' && view === 'list' && (
                         <button className="esign__btn" onClick={openSendView}>
                             <Plus size={12} aria-hidden /> New send
                         </button>
                     )}
-                    {view === 'send' && (
+                    {(view === 'send' || view === 'panel') && (
                         <button className="esign__btn esign__btn--ghost" onClick={() => { setView('list'); void refresh(); }}>
                             Back to documents
                         </button>
@@ -214,9 +340,11 @@ export default function ESign() {
 
             {notice && <p className="esign__notice" role="status">{notice}</p>}
 
-            {state.kind === 'loading' && <p className="esign__muted">Loading sent documents…</p>}
+            {view === 'panel' && <DocumensoPanel env={env} src={panelSrc} />}
 
-            {state.kind === 'needs-setup' && (
+            {view !== 'panel' && state.kind === 'loading' && <p className="esign__muted">Loading sent documents…</p>}
+
+            {view !== 'panel' && state.kind === 'needs-setup' && (
                 <div className="esign__empty" data-state="needs-setup">
                     <PenLine size={28} aria-hidden />
                     <h3>Connect Documenso</h3>
@@ -229,7 +357,7 @@ export default function ESign() {
                 </div>
             )}
 
-            {state.kind === 'error' && (
+            {view !== 'panel' && state.kind === 'error' && (
                 <div className="esign__empty" data-state="error">
                     <h3>Backend unavailable</h3>
                     <p>{state.message}</p>
@@ -318,10 +446,16 @@ export default function ESign() {
                                 <div className="esign__sent-row" key={r.email}>
                                     <span className="esign__chip">{r.email}</span>
                                     {r.token && (
-                                        <button className="esign__btn esign__btn--ghost" onClick={() => void copySigningLink(r.token!)}
-                                            aria-label={`Copy signing link for ${r.email}`}>
-                                            <Copy size={12} aria-hidden /> Copy signing link
-                                        </button>
+                                        <>
+                                            <button className="esign__btn esign__btn--ghost" onClick={() => openPanel(signingUrlFromToken(r.token!, env))}
+                                                aria-label={`Review and sign ${r.email} here`}>
+                                                <PenLine size={12} aria-hidden /> Review &amp; sign here
+                                            </button>
+                                            <button className="esign__btn esign__btn--ghost" onClick={() => void copySigningLink(r.token!)}
+                                                aria-label={`Copy signing link for ${r.email}`}>
+                                                <Copy size={12} aria-hidden /> Copy signing link
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             ))}
@@ -403,10 +537,10 @@ export default function ESign() {
                                                 <ScrollText size={12} aria-hidden />
                                             </button>
                                         )}
-                                        <a className="esign__link" href={documensoDocumentUrl(row)} target="_blank" rel="noreferrer"
-                                            aria-label={`Open ${row.title} in Documenso`}>
+                                        <button className="esign__btn esign__btn--ghost" aria-label={`Open ${row.title} in Documenso`}
+                                            onClick={() => openPanel(documensoDocumentUrl(row, env))}>
                                             <ExternalLink size={12} aria-hidden />
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                             );

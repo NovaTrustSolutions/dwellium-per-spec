@@ -24,7 +24,7 @@ const DEBUG = true;
 // Module-level proof-of-life — fires as soon as this file is imported.
 if (DEBUG) console.log('[Scribe DnD] dropHandler.ts module loaded');
 
-const DWELLIUM_WIDGET_MIME = 'application/x-dwellium-widget';
+export const DWELLIUM_WIDGET_MIME = 'application/x-dwellium-widget';
 const DWELLIUM_PATH_MIME = 'application/x-dwellium-path';
 const TEXT_FILE_EXTS = ['.md', '.markdown', '.txt', '.json', '.csv', '.tsv', '.yaml', '.yml', '.log', '.html'];
 const IMAGE_FILE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.avif'];
@@ -95,11 +95,25 @@ function fileExt(name: string): string {
 }
 
 // ── Phase D: Dwellium widget reference inserter ──────────────────────────
-interface DwelliumWidgetPayload {
+export interface DwelliumWidgetPayload {
     widgetId: string;
     widgetType: string;
     title?: string;
     state?: Record<string, unknown>;
+    /** Content-bearing drags (Notepad notes): full markdown body travels with the payload. */
+    content?: string;
+}
+
+/**
+ * Notepad note → markdown inserted at the drop point:
+ * `## <title>` + blank line + content (heading skipped when untitled).
+ * Copy semantics — the source note is never touched.
+ */
+export function formatNotepadDrop(payload: DwelliumWidgetPayload): string {
+    const title = (payload.title ?? '').trim();
+    const content = (payload.content ?? '').trim();
+    const heading = title && title !== 'Untitled' ? `## ${title}\n\n` : '';
+    return `${heading}${content}\n`;
 }
 
 function formatWidgetReference(payload: DwelliumWidgetPayload): string {
@@ -116,7 +130,7 @@ function formatWidgetReference(payload: DwelliumWidgetPayload): string {
 }
 
 // ── Main drop handler ───────────────────────────────────────────────────
-async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
+export async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
     if (!e.dataTransfer) return false;
     const dt = e.dataTransfer;
     const dropPos = getDropPos(view, e);
@@ -126,7 +140,12 @@ async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
     if (widgetRaw) {
         try {
             const payload = JSON.parse(widgetRaw) as DwelliumWidgetPayload;
-            insertAt(view, dropPos, formatWidgetReference(payload));
+            // Notepad drags carry full content → insert as markdown, not a reference.
+            if (payload.widgetType === 'notepad' && typeof payload.content === 'string') {
+                insertAt(view, dropPos, formatNotepadDrop(payload));
+            } else {
+                insertAt(view, dropPos, formatWidgetReference(payload));
+            }
             return true;
         } catch {
             // malformed payload — fall through to other handlers
@@ -141,6 +160,23 @@ async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
     if (pathRaw) {
         try {
             const payload = JSON.parse(pathRaw) as { name: string; path: string; tier: string };
+            if (payload.tier === 'file' && /\.pdf$/i.test(payload.name)) {
+                // PDF from the File Explorer → convert to markdown + open (not inline bytes).
+                const { openPdfBytesAsMarkdown, bytesFromBinaryString } = await import('./pdfOpen');
+                try {
+                    const res = await fetch(`${API_BASE}/api/file-explorer/read?path=${encodeURIComponent(payload.path)}`, {
+                        headers: getAuthHeaders(),
+                    });
+                    const data = await res.json();
+                    const bytes = res.ok && data.success && typeof data.content === 'string'
+                        ? bytesFromBinaryString(data.content)
+                        : new Uint8Array(0);
+                    await openPdfBytesAsMarkdown(payload.name, bytes);
+                } catch {
+                    await openPdfBytesAsMarkdown(payload.name, new Uint8Array(0)); // honest fallback doc
+                }
+                return true;
+            }
             if (payload.tier === 'file') {
                 // Insert placeholder, fetch content, replace
                 const placeholder = `\n[Loading ${payload.name}…]()\n`;
@@ -191,6 +227,10 @@ async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
                 } else {
                     view.dispatch({ changes: { from, to, insert: `_(failed to upload ${file.name})_\n` } });
                 }
+            } else if (ext === '.pdf') {
+                // Dropped PDF file → convert to a sibling markdown doc and open it.
+                const { openPdfBytesAsMarkdown } = await import('./pdfOpen');
+                await openPdfBytesAsMarkdown(file.name, new Uint8Array(await file.arrayBuffer()));
             } else if (TEXT_FILE_EXTS.includes(ext)) {
                 const text = await readTextFile(file);
                 if (text) {

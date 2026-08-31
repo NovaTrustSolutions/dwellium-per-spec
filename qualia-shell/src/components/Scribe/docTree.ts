@@ -48,6 +48,19 @@ export function buildDocTree(filepaths: string[]): DocTreeNode[] {
     return sortRec(root.children);
 }
 
+/**
+ * First free `.md` path for a title: "Title.md", then "Title 2.md", "Title 3.md"…
+ * Slashes are flattened so a note title can't create surprise folders.
+ */
+export function uniqueMdPath(title: string, existingPaths: string[]): string {
+    const base = (title || 'Note').trim().replace(/[\\/]+/g, '-').replace(/\.md$/i, '') || 'Note';
+    const taken = new Set(existingPaths.map(p => p.toLowerCase()));
+    if (!taken.has(`${base.toLowerCase()}.md`)) return `${base}.md`;
+    for (let i = 2; ; i++) {
+        if (!taken.has(`${base.toLowerCase()} ${i}.md`)) return `${base} ${i}.md`;
+    }
+}
+
 /** Flatten a tree to visible rows honoring a set of expanded folder paths (for rendering). */
 export function flattenTree(nodes: DocTreeNode[], expanded: Set<string>, depth = 0): Array<{ node: DocTreeNode; depth: number }> {
     const rows: Array<{ node: DocTreeNode; depth: number }> = [];

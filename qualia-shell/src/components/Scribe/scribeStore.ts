@@ -358,6 +358,14 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     },
 
     openFile: async (filepath) => {
+        // .pdf opened anywhere (FileTree click, session restore, drops, palette)
+        // → convert to a sibling markdown doc and open THAT (plan: Scribe never
+        // shows raw PDF bytes). Lazy import keeps pdfjs out of the main chunk.
+        if (/\.pdf$/i.test(filepath)) {
+            const { openPdfFilepath } = await import('./pdfOpen');
+            await openPdfFilepath(filepath);
+            return;
+        }
         const existing = get().openFiles.find((f) => f.filepath === filepath);
         if (existing) {
             set({ activeFilepath: filepath });

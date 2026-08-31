@@ -30,6 +30,27 @@ interface MentionItem {
 
 const API_FILES = `${API_BASE}/api/files`;
 
+/** Phase D inter-widget drag MIME (same constant as Scribe's dropHandler). */
+export const NOTEPAD_DRAG_MIME = 'application/x-dwellium-widget';
+
+/**
+ * dataTransfer payloads for dragging a note out of Notepad (copy semantics —
+ * the note itself is never mutated). Phase D widget payload for Dwellium drop
+ * zones + a text/plain fallback so any text field accepts the drop.
+ */
+export function noteDragData(note: Pick<Note, 'id' | 'title' | 'content'>): { widget: string; text: string } {
+    return {
+        widget: JSON.stringify({
+            widgetId: note.id,
+            widgetType: 'notepad',
+            source: 'notepad',
+            title: note.title,
+            content: note.content,
+        }),
+        text: note.content,
+    };
+}
+
 // ============================================
 // COMPONENT
 // ============================================
@@ -335,7 +356,18 @@ export default function Notepad() {
                     {notes.map(note => (
                         <div key={note.id}
                             className={`np-note-item ${activeNoteId === note.id ? 'np-note-item--active' : ''}`}
-                            onClick={() => selectNote(note)}>
+                            onClick={() => selectNote(note)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNote(note); } }}
+                            draggable
+                            aria-label={`${note.title || 'Untitled note'} — draggable; drop into Scribe to copy it there`}
+                            onDragStart={(e) => {
+                                const data = noteDragData(note);
+                                e.dataTransfer.setData(NOTEPAD_DRAG_MIME, data.widget);
+                                e.dataTransfer.setData('text/plain', data.text);
+                                e.dataTransfer.effectAllowed = 'copy';
+                            }}>
                             <div className="np-note-item__title">{note.title}</div>
                             <div className="np-note-item__preview">{note.content.slice(0, 60).replace(/[#*_]/g, '')}</div>
                             <div className="np-note-item__date">{new Date(note.updated_at).toLocaleDateString()}</div>
@@ -399,7 +431,9 @@ export default function Notepad() {
                     {showMentions && filteredMentions.length > 0 && (
                         <div className="np-mention" style={{ top: mentionPos.top, left: mentionPos.left }}>
                             {filteredMentions.map(item => (
-                                <div key={item.id} className="np-mention__item" onClick={() => insertMention(item)}>
+                                <div key={item.id} className="np-mention__item" role="button" tabIndex={0}
+                                    onClick={() => insertMention(item)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); insertMention(item); } }}>
                                     <span className="np-mention__item-icon"><item.icon size={14} aria-hidden /></span>
                                     <span className="np-mention__item-name">{item.name}</span>
                                     <span className="np-mention__item-type">{item.type}</span>

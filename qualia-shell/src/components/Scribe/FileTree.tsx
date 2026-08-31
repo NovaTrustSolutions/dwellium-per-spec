@@ -5,7 +5,9 @@
  */
 import { useState, useMemo } from 'react';
 import { FileText, Folder, FolderOpen } from 'lucide-react';
-import { buildDocTree, flattenTree } from './docTree';
+import { buildDocTree, flattenTree, uniqueMdPath } from './docTree';
+import { DWELLIUM_WIDGET_MIME, type DwelliumWidgetPayload } from './dropHandler';
+import { useScribeStore } from './scribeStore';
 
 export function FileTree({ files, onOpen, activePath }: {
     files: Array<{ filepath: string }>;
@@ -24,8 +26,33 @@ export function FileTree({ files, onOpen, activePath }: {
             return next;
         });
 
+    // Notepad note dropped on the tree → new doc "<title || 'Note'>.md" with the
+    // note's content (deduped with a numeric suffix), then opened. Copy semantics.
+    const onNotepadDrop = (e: React.DragEvent) => {
+        const raw = e.dataTransfer.getData(DWELLIUM_WIDGET_MIME);
+        if (!raw) return;
+        try {
+            const payload = JSON.parse(raw) as DwelliumWidgetPayload;
+            if (payload.widgetType !== 'notepad' || typeof payload.content !== 'string') return;
+            e.preventDefault();
+            e.stopPropagation();
+            const path = uniqueMdPath(payload.title || 'Note', files.map(f => f.filepath));
+            void useScribeStore.getState().createFile(path, payload.content); // creates AND opens
+        } catch { /* malformed payload — ignore */ }
+    };
+
     return (
-        <div className="scribe__file-tree">
+        <div
+            className="scribe__file-tree"
+            data-dwellium-drop-zone="scribe-file-tree"
+            onDragOver={(e) => {
+                if (e.dataTransfer.types.includes(DWELLIUM_WIDGET_MIME)) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                }
+            }}
+            onDrop={onNotepadDrop}
+        >
             {rows.map(({ node, depth }) => {
                 const ext = node.isFile ? (node.name.split('.').pop() || '').toLowerCase() : '';
                 return (

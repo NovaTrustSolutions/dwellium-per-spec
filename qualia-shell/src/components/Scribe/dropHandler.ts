@@ -24,7 +24,7 @@ const DEBUG = true;
 // Module-level proof-of-life — fires as soon as this file is imported.
 if (DEBUG) console.log('[Scribe DnD] dropHandler.ts module loaded');
 
-const DWELLIUM_WIDGET_MIME = 'application/x-dwellium-widget';
+export const DWELLIUM_WIDGET_MIME = 'application/x-dwellium-widget';
 const DWELLIUM_PATH_MIME = 'application/x-dwellium-path';
 const TEXT_FILE_EXTS = ['.md', '.markdown', '.txt', '.json', '.csv', '.tsv', '.yaml', '.yml', '.log', '.html'];
 const IMAGE_FILE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.avif'];
@@ -95,11 +95,25 @@ function fileExt(name: string): string {
 }
 
 // ── Phase D: Dwellium widget reference inserter ──────────────────────────
-interface DwelliumWidgetPayload {
+export interface DwelliumWidgetPayload {
     widgetId: string;
     widgetType: string;
     title?: string;
     state?: Record<string, unknown>;
+    /** Content-bearing drags (Notepad notes): full markdown body travels with the payload. */
+    content?: string;
+}
+
+/**
+ * Notepad note → markdown inserted at the drop point:
+ * `## <title>` + blank line + content (heading skipped when untitled).
+ * Copy semantics — the source note is never touched.
+ */
+export function formatNotepadDrop(payload: DwelliumWidgetPayload): string {
+    const title = (payload.title ?? '').trim();
+    const content = (payload.content ?? '').trim();
+    const heading = title && title !== 'Untitled' ? `## ${title}\n\n` : '';
+    return `${heading}${content}\n`;
 }
 
 function formatWidgetReference(payload: DwelliumWidgetPayload): string {
@@ -116,7 +130,7 @@ function formatWidgetReference(payload: DwelliumWidgetPayload): string {
 }
 
 // ── Main drop handler ───────────────────────────────────────────────────
-async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
+export async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
     if (!e.dataTransfer) return false;
     const dt = e.dataTransfer;
     const dropPos = getDropPos(view, e);
@@ -126,7 +140,12 @@ async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
     if (widgetRaw) {
         try {
             const payload = JSON.parse(widgetRaw) as DwelliumWidgetPayload;
-            insertAt(view, dropPos, formatWidgetReference(payload));
+            // Notepad drags carry full content → insert as markdown, not a reference.
+            if (payload.widgetType === 'notepad' && typeof payload.content === 'string') {
+                insertAt(view, dropPos, formatNotepadDrop(payload));
+            } else {
+                insertAt(view, dropPos, formatWidgetReference(payload));
+            }
             return true;
         } catch {
             // malformed payload — fall through to other handlers

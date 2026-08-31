@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { openWidget } from '../../lib/dwelliumCommands';
 import { replayFirstRun } from '../../lib/firstRunStore';
+import { replayWalkthrough } from '../../lib/walkthroughStore';
 import { useOnboarding, type OnboardingRole } from '../../lib/onboardingStore';
 import { pickRole, ROLE_COPY } from './FirstRunCard';
 import './ShortcutSheet.css';
@@ -95,6 +96,7 @@ export default function ShortcutSheet() {
                     <button type="button" className="shortcut-sheet__link" onClick={() => { openWidget('guide'); setOpen(false); }}>Getting started</button>
                     <button type="button" className="shortcut-sheet__link" onClick={() => { openWidget('tools-hub'); setOpen(false); }}>Tools hub</button>
                     <button type="button" className="shortcut-sheet__link" onClick={() => { replayFirstRun(); setOpen(false); }}>Replay first-run</button>
+                    <button type="button" className="shortcut-sheet__link" onClick={() => { replayWalkthrough(); setOpen(false); }}>Replay walkthrough</button>
                 </div>
                 {/* Role row — existing accounts that were already 3/3 never saw the card's chooser; this is the second door. */}
                 <div className="shortcut-sheet__guides" role="group" aria-label="Your role">

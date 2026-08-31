@@ -21,6 +21,8 @@ The **Get to your first win** card (bottom-left) first asks how you use Dwellium
 2. **Bring your data** — add your first property in Strata (the card's button lands you in the Properties module).
 3. **Ask ARA** anything ("Which leases end in the next 60 days?"). Your first ARA reply unlocks the AI Tools group.
 
+First sign-in also opens a short **walkthrough** that spotlights the shell (sidebar, ⌘K, ARA, Strata, the tool shed) — replay it anytime from the **?** sheet (*Replay walkthrough*) or **⌘K** → *walkthrough*.
+
 Want to see the app full before importing anything? **Settings → Data → Demo workspace** fills Strata with a clearly-bannered sample portfolio — *Replace with your data* is one click, and demo data never touches your real records.
 
 ## 3 · Learn the shell (five things, two minutes)

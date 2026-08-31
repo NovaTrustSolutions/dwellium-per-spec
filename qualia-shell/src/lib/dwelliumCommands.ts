@@ -255,6 +255,9 @@ function parseSingle(input: string): ParsedCommand | null {
     // keyboard shortcuts sheet (plan 046 S2-8) — ShortcutSheet listens for the event.
     if (/^(keyboard )?shortcuts?$|^hotkeys?$|^show shortcuts$/.test(l)) return { label: 'Keyboard shortcuts', run: () => window.dispatchEvent(new CustomEvent('dwellium:open-shortcuts')) };
 
+    // onboarding walkthrough replay — WalkthroughOverlay listens for the event.
+    if (/^(?:replay (?:the )?)?(?:walkthrough|tour|product tour)$|^take the tour$/.test(l)) return { label: 'Replay the walkthrough', run: () => window.dispatchEvent(new CustomEvent('dwellium:walkthrough-replay')) };
+
     // Fresh start (plan 055 phase 3) — forget the restored session, reopen the
     // default stack. Desktop.tsx handles the event; data is never touched.
     if (/^fresh( start)?$|^start fresh$|^clean desk$|^fresh desk$/.test(l)) return { label: 'Fresh start — clean desk, default workspace', run: () => window.dispatchEvent(new CustomEvent('dwellium:fresh-start')) };

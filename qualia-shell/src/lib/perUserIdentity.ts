@@ -80,6 +80,9 @@ export const cockpitPrefsUserIdHolder: UserIdHolder = makeHolder();
 /** ARA console preferences — streaming, intro-seen, hold-to-talk (araPrefsStore). */
 export const araPrefsUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 055 phase 1 — per-user live session snapshot (sessionRestoreStore). */
+export const sessionRestoreUserIdHolder: UserIdHolder = makeHolder();
+
 /** Research Lab — per-user free-provider API keys (researchKeysStore). NEVER shared with the main integrations bundle. */
 export const researchKeysUserIdHolder: UserIdHolder = makeHolder();
 /** Research Lab — per-user experiments log (researchLogStore). */
@@ -109,6 +112,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     advisoryBoardUserIdHolder,
     araPrefsUserIdHolder,
     cockpitPrefsUserIdHolder,
+    sessionRestoreUserIdHolder,
     researchKeysUserIdHolder,
     researchLogUserIdHolder,
 ];

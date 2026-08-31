@@ -6,6 +6,14 @@ import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync, withSyncStatic } from '../lib/oneSaveStore';
 import { logActivity } from '../lib/activityLogStore';
 import { openWidgetPopout } from '../lib/popoutWindow';
+import { usePerUserIdentity } from '../lib/perUserIdentity';
+import {
+    captureSession,
+    isPopupContext,
+    projectWindows,
+    readSessionSnapshot,
+    restoreClassicWindows,
+} from '../lib/sessionRestoreStore';
 
 const LAYOUT_STORAGE_KEY = 'dwellium-layout';
 const LEGACY_LAYOUT_STORAGE_KEY = 'qualia-layout';
@@ -172,8 +180,32 @@ function generateId() {
     return `win-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/**
+ * Plan 055 phase 1 — session restore. Rebuild the Classic window list from
+ * the persisted per-user session snapshot (exact geometry/z/minimized/group;
+ * auto-placement and region-snap bypassed by construction). Returns [] when
+ * there is nothing persisted (fresh user → default-stack path unchanged) or
+ * in the `/?popup=` shell (popouts are separate OS windows, not part of the
+ * session). Also advances the z-index counter past the restored maximum so
+ * new windows stack on top.
+ */
+function initialSessionWindows(): WindowState[] {
+    if (typeof window === 'undefined' || isPopupContext()) return [];
+    const snap = readSessionSnapshot();
+    if (!snap || snap.classic.length === 0) return [];
+    const restored = restoreClassicWindows(snap);
+    for (const w of restored) nextZIndex = Math.max(nextZIndex, w.zIndex);
+    return restored;
+}
+
 export function WindowProvider({ children }: { children: ReactNode }) {
     const { user } = useUser();
+
+    // Plan 055: the single writer sets EVERY per-user identity holder
+    // (including sessionRestoreUserIdHolder) during render, BEFORE the
+    // useState initializer below reads the session store — so restore
+    // resolves the signed-in user's namespace on the very first render.
+    usePerUserIdentity();
 
     // Update savedLayouts key holder DURING render (before useSyncExternalStore
     // call) so getSnapshot resolves the fresh key. Factory cache invalidates
@@ -181,7 +213,10 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     // per-user-id value without a separate re-init effect.
     savedLayoutsUserIdHolder.current = user?.id ?? null;
 
-    const [windows, setWindows] = useState<WindowState[]>([]);
+    // Plan 055 phase 1: the desktop remembers — hydrate the exact previous
+    // session synchronously so the default-stack effect (Desktop.tsx) sees a
+    // populated canvas and never fires over a restored session.
+    const [windows, setWindows] = useState<WindowState[]>(initialSessionWindows);
     const dockItems = useSyncExternalStore(
         dockItemsStore.subscribe,
         dockItemsStore.getSnapshot,
@@ -235,6 +270,28 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         localStorage.setItem(savedLayoutsKey, JSON.stringify(savedLayouts));
     }, [savedLayouts, savedLayoutsKey]);
+
+    // Plan 055: account switch (Andy → Lisa) — the identity holders flipped
+    // during this render (single writer above), so re-read the NEW user's
+    // persisted session and swap the canvas. A capture still pending for the
+    // previous user is dropped by captureSession/flushSession's owner guard.
+    const prevUserIdRef = useRef<string | null>(user?.id ?? null);
+    useEffect(() => {
+        const uid = user?.id ?? null;
+        if (prevUserIdRef.current === uid) return;
+        prevUserIdRef.current = uid;
+        setWindows(initialSessionWindows());
+    }, [user?.id]);
+
+    // Plan 055: capture — every windows mutation updates the persisted
+    // session (debounced ~800ms in sessionRestoreStore; flushed on
+    // beforeunload / visibilitychange→hidden). This effect only WRITES the
+    // store (never subscribes to it), so restoring can't re-trigger capture
+    // into a churn loop; the mount-time write is a no-op rewrite of the
+    // just-restored data. Popouts are excluded inside captureSession.
+    useEffect(() => {
+        captureSession({ classic: projectWindows(windows) });
+    }, [windows]);
 
     // Auto-save layout on changes
     useEffect(() => {

@@ -43,6 +43,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext, type DwelliumUser } from '../../context/UserContext';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { captureSession, isPopupContext, readSessionSnapshot, restoreOsTabs } from '../../lib/sessionRestoreStore';
 import { openWidgetPopout, notifyPopoutBlocked } from '../../lib/popoutWindow';
 import './HalocronOS.css';
 
@@ -94,6 +95,27 @@ interface HosTab {
     pinned?: boolean;
     essential?: boolean;
     lastActiveAt: number;
+}
+
+/**
+ * Plan 055 phase 1: rebuild the widget-tab strip from the persisted session
+ * (registry-unknown ids already dropped by restoreOsTabs). Web/CLI tabs are
+ * deliberately not part of the session projection — widget tabs only.
+ */
+function restoredHosTabs(): { tabs: HosTab[]; active: string | null } {
+    if (typeof window === 'undefined' || isPopupContext()) return { tabs: [], active: null };
+    const snap = readSessionSnapshot();
+    if (!snap) return { tabs: [], active: null };
+    const slice = restoreOsTabs(snap.halocron);
+    let seq = 0;
+    const tabs: HosTab[] = slice.tabs.map((id) => ({
+        key: `w:${id}`,
+        kind: 'widget',
+        id,
+        label: WIDGET_REGISTRY[id]?.label ?? id,
+        lastActiveAt: Date.now() * 1000 + (++seq),
+    }));
+    return { tabs, active: slice.active ? `w:${slice.active}` : null };
 }
 
 type SplitLayout = HalocronOsState['splitLayout'];
@@ -212,8 +234,11 @@ export default function HalocronOS() {
     // panel) instead of being delegated to the classic windowed desktop.
     // Classic-OS-style tabs: every opened app/web view becomes a tab; all stay
     // mounted (hidden when inactive) so you keep your place when switching.
-    const [tabs, setTabs] = useState<HosTab[]>([]);
-    const [activeKey, setActiveKey] = useState<string | null>(null);
+    // Plan 055: open tabs + active tab restore from the persisted session
+    // (lazy init — WindowProvider set the identity holders earlier this render
+    // pass, so the snapshot resolves the signed-in user's namespace).
+    const [tabs, setTabs] = useState<HosTab[]>(() => restoredHosTabs().tabs);
+    const [activeKey, setActiveKey] = useState<string | null>(() => restoredHosTabs().active);
     const [claudePlaybookOpen, setClaudePlaybookOpen] = useState(false);
     // Tear-off: tab being HTML5-dragged; drop outside the strip = pop out.
     const [tearingKey, setTearingKey] = useState<string | null>(null);
@@ -255,6 +280,32 @@ export default function HalocronOS() {
     // Andy-only Audit Log — are hidden from everyone else's Apps archive).
     const catalogUser = useContext(UserContext)?.user;
     const catalogEmail = catalogUser?.email?.trim().toLowerCase() ?? '';
+
+    // Plan 055: capture — persist the open widget-tab set + active tab on
+    // every mutation (debounced in sessionRestoreStore; flushed on unload/
+    // hidden). Write-only: no subscription back, so restore can't loop.
+    useEffect(() => {
+        const widgetIds = tabs.filter((t) => t.kind === 'widget' && t.id).map((t) => t.id!);
+        const activeTab = tabs.find((t) => t.key === activeKey);
+        captureSession({
+            halocron: {
+                tabs: widgetIds,
+                active: activeTab?.kind === 'widget' && activeTab.id ? activeTab.id : null,
+            },
+        });
+    }, [tabs, activeKey]);
+
+    // Plan 055: account switch — swap the tab strip to the new user's
+    // persisted session (holders already flipped by the single writer above).
+    const prevUserIdRef = useRef<string | null>(catalogUser?.id ?? null);
+    useEffect(() => {
+        const uid = catalogUser?.id ?? null;
+        if (prevUserIdRef.current === uid) return;
+        prevUserIdRef.current = uid;
+        const restored = restoredHosTabs();
+        setTabs(restored.tabs);
+        setActiveKey(restored.active);
+    }, [catalogUser?.id]);
     const grouped = useMemo(() => {
         const out: Record<string, { id: string; label: string; icon: string }[]> = {};
         Object.values(WIDGET_REGISTRY).forEach((w) => {

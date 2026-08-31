@@ -50,6 +50,7 @@ import { UserContext } from '../../context/UserContext';
 import { usePerUserIdentity, cockpitPrefsUserIdHolder } from '../../lib/perUserIdentity';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { openWidgetPopout, notifyPopoutBlocked } from '../../lib/popoutWindow';
+import { captureSession, isPopupContext, readSessionSnapshot, restoreOsTabs } from '../../lib/sessionRestoreStore';
 import {
     personaWorkStore, personaWorkUserIdHolder, deleteTask, formatDuration, type PersonaTask,
 } from '../../lib/agents/personaWorkStore';
@@ -121,6 +122,24 @@ const TIER_LABEL: Record<WidgetTier, string> = {
 };
 
 interface NavWidget { id: string; label: string; icon: string }
+
+/**
+ * Plan 055 phase 1: rebuild the cockpit tab set + active tab from the
+ * persisted session. 'ara-console' is the permanent tab (never in the list);
+ * a persisted active id that no longer resolves falls back to ARA.
+ */
+function restoredCockpitTabs(): { tabs: NavWidget[]; active: string } {
+    if (typeof window === 'undefined' || isPopupContext()) return { tabs: [], active: 'ara-console' };
+    const snap = readSessionSnapshot();
+    if (!snap) return { tabs: [], active: 'ara-console' };
+    const slice = restoreOsTabs(snap.fluid);
+    const tabs: NavWidget[] = slice.tabs.map((id) => ({
+        id,
+        label: WIDGET_REGISTRY[id]?.label ?? id,
+        icon: WIDGET_REGISTRY[id]?.icon ?? '',
+    }));
+    return { tabs, active: slice.active ?? 'ara-console' };
+}
 
 /* ── Preview quick links (Tools hub `ready` tools with a URL + Argyle) ────── */
 
@@ -235,10 +254,28 @@ export default function FluidOS() {
     const quickLinks = useMemo(buildQuickLinks, []);
 
     /* Center-pane tabs: ARA is permanent; every other widget opens as a tab
-       here instead of kicking the user back to the classic desktop. Session
-       state only (not persisted) — reopening the cockpit starts on ARA. */
-    const [tabs, setTabs] = useState<NavWidget[]>([]);
-    const [activeTab, setActiveTab] = useState<string>('ara-console');
+       here instead of kicking the user back to the classic desktop.
+       Plan 055: the tab set + active tab persist per user in the session
+       snapshot and restore on the next login/reload. */
+    const [tabs, setTabs] = useState<NavWidget[]>(() => restoredCockpitTabs().tabs);
+    const [activeTab, setActiveTab] = useState<string>(() => restoredCockpitTabs().active);
+
+    // Plan 055: capture on every tab mutation (debounced downstream; flushed
+    // on unload/hidden). Write-only — restore can't re-trigger a loop.
+    useEffect(() => {
+        captureSession({ fluid: { tabs: tabs.map((t) => t.id), active: activeTab } });
+    }, [tabs, activeTab]);
+
+    // Plan 055: account switch — swap to the new user's persisted cockpit.
+    const prevCockpitUserRef = useRef<string | null>(catalogUser?.id ?? null);
+    useEffect(() => {
+        const uid = catalogUser?.id ?? null;
+        if (prevCockpitUserRef.current === uid) return;
+        prevCockpitUserRef.current = uid;
+        const restored = restoredCockpitTabs();
+        setTabs(restored.tabs);
+        setActiveTab(restored.active);
+    }, [catalogUser?.id]);
     const openInCockpit = useCallback((id: string, label: string, icon: string) => {
         if (id !== 'ara-console') {
             setTabs((prev) => (prev.some((t) => t.id === id) ? prev : [...prev, { id, label, icon }]));

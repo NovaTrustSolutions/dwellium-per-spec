@@ -16,6 +16,7 @@ import Window from '../Window/Window';
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { defaultStackKey, readDefaultStackFlag, DEFAULT_STACK_DONE, getStartupStack, shouldOpenDefaultStack } from './defaultStack';
 import { readSessionSnapshot } from '../../lib/sessionRestoreStore';
+import { fireWelcomeBackToast } from '../../lib/welcomeBack';
 import { onboardingStore, deriveOnboardingRole } from '../../lib/onboardingStore';
 import { UserContext } from '../../context/UserContext';
 import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
@@ -629,6 +630,17 @@ export default function Desktop() {
         };
         window.addEventListener('qualia-toast', handleToast);
         return () => window.removeEventListener('qualia-toast', handleToast);
+    }, []);
+
+    // Plan 055 phase 3 — welcome-back moment. The shells' restore paths have
+    // already accumulated a RestoreSummary (WindowProvider hydrates
+    // synchronously before this mounts); consume it once and fire the quiet
+    // toast. Fresh login → no summary → silence. Deferred a tick so the toast
+    // listener above is attached; the cleanup/re-run dance is StrictMode-safe
+    // because consume happens inside the timer.
+    useEffect(() => {
+        const t = setTimeout(fireWelcomeBackToast, 900);
+        return () => clearTimeout(t);
     }, []);
 
     // ── System Initialization ──────────────────────────────────────────

@@ -216,6 +216,51 @@ if (typeof window !== 'undefined') {
     });
 }
 
+/* ── restore summary (plan 055 phase 3 — welcome-back toast) ────────────── */
+
+/**
+ * What the last restore actually brought back, accumulated across the three
+ * shells' restore paths (Classic windows + Holocron/Fluid tabs) so the
+ * welcome-back toast can fire from ONE place without touching the shells.
+ */
+export interface RestoreSummary {
+    windows: number;
+    tabs: number;
+    /** Title of the top-z restored Classic window (null when none). */
+    topTitle: string | null;
+    /** Component ids restored (windows + tabs) — used to pick a human label. */
+    components: string[];
+}
+
+let lastRestoreSummary: RestoreSummary | null = null;
+
+function noteRestore(patch: Partial<RestoreSummary> & { components?: string[] }): void {
+    const prev = lastRestoreSummary ?? { windows: 0, tabs: 0, topTitle: null, components: [] };
+    lastRestoreSummary = {
+        windows: prev.windows + (patch.windows ?? 0),
+        tabs: prev.tabs + (patch.tabs ?? 0),
+        topTitle: patch.topTitle ?? prev.topTitle,
+        components: [...prev.components, ...(patch.components ?? [])],
+    };
+}
+
+/** The accumulated summary of the last restore (null = nothing restored). */
+export function getLastRestoreSummary(): RestoreSummary | null {
+    return lastRestoreSummary;
+}
+
+/** Read AND clear the summary — the toast consumes it exactly once per login. */
+export function consumeRestoreSummary(): RestoreSummary | null {
+    const s = lastRestoreSummary;
+    lastRestoreSummary = null;
+    return s;
+}
+
+/** Test escape hatch (v2.72.1 sister convention). */
+export function resetRestoreSummary(): void {
+    lastRestoreSummary = null;
+}
+
 /* ── restore helpers ────────────────────────────────────────────────────── */
 
 /** The persisted session for the CURRENT identity holder (null = nothing). */
@@ -254,7 +299,7 @@ function knownWidget(id: string): boolean {
  * fresh window ids, y clamped ≥ 0 (titlebar-rescue rule).
  */
 export function restoreClassicWindows(snap: SessionSnapshot): WindowState[] {
-    return snap.classic
+    const restored = snap.classic
         .filter((p) => knownWidget(p.component))
         .map((p, i) => ({
             id: `win-${Date.now()}-restored-${i}`,
@@ -270,10 +315,34 @@ export function restoreClassicWindows(snap: SessionSnapshot): WindowState[] {
             component: p.component,
             groupId: p.groupId ?? null,
         }));
+    if (restored.length > 0) {
+        const top = restored.reduce((a, b) => (b.zIndex > a.zIndex ? b : a));
+        noteRestore({ windows: restored.length, topTitle: top.title, components: restored.map((w) => w.component) });
+    }
+    return restored;
 }
 
 /** Filter an OS tab slice to registry-known widgets; active falls back to null. */
 export function restoreOsTabs(slice: OsTabsSlice): OsTabsSlice {
     const tabs = slice.tabs.filter(knownWidget);
+    if (tabs.length > 0) noteRestore({ tabs: tabs.length, components: tabs });
     return { tabs, active: slice.active && tabs.includes(slice.active) ? slice.active : null };
+}
+
+/* ── fresh start (phase 3) ──────────────────────────────────────────────── */
+
+/**
+ * ⌘K → Fresh start: forget the persisted session projection for the current
+ * user (localStorage + One Save write-through both nulled) and drop any
+ * pending capture. Touches ONLY the session projection — widgetMemory and all
+ * data stores are untouched. The caller reopens the default stack; the new
+ * windows re-enter capture naturally and become the new session.
+ */
+export function clearSessionForFreshStart(): void {
+    if (captureTimer) { clearTimeout(captureTimer); captureTimer = null; }
+    pendingSlices = null;
+    lastRestoreSummary = null;
+    sessionRestoreStore.set(null, () => {
+        try { localStorage.removeItem(resolveSessionRestoreKey()); } catch { /* sandboxed */ }
+    });
 }

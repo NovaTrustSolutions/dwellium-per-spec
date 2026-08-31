@@ -63,9 +63,11 @@ export function buildActionSystemPrompt(id: AiActionId, opts?: { language?: stri
     return TASK_INSTRUCTIONS[id] + '\n\n' + REDLINE_SYSTEM_PROMPT;
 }
 
-/** Preface sent with the selection to the ARA panel for the summarize action. */
-export function buildSummarizePreface(): string {
-    return 'Summarize this passage concisely (3–5 sentences or a short bullet list), preserving the key facts:';
+/** Preface sent with the selection to the ARA panel for the summarize action.
+ *  055-P4: optionally names the doc (basename only — never contents/paths). */
+export function buildSummarizePreface(docName?: string): string {
+    const from = docName ? ` from ${docName}` : '';
+    return `Summarize this passage${from} concisely (3–5 sentences or a short bullet list), preserving the key facts:`;
 }
 
 /** True for actions applied through the redline flow (everything except summarize). */

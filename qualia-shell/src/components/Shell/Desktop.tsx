@@ -15,7 +15,7 @@ import Window from '../Window/Window';
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { defaultStackKey, readDefaultStackFlag, DEFAULT_STACK_DONE, getStartupStack, shouldOpenDefaultStack } from './defaultStack';
-import { readSessionSnapshot } from '../../lib/sessionRestoreStore';
+import { clearSessionForFreshStart, readSessionSnapshot } from '../../lib/sessionRestoreStore';
 import { fireWelcomeBackToast } from '../../lib/welcomeBack';
 import { onboardingStore, deriveOnboardingRole } from '../../lib/onboardingStore';
 import { UserContext } from '../../context/UserContext';
@@ -642,6 +642,22 @@ export default function Desktop() {
         const t = setTimeout(fireWelcomeBackToast, 900);
         return () => clearTimeout(t);
     }, []);
+
+    // Plan 055 phase 3 — Fresh start (⌘K command + Control Panel row). Forget
+    // the session projection, close everything, reopen the role-based default
+    // stack. Never touches widgetMemory or any data store — everything is
+    // already saved; this only resets WHAT is open.
+    useEffect(() => {
+        const onFreshStart = () => {
+            try { clearSessionForFreshStart(); } catch { /* storage sandboxed */ }
+            windowsRef.current.forEach(w => closeWindow(w.id));
+            const role = onboardingStore.getSnapshot().role ?? deriveOnboardingRole(userCtxRef.current?.user?.role);
+            applySpaceBus.emit({ widgets: [...getStartupStack(role)] });
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Fresh start — default workspace opened' }));
+        };
+        window.addEventListener('dwellium:fresh-start', onFreshStart);
+        return () => window.removeEventListener('dwellium:fresh-start', onFreshStart);
+    }, [closeWindow]);
 
     // ── System Initialization ──────────────────────────────────────────
     // Open the property-management workspace once per app start. Slight delay

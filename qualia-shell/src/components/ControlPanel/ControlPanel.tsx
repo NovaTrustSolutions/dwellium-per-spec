@@ -570,6 +570,11 @@ export default function ControlPanel() {
                     }}>
                         <RefreshCw size={14} aria-hidden /> Reset Layout
                     </button>
+                    {/* Plan 055 phase 3 — the toast's escape hatch. Everything is
+                        saved, so no confirm: this only resets what is OPEN. */}
+                    <button className="cp-btn" onClick={() => window.dispatchEvent(new CustomEvent('dwellium:fresh-start'))}>
+                        <Sparkles size={14} aria-hidden /> Fresh Start
+                    </button>
                 </div>
                 <button className="cp-btn cp-btn--subtle" onClick={resetSettings} style={{ marginTop: 4 }}>
                     <Undo2 size={14} aria-hidden /> Reset Layout Settings

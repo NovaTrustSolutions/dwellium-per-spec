@@ -106,7 +106,7 @@ function restoredHosTabs(): { tabs: HosTab[]; active: string | null } {
     if (typeof window === 'undefined' || isPopupContext()) return { tabs: [], active: null };
     const snap = readSessionSnapshot();
     if (!snap) return { tabs: [], active: null };
-    const slice = restoreOsTabs(snap.halocron);
+    const slice = restoreOsTabs(snap.halocron, 'halocron');
     let seq = 0;
     const tabs: HosTab[] = slice.tabs.map((id) => ({
         key: `w:${id}`,
@@ -380,13 +380,23 @@ export default function HalocronOS() {
     useEffect(() => {
         if (!state.enabled || !state.open) return;
         const onKey = (e: KeyboardEvent) => {
-            if (!(e.ctrlKey || e.metaKey) || e.key !== 'Tab') return;
+            if (!(e.ctrlKey || e.metaKey)) return;
+            // 055-p5: ⌘W closes the ACTIVE Holocron tab. Capture phase +
+            // stopPropagation so AdminShell's bubble ⌘W never closes a hidden
+            // Classic window underneath the OS shell (swallowed even on Home).
+            if (e.key === 'w') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (activeKey) closeTab(activeKey);
+                return;
+            }
+            if (e.key !== 'Tab') return;
             if (tabs.length < 2) return;
             e.preventDefault();
             cycleTab(e.shiftKey ? -1 : 1);
         };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
     }, [state.enabled, state.open, tabs, activeKey]);
 
     // On a real closed→open transition, land on the HOME launcher unless the
@@ -502,9 +512,13 @@ export default function HalocronOS() {
             <main className="hos-main">
                 {/* ── Tab strip (classic-OS browser-tab logic) ── */}
                 {tabs.length > 0 && (
-                    <div className={`hos-tabs ${tearingKey ? 'hos-tabs--tearing' : ''}`} ref={tabStripRef}>
+                    <div className={`hos-tabs ${tearingKey ? 'hos-tabs--tearing' : ''}`} ref={tabStripRef} role="tablist" aria-label="Open tabs">
                         {orderedTabs.map((t) => (
                             <div key={t.key} className={`hos-tab ${activeKey === t.key ? 'on' : ''} ${t.pinned ? 'is-pinned' : ''} ${t.essential ? 'is-essential' : ''}`} onClick={() => markActive(t.key)}
+                                role="tab" aria-selected={activeKey === t.key} tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markActive(t.key); } }}
+                                // 055-p5: browser-native middle-click closes the tab.
+                                onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.key); } }}
                                 draggable={t.kind === 'widget'}
                                 data-testid={`hos-tab-${t.key}`}
                                 onDragStart={(e) => {
@@ -717,7 +731,8 @@ export default function HalocronOS() {
                                     const hasGoogleKey = !!(integrations?.llm?.gemini?.enabled && integrations?.llm?.gemini?.apiKey);
                                     const sub = (t.id === 'antigravity' && hasGoogleKey) ? 'Google · Max plan' : t.sub;
                                     const handleLaunch = () => {
-                                        cli ? openCliTool(cli.label, cli.cmd) : openWeb(t);
+                                        if (cli) openCliTool(cli.label, cli.cmd);
+                                        else openWeb(t);
                                     };
                                     const handleExternal = () => {
                                         if (cli) {
@@ -728,17 +743,19 @@ export default function HalocronOS() {
                                     };
                                     return (
                                         <div key={t.id} className="hos-launch__card" onClick={handleLaunch}
+                                            role="button" tabIndex={0}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLaunch(); } }}
                                             title={cli ? `Run ${cli.label} in a terminal` : `Open ${t.name} in Holocron`}>
                                             <span className="hos-launch__glyph" style={{ color: t.color, borderColor: t.color }}>{t.glyph}</span>
                                             <span className="hos-launch__body">
                                                 <span className="hos-launch__name">{t.name}</span>
                                                 <span className="hos-launch__sub">{sub}</span>
                                             </span>
-                                            <div className="hos-launch__actions" onClick={(e) => e.stopPropagation()}>
-                                                <button type="button" className="hos-launch__open-btn" onClick={handleLaunch} title="Open inside OS">
+                                            <div className="hos-launch__actions">
+                                                <button type="button" className="hos-launch__open-btn" onClick={(e) => { e.stopPropagation(); handleLaunch(); }} title="Open inside OS">
                                                     Open
                                                 </button>
-                                                <button type="button" className="hos-launch__popout-btn" onClick={handleExternal} title="Open in separate window">
+                                                <button type="button" className="hos-launch__popout-btn" onClick={(e) => { e.stopPropagation(); handleExternal(); }} title="Open in separate window">
                                                     Popout ↗
                                                 </button>
                                             </div>

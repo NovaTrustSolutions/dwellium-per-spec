@@ -200,6 +200,27 @@ describe('FluidOS cockpit', () => {
         expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
+    it('middle-click (auxclick button 1) on a cockpit tab closes it (055-p5)', () => {
+        renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        fireEvent.click(screen.getByLabelText('Open Alpha'));
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toBeInTheDocument();
+        fireEvent(screen.getByRole('tab', { name: 'Alpha' }), new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+        // Last widget tab closed → the strip disappears (ARA-only state).
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+    });
+
+    it('⌘W closes the active cockpit tab; on the permanent ARA tab it is swallowed, not closed (055-p5)', () => {
+        renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        fireEvent.click(screen.getByLabelText('Open Alpha'));
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
+        fireEvent.keyDown(window, { key: 'w', metaKey: true });
+        expect(screen.queryByRole('tab', { name: 'Alpha' })).not.toBeInTheDocument();
+        // Now only ARA remains — ⌘W must be a no-op (cockpit stays open).
+        fireEvent.keyDown(window, { key: 'w', metaKey: true });
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+    });
+
     it('"Open in its own window" tears the active tab off into a browser popout and closes it', () => {
         const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
         renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));

@@ -15,11 +15,11 @@ Dwellium is your property-management desk: one screen for your properties, your 
 
 ## 2 · Your first ten minutes
 
-The **Get to your first win** card (bottom-left) walks you through three steps and checks them off as you go:
+The **Get to your first win** card (bottom-left) first asks how you use Dwellium — *I run the properties* (owner-operator) or *I help manage them* (staff); the sidebar arranges itself (owners start with Property Management open, staff start lean). Then it tracks three steps and checks them off as you go:
 
-1. **Pick your role** — *I run the properties* (owner-operator) or *I help manage them* (staff). The sidebar arranges itself: owners start with Property Management open; staff start lean with Strata, Task Board and Inbox Zero.
-2. **Add an AI key** — ARA and every AI widget run on *your* key (Anthropic, OpenAI, Gemini, or a local model). The card's button opens **API Keys**; paste one key and you're done. Keys are encrypted and sync only to your account.
-3. **Bring your data** — add your first property in Strata, and **Ask ARA** anything ("Which leases end in the next 60 days?"). Your first ARA reply unlocks the AI Tools group.
+1. **Add an AI key** — ARA and every AI widget run on *your* key (Anthropic, OpenAI, Gemini, or a local model). The card's button opens **API Keys**; paste one key and you're done. Keys are encrypted and sync only to your account.
+2. **Bring your data** — add your first property in Strata (the card's button lands you in the Properties module).
+3. **Ask ARA** anything ("Which leases end in the next 60 days?"). Your first ARA reply unlocks the AI Tools group.
 
 Want to see the app full before importing anything? **Settings → Data → Demo workspace** fills Strata with a clearly-bannered sample portfolio — *Replace with your data* is one click, and demo data never touches your real records.
 
@@ -49,8 +49,8 @@ Close anytime — nothing asks "are you sure". Everything is saved as you work, 
 
 - **Strata Dashboard** is the main desk: Overview KPIs, then Properties, Leasing, Residents, Vendors, Owners, Accounting, Maintenance, Reporting down the left rail. Search it with **⌘⇧F**.
 - **Leasing**: approved lease documents grow a **Send for e-signature** button once E-Sign is connected (see the Tools hub below).
-- **Inbox Zero** triages email to the right place; **Task Board** is the shared kanban; **Scribe** writes documents — including Interactive Docs you can publish to a link, export to PPTX/DOCX, or send for signature.
-- **Whiteboard** (pinned in Property Management) is a full Excalidraw canvas — floor plans, maintenance markup. Your drawings save per-account automatically.
+- **Inbox Zero** triages email to the right place; **Task Board** is the shared kanban; **Scribe** writes documents — including Interactive Docs you can publish to a link, export to PPTX/DOCX, or send for signature. Drag a file straight from Finder into the Scribe editor: text/markdown inserts, images upload and embed.
+- **Whiteboard** (pinned in Property Management) is a full Excalidraw canvas — floor plans, maintenance markup. Your drawings save per-account automatically; drop an image or an \`.excalidraw\` file from Finder right onto the canvas.
 
 ## 6 · The tool shed (Tools hub)
 
@@ -113,9 +113,11 @@ Log in from any machine and everything is there: layouts, whiteboards, notes, ta
 | **⌘K** | Open anything / search / ask |
 | **?** | Shortcut sheet + guides |
 | **⌘⇧F** | Search inside Strata |
-| **⌘W** | Close the front window |
+| **⌘W** | Close the front window — or the active tab in Holocron / the Cockpit |
 | **⌘J** | Toggle OpenJarvis |
-| **Esc** | Close sheets · leave the Cockpit |
+| **Esc** | Close sheets, menus and popovers · leave the Cockpit — never your windows |
+| **Double-click a titlebar** | Maximize / restore the window |
+| **Middle-click a tab** | Close it (Holocron & Cockpit tab strips) |
 
 ## Stuck?
 

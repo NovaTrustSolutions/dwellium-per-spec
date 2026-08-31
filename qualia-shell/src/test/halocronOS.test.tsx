@@ -219,6 +219,50 @@ describe('Holocron OS smart tab shell', () => {
     });
 });
 
+describe('Holocron tab strip intuitive actions (055-p5)', () => {
+    it('middle-click (auxclick button 1) closes the tab', () => {
+        openHalocron();
+        openArchiveApp('Alpha');
+        const tab = screen.getByTestId('hos-tab-w:alpha');
+        fireEvent(tab, new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+        expect(screen.queryByTestId('hos-tab-w:alpha')).not.toBeInTheDocument();
+    });
+
+    it('right-button auxclick does NOT close the tab', () => {
+        openHalocron();
+        openArchiveApp('Alpha');
+        fireEvent(screen.getByTestId('hos-tab-w:alpha'), new MouseEvent('auxclick', { bubbles: true, button: 2 }));
+        expect(screen.getByTestId('hos-tab-w:alpha')).toBeInTheDocument();
+    });
+
+    it('⌘W closes the ACTIVE tab and never reaches bubble listeners (hidden Classic windows stay safe)', () => {
+        const bubbleCmdW = vi.fn();
+        const bubble = (e: KeyboardEvent) => { if (e.metaKey && e.key === 'w') bubbleCmdW(); };
+        window.addEventListener('keydown', bubble);
+        try {
+            openHalocron();
+            openArchiveApp('Alpha');
+            expect(screen.getByTestId('hos-tab-w:alpha')).toBeInTheDocument();
+            fireEvent.keyDown(window, { key: 'w', metaKey: true });
+            expect(screen.queryByTestId('hos-tab-w:alpha')).not.toBeInTheDocument();
+            expect(bubbleCmdW).not.toHaveBeenCalled();
+        } finally {
+            window.removeEventListener('keydown', bubble);
+        }
+    });
+
+    it('tabs are keyboard-activatable (role=tab, Enter selects)', () => {
+        openHalocron();
+        openArchiveApp('Alpha');
+        openArchiveApp('Beta');
+        const tab = screen.getByTestId('hos-tab-w:alpha');
+        expect(tab).toHaveAttribute('role', 'tab');
+        expect(tab).toHaveAttribute('tabindex', '0');
+        fireEvent.keyDown(tab, { key: 'Enter' });
+        expect(tab).toHaveAttribute('aria-selected', 'true');
+    });
+});
+
 describe('Holocron tear-off tabs (pop out into own browser window)', () => {
     afterEach(() => {
         vi.restoreAllMocks();

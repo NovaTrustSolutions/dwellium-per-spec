@@ -56,11 +56,23 @@ describe('restore summary accumulation', () => {
     });
 
     it('restoreOsTabs accumulates tab counts across halocron + fluid', () => {
-        restoreOsTabs({ tabs: ['notepad'], active: 'notepad' });
-        restoreOsTabs({ tabs: ['scribe', 'inbox'], active: null });
+        restoreOsTabs({ tabs: ['notepad'], active: 'notepad' }, 'halocron');
+        restoreOsTabs({ tabs: ['scribe', 'inbox'], active: null }, 'fluid');
         const s = getLastRestoreSummary();
         expect(s?.tabs).toBe(3);
         expect(s?.components).toEqual(['notepad', 'scribe', 'inbox']);
+    });
+
+    it('re-running a restore path replaces its slot — counts stay truthful (the "Restored 16 windows" bug)', () => {
+        const s2 = snap({ classic: [win('notepad', 'Notepad', 3), win('scribe', 'Scribe', 9)] });
+        // StrictMode double-invoke + provider remounts re-run the same restore.
+        for (let i = 0; i < 8; i++) restoreClassicWindows(s2);
+        restoreOsTabs({ tabs: ['inbox'], active: null }, 'halocron');
+        restoreOsTabs({ tabs: ['inbox'], active: null }, 'halocron');
+        const s = getLastRestoreSummary();
+        expect(s?.windows).toBe(2);
+        expect(s?.tabs).toBe(1);
+        expect(buildWelcomeBackMessage(s!, null)).toContain('Restored 2 windows');
     });
 
     it('nothing restored → summary stays null', () => {

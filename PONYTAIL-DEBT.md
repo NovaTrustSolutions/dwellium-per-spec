@@ -28,6 +28,19 @@ worktree branch `worktree-agent-a917d932d21414e0d` (plan 054 phase 6).
 | `lib/globalDictation.ts:83` | Contenteditable dictation = finals-only | No live interim preview in rich editors | Marker-node region if live CE preview matters |
 | `lib/oneSaveStore.ts:129` | Reconnect replays last value only | Multi-tab write ordering unguaranteed | Full outbox if multi-tab ordering matters |
 
+## Plan 055 phase-5 audit — found, not fixed (5 rows, 2026-08-31)
+
+Intuitive-actions sweep verdicts that did not make the top-5 fix cut. Evidence
+in the phase-5 report (rig screenshots + findings.json).
+
+| Where | Finding | Why deferred | Upgrade trigger |
+|---|---|---|---|
+| `qualia-shell/src/components/Window/Window.tsx` titlebar | Right-click on a widget titlebar shows nothing (no context menu) | Low value vs. effort; ⌘K + titlebar buttons cover the actions | A user asks for close-others/move-to-group from the titlebar |
+| Shell (global) | No ⌘N / ⌘T "new window/tab" equivalents | ⌘K is the documented open-anything path (guide §3/§9) | Ilya wants browser-parity tab keys in the OS shells |
+| `Desktop.tsx` background click | Clicking the desktop doesn't blur/deselect the active window | Harmless today — no marquee selection, z-order unaffected; no data risk | A widget ships whose focus ring/selection visibly lingers after a desktop click |
+| `Shell/FirstRunCard.tsx` "Bring your data" | Step ticks from the GLOBAL `/properties` list — on a shared backend a brand-new user sees it pre-checked (rig fresh-run proof) | Real fresh deployments start empty; per-user attribution needs backend help | First-run runs against any seeded/shared backend in production |
+| `SystemHealth/SystemHealthBanner.tsx` × first run | "4 connections need setup" banner fires over the first-run card at minute zero (rig screenshot) | Both are honest; suppressing needs a quiet-period rule | Onboarding feedback says minute-one is noisy — gate the banner until first-win done or day 2 |
+
 ## Backend debt (2 rows) — `~/dwellium-backend/ai-dashboard369-file-manager`
 
 | Where | Simplified | Ceiling | Upgrade trigger |

@@ -132,7 +132,7 @@ function restoredCockpitTabs(): { tabs: NavWidget[]; active: string } {
     if (typeof window === 'undefined' || isPopupContext()) return { tabs: [], active: 'ara-console' };
     const snap = readSessionSnapshot();
     if (!snap) return { tabs: [], active: 'ara-console' };
-    const slice = restoreOsTabs(snap.fluid);
+    const slice = restoreOsTabs(snap.fluid, 'fluid');
     const tabs: NavWidget[] = slice.tabs.map((id) => ({
         id,
         label: WIDGET_REGISTRY[id]?.label ?? id,
@@ -379,6 +379,21 @@ export default function FluidOS() {
         return () => window.removeEventListener('keydown', onKey);
     }, [state.enabled, state.open]);
 
+    /* 055-p5: ⌘W closes the ACTIVE cockpit tab (ARA is permanent — swallowed,
+       not closed). Capture phase + stopPropagation so AdminShell's bubble ⌘W
+       never closes a hidden Classic window underneath the cockpit. */
+    useEffect(() => {
+        if (!state.enabled || !state.open) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (!(e.ctrlKey || e.metaKey) || e.key !== 'w') return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeTab !== 'ara-console') closeTab(activeTab);
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+    }, [state.enabled, state.open, activeTab, closeTab]);
+
     if (!state.enabled || !state.open) return null;
 
     const AraConsole = WINDOW_COMPONENTS['ara-console'];
@@ -489,7 +504,9 @@ export default function FluidOS() {
                             <span key={t.id} className={`fos-tab-wrap${activeTab === t.id ? ' fos-tab-wrap--on' : ''}`}>
                                 <button type="button" role="tab" aria-selected={activeTab === t.id}
                                     className={`fos-tab${activeTab === t.id ? ' fos-tab--on' : ''}`}
-                                    onClick={() => setActiveTab(t.id)}>{t.label}</button>
+                                    onClick={() => setActiveTab(t.id)}
+                                    // 055-p5: browser-native middle-click closes the tab.
+                                    onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.id); } }}>{t.label}</button>
                                 <button type="button" className="fos-tab__close" aria-label={`Close ${t.label}`}
                                     onClick={() => closeTab(t.id)}><X size={11} aria-hidden /></button>
                             </span>

@@ -378,7 +378,7 @@ export default function Whiteboard() {
     const langCode = pickLangCode(typeof navigator !== 'undefined' ? navigator.language : undefined, languages);
 
     return (
-        <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }} onDropCapture={onDropCapture}>
+        <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }} data-dwellium-drop-zone="whiteboard" onDropCapture={onDropCapture}>
             {/* ── Toolbar ── */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',

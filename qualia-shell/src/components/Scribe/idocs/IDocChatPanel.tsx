@@ -218,7 +218,7 @@ export default function IDocChatPanel({ doc, llm, onApply, onClose, callLlmFn = 
 
     return (
         <aside
-            className={`scribe-idocs-chat${dragOver ? ' is-dragover' : ''}`} aria-label="Document AI chat"
+            className={`scribe-idocs-chat${dragOver ? ' is-dragover' : ''}`} aria-label="Document AI chat" data-dwellium-drop-zone="idoc-chat"
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}
         >
             <header className="scribe-idocs-chat__head">

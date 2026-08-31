@@ -232,33 +232,49 @@ export interface RestoreSummary {
     components: string[];
 }
 
-let lastRestoreSummary: RestoreSummary | null = null;
+type RestoreSource = 'classic' | 'halocron' | 'fluid';
 
-function noteRestore(patch: Partial<RestoreSummary> & { components?: string[] }): void {
-    const prev = lastRestoreSummary ?? { windows: 0, tabs: 0, topTitle: null, components: [] };
-    lastRestoreSummary = {
-        windows: prev.windows + (patch.windows ?? 0),
-        tabs: prev.tabs + (patch.tabs ?? 0),
-        topTitle: patch.topTitle ?? prev.topTitle,
-        components: [...prev.components, ...(patch.components ?? [])],
-    };
+/**
+ * Per-source slots, REPLACED (never accumulated) on each restore call.
+ * The restore paths re-run under StrictMode double-invoke and provider
+ * remounts — a plain accumulator inflated the toast ("Restored 16 windows"
+ * for a 2-window session on the phase-5 rig). Replacing per source keeps
+ * the composed summary truthful no matter how often each path re-runs.
+ */
+let restoreParts: Partial<Record<RestoreSource, RestoreSummary>> = {};
+
+function noteRestore(source: RestoreSource, part: RestoreSummary): void {
+    restoreParts[source] = part;
 }
 
-/** The accumulated summary of the last restore (null = nothing restored). */
+function composeSummary(): RestoreSummary | null {
+    const parts = (['classic', 'halocron', 'fluid'] as const)
+        .map((s) => restoreParts[s])
+        .filter((p): p is RestoreSummary => p !== undefined);
+    if (parts.length === 0) return null;
+    return parts.reduce((acc, p) => ({
+        windows: acc.windows + p.windows,
+        tabs: acc.tabs + p.tabs,
+        topTitle: acc.topTitle ?? p.topTitle,
+        components: [...acc.components, ...p.components],
+    }), { windows: 0, tabs: 0, topTitle: null, components: [] as string[] });
+}
+
+/** The composed summary of the last restore (null = nothing restored). */
 export function getLastRestoreSummary(): RestoreSummary | null {
-    return lastRestoreSummary;
+    return composeSummary();
 }
 
 /** Read AND clear the summary — the toast consumes it exactly once per login. */
 export function consumeRestoreSummary(): RestoreSummary | null {
-    const s = lastRestoreSummary;
-    lastRestoreSummary = null;
+    const s = composeSummary();
+    restoreParts = {};
     return s;
 }
 
 /** Test escape hatch (v2.72.1 sister convention). */
 export function resetRestoreSummary(): void {
-    lastRestoreSummary = null;
+    restoreParts = {};
 }
 
 /* ── restore helpers ────────────────────────────────────────────────────── */
@@ -317,15 +333,16 @@ export function restoreClassicWindows(snap: SessionSnapshot): WindowState[] {
         }));
     if (restored.length > 0) {
         const top = restored.reduce((a, b) => (b.zIndex > a.zIndex ? b : a));
-        noteRestore({ windows: restored.length, topTitle: top.title, components: restored.map((w) => w.component) });
+        noteRestore('classic', { windows: restored.length, tabs: 0, topTitle: top.title, components: restored.map((w) => w.component) });
     }
     return restored;
 }
 
-/** Filter an OS tab slice to registry-known widgets; active falls back to null. */
-export function restoreOsTabs(slice: OsTabsSlice): OsTabsSlice {
+/** Filter an OS tab slice to registry-known widgets; active falls back to null.
+ *  `source` keys the restore-summary slot (idempotent across re-runs). */
+export function restoreOsTabs(slice: OsTabsSlice, source: 'halocron' | 'fluid' = 'halocron'): OsTabsSlice {
     const tabs = slice.tabs.filter(knownWidget);
-    if (tabs.length > 0) noteRestore({ tabs: tabs.length, components: tabs });
+    if (tabs.length > 0) noteRestore(source, { windows: 0, tabs: tabs.length, topTitle: null, components: tabs });
     return { tabs, active: slice.active && tabs.includes(slice.active) ? slice.active : null };
 }
 
@@ -341,7 +358,7 @@ export function restoreOsTabs(slice: OsTabsSlice): OsTabsSlice {
 export function clearSessionForFreshStart(): void {
     if (captureTimer) { clearTimeout(captureTimer); captureTimer = null; }
     pendingSlices = null;
-    lastRestoreSummary = null;
+    restoreParts = {};
     sessionRestoreStore.set(null, () => {
         try { localStorage.removeItem(resolveSessionRestoreKey()); } catch { /* sandboxed */ }
     });

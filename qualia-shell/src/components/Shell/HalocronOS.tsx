@@ -106,7 +106,7 @@ function restoredHosTabs(): { tabs: HosTab[]; active: string | null } {
     if (typeof window === 'undefined' || isPopupContext()) return { tabs: [], active: null };
     const snap = readSessionSnapshot();
     if (!snap) return { tabs: [], active: null };
-    const slice = restoreOsTabs(snap.halocron);
+    const slice = restoreOsTabs(snap.halocron, 'halocron');
     let seq = 0;
     const tabs: HosTab[] = slice.tabs.map((id) => ({
         key: `w:${id}`,

@@ -132,7 +132,7 @@ function restoredCockpitTabs(): { tabs: NavWidget[]; active: string } {
     if (typeof window === 'undefined' || isPopupContext()) return { tabs: [], active: 'ara-console' };
     const snap = readSessionSnapshot();
     if (!snap) return { tabs: [], active: 'ara-console' };
-    const slice = restoreOsTabs(snap.fluid);
+    const slice = restoreOsTabs(snap.fluid, 'fluid');
     const tabs: NavWidget[] = slice.tabs.map((id) => ({
         id,
         label: WIDGET_REGISTRY[id]?.label ?? id,

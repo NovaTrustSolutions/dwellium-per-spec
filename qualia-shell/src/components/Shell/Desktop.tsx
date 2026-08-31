@@ -15,6 +15,7 @@ import Window from '../Window/Window';
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { defaultStackKey, readDefaultStackFlag, DEFAULT_STACK_DONE, getStartupStack, shouldOpenDefaultStack } from './defaultStack';
+import { readSessionSnapshot } from '../../lib/sessionRestoreStore';
 import { onboardingStore, deriveOnboardingRole } from '../../lib/onboardingStore';
 import { UserContext } from '../../context/UserContext';
 import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
@@ -643,6 +644,10 @@ export default function Desktop() {
     useEffect(() => {
         if (sysInitFired) return;
         sysInitFired = true;
+        // Plan 055: a restored session is EXACT — if a persisted session
+        // exists for this user, never inject Strata on top of it (the user
+        // gets back precisely the windows they closed with, no more).
+        try { if (readSessionSnapshot() !== null) return; } catch { /* restore unavailable → legacy behavior */ }
         const t = setTimeout(() => {
             try { openWindow('strata-dashboard', 'Strata Dashboard', ''); } catch { /* ignore */ }
         }, 600);
@@ -682,7 +687,10 @@ export default function Desktop() {
         //     run 2 no-op'd → decide AND consume INSIDE the timer (no cleanup
         //     cancel; the duplicate timer no-ops on the consumed flag).
         try {
-            if (!shouldOpenDefaultStack(readDefaultStackFlag(k => localStorage.getItem(k), savedLayoutsUserIdHolder.current), windowsRef.current.filter(w => !w.minimized).length)) return;
+            // Plan 055 third guard: a persisted session (even an empty one)
+            // means this is a RETURNING user — restore already ran; the
+            // starter stack is for genuinely fresh accounts only.
+            if (!shouldOpenDefaultStack(readDefaultStackFlag(k => localStorage.getItem(k), savedLayoutsUserIdHolder.current), windowsRef.current.filter(w => !w.minimized).length, readSessionSnapshot() !== null)) return;
         } catch { return; }
         window.setTimeout(() => {
             try {

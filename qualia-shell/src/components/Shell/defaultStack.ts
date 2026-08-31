@@ -68,7 +68,11 @@ export function getStartupStack(role: OnboardingRole | null): ReadonlyArray<stri
     return role === 'staff' ? ['strata-dashboard', 'task-board'] : DEFAULT_STARTUP_STACK;
 }
 
-/** Fire only when the flag is unset AND the canvas is empty. */
-export function shouldOpenDefaultStack(storedFlag: string | null, openWindowCount: number): boolean {
-    return storedFlag !== DEFAULT_STACK_DONE && openWindowCount === 0;
+/**
+ * Fire only when the flag is unset AND the canvas is empty AND (plan 055)
+ * there is no persisted session for this user — a restored session (even an
+ * intentionally empty desktop) must never be stomped by the starter stack.
+ */
+export function shouldOpenDefaultStack(storedFlag: string | null, openWindowCount: number, hasPersistedSession = false): boolean {
+    return storedFlag !== DEFAULT_STACK_DONE && openWindowCount === 0 && !hasPersistedSession;
 }

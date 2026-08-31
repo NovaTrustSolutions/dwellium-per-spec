@@ -40,6 +40,7 @@ import CommandPill from './CommandPill';
 import ShortcutSheet from './ShortcutSheet';
 import SyncStatusPill from './SyncStatusPill';
 import { installDockBackReceiver } from '../../lib/popoutDock';
+import { isFileDropTarget } from '../../lib/fileDropZones';
 
 function ShellLayout() {
     const { windows, closeWindow } = useWindows();
@@ -92,17 +93,16 @@ function ShellLayout() {
     // on their own drop handlers, so they still work normally.
     useEffect(() => {
         const blockDrag = (e: DragEvent) => {
-            // Allow if the target has an explicit drop zone class
+            // Allow if the target is inside an explicit drop zone
             const target = e.target as HTMLElement;
-            if (target?.closest?.('.th-mock-upload-area') || target?.closest?.('.file-manager')) return;
+            if (isFileDropTarget(target)) return;
             e.preventDefault();
             e.dataTransfer!.effectAllowed = 'none';
             e.dataTransfer!.dropEffect = 'none';
         };
 
         const blockDrop = (e: DragEvent) => {
-            const target = e.target as HTMLElement;
-            if (target?.closest?.('.th-mock-upload-area') || target?.closest?.('.file-manager')) return;
+            if (isFileDropTarget(e.target as HTMLElement)) return;
             e.preventDefault();
         };
 

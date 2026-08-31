@@ -379,6 +379,21 @@ export default function FluidOS() {
         return () => window.removeEventListener('keydown', onKey);
     }, [state.enabled, state.open]);
 
+    /* 055-p5: ⌘W closes the ACTIVE cockpit tab (ARA is permanent — swallowed,
+       not closed). Capture phase + stopPropagation so AdminShell's bubble ⌘W
+       never closes a hidden Classic window underneath the cockpit. */
+    useEffect(() => {
+        if (!state.enabled || !state.open) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (!(e.ctrlKey || e.metaKey) || e.key !== 'w') return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeTab !== 'ara-console') closeTab(activeTab);
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+    }, [state.enabled, state.open, activeTab, closeTab]);
+
     if (!state.enabled || !state.open) return null;
 
     const AraConsole = WINDOW_COMPONENTS['ara-console'];

@@ -380,13 +380,23 @@ export default function HalocronOS() {
     useEffect(() => {
         if (!state.enabled || !state.open) return;
         const onKey = (e: KeyboardEvent) => {
-            if (!(e.ctrlKey || e.metaKey) || e.key !== 'Tab') return;
+            if (!(e.ctrlKey || e.metaKey)) return;
+            // 055-p5: ⌘W closes the ACTIVE Holocron tab. Capture phase +
+            // stopPropagation so AdminShell's bubble ⌘W never closes a hidden
+            // Classic window underneath the OS shell (swallowed even on Home).
+            if (e.key === 'w') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (activeKey) closeTab(activeKey);
+                return;
+            }
+            if (e.key !== 'Tab') return;
             if (tabs.length < 2) return;
             e.preventDefault();
             cycleTab(e.shiftKey ? -1 : 1);
         };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
     }, [state.enabled, state.open, tabs, activeKey]);
 
     // On a real closed→open transition, land on the HOME launcher unless the

@@ -24,6 +24,7 @@ import {
     FIRST_RUN_DISMISSED_SESSION_KEY, FIRST_RUN_REPLAY_EVENT, type FirstRunStep,
 } from '../../lib/firstRunStore';
 import { useOnboarding, setOnboardingRole, deriveOnboardingRole, unlockTier, maybeStampDone, type OnboardingRole } from '../../lib/onboardingStore';
+import { useWalkthroughActive } from '../../lib/walkthroughStore';
 import { setSidebarGroups } from '../Sidebar/sidebarGroupsStore';
 import './FirstRunCard.css';
 
@@ -116,6 +117,10 @@ export default function FirstRunCard() {
 
     // 3/3 stays up for the "you're set" beat until the timer flips neverShow.
     const celebrating = derived.done === 3 && !state.neverShow && !sessionDismissed;
+    // While the walkthrough runs, the card hides (it crowds the spotlight) —
+    // EXCEPT on the finish step, which points at this very card.
+    const walkthrough = useWalkthroughActive();
+    if (walkthrough.active && !walkthrough.spotlightFirstWin) return null;
     if (!shouldShowFirstRun(state, sessionDismissed) && !celebrating) return null;
 
     const dismiss = () => {
@@ -124,7 +129,7 @@ export default function FirstRunCard() {
     };
 
     return (
-        <aside className="firstrun-card" aria-label="Get to your first win">
+        <aside className="firstrun-card" aria-label="Get to your first win" data-tour="first-win">
             <div className="firstrun-card__head">
                 <div>
                     <div className="firstrun-card__title">Get to your first win</div>

@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useSystemHealth } from '../../hooks/useSystemHealth';
 import { useWindows } from '../../context/WindowContext';
+import { useWalkthroughActive } from '../../lib/walkthroughStore';
 // 2026-06-12 (Ilya: "AI services split screen"): the banner rendered UNSTYLED
 // as a full-height flex column because this stylesheet was only imported by
 // the SystemHealth WIDGET (lazy chunk) — never loaded until the widget was
@@ -27,7 +28,10 @@ export default function SystemHealthBanner() {
     const { summary, checking } = useSystemHealth();
     const { openWindow } = useWindows();
     const [dismissed, setDismissed] = useState(false);
+    // Hidden while the walkthrough runs (it crowds the spotlight); returns untouched after.
+    const walkthrough = useWalkthroughActive();
 
+    if (walkthrough.active) return null;
     if (checking || dismissed || summary.total === 0 || summary.allReady) return null;
 
     return (

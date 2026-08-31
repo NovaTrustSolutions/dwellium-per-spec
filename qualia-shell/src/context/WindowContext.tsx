@@ -7,6 +7,7 @@ import { withSync, withSyncStatic } from '../lib/oneSaveStore';
 import { logActivity } from '../lib/activityLogStore';
 import { openWidgetPopout } from '../lib/popoutWindow';
 import { usePerUserIdentity } from '../lib/perUserIdentity';
+import { recordActivity } from '../lib/recentActivityStore';
 import {
     captureSession,
     isPopupContext,
@@ -303,6 +304,9 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     }, [windows, dockItems]);
 
     const openWindow = useCallback((component: string, title: string, icon: string): string | null => {
+        // Plan 055 phase 3 — feed the ⌘K "Resume" trail (open AND re-focus
+        // both count as a touch). Central here so sidebar/⌘K/bus all record.
+        recordActivity('widget', component, title);
         // Check if window of this component type is already open
         const existing = windowsRef.current.find(w => w.component === component);
         if (existing) {

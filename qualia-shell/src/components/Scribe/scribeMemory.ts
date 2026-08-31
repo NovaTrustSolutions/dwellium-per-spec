@@ -11,6 +11,7 @@
  * offline/404 path) and the rest of the session still comes back.
  */
 import { patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
+import { recordActivity } from '../../lib/recentActivityStore';
 import { useScribeStore } from './scribeStore';
 
 export interface ScribeFileView { scrollTop: number; cursor: number }
@@ -55,10 +56,18 @@ export async function restoreScribeSession(): Promise<void> {
 
 /** Subscribe: keep the remembered tab list + active file in step with the store. */
 export function trackScribeSession(): () => void {
+    // Plan 055 phase 3 — the ONE scribe-doc recorder for the ⌘K Resume trail:
+    // an active-file CHANGE is a touch (seeded with the current active file so
+    // the restore itself is not re-recorded).
+    let lastActive = useScribeStore.getState().activeFilepath;
     return useScribeStore.subscribe((s) => {
         patchWidgetMemory('scribe', {
             openFilepaths: s.openFiles.map(f => f.filepath),
             activeFilepath: s.activeFilepath,
         });
+        if (s.activeFilepath && s.activeFilepath !== lastActive) {
+            lastActive = s.activeFilepath;
+            recordActivity('scribe-doc', s.activeFilepath, s.activeFilepath.split('/').pop() ?? s.activeFilepath);
+        }
     });
 }

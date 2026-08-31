@@ -38,6 +38,7 @@ import TagHotkey from './TagHotkey';
 import DictationHotkey from './DictationHotkey';
 import CommandPill from './CommandPill';
 import ShortcutSheet from './ShortcutSheet';
+import WalkthroughOverlay from './WalkthroughOverlay';
 import SyncStatusPill from './SyncStatusPill';
 import { installDockBackReceiver } from '../../lib/popoutDock';
 import { isFileDropTarget } from '../../lib/fileDropZones';
@@ -157,6 +158,7 @@ function ShellLayout() {
             <TagHotkey />
             <DictationHotkey />
             <SyncStatusPill />
+            <WalkthroughOverlay />
         </div>
     );
 }

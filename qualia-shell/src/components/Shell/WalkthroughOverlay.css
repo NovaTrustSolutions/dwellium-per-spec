@@ -1,0 +1,108 @@
+/* WalkthroughOverlay — spotlight tour: dimmer + cutout + step card. */
+
+.walkthrough {
+    position: fixed;
+    inset: 0;
+    z-index: 6000; /* above windows/banners, below nothing that matters mid-tour */
+}
+
+.walkthrough__dim {
+    position: absolute;
+    inset: 0;
+    display: block;
+}
+
+.walkthrough__dim path {
+    fill: rgba(0, 0, 0, 0.55);
+    transition: d 160ms ease;
+}
+
+.walkthrough-card {
+    background: var(--bg-secondary, #161616);
+    border: 1px solid var(--border-color, #2a2a2a);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    padding: 14px 16px;
+    color: var(--text-primary, #e8e8e8);
+    transition: top 160ms ease, left 160ms ease;
+}
+
+.walkthrough-card--centered {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 360px;
+    max-width: calc(100vw - 32px);
+}
+
+.walkthrough-card__count {
+    font-size: 11px;
+    color: var(--text-tertiary, #808080);
+    margin-bottom: 4px;
+}
+
+.walkthrough-card__title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 6px;
+}
+
+.walkthrough-card__body {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-secondary, #b8b8b8);
+    margin: 0 0 12px;
+}
+
+.walkthrough-card__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.walkthrough-card__nav {
+    display: flex;
+    gap: 8px;
+}
+
+.walkthrough-card__skip,
+.walkthrough-card__back {
+    background: none;
+    border: none;
+    color: var(--text-tertiary, #808080);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 6px 8px;
+}
+
+.walkthrough-card__skip:hover,
+.walkthrough-card__back:hover {
+    color: var(--text-primary, #e8e8e8);
+}
+
+.walkthrough-card__next {
+    background: var(--accent, #D6FE51);
+    color: #0c0c0c;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+.walkthrough-card__next:focus-visible,
+.walkthrough-card__skip:focus-visible,
+.walkthrough-card__back:focus-visible {
+    outline: 2px solid var(--accent, #D6FE51);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .walkthrough__dim path,
+    .walkthrough-card {
+        transition: none;
+    }
+}

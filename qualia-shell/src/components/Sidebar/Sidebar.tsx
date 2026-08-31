@@ -584,7 +584,7 @@ export default function Sidebar() {
     const timeGreeting = getTimeGreeting();
 
     return (
-        <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''} ${iconOnly ? 'sidebar--icon-only' : ''}`} ref={sidebarRef} style={{ width: iconOnly ? 48 : width }} role="navigation" aria-label="Main navigation">
+        <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''} ${iconOnly ? 'sidebar--icon-only' : ''}`} ref={sidebarRef} style={{ width: iconOnly ? 48 : width }} role="navigation" aria-label="Main navigation" data-tour="sidebar">
             {/* Header with Logo + Sign Out */}
             <div className="sidebar__header">
                 <div className="sidebar__logo">
@@ -844,6 +844,8 @@ export default function Sidebar() {
                                     return (
                                         <div
                                             key={item.id}
+                                            // Walkthrough anchor: the Tools hub row (Filing Cabinet group) is tour step 6.
+                                            data-tour={item.component === 'tools-hub' ? 'tools-hub' : undefined}
                                             className={`sidebar-widget ${isOpen ? 'sidebar-widget--open' : ''} ${isMinimized ? 'sidebar-widget--minimized' : ''} ${isChild ? 'sidebar-widget--child' : ''} ${isDragging ? 'sidebar-widget--dragging' : ''} ${isDragOver ? 'sidebar-widget--dragover' : ''}`}
                                             draggable={!searchActive}
                                             onDragStart={e => {
@@ -938,6 +940,8 @@ export default function Sidebar() {
                                                 return (
                                                     <button
                                                         key={`pin-${p.component}`}
+                                                        // Walkthrough anchors: the pinned ARA / Strata entries are tour steps 4 & 5.
+                                                        data-tour={p.component === 'ara-console' ? 'ara' : p.component === 'strata-dashboard' ? 'strata' : undefined}
                                                         className={`sidebar-widget sidebar-widget--pinned ${isOpen ? 'sidebar-widget--open' : ''} ${isMinimized ? 'sidebar-widget--minimized' : ''}`}
                                                         onClick={() => handleWidgetClick(p.component, p.label, p.icon)}
                                                         title={collapsed ? p.label : undefined}

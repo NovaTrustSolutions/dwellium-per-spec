@@ -94,6 +94,9 @@ export const widgetMemoryUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 055 phase 3 — per-user recent-activity trail (recentActivityStore, ⌘K Resume). */
 export const recentActivityUserIdHolder: UserIdHolder = makeHolder();
 
+/** Onboarding walkthrough — per-user spotlight-tour "done" flag (walkthroughStore). */
+export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -123,6 +126,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     researchLogUserIdHolder,
     widgetMemoryUserIdHolder,
     recentActivityUserIdHolder,
+    walkthroughUserIdHolder,
 ];
 
 /**

@@ -17,7 +17,7 @@ export default function CommandPill() {
     const fos = useSyncExternalStore(fluidOsStore.subscribe, fluidOsStore.getSnapshot, fluidOsStore.getServerSnapshot);
     if (fos.enabled && fos.open) return null;
     return (
-        <div className="cmd-pill-wrap">
+        <div className="cmd-pill-wrap" data-tour="command-bar">
             <button
                 type="button"
                 className="cmd-pill"

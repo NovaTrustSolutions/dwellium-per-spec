@@ -87,6 +87,30 @@ describe('Scheduling', () => {
     });
 });
 
+describe('Guide', () => {
+    it('restores the remembered scroll position and remembers new scrolls', async () => {
+        patchWidgetMemory('guide', { scrollTop: 333 });
+        const { default: Guide } = await import('../components/Guide/Guide');
+        const { container } = render(<Guide />);
+        const article = container.querySelector('article.guide') as HTMLElement;
+        expect(article.scrollTop).toBe(333);
+        fireEvent.scroll(article, { target: { scrollTop: 42 } });
+        expect(readWidgetMemory('guide', { scrollTop: 0 }).scrollTop).toBe(42);
+    });
+});
+
+describe('ToolsHub', () => {
+    it('restores the remembered scroll position and remembers new scrolls', async () => {
+        patchWidgetMemory('tools-hub', { scrollTop: 210 });
+        const { default: ToolsHub } = await import('../components/ToolsHub/ToolsHub');
+        const { container } = render(<ToolsHub />);
+        const scroller = container.querySelector('.tools-hub__scroll') as HTMLElement;
+        expect(scroller.scrollTop).toBe(210);
+        fireEvent.scroll(scroller, { target: { scrollTop: 55 } });
+        expect(readWidgetMemory('tools-hub', { scrollTop: 0 }).scrollTop).toBe(55);
+    });
+});
+
 describe('ResearchLab', () => {
     it('restores tab + prompt draft + preset + provider picks; typing persists the draft on blur', async () => {
         patchWidgetMemory('research-lab', { tab: 'history', prompt: 'compare models on lease summaries' });

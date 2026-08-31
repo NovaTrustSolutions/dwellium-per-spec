@@ -8,10 +8,11 @@ Regenerate with: `grep -rnE '(#|//|\{/\*) ?ponytail:' qualia-shell/src tools`
 (+ the same grep over the backend's `src`). Last scan: **2026-08-28**,
 worktree branch `worktree-agent-a917d932d21414e0d` (plan 054 phase 6).
 
-## Debt (15 rows)
+## Debt (16 rows)
 
 | Where | Simplified | Ceiling | Upgrade trigger |
 |---|---|---|---|
+| `qualia-shell/src/components/Shell/WalkthroughOverlay.tsx` | Walkthrough anchors are Classic-only; in Holocron/Fluid every step renders centered (words, no cutouts) and auto-start defers until Classic | v1 scope — Holocron tab strip / Cockpit panes have no `data-tour` anchors | A user replays the tour in Holocron or the Cockpit and asks where things live → add per-layout anchors + step targets |
 | `qualia-shell/src/components/StrataDashboard/StrataDashboard.tsx:603` | Move-in table = honest empty state | No data source | Wire to lease `moveInDate` when Leasing exposes it |
 | `StrataDashboard.tsx:613` | Move-out table = honest empty state | No data source | Wire to lease notices when Leasing exposes them |
 | `StrataDashboard.tsx:627` | Delinquency/collections/expiry = hint, no numbers | Real figures live in QuickBooks | Ilya green-lights a QuickBooks integration (plan TBD) |

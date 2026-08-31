@@ -12,6 +12,7 @@
  * failure → error state with Retry.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import Broadcasts from '../components/Broadcasts/Broadcasts';
 import {
@@ -82,6 +83,7 @@ const opened: string[] = [];
 const onOpen = (e: Event) => opened.push(String((e as CustomEvent<{ widgetId: string }>).detail?.widgetId));
 
 beforeEach(() => {
+    resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
     localStorage.clear();
     opened.length = 0;
     window.addEventListener('dwellium:open-widget', onOpen);

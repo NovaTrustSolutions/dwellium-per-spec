@@ -13,6 +13,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PhotoVault from '../components/PhotoVault/PhotoVault';
 import { openPhotoVaultForUnit, photoVaultPresetBus, unitFromTags } from '../components/PhotoVault/photoVaultBridge';
 import { resetThumbnailCache } from '../components/PhotoVault/photoVaultApi';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 
 function jsonRes(body: unknown, status = 200): Response {
     return { ok: status >= 200 && status < 300, status, json: async () => body, blob: async () => new Blob(['x']) } as unknown as Response;
@@ -39,6 +40,7 @@ const opened: string[] = [];
 const onOpen = (e: Event) => opened.push(String((e as CustomEvent<{ widgetId: string }>).detail?.widgetId));
 
 beforeEach(() => {
+    resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
     opened.length = 0;
     photoVaultPresetBus.clear();
     resetThumbnailCache();

@@ -22,6 +22,8 @@ import {
 } from './calcomLinks';
 import { cancelBooking, listUpcomingBookings, type CalBooking } from './schedulingApi';
 import { qrDataUri } from './qr';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 import './Scheduling.css';
 
 type Env = Record<string, string | undefined>;
@@ -231,7 +233,11 @@ function LinksTab({ base }: { base: string }) {
 }
 
 export default function Scheduling({ env }: { env?: Env }) {
-    const [tab, setTab] = useState<Tab>('book');
+    usePerUserIdentity();
+    // Plan 055 phase 2 — the active tab reopens where it was left.
+    const [mem, patchMem] = useWidgetMemory('scheduling', { tab: 'book' });
+    const tab: Tab = (['book', 'upcoming', 'links'] as const).includes(mem.tab as Tab) ? (mem.tab as Tab) : 'book';
+    const setTab = (t: Tab): void => patchMem({ tab: t });
     const url = calcomUrl(env);
     const base = calcomBase(env);
 

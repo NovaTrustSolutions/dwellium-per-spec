@@ -20,12 +20,14 @@ import ResearchLab from '../components/ResearchLab/ResearchLab';
 import { resetGuardSession } from '../lib/researchLlm/guard';
 import { researchKeysUserIdHolder, resetResearchKeys, setResearchKey } from '../lib/researchLlm/researchKeysStore';
 import { researchLogStore, researchLogUserIdHolder, resetResearchLog } from '../lib/researchLlm/researchLogStore';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 
 const okJson = (content: string, usage = { prompt_tokens: 5, completion_tokens: 7 }) =>
     new Response(JSON.stringify({ choices: [{ message: { content } }], usage }), { status: 200 });
 
 beforeEach(() => {
     localStorage.clear();
+    resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
     researchKeysUserIdHolder.current = null;
     researchLogUserIdHolder.current = null;
     resetResearchKeys();

@@ -31,6 +31,8 @@ import { ANDY_LINK_PRESETS, ANDY_PROPERTIES, presetKey } from './andyLinkPresets
 import { qrDataUri } from '../Scheduling/qr'; // client-side QR — builtin-mode links carry no hosted qrCode URL
 import QrDoorSheet from './QrDoorSheet';
 import { openWidget } from '../../lib/dwelliumCommands';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 import './ShortLinks.css';
 
 interface OkData {
@@ -83,8 +85,12 @@ function Sparkline({ points }: { points: ClicksPoint[] }) {
 interface EditDraft { url: string; key: string; expiresAt: string; tagNames: string[]; }
 
 export default function ShortLinks() {
+    usePerUserIdentity();
     const [state, setState] = useState<ViewState>({ kind: 'loading' });
-    const [mode, setMode] = useState<'links' | 'sheet'>('links');
+    // Plan 055 phase 2 — the active mode reopens where it was left.
+    const [mem, patchMem] = useWidgetMemory('short-links', { mode: 'links' });
+    const mode: 'links' | 'sheet' = mem.mode === 'sheet' ? 'sheet' : 'links';
+    const setMode = (m: 'links' | 'sheet'): void => patchMem({ mode: m });
     const [showArchived, setShowArchived] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
     const [series, setSeries] = useState<Record<string, ClicksPoint[]>>({});

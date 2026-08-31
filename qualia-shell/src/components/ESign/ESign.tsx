@@ -13,7 +13,7 @@
  * without a live Documenso (gate G2). Andy defaults: lease template preselected
  * (DOCUMENSO_TEMPLATE_LEASE), AstraStrata send message.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Copy, Download, ExternalLink, PenLine, Plus, RefreshCw, ScrollText, Send, Trash2, XCircle } from 'lucide-react';
 import {
     cancelEnvelope,
@@ -35,6 +35,8 @@ import {
 } from './esignApi';
 import { mergeEsignRows, type MergedEsignRow } from './esignMerge';
 import { openWidget } from '../../lib/dwelliumCommands';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 import './ESign.css';
 
 type ViewState =
@@ -48,8 +50,12 @@ interface DraftRecipient { name: string; email: string; role: string }
 const ANDY_MESSAGE = 'Please review and sign at your earliest convenience. — AstraStrata Management';
 
 export default function ESign() {
+    usePerUserIdentity();
     const [state, setState] = useState<ViewState>({ kind: 'loading' });
-    const [view, setView] = useState<'list' | 'send'>('list');
+    // Plan 055 phase 2 — the active view reopens where it was left.
+    const [mem, patchMem] = useWidgetMemory('esign', { view: 'list' });
+    const view: 'list' | 'send' = mem.view === 'send' ? 'send' : 'list';
+    const setView = (v: 'list' | 'send'): void => patchMem({ view: v });
     const [notice, setNotice] = useState<string | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
 
@@ -78,9 +84,7 @@ export default function ESign() {
 
     useEffect(() => { void refresh(); }, [refresh]);
 
-    const openSendView = useCallback(async () => {
-        setView('send');
-        setSentRecipients(null);
+    const loadSendData = useCallback(async () => {
         const [tpl, pdfs] = await Promise.all([listEsignTemplates(), listPdfFiles()]);
         if (tpl.kind === 'ok') {
             setTemplates(tpl.data.templates);
@@ -95,6 +99,20 @@ export default function ESign() {
         }
         setFiles(pdfs.kind === 'ok' ? pdfs.data : []);
     }, []);
+
+    // Loads send-view data whether the view was clicked into OR restored by
+    // widget memory (plan 055 phase 2).
+    const sendDataLoaded = useRef(false);
+    useEffect(() => {
+        if (view !== 'send' || sendDataLoaded.current) return;
+        sendDataLoaded.current = true;
+        void loadSendData();
+    }, [view, loadSendData]);
+
+    const openSendView = (): void => {
+        setSentRecipients(null);
+        setView('send');
+    };
 
     const updateRecipient = (i: number, patch: Partial<DraftRecipient>) =>
         setRecipients(rs => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -179,7 +197,7 @@ export default function ESign() {
                         Open Documenso <ExternalLink size={12} aria-hidden />
                     </a>
                     {state.kind === 'ok' && view === 'list' && (
-                        <button className="esign__btn" onClick={() => void openSendView()}>
+                        <button className="esign__btn" onClick={openSendView}>
                             <Plus size={12} aria-hidden /> New send
                         </button>
                     )}

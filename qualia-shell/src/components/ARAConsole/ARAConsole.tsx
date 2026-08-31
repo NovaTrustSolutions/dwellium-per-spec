@@ -13,6 +13,7 @@ import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
 import { runDailyGlance } from '../../lib/araDailyGlance';
 import { starterPromptsFor } from './araStarterPrompts';
+import { deriveResumeContext, buildResumePrompt, RESUME_STARTER_LABEL, isResumeChipDismissed, dismissResumeChip } from './araResumeContext';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import { parseCommand, stripPoliteness, resolveWidget, openWidget as openWidgetCmd, widgetLabel } from '../../lib/dwelliumCommands';
 import { matchSkill, AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
@@ -455,6 +456,12 @@ export default function ARAConsole() {
     const pendingBriefRef = useRef<MorningBrief | null>(null);
     const [briefTick, setBriefTick] = useState(0);
     const [input, setInput] = useState('');
+    // ── Plan 055 phase 4: "last working on" resume context ────────────────
+    // Derived ONCE on open, CLIENT-SIDE ONLY, from sessionRestore + widget
+    // memory. Carries the widget label + doc basename only — NEVER file
+    // contents or full paths (boundary enforced in araResumeContext.ts).
+    const [resumeCtx] = useState(deriveResumeContext);
+    const [resumeChipDismissed, setResumeChipDismissed] = useState(isResumeChipDismissed);
     // ── Plan 055 phase 2: unsent composer draft per mode ──────────────────
     // Conversations already persist per mode (dwellium-ara-session-*); the
     // DRAFT did not. Restore it on mount/mode switch, capture it as it is
@@ -2302,6 +2309,17 @@ export default function ARAConsole() {
                 "Open Strata" runs as a command */}
             {currentMode && !messages.some(m => m.role === 'user') && (
                 <div className="ara-starter-row" role="group" aria-label="Suggested prompts">
+                    {/* 055-P4: "Pick up where I left off" — inserts a grounded prompt
+                        into the composer (NOT auto-sent); label/basename only. */}
+                    {resumeCtx && (
+                        <button
+                            type="button"
+                            className="ara-action-btn ara-handoff-btn ara-resume-starter"
+                            onClick={() => { setInput(buildResumePrompt(resumeCtx)); inputRef.current?.focus(); }}
+                        >
+                            {RESUME_STARTER_LABEL}
+                        </button>
+                    )}
                     {starterPromptsFor(currentMode.id).map(p => (
                         <button key={p} type="button" className="ara-action-btn ara-handoff-btn" onClick={() => void routeUtterance(p)}>{p}</button>
                     ))}
@@ -2659,6 +2677,25 @@ export default function ARAConsole() {
 
             {/* Input Bar */}
             {ai.status !== 'backend-only' && <AIDegradedState availability={ai} />}
+            {/* 055-P4: "last working on" chip — widget label + doc basename ONLY
+                (never file contents/paths); dismissal lasts the SPA session. */}
+            {resumeCtx && !resumeChipDismissed && (
+                <div className="ara-resume-chip" role="status">
+                    <span>
+                        You were last working {resumeCtx.docBasename
+                            ? <>on <em>{resumeCtx.docBasename}</em> in {resumeCtx.widgetLabel}</>
+                            : <>in {resumeCtx.widgetLabel}</>}
+                    </span>
+                    <button
+                        type="button"
+                        className="ara-resume-chip-dismiss"
+                        aria-label="Dismiss resume suggestion"
+                        onClick={() => { dismissResumeChip(); setResumeChipDismissed(true); }}
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
             <div className="ara-input-bar">
                 <button
                     className={`ara-mic-btn ${micActive ? 'ara-mic-btn--active' : ''} ${micTranscribing ? 'ara-mic-btn--transcribing' : ''}`}

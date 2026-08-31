@@ -62,6 +62,8 @@ import { backendStatusStore } from '../lib/backendStatusStore';
 import { araPrefsStore } from '../lib/araPrefsStore';
 import { resetAraGlance } from '../lib/araDailyGlance';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
+import { sessionRestoreStore, type SessionSnapshot } from '../lib/sessionRestoreStore';
+import { resetResumeChip } from '../components/ARAConsole/araResumeContext';
 
 async function* offlineStream() {
     yield { delta: 'Offline ', text: 'Offline ', done: false };
@@ -561,5 +563,75 @@ describe('ARAConsole', () => {
         // the full set (built-ins + any backend-only lenses), not just the 2 mocked.
         expect(screen.getByText(/^\d+ lenses$/)).toBeInTheDocument();
         expect(screen.getByText('Lead Counsel')).toBeInTheDocument();
+    });
+
+    // ── Plan 055 phase 4: "last working on" chip + resume starter ─────────
+    describe('resume flow (055-P4)', () => {
+        const GUEST_KEY = 'dwellium_session_restore_guest';
+
+        function seedSession(topComponent = 'scribe', topTitle = 'Scribe'): void {
+            const snap: SessionSnapshot = {
+                version: 1,
+                classic: [{
+                    component: topComponent, title: topTitle, icon: 'pen-line',
+                    x: 0, y: 0, width: 800, height: 600, zIndex: 9, minimized: false, groupId: null,
+                }],
+                halocron: { tabs: [], active: null },
+                fluid: { tabs: [], active: null },
+                savedAt: Date.now(),
+            };
+            localStorage.setItem(GUEST_KEY, JSON.stringify(snap));
+            sessionRestoreStore.reset();
+        }
+
+        beforeEach(() => {
+            sessionRestoreStore.reset(); // re-read the (cleared) localStorage
+            resetResumeChip();
+        });
+
+        it('renders the chip from seeded stores with the doc basename ONLY (never the path)', async () => {
+            seedSession();
+            patchWidgetMemory('scribe', { activeFilepath: '/very/private/full/path/WoodlandLease.md' });
+            const { container } = render(<ARAConsole />);
+            await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            const chip = container.querySelector('.ara-resume-chip')!;
+            expect(chip).not.toBeNull();
+            expect(chip.textContent).toContain('WoodlandLease.md');
+            expect(chip.textContent).toContain('Scribe');
+            expect(chip.textContent).not.toContain('/very/private/full/path');
+        });
+
+        it('renders no chip and no resume starter when nothing is restored', async () => {
+            const { container } = render(<ARAConsole />);
+            await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            expect(container.querySelector('.ara-resume-chip')).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Pick up where I left off' })).toBeNull();
+        });
+
+        it('dismiss hides the chip and persists for the session (remount stays hidden)', async () => {
+            seedSession('notepad', 'Notepad');
+            const user = userEvent.setup();
+            const first = render(<ARAConsole />);
+            await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            await user.click(screen.getByRole('button', { name: 'Dismiss resume suggestion' }));
+            expect(first.container.querySelector('.ara-resume-chip')).toBeNull();
+            first.unmount();
+
+            const second = render(<ARAConsole />);
+            await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            expect(second.container.querySelector('.ara-resume-chip')).toBeNull();
+        });
+
+        it('the resume starter inserts the exact grounded prompt into the composer (not auto-sent)', async () => {
+            seedSession();
+            patchWidgetMemory('scribe', { activeFilepath: '/docs/WoodlandLease.md' });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            await user.click(screen.getByRole('button', { name: 'Pick up where I left off' }));
+            expect(textbox).toHaveValue('I was last working on WoodlandLease.md in Scribe. Give me a quick re-orientation: what this document is, and suggest the next 2–3 concrete actions to continue.');
+            // Not auto-sent: no user message posted yet.
+            expect(document.querySelector('.ara-message--user')).toBeNull();
+        });
     });
 });

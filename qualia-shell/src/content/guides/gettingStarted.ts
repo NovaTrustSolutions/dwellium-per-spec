@@ -35,6 +35,8 @@ Want to see the app full before importing anything? **Settings → Data → Demo
 
 Everything autosaves — the **Saved ✓** pill near the bottom is your receipt. If it says *Offline — will retry*, keep working; it syncs when the connection returns.
 
+Close anytime — nothing asks "are you sure". Everything is saved as you work, and signing back in puts you exactly where you left off: same windows, same tabs, same document, with one quiet *Restored…* note. Prefer a clean desk? **⌘K → Fresh start** (also in the Control Panel) reopens the default workspace — it only changes what's *open*, never your data.
+
 ## 4 · Meet your AI team
 
 - **ARA** (pinned, opens on login) is the main assistant. Starter chips suggest first questions per persona; replies **stream in live**; the composer has voice input and file upload. Once a day ARA posts **Today at a glance** — up to three things worth doing, built from your real tasks, inbox and leases.

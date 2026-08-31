@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DockItem } from '../../data/types';
 import { useWindows } from '../../context/WindowContext';
 import { rankWidgetSearchResults } from '../Sidebar/widgetSearch';
@@ -12,6 +12,10 @@ import { hiddenWidgetsStore } from '../../lib/hiddenWidgetsStore';
 import { getWidgetMeta } from '../../registry/widgetRegistry';
 import { buildHelpRows } from '../../lib/helpCommands';
 import { UserContext } from '../../context/UserContext';
+import { recentActivityStore, type RecentActivityEntry } from '../../lib/recentActivityStore';
+import { readWidgetMemory, patchWidgetMemory } from '../../lib/widgetMemory';
+import { SCRIBE_MEM_DEFAULTS } from '../Scribe/scribeMemory';
+import { useScribeStore } from '../Scribe/scribeStore';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -63,7 +67,7 @@ interface InboxMessageItem {
     updatedAt?: string;
 }
 
-type CommandResultKind = 'command' | 'memory' | 'widget' | 'window' | 'task' | 'inbox' | 'file' | 'note' | 'transcript';
+type CommandResultKind = 'resume' | 'command' | 'memory' | 'widget' | 'window' | 'task' | 'inbox' | 'file' | 'note' | 'transcript';
 
 interface CommandResult {
     id: string;
@@ -93,6 +97,7 @@ const PROJECT_NAMES: Record<string, string> = {
 };
 
 const KIND_LABELS: Record<CommandResultKind, string> = {
+    resume: 'Resume',
     command: 'Command',
     memory: 'Memory',
     widget: 'Widget',
@@ -104,8 +109,11 @@ const KIND_LABELS: Record<CommandResultKind, string> = {
     transcript: 'Transcript',
 };
 
-const SECTION_ORDER: CommandResultKind[] = ['command', 'window', 'widget', 'memory', 'task', 'inbox', 'file', 'note', 'transcript'];
+// Plan 055 phase 3: Resume rides at the TOP — the last-touched work is the
+// most likely destination when the palette opens.
+const SECTION_ORDER: CommandResultKind[] = ['resume', 'command', 'window', 'widget', 'memory', 'task', 'inbox', 'file', 'note', 'transcript'];
 const SECTION_TITLES: Record<CommandResultKind, string> = {
+    resume: 'Resume',
     command: 'Command',
     memory: 'Memory',
     window: 'Open Windows',
@@ -117,6 +125,7 @@ const SECTION_TITLES: Record<CommandResultKind, string> = {
     transcript: 'Audio Transcripts',
 };
 const SECTION_LIMITS: Record<CommandResultKind, number> = {
+    resume: 5, // plan 055 phase 3: last 5 distinct widgets/docs touched
     command: 12, // plan 047: help:/labs: rows share this tier (parsed cmd + Ask ARA are ≤2)
     memory: 5,
     window: 5,
@@ -609,6 +618,13 @@ export default function CommandPalette() {
     const [loadingDocs, setLoadingDocs] = useState(false);
     const [remoteWarning, setRemoteWarning] = useState<string>('');
 
+    // Plan 055 phase 3 — the per-user Resume trail (last widgets/docs touched).
+    const recentActivity = useSyncExternalStore(
+        recentActivityStore.subscribe,
+        recentActivityStore.getSnapshot,
+        recentActivityStore.getServerSnapshot,
+    );
+
     const inputRef = useRef<HTMLInputElement>(null);
     const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const requestSeqRef = useRef(0);
@@ -812,6 +828,25 @@ export default function CommandPalette() {
                 payload: match.item,
             }));
 
+        // Plan 055 phase 3 — Resume: the last 5 distinct widgets/docs touched,
+        // always on top when the palette opens; filtered by label on query.
+        const resumeResults: CommandResult[] = recentActivity
+            .filter(e => e.kind === 'scribe-doc' ? getWidgetMeta('scribe') != null : (getWidgetMeta(e.id) != null && !hiddenSet.has(e.id)))
+            .filter(e => !queryValue || e.label.toLowerCase().includes(queryValue.toLowerCase()))
+            .slice(0, 5)
+            .map((e, i) => ({
+                id: `resume:${e.kind}:${e.id}`,
+                kind: 'resume' as const,
+                score: 990 - i,
+                icon: e.kind === 'scribe-doc' ? 'pen-tool' : (getWidgetMeta(e.id)?.icon ?? 'layout-grid'),
+                title: e.kind === 'scribe-doc' ? `Resume: Scribe — ${e.label}` : `Resume: ${e.label}`,
+                subtitle: e.kind === 'scribe-doc' ? 'Reopen this document in Scribe' : (getWidgetMeta(e.id)?.description ?? 'Pick up where you left off'),
+                meta: 'recent',
+                reason: 'recently touched',
+                actionLabel: 'Resume',
+                payload: e,
+            }));
+
         const windowResults = buildWindowResults(windows, dockItems, queryValue);
         const taskResults = buildTaskResults(tasks, queryValue);
         const inboxResults = buildInboxResults(inboxItems, queryValue);
@@ -854,7 +889,7 @@ export default function CommandPalette() {
                 actionLabel: 'Open Transcript', payload: h,
             }));
 
-        const merged = [...commandResults, ...helpResults, ...askAraResults, ...windowResults, ...widgetResults, ...memoryResults, ...transcriptResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
+        const merged = [...resumeResults, ...commandResults, ...helpResults, ...askAraResults, ...windowResults, ...widgetResults, ...memoryResults, ...transcriptResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
             .sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
@@ -862,7 +897,7 @@ export default function CommandPalette() {
             });
 
         return merged;
-    }, [query, windows, dockItems, tasks, inboxItems, files, notes, semanticHits, userEmail]);
+    }, [query, windows, dockItems, tasks, inboxItems, files, notes, semanticHits, userEmail, recentActivity]);
 
     const sections = useMemo<ResultSection[]>(() => {
         const buckets = new Map<CommandResultKind, CommandResult[]>();
@@ -907,6 +942,31 @@ export default function CommandPalette() {
     }, []);
 
     const handleRun = useCallback((result: CommandResult) => {
+        if (result.kind === 'resume') {
+            const entry = result.payload as RecentActivityEntry;
+            if (entry.kind === 'scribe-doc') {
+                // Land ON the doc: set the widgetMemory active file first (the
+                // unmounted-Scribe restore path reads it on mount), and open the
+                // file directly for the already-mounted case (idempotent).
+                const mem = readWidgetMemory('scribe', SCRIBE_MEM_DEFAULTS);
+                patchWidgetMemory('scribe', {
+                    activeFilepath: entry.id,
+                    openFilepaths: mem.openFilepaths.includes(entry.id) ? mem.openFilepaths : [...mem.openFilepaths, entry.id],
+                });
+                void useScribeStore.getState().openFile(entry.id);
+                openWindow('scribe', 'Scribe', 'pen-tool');
+            } else {
+                const existing = windows.find(w => w.component === entry.id);
+                if (existing) {
+                    if (existing.minimized) restoreWindow(existing.id);
+                    else focusWindow(existing.id);
+                } else {
+                    openWindow(entry.id, entry.label, getWidgetMeta(entry.id)?.icon ?? '');
+                }
+            }
+            closePalette();
+            return;
+        }
         if (result.kind === 'command') {
             const payload = result.payload as ParsedCommand | { araRoute: true; text: string };
             if ('araRoute' in payload) {

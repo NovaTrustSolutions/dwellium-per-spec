@@ -63,7 +63,10 @@ export function TabBar() {
                     isActive={file.filepath === activeFilepath}
                     onActivate={() => setActiveFile(file.filepath)}
                     onClose={() => {
-                        if (file.dirty && !confirm(`"${file.filepath}" has unsaved changes. Close anyway?`)) return;
+                        // Plan 055 phase 3 — closing never prompts: a dirty tab is
+                        // flushed instead (saveFile caches the local copy
+                        // synchronously before the PUT, so nothing can be lost).
+                        if (file.dirty) void useScribeStore.getState().saveFile(file.filepath);
                         closeFile(file.filepath);
                     }}
                 />

@@ -1,0 +1,102 @@
+diff --git a/src/services/morningBriefService.ts b/src/services/morningBriefService.ts
+--- a/src/services/morningBriefService.ts
++++ b/src/services/morningBriefService.ts
+@@ -22,6 +22,10 @@
+ interface LocalMemory { content: string; memoryType: string }
+ interface HermesRun { prompt: string; taskType: string; rating?: number; summary?: string }
+ interface Capture { text: string }
++// plan 055 P4 — subset of qualia-shell sessionRestoreStore.SessionSnapshot.
++// DATA BOUNDARY: only window TITLES / tab ids are read — never widget payloads.
++interface SessionWindow { component: string; title: string; zIndex: number; minimized?: boolean }
++interface SessionSnapshot { classic: SessionWindow[]; halocron?: { active: string | null }; fluid?: { active: string | null } }
+ 
+ export interface MorningBrief {
+     date: string;
+@@ -42,10 +46,11 @@
+     'thought-weaver': Capture[];
+     'activity-log': ActivityEntry[];
+     'morning-brief': MorningBrief[];
++    'session-restore': SessionSnapshot | null;
+ }
+ 
+ const OBJECT_TYPES = Object.freeze([
+-    'goals', 'llm-usage', 'artifacts', 'honcho-memory', 'hermes-learning', 'thought-weaver', 'activity-log', 'morning-brief',
++    'goals', 'llm-usage', 'artifacts', 'honcho-memory', 'hermes-learning', 'thought-weaver', 'activity-log', 'morning-brief', 'session-restore',
+ ] as const);
+ 
+ /** YYYY-MM-DD in `tz` (mirrors dailySynthesis.dayKey, but TZ-explicit). */
+@@ -76,7 +81,21 @@
+         'thought-weaver': arr<Capture>(raw['thought-weaver']),
+         'activity-log': arr<ActivityEntry>(raw['activity-log']),
+         'morning-brief': arr<MorningBrief>(raw['morning-brief']),
++        'session-restore': (() => {
++            const s = raw['session-restore'] as SessionSnapshot | null;
++            return s && typeof s === 'object' && Array.isArray(s.classic) ? s : null;
++        })(),
+     };
++}
++
++/** plan 055 P4 — "Left off" label: top-z Classic window title, else the
++ *  active Holocron/Fluid tab id. Null when nothing was restored. */
++export function leftOffLabel(snap: SessionSnapshot | null): string | null {
++    if (!snap) return null;
++    const wins = snap.classic.filter(w => w && typeof w.title === 'string' && w.title);
++    if (wins.length > 0) return wins.reduce((a, b) => ((b.zIndex ?? 0) > (a.zIndex ?? 0) ? b : a)).title;
++    const tab = snap.halocron?.active ?? snap.fluid?.active;
++    return typeof tab === 'string' && tab ? tab : null;
+ }
+ 
+ /* ─── llmUsageStore ports (pure given `ledger.days`) ─── */
+@@ -128,6 +147,9 @@
+         const widgets = new Set(recent.map(e => e.widgetId)).size;
+         lines.push(`While you were away: ${recent.length} action${recent.length === 1 ? '' : 's'} across ${widgets} widget${widgets === 1 ? '' : 's'} since ${briefDayKey(tz, new Date(since))}`);
+     }
++    // plan 055 P4 — where the last session left off (window title / tab id only).
++    const leftOff = leftOffLabel(objs['session-restore']);
++    if (leftOff) lines.push(`Left off: ${leftOff}`);
+     return lines;
+ }
+ 
+diff --git a/tests/services/morningBriefService.test.ts b/tests/services/morningBriefService.test.ts
+--- a/tests/services/morningBriefService.test.ts
++++ b/tests/services/morningBriefService.test.ts
+@@ -128,3 +128,39 @@
+         expect(parseDeepDream('{"insights":[],"suggestions":[]}')).toBeNull();
+     });
+ });
++
++// plan 055 P4 — "Left off" line from the synced One Save session-restore object.
++describe('Left off line (plan 055 P4)', () => {
++    it('adds "Left off: <top-z window title>" when a session-restore object exists', () => {
++        seedUser('u3');
++        upsertObject({ id: 'session-restore_u3', type: 'session-restore', ownerId: 'u3', payload: {
++            version: 1,
++            classic: [
++                { component: 'notepad', title: 'Notepad', icon: '', x: 0, y: 0, width: 1, height: 1, zIndex: 3, minimized: false },
++                { component: 'scribe', title: 'Scribe', icon: '', x: 0, y: 0, width: 1, height: 1, zIndex: 9, minimized: false },
++            ],
++            halocron: { tabs: [], active: null },
++            fluid: { tabs: [], active: null },
++            savedAt: Date.now(),
++        } });
++        const lines = buildDataLines(readUserObjects('u3')!);
++        expect(lines).toContain('Left off: Scribe');
++    });
++
++    it('falls back to the active Holocron tab and stays silent when nothing is restored', () => {
++        seedUser('u4');
++        upsertObject({ id: 'session-restore_u4', type: 'session-restore', ownerId: 'u4', payload: {
++            version: 1, classic: [], halocron: { tabs: ['strata-dashboard'], active: 'strata-dashboard' }, fluid: { tabs: [], active: null }, savedAt: 1,
++        } });
++        expect(buildDataLines(readUserObjects('u4')!)).toContain('Left off: strata-dashboard');
++
++        seedUser('u5'); // no session-restore object at all
++        expect(buildDataLines(readUserObjects('u5')!).some(l => l.startsWith('Left off'))).toBe(false);
++    });
++
++    it('tolerates a corrupt session-restore payload (no line, no throw)', () => {
++        seedUser('u6');
++        upsertObject({ id: 'session-restore_u6', type: 'session-restore', ownerId: 'u6', payload: { classic: 'nope' } });
++        expect(buildDataLines(readUserObjects('u6')!).some(l => l.startsWith('Left off'))).toBe(false);
++    });
++});

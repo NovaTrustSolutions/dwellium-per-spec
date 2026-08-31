@@ -64,12 +64,18 @@ export function SelectionToolbar() {
         view.focus();
     };
 
+    // 055-P4: name the doc in the ARA hand-off — BASENAME only, never the
+    // full path or file contents (same data boundary as the ARA resume chip).
+    const docName = filepath.split(/[\\/]/).filter(Boolean).pop();
+
     const handleSendToAra = () => {
-        // Fire the cross-component event the AraMiniPanel listens for.
+        // Fire the cross-component event the AraMiniPanel + ARAConsole listen for.
         window.dispatchEvent(new CustomEvent('scribe:send-to-ara', {
             detail: {
                 text,
-                preface: 'Please review this passage and tell me what you think:',
+                preface: docName
+                    ? `Please review this passage from ${docName} and tell me what you think:`
+                    : 'Please review this passage and tell me what you think:',
             },
         }));
         useScribeStore.getState().setSelectionToolbar(null);
@@ -128,7 +134,7 @@ export function SelectionToolbar() {
     const handleAiAction = (action: AiAction) => {
         if (action.mode === 'ara') {
             window.dispatchEvent(new CustomEvent('scribe:send-to-ara', {
-                detail: { text, preface: buildSummarizePreface() },
+                detail: { text, preface: buildSummarizePreface(docName) },
             }));
             useScribeStore.getState().setSelectionToolbar(null);
             return;
@@ -145,6 +151,9 @@ export function SelectionToolbar() {
     };
 
     return (
+        // The wrapper's onMouseDown only stops propagation so the outside-click
+        // closer doesn't dismiss the toolbar; the controls inside are native <button>s.
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
         <div
             ref={ref}
             style={{

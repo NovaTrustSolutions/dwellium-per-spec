@@ -75,6 +75,7 @@ Cloud Run env wipe, OAuth origin_mismatch, consent-screen 403). Selected by Ilya
 | 034 | Audit widget: render locations + capability-based access | P2 | M | frontend | soft: 033 (degrades gracefully without it) | DONE — APPROVED; branch `advisor/034-audit-widget-access` @ `fb33437` (2 commits), worktree `.advisor-worktrees/034`; full vitest 1635 green + build green; lint gate not met at REPO level (741 pre-existing errors, ZERO in touched files — documented deviation, accepted); NOT merged/pushed — awaiting Ilya |
 | 052 | NotebookLM → ARA Library (mirror notebook sources into the document vector store; ARA cites them) | P1 | M | backend + tools + frontend | 022, 046-A | **DONE 2026-08-22** — frontend `2a7ef45`, backend rev `00051-t7v`; first sync pending Ilya's `nlm login -p andy/-p ilya` + `tools/notebooklm/sync.sh` |
 | 054 | [Operational cutover](054-operational-cutover.md) | P1 | M | ops + env + seeds | 053 | **ACTIVE 2026-08-27** — 6 phases, each with DoD + verify commands; phase 1 blocked on Ilya's `gcloud auth login` |
+| 055 | [Total Recall](055-total-recall.md) | P1 | L | session restore + widget memory + continuity UX + AI weave | 046, 049 | **ACTIVE 2026-08-30** — desktop is amnesiac (windows useState([])); 5 phases w/ DoD+verify |
 
 **Parallel dispatch guide (one wave, 3–5 agents):**
 

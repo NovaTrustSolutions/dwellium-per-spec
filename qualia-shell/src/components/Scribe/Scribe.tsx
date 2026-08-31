@@ -37,6 +37,8 @@ import { WIDGET_ACTION_EVENT, peekPendingWidgetAction, type WidgetActionRequest 
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory } from '../../lib/widgetMemory';
 import { captureScribeView, readScribeView, restoreScribeSession, trackScribeSession } from './scribeMemory';
+import { pdfSourceFromContent } from './pdfOpen';
+import { openWidget } from '../../lib/dwelliumCommands';
 import './Scribe.css';
 
 // Sub-component altitude → bare React.lazy (NOT lazyWithReload; see repo 2-layer rule).
@@ -273,6 +275,7 @@ export default function Scribe() {
                     )}
                 </>
             )}
+            <FromPdfBanner content={activeFile.content} />
             {loading && <div className="scribe__status">Loading...</div>}
             {error && <div className="scribe__status scribe__status--error">{error}</div>}
             {redlineLoading && <div className="scribe__status">AI is thinking...</div>}
@@ -439,6 +442,7 @@ function ScribeTreeColumn() {
                 )}
                 {creatingWs && (
                     <input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- appears only on explicit "+ New project" click
                         autoFocus
                         className="scribe__ws-input"
                         placeholder="Project name…"
@@ -458,7 +462,10 @@ function ScribeTreeColumn() {
                             <div
                                 key={f.filepath}
                                 className={`scribe__open-row ${f.filepath === activeFilepath ? 'scribe__open-row--active' : ''}`}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => setActiveFile(f.filepath)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveFile(f.filepath); } }}
                                 title={f.filepath}
                             >
                                 <span className="scribe__open-name">{baseName(f.filepath)}</span>
@@ -491,6 +498,28 @@ function ScribeTreeColumn() {
                     title="Save a new version of this document"
                 >+ Version</button>
             </div>
+        </div>
+    );
+}
+
+/** One-line banner on docs converted from a PDF — links back to PDF Gear. */
+function FromPdfBanner({ content }: { content: string }) {
+    const source = pdfSourceFromContent(content);
+    if (!source) return null;
+    const name = source.split('/').pop() || source;
+    return (
+        <div
+            className="scribe__status"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}
+            data-testid="scribe-from-pdf-banner"
+        >
+            <span>Converted from <strong>{name}</strong></span>
+            <button
+                type="button"
+                className="btn-secondary"
+                style={{ fontSize: 11, padding: '2px 8px' }}
+                onClick={() => openWidget('pdf-gear')}
+            >Open original in PDF Gear</button>
         </div>
     );
 }
@@ -594,6 +623,7 @@ function EmptyState() {
                 <div className="scribe__new-form">
                     <input
                         type="text"
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- appears only on explicit "+ New File" click
                         autoFocus
                         className="scribe__new-input"
                         placeholder="filename.md"

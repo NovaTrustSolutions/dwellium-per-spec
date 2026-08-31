@@ -160,6 +160,23 @@ export async function handleDrop(view: EditorView, e: DragEvent): Promise<boolea
     if (pathRaw) {
         try {
             const payload = JSON.parse(pathRaw) as { name: string; path: string; tier: string };
+            if (payload.tier === 'file' && /\.pdf$/i.test(payload.name)) {
+                // PDF from the File Explorer → convert to markdown + open (not inline bytes).
+                const { openPdfBytesAsMarkdown, bytesFromBinaryString } = await import('./pdfOpen');
+                try {
+                    const res = await fetch(`${API_BASE}/api/file-explorer/read?path=${encodeURIComponent(payload.path)}`, {
+                        headers: getAuthHeaders(),
+                    });
+                    const data = await res.json();
+                    const bytes = res.ok && data.success && typeof data.content === 'string'
+                        ? bytesFromBinaryString(data.content)
+                        : new Uint8Array(0);
+                    await openPdfBytesAsMarkdown(payload.name, bytes);
+                } catch {
+                    await openPdfBytesAsMarkdown(payload.name, new Uint8Array(0)); // honest fallback doc
+                }
+                return true;
+            }
             if (payload.tier === 'file') {
                 // Insert placeholder, fetch content, replace
                 const placeholder = `\n[Loading ${payload.name}…]()\n`;
@@ -210,6 +227,10 @@ export async function handleDrop(view: EditorView, e: DragEvent): Promise<boolea
                 } else {
                     view.dispatch({ changes: { from, to, insert: `_(failed to upload ${file.name})_\n` } });
                 }
+            } else if (ext === '.pdf') {
+                // Dropped PDF file → convert to a sibling markdown doc and open it.
+                const { openPdfBytesAsMarkdown } = await import('./pdfOpen');
+                await openPdfBytesAsMarkdown(file.name, new Uint8Array(await file.arrayBuffer()));
             } else if (TEXT_FILE_EXTS.includes(ext)) {
                 const text = await readTextFile(file);
                 if (text) {

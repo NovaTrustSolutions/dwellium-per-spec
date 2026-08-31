@@ -489,7 +489,9 @@ export default function FluidOS() {
                             <span key={t.id} className={`fos-tab-wrap${activeTab === t.id ? ' fos-tab-wrap--on' : ''}`}>
                                 <button type="button" role="tab" aria-selected={activeTab === t.id}
                                     className={`fos-tab${activeTab === t.id ? ' fos-tab--on' : ''}`}
-                                    onClick={() => setActiveTab(t.id)}>{t.label}</button>
+                                    onClick={() => setActiveTab(t.id)}
+                                    // 055-p5: browser-native middle-click closes the tab.
+                                    onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.id); } }}>{t.label}</button>
                                 <button type="button" className="fos-tab__close" aria-label={`Close ${t.label}`}
                                     onClick={() => closeTab(t.id)}><X size={11} aria-hidden /></button>
                             </span>

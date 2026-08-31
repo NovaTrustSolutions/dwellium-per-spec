@@ -502,9 +502,13 @@ export default function HalocronOS() {
             <main className="hos-main">
                 {/* ── Tab strip (classic-OS browser-tab logic) ── */}
                 {tabs.length > 0 && (
-                    <div className={`hos-tabs ${tearingKey ? 'hos-tabs--tearing' : ''}`} ref={tabStripRef}>
+                    <div className={`hos-tabs ${tearingKey ? 'hos-tabs--tearing' : ''}`} ref={tabStripRef} role="tablist" aria-label="Open tabs">
                         {orderedTabs.map((t) => (
                             <div key={t.key} className={`hos-tab ${activeKey === t.key ? 'on' : ''} ${t.pinned ? 'is-pinned' : ''} ${t.essential ? 'is-essential' : ''}`} onClick={() => markActive(t.key)}
+                                role="tab" aria-selected={activeKey === t.key} tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markActive(t.key); } }}
+                                // 055-p5: browser-native middle-click closes the tab.
+                                onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.key); } }}
                                 draggable={t.kind === 'widget'}
                                 data-testid={`hos-tab-${t.key}`}
                                 onDragStart={(e) => {
@@ -717,7 +721,8 @@ export default function HalocronOS() {
                                     const hasGoogleKey = !!(integrations?.llm?.gemini?.enabled && integrations?.llm?.gemini?.apiKey);
                                     const sub = (t.id === 'antigravity' && hasGoogleKey) ? 'Google · Max plan' : t.sub;
                                     const handleLaunch = () => {
-                                        cli ? openCliTool(cli.label, cli.cmd) : openWeb(t);
+                                        if (cli) openCliTool(cli.label, cli.cmd);
+                                        else openWeb(t);
                                     };
                                     const handleExternal = () => {
                                         if (cli) {
@@ -728,17 +733,19 @@ export default function HalocronOS() {
                                     };
                                     return (
                                         <div key={t.id} className="hos-launch__card" onClick={handleLaunch}
+                                            role="button" tabIndex={0}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLaunch(); } }}
                                             title={cli ? `Run ${cli.label} in a terminal` : `Open ${t.name} in Holocron`}>
                                             <span className="hos-launch__glyph" style={{ color: t.color, borderColor: t.color }}>{t.glyph}</span>
                                             <span className="hos-launch__body">
                                                 <span className="hos-launch__name">{t.name}</span>
                                                 <span className="hos-launch__sub">{sub}</span>
                                             </span>
-                                            <div className="hos-launch__actions" onClick={(e) => e.stopPropagation()}>
-                                                <button type="button" className="hos-launch__open-btn" onClick={handleLaunch} title="Open inside OS">
+                                            <div className="hos-launch__actions">
+                                                <button type="button" className="hos-launch__open-btn" onClick={(e) => { e.stopPropagation(); handleLaunch(); }} title="Open inside OS">
                                                     Open
                                                 </button>
-                                                <button type="button" className="hos-launch__popout-btn" onClick={handleExternal} title="Open in separate window">
+                                                <button type="button" className="hos-launch__popout-btn" onClick={(e) => { e.stopPropagation(); handleExternal(); }} title="Open in separate window">
                                                     Popout ↗
                                                 </button>
                                             </div>

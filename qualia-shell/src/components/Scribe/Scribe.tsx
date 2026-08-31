@@ -34,12 +34,16 @@ import { SearchPanel } from './SearchPanel';
 import { docxToMarkdown } from './docxConvert';
 import DumpMode from './DumpMode';
 import { WIDGET_ACTION_EVENT, peekPendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { flushWidgetMemory } from '../../lib/widgetMemory';
+import { captureScribeView, readScribeView, restoreScribeSession, trackScribeSession } from './scribeMemory';
 import './Scribe.css';
 
 // Sub-component altitude → bare React.lazy (NOT lazyWithReload; see repo 2-layer rule).
 const InteractiveDocs = lazy(() => import('./idocs/InteractiveDocs'));
 
 export default function Scribe() {
+    usePerUserIdentity();
     useScribeTheme();
     const layout = useScribeLayout();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -94,6 +98,19 @@ export default function Scribe() {
 
     useAutoSave(activeFilepath);
 
+    // ── Plan 055 phase 2: Scribe reopens at its exact point ──
+    // Reopen the remembered tabs once per app session (the in-memory zustand
+    // store survives widget remounts, so this only fires on a fresh load),
+    // and mirror the open-tab list + active file into widget memory.
+    useEffect(() => {
+        void restoreScribeSession();
+        const untrack = trackScribeSession();
+        return () => {
+            untrack();
+            flushWidgetMemory(); // drafts-flush rule: never lose the last edit on unmount
+        };
+    }, []);
+
     const onDocChange = useCallback((filepath: string, content: string) => {
         useScribeStore.getState().updateContent(filepath, content);
     }, []);
@@ -125,6 +142,10 @@ export default function Scribe() {
                         if (update.docChanged && filepath) {
                             onDocChange(filepath, update.state.doc.toString());
                         }
+                        // Plan 055 phase 2 — live cursor capture (debounced by widgetMemory).
+                        if ((update.selectionSet || update.docChanged) && filepath) {
+                            captureScribeView(filepath, update.view.scrollDOM.scrollTop, update.state.selection.main.head);
+                        }
                     }),
                 ],
             }),
@@ -134,15 +155,35 @@ export default function Scribe() {
         viewRef.current = view;
         const unregister = registerEditorView(view);
 
-        if (activeFile?.scrollTop) {
+        // Plan 055 phase 2 — scroll restore prefers the in-session value, then
+        // the remembered one (fresh app load); the remembered cursor is
+        // restored clamped to the document length.
+        const memView = readScribeView(filepath);
+        const restoreScroll = activeFile?.scrollTop || memView?.scrollTop || 0;
+        if (restoreScroll) {
             requestAnimationFrame(() => {
-                if (viewRef.current) viewRef.current.scrollDOM.scrollTop = activeFile.scrollTop;
+                if (viewRef.current) viewRef.current.scrollDOM.scrollTop = restoreScroll;
             });
         }
+        if (memView && memView.cursor > 0) {
+            view.dispatch({ selection: { anchor: Math.min(memView.cursor, view.state.doc.length) } });
+        }
+        // Live scroll capture (blur-independent; debounced by widgetMemory).
+        const onEditorScroll = () => {
+            if (viewRef.current && filepath) {
+                captureScribeView(filepath, viewRef.current.scrollDOM.scrollTop, viewRef.current.state.selection.main.head);
+            }
+        };
+        view.scrollDOM.addEventListener('scroll', onEditorScroll, { passive: true });
+        const onEditorBlur = () => { onEditorScroll(); flushWidgetMemory(); };
+        view.contentDOM.addEventListener('blur', onEditorBlur);
 
         return () => {
+            view.scrollDOM.removeEventListener('scroll', onEditorScroll);
+            view.contentDOM.removeEventListener('blur', onEditorBlur);
             if (viewRef.current && filepath) {
                 useScribeStore.getState().setScrollTop(filepath, viewRef.current.scrollDOM.scrollTop);
+                captureScribeView(filepath, viewRef.current.scrollDOM.scrollTop, viewRef.current.state.selection.main.head);
             }
             unregister();
             view.destroy();

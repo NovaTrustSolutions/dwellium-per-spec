@@ -61,6 +61,11 @@ export async function loginAs(
       // their clean-desktop baseline (its absence broke the axe-baseline
       // Overview spec on push run 27390457673).
       localStorage.setItem('dwellium:default-stack:v1', 'done');
+      // Onboarding walkthrough auto-starts on a fresh user; its full-screen
+      // dimmer intercepts pointer events, so pre-mark it done for e2e (its
+      // dimmer would otherwise block the axe/nav specs' clicks). Key shape =
+      // walkthroughStore `walkthrough:<uid>` with { done:true }.
+      localStorage.setItem(`walkthrough:${id}`, JSON.stringify({ done: true }));
       // FirstRunCard (plan 046-F) floats over the desktop and intercepts
       // pointer events — it broke every axe-baseline click from 2026-08-20 to
       // 2026-08-26 (10 consecutive red Parity Gate runs). Dismiss it for this

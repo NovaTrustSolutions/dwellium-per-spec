@@ -34,6 +34,8 @@ import { BUILT_IN_TARGETS, describeRoute } from './taskRouting';
 import { TagInput, useTaggedItems } from '../Tags/TagInput';
 import { relatedByTags } from '../../lib/tagStore';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as ChartTooltip, ScatterChart, Scatter } from 'recharts';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 import './TaskBoard.css';
 
 const MIN_COL = 200;
@@ -53,7 +55,16 @@ function relTime(iso: string): string {
 
 export default function TaskBoard() {
     const { hierarchy } = useHierarchy();
-    const [activeProjectId, setActiveProjectId] = useState<string>('global');
+    usePerUserIdentity();
+    // Plan 055 phase 2 — the active project board and open card reopen where
+    // they were left (no filter/swimlane state exists on this board; the
+    // project picker + open card ARE its view state). Stale ids fall back.
+    const [mem, patchMem] = useWidgetMemory('task-board', {
+        activeProjectId: 'global',
+        openCardId: null as string | null,
+    });
+    const activeProjectId = mem.activeProjectId;
+    const setActiveProjectId = (id: string): void => patchMem({ activeProjectId: id });
 
     // Recursively collect all items of type 'project' from hierarchy
     const getProjects = (items: any[]): any[] => {
@@ -88,7 +99,9 @@ export default function TaskBoard() {
     const [copied, setCopied] = useState(false);
     const addRef = useRef<HTMLInputElement>(null);
     // Phase 2: project view + assignment/routing
-    const [openCardId, setOpenCardId] = useState<string | null>(null);
+    // Restored open card only counts while the card still exists on the board.
+    const openCardId = mem.openCardId && board.cards.some(c => c.id === mem.openCardId) ? mem.openCardId : null;
+    const setOpenCardId = (id: string | null): void => patchMem({ openCardId: id });
     const [assignFor, setAssignFor] = useState<string | null>(null);
     const [routeMsg, setRouteMsg] = useState<{ id: string; msg: string } | null>(null);
 

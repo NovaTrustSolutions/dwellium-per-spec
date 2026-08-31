@@ -168,7 +168,9 @@ describe('WalkthroughOverlay — auto-start + navigation', () => {
         render(<WalkthroughOverlay autoStartDelayMs={0} />);
         await screen.findByRole('dialog');
         fireEvent.keyDown(window, { key: 'Escape' });
-        expect(screen.queryByRole('dialog')).toBeNull();
+        // Esc-dismiss is an async state update — settle before asserting
+        // (passed locally, raced on CI's React 19 scheduler, 2026-08-31).
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
         expect(walkthroughStore.getSnapshot().done).toBe(true);
     });
 

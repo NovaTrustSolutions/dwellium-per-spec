@@ -9,6 +9,8 @@ import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient
 import { streamLlm } from '../../lib/llmStream';
 import { pumpSseBody } from '../../lib/readSse';
 import { araPrefsStore } from '../../lib/araPrefsStore';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
 import { runDailyGlance } from '../../lib/araDailyGlance';
 import { starterPromptsFor } from './araStarterPrompts';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
@@ -453,6 +455,31 @@ export default function ARAConsole() {
     const pendingBriefRef = useRef<MorningBrief | null>(null);
     const [briefTick, setBriefTick] = useState(0);
     const [input, setInput] = useState('');
+    // ── Plan 055 phase 2: unsent composer draft per mode ──────────────────
+    // Conversations already persist per mode (dwellium-ara-session-*); the
+    // DRAFT did not. Restore it on mount/mode switch, capture it as it is
+    // typed (debounced by widgetMemory), flush on blur + unmount.
+    usePerUserIdentity();
+    const ARA_DRAFT_DEFAULTS = { drafts: {} as Record<string, string> };
+    const prevDraftModeRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (prevDraftModeRef.current === activeMode) return;
+        prevDraftModeRef.current = activeMode;
+        const drafts = readWidgetMemory('ara-console', ARA_DRAFT_DEFAULTS).drafts;
+        const draft = drafts[activeMode];
+        setInput(typeof draft === 'string' ? draft : '');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeMode]);
+    useEffect(() => {
+        // Fires only when the input changes, so the value is always captured
+        // under the mode it was typed in (a mode switch alone never re-files
+        // the old draft under the new mode).
+        if (prevDraftModeRef.current === null) return; // pre-restore render
+        const drafts = { ...readWidgetMemory('ara-console', ARA_DRAFT_DEFAULTS).drafts, [activeMode]: input };
+        patchWidgetMemory('ara-console', { drafts });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [input]);
+    useEffect(() => flushWidgetMemory, []); // drafts-flush rule on unmount
     const [isLoading, setIsLoading] = useState(false);
     const [modePickerOpen, setModePickerOpen] = useState(false);
     const [expandedTooltipId, setExpandedTooltipId] = useState<string | null>(null);
@@ -2721,6 +2748,7 @@ export default function ARAConsole() {
                     className="ara-input"
                     value={input}
                     onChange={e => setInput(e.target.value)}
+                    onBlur={flushWidgetMemory}
                     onKeyDown={handleKeyDown}
                     placeholder={micTranscribing ? 'Transcribing your voice…' : `Message ARA (${currentMode?.name || '...'})`}
                     rows={1}

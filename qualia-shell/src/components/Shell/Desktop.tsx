@@ -974,25 +974,28 @@ export default function Desktop() {
         }
     };
 
-    // Global Esc shortcut to close top window
+    // 055-p5 Esc consistency: Esc dismisses transient desktop chrome (context
+    // menu, layout menu, group panel) and NEVER closes a window. The previous
+    // handler closed the topmost window on any stray Esc — undocumented (guide
+    // §9: Esc = "close sheets · leave the Cockpit"; ⌘W = close window) and it
+    // forced every overlay (ShortcutSheet, IDoc present mode, …) to
+    // defensively capture-and-swallow the key; TabGroupManager forgot and lost
+    // a window per Esc press.
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                const active = document.activeElement;
-                if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
-                    // Let inputs handle their own escape logic
-                    return;
-                }
-                const openWindows = windowsRef.current.filter(w => !w.minimized);
-                if (openWindows.length > 0) {
-                    const topMost = openWindows.reduce((prev, current) => (prev.zIndex > current.zIndex) ? prev : current);
-                    closeWindow(topMost.id);
-                }
+            if (e.key !== 'Escape') return;
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
+                // Let inputs handle their own escape logic
+                return;
             }
+            setContextMenu(null);
+            setIsLayoutMenuOpen(false);
+            setIsGroupPanelOpen(false);
         };
         window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
-    }, [closeWindow]);
+    }, []);
 
     // Track desktop dimensions
     useEffect(() => {

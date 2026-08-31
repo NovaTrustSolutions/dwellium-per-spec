@@ -40,6 +40,10 @@ interface SavedSearch { id: string; name: string; query: string; filters?: any; 
 
 interface Props {
     onNavigate?: (result: SearchResult) => void;
+    /** Plan 055 phase 2 — seed the box with a remembered query. */
+    initialQuery?: string;
+    /** Plan 055 phase 2 — observe query edits so the host can remember them. */
+    onQueryChange?: (query: string) => void;
 }
 
 const TYPE_ICONS: Record<string, React.ReactElement> = {
@@ -63,8 +67,12 @@ const TYPE_COLORS: Record<string, string> = {
 
 const FACET_OPTIONS = ['all', 'property', 'tenant', 'vendor', 'workitem', 'insurance', 'compliance', 'legal', 'incident'] as const;
 
-export default function GlobalSearch({ onNavigate }: Props) {
-    const [query, setQuery] = useState('');
+export default function GlobalSearch({ onNavigate, initialQuery, onQueryChange }: Props) {
+    const [query, setQueryState] = useState(initialQuery ?? '');
+    const setQuery = useCallback((q: string): void => {
+        setQueryState(q);
+        onQueryChange?.(q);
+    }, [onQueryChange]);
     const [response, setResponse] = useState<SearchResponse | null>(null);
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);

@@ -10,10 +10,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import Scheduling, { calcomUrl } from '../components/Scheduling/Scheduling';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 
 const opened: string[] = [];
 const onOpen = (e: Event) => opened.push(String((e as CustomEvent<{ widgetId: string }>).detail?.widgetId));
-beforeEach(() => { opened.length = 0; window.addEventListener('dwellium:open-widget', onOpen); });
+beforeEach(() => { resetWidgetMemory(); opened.length = 0; window.addEventListener('dwellium:open-widget', onOpen); });
 afterEach(() => window.removeEventListener('dwellium:open-widget', onOpen));
 
 describe('calcomUrl', () => {

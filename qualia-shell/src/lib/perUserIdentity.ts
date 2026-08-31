@@ -88,6 +88,9 @@ export const researchKeysUserIdHolder: UserIdHolder = makeHolder();
 /** Research Lab — per-user experiments log (researchLogStore). */
 export const researchLogUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 055 phase 2 — per-user widget view-state memory (widgetMemory). */
+export const widgetMemoryUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -115,6 +118,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     sessionRestoreUserIdHolder,
     researchKeysUserIdHolder,
     researchLogUserIdHolder,
+    widgetMemoryUserIdHolder,
 ];
 
 /**

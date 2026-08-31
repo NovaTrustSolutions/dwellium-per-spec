@@ -10,11 +10,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PhotoVault from '../components/PhotoVault/PhotoVault';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 
 const opened: string[] = [];
 const onOpen = (e: Event) => opened.push(String((e as CustomEvent<{ widgetId: string }>).detail?.widgetId));
 
 beforeEach(() => {
+    resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
     opened.length = 0;
     window.addEventListener('dwellium:open-widget', onOpen);
 });

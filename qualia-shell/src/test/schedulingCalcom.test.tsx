@@ -8,17 +8,19 @@
  * The plan-047 states (needs-setup card, iframe) stay covered by
  * src/test/schedulingWidget.test.tsx.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Scheduling from '../components/Scheduling/Scheduling';
 import {
     ANDY_EVENT_TYPES, ANDY_PROPERTIES, buildBookingLink, bookingLinkFor, calcomBase,
 } from '../components/Scheduling/calcomLinks';
 import { qrMatrix, qrDataUri } from '../components/Scheduling/qr';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 
 const URL_ENV = { VITE_CALCOM_URL: 'https://cal.com/andy' };
 
 const realFetch = global.fetch;
+beforeEach(() => { resetWidgetMemory(); }); // plan 055 phase 2 — v2.72.1 standing convention
 afterEach(() => { global.fetch = realFetch; vi.restoreAllMocks(); });
 
 /** Stub the backend proxy: `status` drives the response for /api/scheduling/*. */

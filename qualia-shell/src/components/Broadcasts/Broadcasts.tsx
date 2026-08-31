@@ -46,6 +46,8 @@ import {
 } from './broadcastsApi';
 import { strataGet } from '../StrataDashboard/strataApi';
 import { openWidget } from '../../lib/dwelliumCommands';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 import './Broadcasts.css';
 
 type ViewState =
@@ -90,8 +92,12 @@ async function fetchStrataEntities(source: ImportSource): Promise<StrataEntity[]
 export default function Broadcasts({
     env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env,
 }: { env?: Record<string, string | undefined> } = {}) {
+    usePerUserIdentity();
     const [state, setState] = useState<ViewState>({ kind: 'loading' });
-    const [tab, setTab] = useState<Tab>('campaigns');
+    // Plan 055 phase 2 — the active tab reopens where it was left.
+    const [mem, patchMem] = useWidgetMemory('broadcasts', { tab: 'campaigns' });
+    const tab: Tab = (['campaigns', 'audiences', 'templates', 'admin'] as const).includes(mem.tab as Tab) ? (mem.tab as Tab) : 'campaigns';
+    const setTab = (t: Tab): void => patchMem({ tab: t });
     const [notice, setNotice] = useState<string | null>(null);
 
     // Campaigns tab

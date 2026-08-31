@@ -40,6 +40,8 @@ import {
     inboxKeys,
 } from './useInboxQueries';
 import { readSse } from '../../lib/readSse';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 
 // QueryClient is provided at the App level via QueryProvider.
 
@@ -81,9 +83,22 @@ const THEME_PALETTES: { id: Theme; name: string; mood: string; colors: string[] 
 export default function InboxZero() {
     const { theme: currentTheme, setTheme, fontPairing: currentFont, setFontPairing, animationsEnabled, setAnimationsEnabled } = useTheme();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<TabId>('triage');
+    usePerUserIdentity();
+    // Plan 055 phase 2 — tab, triage filter and the open message reopen where
+    // they were left (a stale message id simply matches no row).
+    const [mem, patchMem] = useWidgetMemory('inbox-zero', {
+        activeTab: 'triage',
+        triageFilter: 'all',
+        expandedId: null as string | null,
+    });
+    const IZ_TABS: readonly TabId[] = ['triage', 'newsletters', 'stats', 'capabilities', 'rules', 'nif', 'actions', 'analytics', 'cold-email', 'replies', 'tracker', 'settings', 'audit'];
+    const activeTab: TabId = IZ_TABS.includes(mem.activeTab as TabId) ? (mem.activeTab as TabId) : 'triage';
+    const setActiveTab = useCallback((t: TabId): void => patchMem({ activeTab: t }), [patchMem]);
+    const triageFilter = mem.triageFilter;
+    const setTriageFilter = useCallback((f: string): void => patchMem({ triageFilter: f }), [patchMem]);
+    const expandedId = mem.expandedId;
+    const setExpandedId = useCallback((id: string | null): void => patchMem({ expandedId: id }), [patchMem]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [expandedId, setExpandedId] = useState<string | null>(null);
     const [routePickerFor, setRoutePickerFor] = useState<string | null>(null);
 
     // Full email viewer state
@@ -137,7 +152,6 @@ export default function InboxZero() {
         const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
         return () => clearTimeout(timer);
     }, [searchQuery]);
-    const [triageFilter, setTriageFilter] = useState<string>('all');
     const undoTimerRef = useRef<number | null>(null);
     const inboxCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const inboxFocusTimerRef = useRef<number | null>(null);
@@ -386,7 +400,7 @@ export default function InboxZero() {
 
         window.addEventListener('qualia-inbox-focus-item', handleFocusItem as EventListener);
         return () => window.removeEventListener('qualia-inbox-focus-item', handleFocusItem as EventListener);
-    }, []);
+    }, [setActiveTab, setExpandedId, setTriageFilter]);
 
     // ---- Tab-triggered fetches (SPLIT to avoid infinite loop) ----
 
@@ -573,7 +587,7 @@ export default function InboxZero() {
         inboxFocusTimerRef.current = window.setTimeout(() => {
             setFocusedItemId(current => (current === target.id ? null : current));
         }, 2200);
-    }, [focusTargetItemId, pendingItems]);
+    }, [focusTargetItemId, pendingItems, setExpandedId]);
 
     const zeroProgress = useMemo(() => {
         if (!stats || stats.total === 0) return 100;

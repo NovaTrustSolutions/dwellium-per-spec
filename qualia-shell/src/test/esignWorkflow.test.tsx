@@ -6,6 +6,7 @@
  * the widget only ever talks to /api/esign/* (plus /api/files for the PDF picker).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ESign from '../components/ESign/ESign';
 import TenantSignPrompt from '../components/ESign/TenantSignPrompt';
@@ -52,7 +53,7 @@ function stubBackend(handler?: (url: string, init?: RequestInit) => Response | u
     return calls;
 }
 
-beforeEach(() => { localStorage.clear(); });
+beforeEach(() => { resetWidgetMemory(); localStorage.clear(); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('esignMerge', () => {

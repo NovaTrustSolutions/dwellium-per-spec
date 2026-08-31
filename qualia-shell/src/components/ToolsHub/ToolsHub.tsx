@@ -7,13 +7,15 @@
  * stays authoritative). Clicks log `tools-hub:open {toolId,status}` to the
  * activity log (plan 047 §7 metric: % users opening ≥1 tool within 14 days).
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { TOOLS, HELP_ENTRIES, resolveToolStatus, type ToolEntry, type ToolStatus } from '../../data/toolsHub';
 import { WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { openWidget } from '../../lib/dwelliumCommands';
 import { logActivity } from '../../lib/activityLogStore';
 import { unlockTier } from '../../lib/onboardingStore';
 import { useFluidVoiceStatus } from '../../lib/fluidVoiceLocalApi';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
 import './ToolsHub.css';
 
 const STATUS_LABEL: Record<ToolStatus, string> = { ready: 'Ready', 'needs-setup': 'Needs setup', 'coming-soon': 'Coming soon' };
@@ -24,7 +26,15 @@ export function toolStatuses(env: Record<string, string | undefined> = (import.m
 }
 
 export default function ToolsHub() {
+    usePerUserIdentity();
     useEffect(() => { unlockTier('tools'); }, []);
+    // Plan 055 phase 2 — remembered scroll position (patch on scroll, no
+    // hook subscription so scrolling never re-renders the table).
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = readWidgetMemory('tools-hub', { scrollTop: 0 }).scrollTop;
+        return flushWidgetMemory;
+    }, []);
     const rows = toolStatuses();
     // Plan 053 (Dictation): live FluidVoice detection for the companion row — macOS only; 'unknown' elsewhere.
     const { state: fluidVoiceState } = useFluidVoiceStatus();
@@ -42,7 +52,11 @@ export default function ToolsHub() {
                 <h2 className="tools-hub__h">Tools hub</h2>
                 <p className="tools-hub__sub">Ten open-source tools planned for Dwellium. Statuses flip here as each one lands — nothing opens a blank screen.</p>
             </div>
-            <div className="tools-hub__scroll">
+            <div
+                className="tools-hub__scroll"
+                ref={scrollRef}
+                onScroll={e => patchWidgetMemory('tools-hub', { scrollTop: (e.target as HTMLElement).scrollTop })}
+            >
                 <table className="tools-hub__table">
                     <thead>
                         <tr><th>Tool</th><th>What it does</th><th>License</th><th>Phase</th><th>Status</th><th aria-label="Action" /></tr>

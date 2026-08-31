@@ -48,6 +48,9 @@ const DENYLIST: { pattern: RegExp; label: string }[] = [
 const TRUSTED_TRANSIT = new Set([
     resolve(SRC, 'lib/perUserIdentity.ts'),
     resolve(SRC, 'lib/oneSaveStore.ts'),
+    // Plan 055 phase 2 — view-state memory primitive (tab/prompt draft only;
+    // its own import surface is pinned exactly below).
+    resolve(SRC, 'lib/widgetMemory.ts'),
 ]);
 
 const RESEARCH_STORES = [
@@ -140,6 +143,11 @@ describe('Research Lab import firewall (structural isolation)', () => {
     it('trusted transit: perUserIdentity.ts import surface is pinned', () => {
         const specs = specifiersOf(resolve(SRC, 'lib/perUserIdentity.ts')).sort();
         expect(specs).toEqual(['../context/UserContext', 'react']);
+    });
+
+    it('trusted transit: widgetMemory.ts import surface is pinned', () => {
+        const specs = specifiersOf(resolve(SRC, 'lib/widgetMemory.ts')).sort();
+        expect(specs).toEqual(['../utils/createLocalStorageStore', './oneSaveStore', './perUserIdentity', 'react']);
     });
 
     it('trusted transit: oneSaveStore.ts import surface is pinned', () => {

@@ -49,6 +49,7 @@ class FakeEventSource {
 (globalThis as any).EventSource = FakeEventSource;
 
 import InboxZero from '../components/InboxZero/InboxZero';
+import { patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 
 function jsonResponse(data: unknown, ok = true, status = 200): Response {
     return {
@@ -100,6 +101,23 @@ describe('InboxZero', () => {
     beforeEach(() => {
         authFetch.mockReset();
         localStorage.clear();
+        resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
+    });
+
+    // Plan 055 phase 2 — widget memory round-trip.
+    it('reopens on the remembered tab/filter and remembers tab clicks', async () => {
+        authFetch.mockImplementation(
+            routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))
+        );
+        patchWidgetMemory('inbox-zero', { activeTab: 'stats', expandedId: 'gone-mail-99' });
+
+        renderInbox();
+
+        const statsTab = await screen.findByRole('tab', { name: /Stats/ });
+        expect(statsTab).toHaveAttribute('aria-selected', 'true');
+
+        fireEvent.click(screen.getByRole('tab', { name: /Settings/ }));
+        expect(readWidgetMemory('inbox-zero', { activeTab: 'triage' }).activeTab).toBe('settings');
     });
 
     it('renders pending email cards on the main triage view (happy path)', async () => {

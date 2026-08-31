@@ -12,6 +12,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import PhotoVault from '../components/PhotoVault/PhotoVault';
 import { photoVaultPresetBus } from '../components/PhotoVault/photoVaultBridge';
 import { resetThumbnailCache } from '../components/PhotoVault/photoVaultApi';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 
 function jsonRes(body: unknown, status = 200): Response {
     return {
@@ -61,6 +62,7 @@ function stubBackend(routes: Record<string, (url: string, init?: RequestInit) =>
 }
 
 beforeEach(() => {
+    resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
     photoVaultPresetBus.clear();
     resetThumbnailCache();
 });

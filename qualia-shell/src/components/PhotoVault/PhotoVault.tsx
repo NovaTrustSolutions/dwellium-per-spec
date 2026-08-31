@@ -31,6 +31,8 @@ import {
     type PhotoAlbum, type PhotoAlbumDetail, type PhotoAsset, type PhotoSharedLink, type ProxyStatus,
 } from './photoVaultApi';
 import { photoVaultPresetBus, type PhotoVaultPreset } from './photoVaultBridge';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 import './PhotoVault.css';
 
 type Reach = 'checking' | 'up' | 'down';
@@ -570,7 +572,11 @@ const TABS: Array<{ id: Tab; label: string }> = [
 export default function PhotoVault({
     env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env,
 }: { env?: Record<string, string | undefined> } = {}) {
-    const [tab, setTab] = useState<Tab>('immich');
+    usePerUserIdentity();
+    // Plan 055 phase 2 — the active tab reopens where it was left.
+    const [mem, patchMem] = useWidgetMemory('photo-vault', { tab: 'immich' });
+    const tab: Tab = (['immich', 'albums', 'upload', 'share'] as const).includes(mem.tab as Tab) ? (mem.tab as Tab) : 'immich';
+    const setTab = useCallback((t: Tab): void => patchMem({ tab: t }), [patchMem]);
     const [preset, setPreset] = useState<PhotoVaultPreset | null>(null);
     const [proxyStatus, setProxyStatus] = useState<'checking' | ProxyStatus>('checking');
     const proxyChecked = useRef(false);
@@ -585,7 +591,7 @@ export default function PhotoVault({
         const pending = photoVaultPresetBus.consume();
         if (pending) apply(pending);
         return photoVaultPresetBus.on(apply);
-    }, []);
+    }, [setTab]);
 
     const checkProxy = useCallback(async () => {
         setProxyStatus('checking');

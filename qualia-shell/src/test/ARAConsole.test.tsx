@@ -61,6 +61,7 @@ import ARAConsole from '../components/ARAConsole/ARAConsole';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import { araPrefsStore } from '../lib/araPrefsStore';
 import { resetAraGlance } from '../lib/araDailyGlance';
+import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 
 async function* offlineStream() {
     yield { delta: 'Offline ', text: 'Offline ', done: false };
@@ -100,6 +101,7 @@ describe('ARAConsole', () => {
         assembleGlanceMock.mockResolvedValue(null);
         araPrefsStore.reset();
         resetAraGlance();
+        resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
         localStorage.clear();
         localStorage.setItem('dwellium-ara-tts', 'false');
         Element.prototype.scrollIntoView = vi.fn();
@@ -217,6 +219,22 @@ describe('ARAConsole', () => {
     afterEach(() => {
         backendStatusStore.reset();
         vi.useRealTimers();
+    });
+
+    // Plan 055 phase 2 — the unsent composer draft restores per mode.
+    it('restores the remembered composer draft and remembers typing (flush on blur)', async () => {
+        patchWidgetMemory('ara-console', { drafts: { 'executive-assistant': 'ask about the Woodland Parc lease' } });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+        expect(textbox).toHaveValue('ask about the Woodland Parc lease');
+
+        await user.clear(textbox);
+        await user.type(textbox, 'new unsent thought');
+        fireEvent.blur(textbox);
+        flushWidgetMemory();
+        expect(readWidgetMemory('ara-console', { drafts: {} as Record<string, string> }).drafts['executive-assistant'])
+            .toBe('new unsent thought');
     });
 
     // plan 046 S1c — missing-key banner above the composer. No key (llmClient

@@ -85,6 +85,8 @@ import { setDemoWorkspace, useDemoWorkspace } from '../../lib/demoWorkspaceStore
 import { openWidget } from '../../lib/dwelliumCommands';
 import { openStrataModule } from './strataDeepLink';
 import { StrataNavProvider, type SearchNavTarget } from './StrataNavContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { useWidgetMemory } from '../../lib/widgetMemory';
 import './StrataDashboard.css';
 
 
@@ -1744,8 +1746,29 @@ function IntegrationsModule() {
 
 export default function StrataDashboard() {
     const { logout, hasPermission, user } = useUser();
-    const [activeModule, setActiveModule] = useState<StrataModule | 'settings'>('overview');
-    const [searchNavTarget, setSearchNavTarget] = useState<SearchNavTarget | null>(null);
+    usePerUserIdentity();
+    // Plan 055 phase 2 — active module, selected entity (search-nav target)
+    // and the search query reopen where they were left. An unknown module
+    // string falls back to overview; a deleted entity id simply never matches
+    // a row, so the module lands on its root.
+    const [mem, patchMem] = useWidgetMemory('strata-dashboard', {
+        activeModule: 'overview',
+        searchNavTarget: null as SearchNavTarget | null,
+        searchQuery: '',
+    });
+    const activeModule: StrataModule | 'settings' =
+        mem.activeModule === 'settings' || NAV_ITEMS.some(i => i.id === mem.activeModule)
+            ? (mem.activeModule as StrataModule | 'settings')
+            : 'overview';
+    const setActiveModule = useCallback(
+        (m: StrataModule | 'settings'): void => patchMem({ activeModule: m }),
+        [patchMem],
+    );
+    const searchNavTarget = mem.searchNavTarget;
+    const setSearchNavTarget = useCallback(
+        (t: SearchNavTarget | null): void => patchMem({ searchNavTarget: t }),
+        [patchMem],
+    );
 
     // ── Cross-widget module deep-link (DASH-D6) ──────────────────────
     // Cold-open: another widget (e.g. AstraDashboard) staged a module in the
@@ -1762,7 +1785,7 @@ export default function StrataDashboard() {
         };
         window.addEventListener(STRATA_DEEPLINK_EVENT, handler);
         return () => window.removeEventListener(STRATA_DEEPLINK_EVENT, handler);
-    }, []);
+    }, [setActiveModule]);
 
     const renderModule = () => {
         switch (activeModule) {
@@ -1810,7 +1833,7 @@ export default function StrataDashboard() {
 
                     {/* ── Global Search (top of sidebar) ── */}
                     <div style={{ padding: '4px 6px', marginBottom: 4 }}>
-                        <GlobalSearch onNavigate={(r) => {
+                        <GlobalSearch initialQuery={mem.searchQuery} onQueryChange={(q) => patchMem({ searchQuery: q })} onNavigate={(r) => {
                             const typeToModule: Record<string, StrataModule> = {
                                 property: 'properties',
                                 tenant: 'residents',

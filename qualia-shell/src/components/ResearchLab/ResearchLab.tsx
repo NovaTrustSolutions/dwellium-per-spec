@@ -17,9 +17,10 @@
  * (backend deploys are blocked); streaming is also deliberately out (v1 is
  * stream:false).
  */
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ExternalLink, FlaskConical, KeyRound, Play, Trash2 } from 'lucide-react';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { flushWidgetMemory, useWidgetMemory } from '../../lib/widgetMemory';
 import { RESEARCH_PROVIDERS, RESEARCH_PROVIDERS_UPDATED, ResearchProvider } from '../../data/researchProviders';
 import { guardOutbound } from '../../lib/researchLlm/guard';
 import { RESEARCH_PRESETS, ResearchRunResult, runResearchChat } from '../../lib/researchLlm/client';
@@ -37,11 +38,26 @@ export default function ResearchLab() {
     const keys = useSyncExternalStore(researchKeysStore.subscribe, researchKeysStore.getSnapshot, researchKeysStore.getServerSnapshot);
     const log = useSyncExternalStore(researchLogStore.subscribe, researchLogStore.getSnapshot, researchLogStore.getServerSnapshot);
 
-    const [tab, setTab] = useState<Tab>('playground');
-    const [prompt, setPrompt] = useState('');
-    const [presetId, setPresetId] = useState(RESEARCH_PRESETS[0].id);
+    // Plan 055 phase 2 — tab, prompt draft, preset and provider/model picks
+    // reopen exactly where they were left. The prompt draft additionally
+    // flushes on blur + unmount (drafts-flush rule).
+    const [mem, patchMem] = useWidgetMemory('research-lab', {
+        tab: 'playground',
+        prompt: '',
+        presetId: RESEARCH_PRESETS[0].id,
+        selected: {} as Record<string, string>,
+    });
+    const tab: Tab = (['playground', 'providers', 'keys', 'history'] as const).includes(mem.tab as Tab) ? (mem.tab as Tab) : 'playground';
+    const setTab = (t: Tab): void => patchMem({ tab: t });
+    const prompt = mem.prompt;
+    const setPrompt = (p: string): void => patchMem({ prompt: p });
+    const presetId = mem.presetId;
+    const setPresetId = (id: string): void => patchMem({ presetId: id });
     /** providerId → chosen model id (selection = presence in this map). */
-    const [selected, setSelected] = useState<Record<string, string>>({});
+    const selected = mem.selected;
+    const setSelected = (updater: (prev: Record<string, string>) => Record<string, string>): void =>
+        patchMem({ selected: updater(mem.selected) });
+    useEffect(() => flushWidgetMemory, []); // flush the draft on unmount
     const [results, setResults] = useState<ResearchRunResult[] | null>(null);
     const [running, setRunning] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
@@ -126,6 +142,7 @@ export default function ResearchLab() {
                         placeholder="Your research prompt — user-typed text only; no app data is ever attached."
                         value={prompt}
                         onChange={e => setPrompt(e.target.value)}
+                        onBlur={flushWidgetMemory}
                         aria-label="Research prompt"
                     />
                     <div className="rl-select-strip">

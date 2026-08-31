@@ -63,7 +63,7 @@ Open **Tools hub** (Filing Cabinet, or \`help: tools\`). Ten open-source tools l
 
 | Tool | What it does for you | What turns it on |
 |---|---|---|
-| **E-Sign** (Documenso) | Leases and renewals signed online, tracked | A free Documenso account + \`VITE_DOCUMENSO_URL\` |
+| **E-Sign** (Documenso) | Leases and renewals signed online, tracked — opens **inside Dwellium** (a self-hosted Documenso embeds in the widget; the hosted cloud falls back to a tab) | A free Documenso account + \`VITE_DOCUMENSO_URL\` |
 | **Scheduling** (Cal.com) | Showings and vendor visits booked from a link | A free cal.com booking page + \`VITE_CALCOM_URL\` |
 | **Broadcasts** (listmonk) | Resident/owner mailing lists and notices | The listmonk server (tools/listmonk) + \`VITE_LISTMONK_URL\` |
 | **Photo Vault** (Immich) | Inspection and move-in/out photos, searchable | The office-Mac Immich (tools/immich) + \`VITE_IMMICH_URL\` — viewing needs Tailscale on your device |

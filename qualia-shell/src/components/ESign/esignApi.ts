@@ -207,19 +207,41 @@ export function downloadAuditLog(ref: EsignRef, title: string): Promise<EsignRes
     return downloadPdf(`/api/esign/audit-log?${qs.toString()}`, `${title || 'document'} (audit log).pdf`);
 }
 
+type ViteEnv = Record<string, string | undefined> | undefined;
+const importMetaEnv = (): ViteEnv => (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+
+/** Raw self-host URL (VITE_DOCUMENSO_URL) or null when unset — the embed panel keys its setup card on this. */
+export function documensoConfiguredUrl(env: ViteEnv = importMetaEnv()): string | null {
+    const raw = env?.VITE_DOCUMENSO_URL?.trim();
+    return raw ? raw.replace(/\/+$/, '') : null;
+}
+
+/**
+ * Hosted Documenso (app.documenso.com / *.documenso.com) sends X-Frame-Options
+ * SAMEORIGIN → it can't be embedded. The self-host sends `frame-ancestors *`, so
+ * only the cloud host is blocked. Any parse failure counts as cloud (safe: falls back to a tab).
+ */
+export function isCloudDocumensoHost(url: string): boolean {
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        return host === 'documenso.com' || host.endsWith('.documenso.com');
+    } catch {
+        return true;
+    }
+}
+
 /** Documenso app base for deep links — VITE_DOCUMENSO_URL, else Documenso cloud. */
-export function documensoAppUrl(): string {
-    const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_DOCUMENSO_URL;
-    return (env || 'https://app.documenso.com').replace(/\/+$/, '');
+export function documensoAppUrl(env: ViteEnv = importMetaEnv()): string {
+    return documensoConfiguredUrl(env) || 'https://app.documenso.com';
 }
 
 /** Deep link into the exact document screen (never a bare homepage). */
-export function documensoDocumentUrl(doc: { documentId?: number | string | null; envelopeId?: string | null; id?: string | number }): string {
+export function documensoDocumentUrl(doc: { documentId?: number | string | null; envelopeId?: string | null; id?: string | number }, env: ViteEnv = importMetaEnv()): string {
     const id = doc.documentId ?? doc.id ?? doc.envelopeId;
-    return `${documensoAppUrl()}/documents/${encodeURIComponent(String(id ?? ''))}`;
+    return `${documensoAppUrl(env)}/documents/${encodeURIComponent(String(id ?? ''))}`;
 }
 
 /** Signing link from a recipient token (same shape the backend builds for tenants). */
-export function signingUrlFromToken(token: string): string {
-    return `${documensoAppUrl()}/sign/${encodeURIComponent(token)}`;
+export function signingUrlFromToken(token: string, env: ViteEnv = importMetaEnv()): string {
+    return `${documensoAppUrl(env)}/sign/${encodeURIComponent(token)}`;
 }

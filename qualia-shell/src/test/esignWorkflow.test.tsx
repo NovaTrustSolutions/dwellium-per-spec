@@ -113,15 +113,18 @@ describe('esignApi deep links + action URLs', () => {
 });
 
 describe('ESign widget — documents list', () => {
-    it('lists merged rows with a status pill and an Open-in-Documenso deep link', async () => {
+    it('lists merged rows with a status pill and an in-Dwellium Open-in-Documenso action (button, not a tab)', async () => {
         stubBackend(u => (u.includes('/api/esign/envelopes')
             ? jsonResponse({ success: true, data: [{ id: 'envl_1', status: 'COMPLETED' }] })
             : undefined));
         render(<ESign />);
         await waitFor(() => expect(screen.getByText('Lease — Woodland Parc 2B')).toBeInTheDocument());
         expect(screen.getByText('COMPLETED')).toBeInTheDocument();
-        expect(screen.getByLabelText('Open Lease — Woodland Parc 2B in Documenso'))
-            .toHaveAttribute('href', `${DOCUMENSO_BASE}/documents/555`);
+        // The primary "open" action embeds inside Dwellium — a button with no href/target, never a new tab.
+        const openBtn = screen.getByLabelText('Open Lease — Woodland Parc 2B in Documenso');
+        expect(openBtn.tagName).toBe('BUTTON');
+        expect(openBtn).not.toHaveAttribute('href');
+        expect(openBtn).not.toHaveAttribute('target');
     });
 
     it('503 → needs-setup card; network failure → error state with Retry', async () => {

@@ -78,10 +78,15 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
         ...(preset.system ? [{ role: 'system', content: preset.system }] : []),
         { role: 'user', content: req.prompt },
     ];
+    // Keyless providers (e.g. Pollinations): POST to the base URL itself — it
+    // already ends in /openai — and send NO Authorization header.
+    const url = provider.keyless ? provider.baseUrl : chatCompletionsUrl(provider.baseUrl);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (!provider.keyless) headers.Authorization = `Bearer ${req.apiKey}`;
     try {
-        const res = await fetch(chatCompletionsUrl(provider.baseUrl), {
+        const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${req.apiKey}` },
+            headers,
             body: JSON.stringify({ model: req.model, messages, stream: false }),
             signal: req.signal,
         });

@@ -11,10 +11,23 @@ import { defaultDockItems } from '../data/hierarchy';
 import { getIcon } from '../components/Sidebar/iconMap';
 
 describe('provider registry', () => {
-    it('carries the 21 browser-CORS-verified providers (20 permanent + OpenRouter renewable) — Ilya 2026-08-29: exclude browser-refusing providers entirely', () => {
-        expect(RESEARCH_PROVIDERS).toHaveLength(21);
-        expect(RESEARCH_PROVIDERS.filter(p => p.tier === 'permanent')).toHaveLength(20);
-        expect(RESEARCH_PROVIDERS.filter(p => p.tier === 'renewable').map(p => p.id)).toEqual(['openrouter']);
+    it('carries 21 keyed browser-CORS-verified providers + 1 keyless = 22 (keyed: 20 permanent + OpenRouter renewable) — Ilya 2026-08-29 exclude browser-refusers, 2026-08-31 add keyless Pollinations', () => {
+        expect(RESEARCH_PROVIDERS).toHaveLength(22);
+        const keyed = RESEARCH_PROVIDERS.filter(p => !p.keyless);
+        const keyless = RESEARCH_PROVIDERS.filter(p => p.keyless);
+        expect(keyed).toHaveLength(21);
+        expect(keyless.map(p => p.id)).toEqual(['pollinations']);
+        expect(keyed.filter(p => p.tier === 'permanent')).toHaveLength(20);
+        expect(keyed.filter(p => p.tier === 'renewable').map(p => p.id)).toEqual(['openrouter']);
+    });
+    it('the keyless Pollinations provider sits at the top, is keyless, POSTs to a /openai base, and ships EXACTLY the 2 probe-verified models (2026-08-31)', () => {
+        expect(RESEARCH_PROVIDERS[0].id).toBe('pollinations');
+        const p = getResearchProvider('pollinations')!;
+        expect(p.keyless).toBe(true);
+        expect(p.baseUrl).toBe('https://text.pollinations.ai/openai');
+        expect(p.baseUrl.endsWith('/openai')).toBe(true);
+        expect(p.models?.map(m => m.id)).toEqual(['openai', 'openai-fast']);
+        expect(p.getKeyUrl).toBe('');
     });
     it('ships ONLY the browser-verified set — none of the excluded providers, no placeholders, no duplicate endpoints', () => {
         const EXCLUDED = ['nvidia-nim', 'sambanova', 'kilo-code', 'ollama-cloud', 'opencode-zen', 'github-models', 'glhf-chat', 'cline', 'cloudflare-workers-ai', 'grok-xai'];

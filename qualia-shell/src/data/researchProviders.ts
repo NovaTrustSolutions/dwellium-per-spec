@@ -23,6 +23,16 @@
  *   cloudflare-workers-ai — {account_id} placeholder base URL;
  *   cline — empty base URL in the source README;
  *   grok-xai — duplicate of xai (same https://api.x.ai/v1).
+ *
+ * KEYLESS ADDITION (Ilya 2026-08-31 — "select different models without having
+ * to get an API key"). One keyless provider, Pollinations, probed live from the
+ * production origin on 2026-08-31: POST to `https://text.pollinations.ai/openai`
+ * (the base ALREADY ends in /openai — do NOT append /chat/completions) returns
+ * 200 with `choices[0].message.content`, `access-control-allow-origin: *`, and
+ * NO Authorization header sent; reliable 3/3. ONLY the two models that actually
+ * complete are shipped: `openai` and `openai-fast`. Every other alias
+ * (mistral/llama/deepseek/…) 404s or needs a token → NOT included. Every OTHER
+ * provider in this file genuinely requires a key, so keyless = Pollinations only.
  */
 
 export interface ResearchProvider {
@@ -50,12 +60,30 @@ export interface ResearchProvider {
     unusable?: boolean;
     /** Why it is unusable / any substitution note. */
     note?: string;
+    /** No API key required — POST to `baseUrl` directly, no Authorization header. */
+    keyless?: boolean;
+    /** Fixed model menu (keyless providers have no free-text model field). */
+    models?: { id: string; label: string }[];
 }
 
 export const RESEARCH_PROVIDERS_SOURCE = 'https://github.com/NovaTrustSolutions/awesome-freellm-apis';
 export const RESEARCH_PROVIDERS_UPDATED = '2026-08-28';
 
 export const RESEARCH_PROVIDERS: readonly ResearchProvider[] = [
+    {
+        id: 'pollinations', name: 'Pollinations (free · no key)',
+        // Base ALREADY ends in /openai — the client POSTs here directly (no
+        // /chat/completions suffix) and sends NO Authorization header.
+        baseUrl: 'https://text.pollinations.ai/openai',
+        keyless: true,
+        models: [
+            { id: 'openai', label: 'GPT-class · anonymous' },
+            { id: 'openai-fast', label: 'GPT-OSS-20B reasoning' },
+        ],
+        getKeyUrl: '', creditCard: 'No', freeModels: 2, maxContext: 'n/a',
+        modalities: ['text'], tier: 'permanent',
+        note: 'Free shared endpoint — anonymous, best-effort, rate-limited.',
+    },
     { id: 'modelscope', name: 'ModelScope', baseUrl: 'https://api-inference.modelscope.cn/v1', getKeyUrl: 'https://modelscope.cn/my/myaccesstoken', creditCard: 'Registration', freeModels: 59, maxContext: '1M', modalities: ['audio', 'image', 'reasoning', 'text', 'video', 'vision'], tier: 'permanent' },
     {
         id: 'google-gemini', name: 'Google Gemini',

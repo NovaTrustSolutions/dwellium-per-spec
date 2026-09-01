@@ -74,7 +74,8 @@ export default function ResearchLab() {
                 return next;
             }
             if (Object.keys(prev).length >= MAX_SELECTED) return prev;
-            return { ...prev, [p.id]: '' };
+            // Keyless providers ship a fixed model menu — default to the first.
+            return { ...prev, [p.id]: p.keyless && p.models?.length ? p.models[0].id : '' };
         });
     };
 
@@ -103,7 +104,7 @@ export default function ResearchLab() {
         const entries = Object.entries(selected);
         if (!prompt.trim()) { setNotice('Type a prompt first.'); return; }
         if (entries.length === 0) { setNotice('Pick 1–4 providers below.'); return; }
-        const missingKey = entries.find(([id]) => !getResearchKey(id));
+        const missingKey = entries.find(([id]) => !isKeyless(id) && !getResearchKey(id));
         if (missingKey) { setNotice(`No API key set for ${providerName(missingKey[0])} — add it in the Keys tab.`); return; }
         const missingModel = entries.find(([, m]) => !m.trim());
         if (missingModel) { setNotice(`Enter a model id for ${providerName(missingModel[0])}.`); return; }
@@ -152,26 +153,45 @@ export default function ResearchLab() {
                                 key={p.id}
                                 className={p.id in selected ? 'rl-chip active' : 'rl-chip'}
                                 disabled={cors[p.id] === 'blocked'}
-                                title={cors[p.id] === 'blocked' ? 'provider stopped allowing browser calls — re-audit needed' : p.name}
+                                title={cors[p.id] === 'blocked' ? (p.keyless ? 'temporarily unreachable — try again later' : 'provider stopped allowing browser calls — re-audit needed') : p.name}
                                 onClick={() => toggleProvider(p)}
                             >
-                                {p.name}{keys[p.id] ? '' : ' (no key)'}
+                                {p.name}{p.keyless ? '' : keys[p.id] ? '' : ' (no key)'}
+                                {p.keyless && <span className="rl-chip-badge">no key needed</span>}
                             </button>
                         ))}
                     </div>
                     {Object.keys(selected).length > 0 && (
                         <div className="rl-models">
-                            {Object.entries(selected).map(([id, model]) => (
-                                <label key={id} className="rl-label">
-                                    {providerName(id)} model
-                                    <input
-                                        value={model}
-                                        placeholder="model id, e.g. llama-3.3-70b-versatile"
-                                        onChange={e => setSelected(prev => ({ ...prev, [id]: e.target.value }))}
-                                        aria-label={`${providerName(id)} model id`}
-                                    />
-                                </label>
-                            ))}
+                            {Object.entries(selected).map(([id, model]) => {
+                                const p = RESEARCH_PROVIDERS.find(x => x.id === id);
+                                return (
+                                    <label key={id} className="rl-label">
+                                        {providerName(id)} model
+                                        {p?.keyless && p.models
+                                            ? (
+                                                <>
+                                                    <select
+                                                        value={model}
+                                                        onChange={e => setSelected(prev => ({ ...prev, [id]: e.target.value }))}
+                                                        aria-label={`${providerName(id)} model`}
+                                                    >
+                                                        {p.models.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                                                    </select>
+                                                    {p.note && <span className="rl-hint rl-note">{p.note}</span>}
+                                                </>
+                                            )
+                                            : (
+                                                <input
+                                                    value={model}
+                                                    placeholder="model id, e.g. llama-3.3-70b-versatile"
+                                                    onChange={e => setSelected(prev => ({ ...prev, [id]: e.target.value }))}
+                                                    aria-label={`${providerName(id)} model id`}
+                                                />
+                                            )}
+                                    </label>
+                                );
+                            })}
                         </div>
                     )}
                     {notice && <div className="rl-notice" role="alert">{notice}</div>}
@@ -224,11 +244,13 @@ export default function ResearchLab() {
                                 {p.unusable
                                     ? <span className="rl-badge rl-badge-bad">unusable</span>
                                     : cors[p.id] === 'blocked'
-                                        ? <span className="rl-badge rl-badge-bad">stopped allowing browser calls</span>
+                                        ? <span className="rl-badge rl-badge-bad">{p.keyless ? 'temporarily unreachable' : 'stopped allowing browser calls'}</span>
                                         : cors[p.id] === 'ok'
                                             ? <span className="rl-badge rl-badge-ok">browser-direct ok</span>
                                             : <span className="rl-badge">CORS untested</span>}
-                                <span className={keys[p.id] ? 'rl-badge rl-badge-ok' : 'rl-badge'}>{keys[p.id] ? 'key set' : 'no key'}</span>
+                                {p.keyless
+                                    ? <span className="rl-badge rl-badge-ok">no key needed</span>
+                                    : <span className={keys[p.id] ? 'rl-badge rl-badge-ok' : 'rl-badge'}>{keys[p.id] ? 'key set' : 'no key'}</span>}
                                 {p.getKeyUrl && (
                                     <a href={p.getKeyUrl} target="_blank" rel="noopener noreferrer">
                                         Get key <ExternalLink size={12} aria-hidden />
@@ -245,7 +267,7 @@ export default function ResearchLab() {
                     <div className="rl-hint">
                         <KeyRound size={13} aria-hidden /> Keys are stored per-account like the app's other keys and sync encrypted with your account. The main app's AI never sees them.
                     </div>
-                    {RESEARCH_PROVIDERS.filter(p => !p.unusable).map(p => (
+                    {RESEARCH_PROVIDERS.filter(p => !p.unusable && !p.keyless).map(p => (
                         <KeyRow key={p.id} provider={p} hasKey={!!keys[p.id]} />
                     ))}
                 </div>
@@ -273,6 +295,10 @@ export default function ResearchLab() {
 
 function providerName(id: string): string {
     return RESEARCH_PROVIDERS.find(p => p.id === id)?.name ?? id;
+}
+
+function isKeyless(id: string): boolean {
+    return !!RESEARCH_PROVIDERS.find(p => p.id === id)?.keyless;
 }
 
 function KeyRow({ provider, hasKey }: { provider: ResearchProvider; hasKey: boolean }) {

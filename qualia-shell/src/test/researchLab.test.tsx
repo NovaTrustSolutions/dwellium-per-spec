@@ -112,13 +112,38 @@ describe('ResearchLab widget', () => {
         expect(screen.getByRole('alert').textContent).toMatch(/No API key set for Groq/);
     });
 
-    it('Providers tab lists the 21 browser-verified rows — excluded providers are simply absent (Ilya 2026-08-29)', () => {
+    it('Providers tab lists the 22 rows (21 keyed + 1 keyless) — excluded providers are simply absent (Ilya 2026-08-29)', () => {
         render(<ResearchLab />);
-        fireEvent.click(screen.getByRole('tab', { name: /Providers \(21\)/ }));
+        fireEvent.click(screen.getByRole('tab', { name: /Providers \(22\)/ }));
         expect(screen.getByText('Groq')).toBeInTheDocument();
         expect(screen.queryByText('Cline')).not.toBeInTheDocument();
         expect(screen.queryByText('NVIDIA NIM')).not.toBeInTheDocument();
         expect(screen.queryByText('unusable')).not.toBeInTheDocument();
         expect(screen.getAllByText(/Get key/)).not.toHaveLength(0);
+    });
+
+    it('the keyless Pollinations provider is always-ready: no key input, a model dropdown of both labels, and Run works with zero setup', async () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson('anonymous hello'));
+        render(<ResearchLab />);
+
+        // Keys tab: no key input for the keyless provider.
+        fireEvent.click(screen.getByRole('tab', { name: 'Keys' }));
+        expect(screen.queryByLabelText('Pollinations (free · no key) API key')).not.toBeInTheDocument();
+
+        // Playground: select it — no key was ever set.
+        fireEvent.click(screen.getByRole('tab', { name: 'Playground' }));
+        typePrompt('hello there');
+        fireEvent.click(screen.getByRole('button', { name: /Pollinations/ }));
+
+        // Model picker is a dropdown carrying both verified labels.
+        const dropdown = screen.getByLabelText('Pollinations (free · no key) model');
+        expect(dropdown.tagName).toBe('SELECT');
+        expect(screen.getByRole('option', { name: 'GPT-class · anonymous' })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: 'GPT-OSS-20B reasoning' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+        expect(await screen.findByText('anonymous hello')).toBeInTheDocument();
+        // Never nagged for a key.
+        expect(screen.queryByText(/No API key set/)).not.toBeInTheDocument();
     });
 });

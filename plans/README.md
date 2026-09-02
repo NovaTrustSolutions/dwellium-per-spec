@@ -76,6 +76,7 @@ Cloud Run env wipe, OAuth origin_mismatch, consent-screen 403). Selected by Ilya
 | 052 | NotebookLM → ARA Library (mirror notebook sources into the document vector store; ARA cites them) | P1 | M | backend + tools + frontend | 022, 046-A | **DONE 2026-08-22** — frontend `2a7ef45`, backend rev `00051-t7v`; first sync pending Ilya's `nlm login -p andy/-p ilya` + `tools/notebooklm/sync.sh` |
 | 054 | [Operational cutover](054-operational-cutover.md) | P1 | M | ops + env + seeds | 053 | **ACTIVE 2026-08-27** — 6 phases, each with DoD + verify commands; phase 1 blocked on Ilya's `gcloud auth login` |
 | 055 | [Total Recall](055-total-recall.md) | P1 | L | session restore + widget memory + continuity UX + AI weave | 046, 049 | **ACTIVE 2026-08-30** — desktop is amnesiac (windows useState([])); 5 phases w/ DoD+verify |
+| 056 | [The first session](056-first-session.md) | P1 | L | first-run + tool connection store + progress indicator | 055, 053 | **ACTIVE 2026-08-31** — keyless first win, in-app tool connection, one calm indicator |
 
 **Parallel dispatch guide (one wave, 3–5 agents):**
 

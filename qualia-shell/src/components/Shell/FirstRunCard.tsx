@@ -3,10 +3,7 @@
  *
  * Three steps, each ticked from stores that already exist (no polling, no
  * backend): (1) an active LLM key (integrationsStore), (2) a first property
- * THE USER ADDED (plan 056 §1: the per-user `done:'data'` marker stamped by the
- * Strata add flow — the shared backend's global /properties list is NOT the
- * user's data and must not self-tick), (3) an ARA reply (hermesLearningStore
- * via araChatRuns — hello-mode replies count too).
+ * (useProperties), (3) an ARA reply (hermesLearningStore via araChatRuns).
  * Live-true → markDone (sticky). Dismiss = this session; "Don't show again"
  * = durable per user. MorningBriefBanner sister (own CSS; fixed, bottom-left
  * so the Assistant FAB / toast corner stays clear).
@@ -16,6 +13,7 @@ import { Check, X } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
+import { useProperties } from '../StrataDashboard/useStrataQueries';
 import { openStrataModule } from '../StrataDashboard/strataDeepLink';
 import { hermesLearningStore, hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
 import { araChatRuns } from '../ARAConsole/araHermes';
@@ -47,7 +45,7 @@ export const ARA_HELLO_PROMPT = 'What can you help me with in Dwellium?';
 const COPY: Record<FirstRunStep, { title: string; sub: string; cta: string }> = {
     key: { title: 'Add an AI key', sub: 'ARA and every AI widget run on your own key.', cta: 'Open API Keys' },
     data: { title: 'Bring your data', sub: 'Add your first property so Strata has something to show.', cta: 'Add a property' },
-    ara: { title: 'Ask ARA', sub: 'Say hello — ARA answers in seconds, no key needed.', cta: 'Ask ARA' },
+    ara: { title: 'Ask ARA', sub: 'Say hello — ARA answers in seconds.', cta: 'Ask ARA' },
 };
 
 const ACTIONS: Record<FirstRunStep, () => void> = {
@@ -79,11 +77,12 @@ export default function FirstRunCard() {
         window.addEventListener(FIRST_RUN_REPLAY_EVENT, onReplay);
         return () => window.removeEventListener(FIRST_RUN_REPLAY_EVENT, onReplay);
     }, []);
+    // Only fetch /properties while the card can actually show (no extra call once hidden for good).
+    const properties = useProperties(!state.neverShow && !sessionDismissed).data;
+
     const live = {
         hasLlm: hasActiveLlm(integrations.llm),
-        // Plan 056 §1: no live global signal — only the per-user marker the
-        // Strata add flow stamps (markDone('data') in PropertiesModule).
-        hasData: false,
+        hasData: (properties?.length ?? 0) > 0,
         araReplied: araChatRuns().length > 0,
     };
     const derived = deriveSteps(live, state);
@@ -91,8 +90,9 @@ export default function FirstRunCard() {
     // Live-true → sticky done.
     useEffect(() => {
         if (live.hasLlm) markDone('key');
+        if (live.hasData) markDone('data');
         if (live.araReplied) markDone('ara');
-    }, [live.hasLlm, live.araReplied]);
+    }, [live.hasLlm, live.hasData, live.araReplied]);
 
     // Plan 047 §3: first ARA reply unlocks the AI tier ONCE — expand "AI Tools"
     // + toast, only for users who went through the role pick (legacy accounts

@@ -64,10 +64,6 @@ import { resetAraGlance } from '../lib/araDailyGlance';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 import { sessionRestoreStore, type SessionSnapshot } from '../lib/sessionRestoreStore';
 import { resetResumeChip } from '../components/ARAConsole/araResumeContext';
-import { araChatRuns } from '../components/ARAConsole/araHermes';
-import { HELLO_MODE_URL } from '../lib/araHelloMode';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 async function* offlineStream() {
     yield { delta: 'Offline ', text: 'Offline ', done: false };
@@ -225,7 +221,6 @@ describe('ARAConsole', () => {
     afterEach(() => {
         backendStatusStore.reset();
         vi.useRealTimers();
-        vi.unstubAllGlobals();
     });
 
     // Plan 055 phase 2 — the unsent composer draft restores per mode.
@@ -254,10 +249,8 @@ describe('ARAConsole', () => {
 
         act(() => { backendStatusStore.markOffline('Backend unreachable'); });
 
-        // Plan 056 §1: keyless → the banner says hello mode is what will answer (CTA kept).
         expect(await screen.findByRole('button', { name: 'Open API Keys' })).toBeInTheDocument();
-        expect(screen.getByText(/Hello mode active — ARA answers anonymously with no property data/)).toBeInTheDocument();
-        expect(screen.queryByText(/No AI key configured and the backend is unreachable/)).toBeNull();
+        expect(screen.getByText(/No AI key configured and the backend is unreachable/)).toBeInTheDocument();
     });
 
     it('shows context sources and diagnostics for ARA replies', async () => {
@@ -349,10 +342,8 @@ describe('ARAConsole', () => {
         expect(await screen.findByText('Restored conversation reply.')).toBeInTheDocument();
     });
 
-    it('surfaces a failure banner when the backend chat call fails, no LLM is configured AND hello mode is unreachable', async () => {
+    it('surfaces a failure banner when the backend chat call fails and no LLM is configured', async () => {
         chatShouldThrow = true;
-        const fetchMock = vi.fn().mockRejectedValue(new TypeError('offline'));
-        vi.stubGlobal('fetch', fetchMock);
         const user = userEvent.setup();
         render(<ARAConsole />);
 
@@ -364,94 +355,6 @@ describe('ARAConsole', () => {
         expect(await screen.findByText(/Last request failed:/)).toBeInTheDocument();
         expect(await screen.findByText(/I hit a snag — Backend unreachable/)).toBeInTheDocument();
         expect(callLlmMock).not.toHaveBeenCalled();
-        // Hello mode WAS tried first (plan 056 §1) — it just couldn't be reached.
-        expect(fetchMock).toHaveBeenCalledWith(HELLO_MODE_URL, expect.anything());
-    });
-
-    // ── Plan 056 §1: hello mode — keyless first reply ─────────────────────
-    it('hello mode: no key + backend chat fails → keyless reply with the chip; ONLY the typed text leaves', async () => {
-        chatShouldThrow = true;
-        const fetchMock = vi.fn().mockResolvedValue({
-            ok: true, status: 200,
-            json: async () => ({ choices: [{ message: { content: 'Hi from hello mode.' } }] }),
-        });
-        vi.stubGlobal('fetch', fetchMock);
-        const before = araChatRuns().length;
-        const user = userEvent.setup();
-        render(<ARAConsole />);
-
-        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
-        await user.type(textbox, 'What can you help me with in Dwellium?');
-        await user.click(screen.getByRole('button', { name: 'Send message' }));
-
-        expect(await screen.findByText('Hi from hello mode.')).toBeInTheDocument();
-        // In-UI label on the message + the "Hello mode active" banner (CTA kept).
-        expect(screen.getByRole('button', { name: /Hello mode — free, anonymous, no property data · Add a key for the full ARA/ })).toBeInTheDocument();
-        expect(screen.getByText(/Hello mode active — ARA answers anonymously with no property data/)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Open API Keys' })).toBeInTheDocument();
-        expect(screen.queryByText(/Last request failed:/)).toBeNull();
-        expect(callLlmMock).not.toHaveBeenCalled();
-        expect(streamLlmMock).not.toHaveBeenCalled();
-
-        // Wire guard from INSIDE ARA: the user message is the raw typed text — no
-        // humanize prefix, no Hermes hints, no agent-context block, no auth.
-        const helloCalls = fetchMock.mock.calls.filter(([u]) => u === HELLO_MODE_URL);
-        expect(helloCalls).toHaveLength(1);
-        const init = helloCalls[0][1] as RequestInit & { body: string };
-        expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
-        const body = JSON.parse(init.body);
-        expect(body.messages).toHaveLength(2);
-        expect(body.messages[1]).toEqual({ role: 'user', content: 'What can you help me with in Dwellium?' });
-        expect(init.body).not.toMatch(/Context from past conversations|Agent Context|Reply style|Inbox|ruVector/);
-
-        // First-win step 2 ticks in either mode: the exchange is recorded like any ARA reply.
-        expect(araChatRuns().length).toBe(before + 1);
-    });
-
-    it('key present → normal ARA path resumes; hello mode is never called', async () => {
-        chatShouldThrow = true;
-        llmActive = true;
-        const fetchMock = vi.fn();
-        vi.stubGlobal('fetch', fetchMock);
-        const user = userEvent.setup();
-        render(<ARAConsole />);
-
-        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
-        await user.type(textbox, 'What should I do next?');
-        await user.click(screen.getByRole('button', { name: 'Send message' }));
-
-        expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
-        expect(fetchMock.mock.calls.some(([u]) => u === HELLO_MODE_URL)).toBe(false);
-        expect(screen.queryByRole('button', { name: /Hello mode — free/ })).toBeNull();
-        expect(screen.queryByText(/Hello mode active/)).toBeNull();
-    });
-
-    // ── Plan 056 §1: the intro video never blocks the composer / first reply ──
-    it('intro video is an inline strip above the chat, not an overlay; composer stays reachable; Skip dismisses', async () => {
-        sessionStorage.clear();
-        vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
-        vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
-        const { container } = render(<ARAConsole />);
-
-        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
-        const dialog = screen.getByRole('dialog', { name: 'ARA intro' });
-        const chatArea = container.querySelector('.ara-chat-area')!;
-        // Layering: a plain flex child of the console, before the chat area, containing neither the chat nor the composer.
-        expect(dialog.parentElement).toBe(container.querySelector('.ara-console'));
-        expect(dialog.compareDocumentPosition(chatArea) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(dialog.contains(chatArea)).toBe(false);
-        expect(dialog.contains(textbox)).toBe(false);
-        expect(dialog.getAttribute('aria-modal')).toBeNull();
-        // The stylesheet backs it: `.ara-intro` is position:relative, never an inset:0 overlay.
-        const css = readFileSync(resolve(process.cwd(), 'src/components/ARAConsole/ARAConsole.css'), 'utf8');
-        const rule = css.slice(css.indexOf('.ara-intro {'), css.indexOf('}', css.indexOf('.ara-intro {')));
-        expect(rule).toMatch(/position:\s*relative/);
-        expect(rule).toMatch(/flex:\s*none/);
-        expect(rule).not.toMatch(/inset:\s*0/);
-
-        fireEvent.click(screen.getByRole('button', { name: /skip/i }));
-        expect(screen.queryByRole('dialog', { name: 'ARA intro' })).toBeNull();
-        expect(araPrefsStore.getSnapshot().introSeen).toBe(true);
     });
 
     it('falls back to the personal LLM key when the backend chat call fails (gap A1) — streamed (046-A3)', async () => {

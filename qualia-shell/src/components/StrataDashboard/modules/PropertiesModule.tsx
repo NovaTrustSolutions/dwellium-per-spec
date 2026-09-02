@@ -18,6 +18,7 @@ import FixedAssetsTable from './__properties/FixedAssetsTable';
 import { useStrataNav } from '../StrataNavContext';
 // Plan 053 Whiteboard bridge — single import + single JSX line (see whiteboardBridge.tsx).
 import { WhiteboardAction } from '../../Whiteboard/whiteboardBridge';
+import { markDone as markFirstRunDone } from '../../../lib/firstRunStore';
 
 interface LinkedData {
     workitems: Workitem[];
@@ -442,6 +443,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
             });
             setShowForm(false);
             invalidate('properties');
+            markFirstRunDone('data'); // plan 056 §1: the user's OWN first property ticks "Bring your data"
         } catch (err) { console.error(err); }
     };
 

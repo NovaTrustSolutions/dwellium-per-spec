@@ -105,7 +105,7 @@ describe('ARAConsole', () => {
         resetAraGlance();
         resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
         localStorage.clear();
-        localStorage.setItem('dwellium-ara-tts', 'false');
+        araPrefsStore.set('ttsEnabled', false);
         Element.prototype.scrollIntoView = vi.fn();
         Object.defineProperty(window, 'speechSynthesis', {
             value: {

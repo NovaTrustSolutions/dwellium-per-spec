@@ -45,6 +45,7 @@ import '../shared/FileUploadButton.css';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
 import VoiceVisualizer from './VoiceVisualizer';
 import AraIntroVideo from './AraIntroVideo';
+import { callHelloMode, HELLO_MODE_BANNER, HELLO_MODE_CHIP } from '../../lib/araHelloMode';
 import AgentEta from '../common/AgentEta';
 import AraSidePanel, { type AraSidePanelView } from './AraSidePanel';
 import AvatarHarness, { type AvatarHarnessHandle } from '../AvatarHarness/AvatarHarness';
@@ -131,6 +132,8 @@ interface ChatMessage {
     observability?: MessageObservability;
     /** Phase-10 A2: Hermes run id backing this answer — enables thumbs-up/down voting. */
     hermesRunId?: string;
+    /** Plan 056 §1: answered keyless via hello mode (no property data was sent). */
+    helloMode?: boolean;
 }
 
 interface VoiceStatus {
@@ -449,6 +452,9 @@ export default function ARAConsole() {
     // Executive Assistant is ARA's default lens (the general-purpose persona).
     const [activeMode, setActiveMode] = useState<string>('executive-assistant');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    // Plan 056 §1: a hello-mode reply happened this session → banner says so
+    // while still keyless (flips off by itself the moment a key exists).
+    const [helloReplied, setHelloReplied] = useState(false);
     // Morning-brief hand-off (banner → ARA). Captured ONCE into a ref so the
     // session-restore effect (which re-runs and would otherwise wipe a posted
     // brief under StrictMode) can re-include it. briefTick re-fires restore when
@@ -1339,6 +1345,25 @@ export default function ARAConsole() {
                     const sid = streamedId;
                     if (sid) setMessages(prev => prev.filter(m => m.id !== sid));
                 }
+            } else {
+                // ── Plan 056 §1 hello mode: NO key → keyless, anonymous reply so a
+                // brand-new user never dead-ends. ONLY the user's typed text goes
+                // out (never outgoingMessage / hints / context) — see araHelloMode.
+                try {
+                    const helloText = await callHelloMode(text);
+                    const hermesRec = recordAraChat(text, helloText); // first-win step 2 ticks in either mode
+                    setHelloReplied(true);
+                    setMessages(prev => [...prev, createChatMessage({
+                        role: 'assistant',
+                        content: helloText,
+                        mode: modeToUse,
+                        hermesRunId: hermesRec.id,
+                        helloMode: true,
+                    })]);
+                    return;
+                } catch (helloErr) {
+                    console.warn('[ARA] hello mode failed:', helloErr);
+                }
             }
 
             setRequestError(message);
@@ -2109,9 +2134,6 @@ export default function ARAConsole() {
                 '--ara-side-w': sidePanel !== 'none' ? `${sideWidth}px` : '0px',
             } as React.CSSProperties}
         >
-            {/* Startup intro — plays a video each time ARA opens (skippable). */}
-            <AraIntroVideo />
-
             {/* Voice-reactive visualizer overlay — fades in only while ARA (Aura)
                 is speaking; taps the live TTS audio for real audio reactivity.
                 Switchable templates (Galaxy / Orb / Bars / Waveform). */}
@@ -2326,6 +2348,10 @@ export default function ARAConsole() {
                 </div>
             )}
 
+            {/* Startup intro — plan 056 §1: inline strip ABOVE the chat (never an
+                overlay), so the composer and the first reply stay usable. */}
+            <AraIntroVideo />
+
             {/* Chat Area */}
             <div className="ara-chat-area">
                 {messages.map((msg) => (
@@ -2341,6 +2367,11 @@ export default function ARAConsole() {
                                 )}
                                 {msg.entityGuardianActive && (
                                     <span className="ara-msg-guardian" title="Entity Guardian active"><Shield size={12} /></span>
+                                )}
+                                {msg.helloMode && (
+                                    <button type="button" className="ara-msg-hello" onClick={ai.configure} title="Open API Keys">
+                                        {HELLO_MODE_CHIP}
+                                    </button>
                                 )}
                                 <span className="ara-msg-time">
                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -2676,7 +2707,10 @@ export default function ARAConsole() {
             )}
 
             {/* Input Bar */}
-            {ai.status !== 'backend-only' && <AIDegradedState availability={ai} />}
+            {/* Plan 056 §1: keyless → "Hello mode active" (CTA kept); a key present → normal states. */}
+            {!hasActiveLlm(integrations.llm) && (ai.status === 'unavailable' || helloReplied)
+                ? <AIDegradedState availability={ai} needsKey reason={HELLO_MODE_BANNER} />
+                : ai.status !== 'backend-only' && <AIDegradedState availability={ai} />}
             {/* 055-P4: "last working on" chip — widget label + doc basename ONLY
                 (never file contents/paths); dismissal lasts the SPA session. */}
             {resumeCtx && !resumeChipDismissed && (

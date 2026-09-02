@@ -2646,17 +2646,19 @@
 }
 
 /* ── ARA startup intro video ────────────────────────────────────────────
-   Full-bleed splash that plays each time ARA opens; sits above all console
-   chrome (the console z-index scale tops out at 100). */
+   Plan 056 §1: an INLINE strip between the mode bar and the chat — a normal
+   flex child, never position:absolute / inset:0 — so it can't cover the
+   composer or the first reply. Skippable; plays once per user/device. */
 .ara-intro {
-    position: absolute;
-    inset: 0;
-    z-index: 120;
+    position: relative;
+    flex: none;
+    height: clamp(120px, 26vh, 220px);
+    margin: 8px 16px 0;
     display: flex;
     align-items: center;
     justify-content: center;
     background: #000;
-    border-radius: inherit;
+    border-radius: 12px;
     overflow: hidden;
     animation: ara-intro-fade 220ms ease-out;
 }
@@ -2704,6 +2706,21 @@
     filter: brightness(1.08);
     background: var(--ara-accent, #fff);
 }
+
+/* Plan 056 §1: hello-mode chip on keyless replies. */
+.ara-msg-hello {
+    margin-left: 6px;
+    padding: 2px 8px;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--text-secondary, #b9c0c8);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ara-msg-hello:hover { background: rgba(255, 255, 255, 0.12); }
 
 /* ── Personas eyebrow + mode-bar view toggles ───────────────────────────── */
 .ara-mode-eyebrow {

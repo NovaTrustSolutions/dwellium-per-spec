@@ -39,7 +39,7 @@ vi.mock('../components/ARAConsole/araHermes', async () => {
 });
 
 import FirstRunCard, { ARA_HELLO_PROMPT } from '../components/Shell/FirstRunCard';
-import { firstRunStore, firstRunUserIdHolder, resetFirstRun, FIRST_RUN_DISMISSED_SESSION_KEY } from '../lib/firstRunStore';
+import { firstRunStore, firstRunUserIdHolder, markDone, resetFirstRun, FIRST_RUN_DISMISSED_SESSION_KEY } from '../lib/firstRunStore';
 import { integrationsStore, saveIntegrations } from '../utils/integrationsStore';
 import { emptyIntegrations } from '../types/integrations';
 import { araPromptBus, openWidgetBus } from '../lib/busChannels';
@@ -119,11 +119,35 @@ describe('FirstRunCard', () => {
         expect(firstRunStore.getSnapshot().neverShow).toBe(false);
     });
 
-    it('a property + an ARA reply tick steps 2 and 3', () => {
-        live.properties = [{ id: 'p1' }];
+    // Plan 056 §1: the shared backend's global /properties list (158 units on
+    // the prod backend) is NOT the user's data — it must never self-tick step 2.
+    it('step 2 "Bring your data": global backend properties alone do NOT tick it', () => {
+        live.properties = [{ id: 'p1' }, { id: 'p2' }];
+        render(<FirstRunCard />);
+        expect(screen.getByText('0/3')).toBeInTheDocument();
+        expect(firstRunStore.getSnapshot().done).not.toContain('data');
+        expect(screen.getByRole('button', { name: 'Add a property' })).toBeInTheDocument();
+    });
+
+    it('step 2 ticks when the USER adds a property (per-user marker from the Strata add flow)', () => {
+        render(<FirstRunCard />);
+        act(() => { markDone('data'); }); // what PropertiesModule.handleCreate calls on success
+        expect(screen.getByText('1/3')).toBeInTheDocument();
+        expect(firstRunStore.getSnapshot().done).toEqual(['data']);
+    });
+
+    it('step 3 ticks on the first ARA reply in either mode (hello-mode replies are recorded the same way)', () => {
         live.araRuns = [{ id: 'r1' }];
         render(<FirstRunCard />);
-        expect(screen.getByText('2/3')).toBeInTheDocument();
-        expect(firstRunStore.getSnapshot().done).toEqual(expect.arrayContaining(['data', 'ara']));
+        expect(screen.getByText('1/3')).toBeInTheDocument();
+        expect(firstRunStore.getSnapshot().done).toEqual(['ara']);
+        expect(screen.getByText('Say hello — ARA answers in seconds, no key needed.')).toBeInTheDocument();
+    });
+
+    it('PropertiesModule stamps the per-user data marker on create (source guard)', async () => {
+        const { readFileSync } = await import('node:fs');
+        const { resolve } = await import('node:path');
+        const src = readFileSync(resolve(process.cwd(), 'src/components/StrataDashboard/modules/PropertiesModule.tsx'), 'utf8');
+        expect(src).toMatch(/markFirstRunDone\('data'\)/);
     });
 });

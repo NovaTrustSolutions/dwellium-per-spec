@@ -19,7 +19,7 @@ The **Get to your first win** card (bottom-left) first asks how you use Dwellium
 
 1. **Add an AI key** — ARA and every AI widget run on *your* key (Anthropic, OpenAI, Gemini, or a local model). The card's button opens **API Keys**; paste one key and you're done. Keys are encrypted and sync only to your account.
 2. **Bring your data** — add your first property in Strata (the card's button lands you in the Properties module).
-3. **Ask ARA** anything ("Which leases end in the next 60 days?"). Your first ARA reply unlocks the AI Tools group.
+3. **Ask ARA** anything ("Which leases end in the next 60 days?"). Your first ARA reply unlocks the AI Tools group. No key yet? ARA still answers in **hello mode** — a free, anonymous reply that sends only your typed text and *no* property data (each reply is labelled); add a key and the full ARA takes over on its own.
 
 First sign-in also opens a short **walkthrough** that spotlights the shell (sidebar, ⌘K, ARA, Strata, the tool shed) — replay it anytime from the **?** sheet (*Replay walkthrough*) or **⌘K** → *walkthrough*.
 

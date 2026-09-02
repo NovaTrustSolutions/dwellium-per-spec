@@ -493,10 +493,9 @@ export default function ARAConsole() {
     const [jurisdiction, setJurisdiction] = useState<'georgia' | 'florida'>('georgia');
     // Docked tools drawer (Honcho / Hermes / Tools / Settings) + its resizable width.
     const [sidePanel, setSidePanel] = useState<AraSidePanelView | 'none'>('none');
-    const [sideWidth, setSideWidth] = useState<number>(() => {
-        try { return Math.min(640, Math.max(280, Number(localStorage.getItem('dwellium-ara-side-w')) || 380)); }
-        catch { return 380; }
-    });
+    // ponytail: voice/avatar/tts/humanize/sideWidth read+write araPrefsStore (per-user, One Save) instead of raw localStorage.
+    const [sideWidth, setSideWidth] = useState<number>(() =>
+        Math.min(640, Math.max(280, Number(araPrefsStore.getSnapshot().sideWidth) || 380)));
     const beginSideResize = useCallback((e: React.PointerEvent) => {
         e.preventDefault();
         const startX = e.clientX;
@@ -508,7 +507,7 @@ export default function ARAConsole() {
             setSideWidth(latest);
         };
         const onUp = () => {
-            try { localStorage.setItem('dwellium-ara-side-w', String(latest)); } catch { /* sandboxed */ }
+            araPrefsStore.set('sideWidth', latest);
             window.removeEventListener('pointermove', onMove);
             window.removeEventListener('pointerup', onUp);
         };
@@ -540,12 +539,8 @@ export default function ARAConsole() {
     const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; path: string | null }>>([
         { id: 'default', path: null }
     ]);
-    const [activeVoice, setActiveVoice] = useState<string>(() => {
-        try { return localStorage.getItem('dwellium-ara-voice') || 'female'; } catch { return 'female'; }
-    });
-    const [voiceGender, setVoiceGender] = useState<'female' | 'male'>(() => {
-        try { return (localStorage.getItem('dwellium-ara-gender') as 'female' | 'male') || 'female'; } catch { return 'female'; }
-    });
+    const [activeVoice, setActiveVoice] = useState<string>(() => araPrefsStore.getSnapshot().voice || 'female');
+    const [voiceGender, setVoiceGender] = useState<'female' | 'male'>(() => araPrefsStore.getSnapshot().gender || 'female');
     const [voiceUploadName, setVoiceUploadName] = useState('');
     const [voiceUploading, setVoiceUploading] = useState(false);
     const [voiceUploadDrag, setVoiceUploadDrag] = useState(false);
@@ -561,9 +556,7 @@ export default function ARAConsole() {
     // lives inside AvatarHarness + AnamAdapter; ARAConsole no longer touches
     // the Anam SDK or session-token fetch directly.
     const AVATAR_PASSWORD = 'Comet2878!';
-    const [avatarEnabled, setAvatarEnabled] = useState<boolean>(() => {
-        try { return localStorage.getItem('dwellium-ara-avatar') === 'true'; } catch { return false; }
-    });
+    const [avatarEnabled, setAvatarEnabled] = useState<boolean>(() => araPrefsStore.getSnapshot().avatar === true);
     const [avatarPasswordModal, setAvatarPasswordModal] = useState(false);
     const [avatarPasswordInput, setAvatarPasswordInput] = useState('');
     const [avatarPasswordError, setAvatarPasswordError] = useState(false);
@@ -589,7 +582,7 @@ export default function ARAConsole() {
     const handleAvatarToggle = useCallback(() => {
         if (avatarEnabled) {
             setAvatarEnabled(false);
-            localStorage.setItem('dwellium-ara-avatar', 'false');
+            araPrefsStore.set('avatar', false);
         } else {
             // Turning on — require password
             setAvatarPasswordModal(true);
@@ -601,7 +594,7 @@ export default function ARAConsole() {
     const submitAvatarPassword = useCallback(() => {
         if (avatarPasswordInput === AVATAR_PASSWORD) {
             setAvatarEnabled(true);
-            localStorage.setItem('dwellium-ara-avatar', 'true');
+            araPrefsStore.set('avatar', true);
             setAvatarPasswordModal(false);
             setAvatarPasswordInput('');
             setAvatarPasswordError(false);
@@ -611,30 +604,18 @@ export default function ARAConsole() {
     }, [avatarPasswordInput]);
 
     // TTS state
-    const [ttsEnabled, setTtsEnabled] = useState<boolean>(() => {
-        try {
-            const saved = localStorage.getItem('dwellium-ara-tts');
-            if (saved === null) return true; // Default to ON
-            return saved === 'true';
-        } catch { return true; }
-    });
+    const [ttsEnabled, setTtsEnabled] = useState<boolean>(() => araPrefsStore.getSnapshot().ttsEnabled ?? true); // Default to ON
     const [isSpeaking, setIsSpeaking] = useState(false);
 
     // Humanize state — when ON, prepends a humanize directive to the outgoing
     // user message so ARA's reply lands warmer, more conversational. Persisted
     // per-user via localStorage. Default ON for new users since the corporate-
     // sounding default was the original complaint.
-    const [humanizeEnabled, setHumanizeEnabled] = useState<boolean>(() => {
-        try {
-            const saved = localStorage.getItem('dwellium-ara-humanize');
-            if (saved === null) return true;
-            return saved === 'true';
-        } catch { return true; }
-    });
+    const [humanizeEnabled, setHumanizeEnabled] = useState<boolean>(() => araPrefsStore.getSnapshot().humanize ?? true);
     const toggleHumanize = useCallback(() => {
         setHumanizeEnabled(prev => {
             const next = !prev;
-            try { localStorage.setItem('dwellium-ara-humanize', String(next)); } catch { /* sandboxed */ }
+            araPrefsStore.set('humanize', next);
             return next;
         });
     }, []);
@@ -642,7 +623,7 @@ export default function ARAConsole() {
     const toggleTts = useCallback(() => {
         setTtsEnabled(prev => {
             const next = !prev;
-            localStorage.setItem('dwellium-ara-tts', String(next));
+            araPrefsStore.set('ttsEnabled', next);
             if (!next) {
                 // Stop all audio playback
                 if (currentAudioRef.current) {
@@ -893,7 +874,7 @@ export default function ARAConsole() {
 
     const selectVoice = useCallback((voiceId: string) => {
         setActiveVoice(voiceId);
-        localStorage.setItem('dwellium-ara-voice', voiceId);
+        araPrefsStore.set('voice', voiceId);
     }, []);
 
     const handleVoiceUpload = useCallback(async (file: File) => {
@@ -2837,8 +2818,8 @@ export default function ARAConsole() {
                                 const next = voiceGender === 'female' ? 'male' : 'female';
                                 setVoiceGender(next);
                                 setActiveVoice(next);
-                                localStorage.setItem('dwellium-ara-gender', next);
-                                localStorage.setItem('dwellium-ara-voice', next);
+                                araPrefsStore.set('gender', next);
+                                araPrefsStore.set('voice', next);
                             }}
                             title={`Voice: ${voiceGender === 'female' ? 'Female' : 'Male'} — click to switch`}
                             aria-label={`Voice gender: ${voiceGender === 'female' ? 'female' : 'male'}. Click to switch.`}

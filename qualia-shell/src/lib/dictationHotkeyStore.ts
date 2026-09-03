@@ -4,14 +4,18 @@
  *
  * Default ⌥D; configurable in the Control Panel Dictation card. Storage rides
  * the repo-standard `createLocalStorageStore` dynamic-key factory (sister to
- * goalsStore) with its own identity holder. The holder is written ONLY by
- * `useDictationIdentity()` from the raw `user.id` in UserContext — a single
- * value derived from a single context, so the #185 disagreeing-writers loop
+ * goalsStore) with its own identity holder, plus One Save
+ * `withSync('dictationHotkey')` (araPrefsStore sister shape) so the binding
+ * follows the account to any machine. The holder is written by
+ * `useDictationIdentity()` from the raw `user.id` in UserContext (and, on
+ * login, by `oneSaveSync.bootstrap` with that same id) — a single value
+ * derived from a single context, so the #185 disagreeing-writers loop
  * (FUCKUPS F-015) cannot occur.
  */
 import { useContext, useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { UserContext } from '../context/UserContext';
+import { withSync } from './oneSaveStore';
 
 export interface DictationHotkey {
     altKey: boolean;
@@ -50,11 +54,14 @@ function deserialize(raw: string | null): DictationHotkey {
     }
 }
 
-export const dictationHotkeyStore = createLocalStorageStore<DictationHotkey>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: DEFAULT_DICTATION_HOTKEY,
-});
+export const dictationHotkeyStore = withSync(
+    createLocalStorageStore<DictationHotkey>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: DEFAULT_DICTATION_HOTKEY,
+    }),
+    { objectType: 'dictationHotkey', holder: dictationUserIdHolder, resolveKey },
+);
 
 export function setDictationHotkey(hk: DictationHotkey): void {
     dictationHotkeyStore.set(hk, () => {

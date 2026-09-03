@@ -1,10 +1,12 @@
 /**
  * tagsStore — global tags created via Cmd/Ctrl+T (2026-06-14). A tag captures
  * whatever you had selected (text), names it, and links it to one or more
- * projects. Per-user + persisted via the established factory.
+ * projects. Per-user + persisted via the established factory + One Save
+ * `withSync('tags')`, so tags follow the login to any machine.
  */
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSync } from './oneSaveStore';
 import { tagsUserIdHolder } from './perUserIdentity';
 
 export interface Tag {
@@ -32,11 +34,14 @@ function deserialize(raw: string | null): Tag[] {
     } catch { return []; }
 }
 
-export const tagsStore = createLocalStorageStore<Tag[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const tagsStore = withSync(
+    createLocalStorageStore<Tag[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'tags', holder: tagsUserIdHolder, resolveKey },
+);
 
 export function addTag(tag: Omit<Tag, 'id' | 'createdAt'>): Tag {
     const full: Tag = { ...tag, id: `tag-${Date.now().toString(36)}`, createdAt: Date.now() };

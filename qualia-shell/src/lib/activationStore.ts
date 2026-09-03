@@ -17,11 +17,13 @@
  * matching backend route / preload bridge exists. Turning a capability on
  * NEVER changes default behavior — `enabled` defaults false everywhere.
  *
- * Per-user, dynamic-key factory store (sister to integrationsStore); secrets
+ * Per-user, dynamic-key factory store + One Save `withSync('activation')`
+ * (sister to integrationsStore) so the config follows the login; secrets
  * route through secretsAdapter so they upgrade to the OS keychain for free.
  */
 
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSync } from './oneSaveStore';
 import { activationUserIdHolder } from './perUserIdentity';
 
 export interface AppfolioSyncConfig {
@@ -103,11 +105,14 @@ function deserialize(raw: string | null): ActivationConfig {
     }
 }
 
-export const activationStore = createLocalStorageStore<ActivationConfig>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: emptyActivation(),
-});
+export const activationStore = withSync(
+    createLocalStorageStore<ActivationConfig>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: emptyActivation(),
+    }),
+    { objectType: 'activation', holder: activationUserIdHolder, resolveKey },
+);
 
 export function saveActivation(next: ActivationConfig): void {
     activationStore.set(next, () => {

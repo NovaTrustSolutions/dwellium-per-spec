@@ -4,9 +4,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { gridLockStore, setGridLocked, isGridLocked, GRID_LOCK_KEY } from '../utils/gridLockStore';
 
+/** No holder set in this file → the anonymous per-user namespace (the legacy global key is read-only now). */
+const KEY = `${GRID_LOCK_KEY}:_anonymous`;
+
 describe('gridLockStore', () => {
     beforeEach(() => {
-        try { localStorage.removeItem(GRID_LOCK_KEY); } catch { /* ignore */ }
+        try { localStorage.clear(); } catch { /* ignore */ }
         gridLockStore.reset(); // clear in-memory cache (standing convention)
     });
 
@@ -24,14 +27,14 @@ describe('gridLockStore', () => {
         setGridLocked(true);
         expect(gridLockStore.getSnapshot()).toBe(true);
         expect(isGridLocked()).toBe(true);
-        expect(localStorage.getItem(GRID_LOCK_KEY)).toBe('true');
+        expect(localStorage.getItem(KEY)).toBe('true');
     });
 
     it('setGridLocked(false) clears the locked state', () => {
         setGridLocked(true);
         setGridLocked(false);
         expect(gridLockStore.getSnapshot()).toBe(false);
-        expect(localStorage.getItem(GRID_LOCK_KEY)).toBe('false');
+        expect(localStorage.getItem(KEY)).toBe('false');
     });
 
     it('notifies subscribers on change and stops after unsubscribe', () => {
@@ -47,7 +50,7 @@ describe('gridLockStore', () => {
     it('reset() re-reads from storage fresh', () => {
         setGridLocked(true);
         expect(gridLockStore.getSnapshot()).toBe(true);
-        localStorage.removeItem(GRID_LOCK_KEY);
+        localStorage.removeItem(KEY);
         gridLockStore.reset();
         expect(gridLockStore.getSnapshot()).toBe(false);
     });

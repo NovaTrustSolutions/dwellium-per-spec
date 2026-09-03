@@ -8,9 +8,7 @@
  * useSyncExternalStore (SSR-safe: getServerSnapshot → 'online' → renders null).
  */
 import { useSyncExternalStore, useState, useEffect } from 'react';
-import { WifiOff, RefreshCw, X } from 'lucide-react';
 import { backendStatusStore } from '../../lib/backendStatusStore';
-import './BackendConnectionBanner.css';
 
 export default function BackendConnectionBanner() {
     const snap = useSyncExternalStore(
@@ -34,40 +32,9 @@ export default function BackendConnectionBanner() {
     }, [snap.state, snap.lastCheckedAt]);
     useEffect(() => () => backendStatusStore.stopAutoConnect(), []);
 
-    if (snap.state === 'online') return null;
-    if (dismissed && snap.state !== 'checking') return null;
-
-    const checking = snap.state === 'checking';
-
-    return (
-        <div className="backend-banner" role="alert" aria-live="assertive">
-            <span className="backend-banner__icon" aria-hidden="true"><WifiOff size={16} /></span>
-            <div className="backend-banner__body">
-                <strong className="backend-banner__title">Not connected to Dwellium</strong>
-                <span className="backend-banner__msg">
-                    {snap.message || 'The Dwellium backend isn’t reachable.'} You’re still signed in.
-                </span>
-            </div>
-            <div className="backend-banner__actions">
-                <span className="backend-banner__prompt">Do you want to connect?</span>
-                <button
-                    type="button"
-                    className="backend-banner__connect"
-                    onClick={() => { void backendStatusStore.checkConnection(); }}
-                    disabled={checking}
-                >
-                    <RefreshCw size={14} className={checking ? 'backend-banner__spin' : undefined} aria-hidden="true" />
-                    {checking ? 'Connecting…' : 'Connect'}
-                </button>
-                <button
-                    type="button"
-                    className="backend-banner__dismiss"
-                    aria-label="Dismiss"
-                    onClick={() => setDismissed(true)}
-                >
-                    <X size={14} aria-hidden="true" />
-                </button>
-            </div>
-        </div>
-    );
+    // ponytail: Ilya (2026-09-02) — "get rid of the not connected to dwellium msg".
+    // The visible banner is gone; the auto-reconnect effects above are kept so a
+    // backend blip still heals itself silently and never logs anyone out.
+    void dismissed; void setDismissed;
+    return null;
 }

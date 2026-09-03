@@ -62,6 +62,8 @@ export const halocronKnowledgeGraphUserIdHolder: UserIdHolder = makeHolder();
 export const scribeKbUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 041 — per-user avatar profiles (avatarId/voiceId/systemPrompt per agentId). */
 export const avatarProfilesUserIdHolder: UserIdHolder = makeHolder();
+export const gridLockUserIdHolder: UserIdHolder = makeHolder();
+export const stellaPrefsUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 046-F1 — per-user first-run checklist state (firstRunStore). */
 export const firstRunUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 047 — per-user onboarding state (role, seen tips, unlocked tiers). */
@@ -127,6 +129,8 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     widgetMemoryUserIdHolder,
     recentActivityUserIdHolder,
     walkthroughUserIdHolder,
+    gridLockUserIdHolder,
+    stellaPrefsUserIdHolder,
 ];
 
 /**

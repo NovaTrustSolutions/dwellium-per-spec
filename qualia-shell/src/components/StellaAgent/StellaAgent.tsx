@@ -78,6 +78,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { logActivity } from '../../lib/activityLogStore';
 import { TTS_VOICE_CATALOG, HUMANIZE_PREFIX, speakText } from '../../lib/ttsVoices';
+import { stellaPrefsStore } from '../../lib/stellaPrefsStore';
 import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
 import AvatarHarness from '../AvatarHarness/AvatarHarness';
 import {
@@ -368,15 +369,16 @@ export default function StellaAgent() {
 
     // ── TTS voice + Humanize (ARA-parity: the same 9 voices + humanize reply style) ──
     const openaiKey = integrations?.llm?.openai?.apiKey ?? (integrations?.llm as any)?.providers?.openai?.apiKey ?? '';
-    const [ttsVoice, setTtsVoice] = useState<string>(() => { try { return localStorage.getItem('dwellium-stella-voice') || 'openai-alloy'; } catch { return 'openai-alloy'; } });
-    const [ttsSpeak, setTtsSpeak] = useState<boolean>(() => { try { return localStorage.getItem('dwellium-stella-tts') === 'true'; } catch { return false; } });
-    const [humanizeEnabled, setHumanizeEnabled] = useState<boolean>(() => { try { const s = localStorage.getItem('dwellium-stella-humanize'); return s === null ? true : s === 'true'; } catch { return true; } });
+    // ponytail: voice/tts/humanize read+write stellaPrefsStore (per-user, One Save) instead of raw localStorage — holder is set by useIntegrations() → usePerUserIdentity() above.
+    const [ttsVoice, setTtsVoice] = useState<string>(() => stellaPrefsStore.getSnapshot().voice || 'openai-alloy');
+    const [ttsSpeak, setTtsSpeak] = useState<boolean>(() => stellaPrefsStore.getSnapshot().ttsEnabled ?? false);
+    const [humanizeEnabled, setHumanizeEnabled] = useState<boolean>(() => stellaPrefsStore.getSnapshot().humanize ?? true);
     const [stellaSpeaking, setStellaSpeaking] = useState(false);
     const speakHandleRef = useRef<{ stop: () => void } | null>(null);
     const lastSpokenIdRef = useRef<string>('');
-    const setVoicePersist = (v: string) => { setTtsVoice(v); try { localStorage.setItem('dwellium-stella-voice', v); } catch { /* ignore */ } };
-    const toggleTts = () => setTtsSpeak(p => { const n = !p; try { localStorage.setItem('dwellium-stella-tts', String(n)); } catch { /* ignore */ } if (!n) { speakHandleRef.current?.stop(); setStellaSpeaking(false); } return n; });
-    const toggleHumanize = () => setHumanizeEnabled(p => { const n = !p; try { localStorage.setItem('dwellium-stella-humanize', String(n)); } catch { /* ignore */ } return n; });
+    const setVoicePersist = (v: string) => { setTtsVoice(v); stellaPrefsStore.set('voice', v); };
+    const toggleTts = () => setTtsSpeak(p => { const n = !p; stellaPrefsStore.set('ttsEnabled', n); if (!n) { speakHandleRef.current?.stop(); setStellaSpeaking(false); } return n; });
+    const toggleHumanize = () => setHumanizeEnabled(p => { const n = !p; stellaPrefsStore.set('humanize', n); return n; });
     const speakStella = useCallback((t: string) => {
         speakHandleRef.current?.stop();
         speakText(t, ttsVoice, openaiKey, { onStart: () => setStellaSpeaking(true), onEnd: () => setStellaSpeaking(false) }).then(h => { speakHandleRef.current = h; });

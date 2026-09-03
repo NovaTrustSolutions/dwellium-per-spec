@@ -3,11 +3,14 @@
  * with use, a task list (with completion times), and an audit log of actions.
  *
  * Dynamic-key per-user store (sister-shape to agentTeamsStore): each user gets
- * their own persona working data, keyed by persona id. SSR-safe.
+ * their own persona working data, keyed by persona id. SSR-safe. One Save
+ * `withSync('personaWork')` (araPrefsStore sister shape) so the working files
+ * follow the account to any machine.
  */
 import { useContext, useSyncExternalStore } from 'react';
 import { UserContext } from '../../context/UserContext';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../oneSaveStore';
 
 export interface PersonaMemoryEntry {
     id: string;
@@ -55,11 +58,14 @@ function deserialize(raw: string | null): PersonaWorkState {
     catch { return {}; }
 }
 
-export const personaWorkStore = createLocalStorageStore<PersonaWorkState>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: {},
-});
+export const personaWorkStore = withSync(
+    createLocalStorageStore<PersonaWorkState>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: {},
+    }),
+    { objectType: 'personaWork', holder: personaWorkUserIdHolder, resolveKey },
+);
 
 function emptyWork(): PersonaWork { return { memory: [], tasks: [], audit: [], usageCount: 0 }; }
 function rid(prefix: string): string { return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }

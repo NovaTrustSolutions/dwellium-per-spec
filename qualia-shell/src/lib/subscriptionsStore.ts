@@ -13,6 +13,7 @@
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { integrationsStore } from '../utils/integrationsStore';
+import { withSync } from './oneSaveStore';
 import { subscriptionsUserIdHolder } from './perUserIdentity';
 
 export interface Subscription {
@@ -50,11 +51,14 @@ function deserialize(raw: string | null): Subscription[] {
     return defaults();
 }
 
-export const subscriptionsStore = createLocalStorageStore<Subscription[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: defaults(),
-});
+export const subscriptionsStore = withSync(
+    createLocalStorageStore<Subscription[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: defaults(),
+    }),
+    { objectType: 'subscriptions', holder: subscriptionsUserIdHolder, resolveKey },
+);
 
 export function saveSubscriptions(list: Subscription[]): void {
     subscriptionsStore.set(list, () => {

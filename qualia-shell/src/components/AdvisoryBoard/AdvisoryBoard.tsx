@@ -92,6 +92,7 @@ export default function AdvisoryBoard() {
 
     const runBoard = async (skipped: boolean) => {
         if (busy) return;
+        if (!llmReady) { setErr('Add an AI key to run the board.'); return; }
         setBusy('board'); setErr('');
         try {
             const raw = await run(buildBoardPrompt({ topic, questions, answers, skipped }), 2600);
@@ -178,9 +179,15 @@ export default function AdvisoryBoard() {
                         placeholder="e.g. Raise renewal rents 6% across Woodland Parc, or hold at 3% to protect occupancy?"
                         onChange={(e) => setTopic(e.target.value)}
                     />
-                    <button type="button" className="ab__btn" onClick={startInterview} disabled={!topic.trim() || busy === 'interview'}>
-                        {busy === 'interview' ? <><Loader2 size={14} className="ab__spin" aria-hidden="true" /> Preparing questions…</> : 'Interview me first →'}
-                    </button>
+                    <div className="ab__actions">
+                        <button type="button" className="ab__btn" onClick={startInterview} disabled={!topic.trim() || !!busy}>
+                            {busy === 'interview' ? <><Loader2 size={14} className="ab__spin" aria-hidden="true" /> Preparing questions…</> : 'Interview me first →'}
+                        </button>
+                        {/* Ilya 2026-09-04: the board must be runnable without the interview — same skip path as step 2. */}
+                        <button type="button" className="ab__btn ab__btn--ghost" onClick={() => runBoard(true)} disabled={!topic.trim() || !!busy}>
+                            {busy === 'board' ? <><Loader2 size={14} className="ab__spin" aria-hidden="true" /> Running the board…</> : 'Run the board →'}
+                        </button>
+                    </div>
                 </div>
             )}
 

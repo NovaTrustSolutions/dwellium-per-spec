@@ -179,3 +179,5 @@
     line-height: 1.5;
     color: var(--text-tertiary, rgba(255, 255, 255, 0.42));
 }
+
+.ab__actions { display: flex; gap: 8px; flex-wrap: wrap; }

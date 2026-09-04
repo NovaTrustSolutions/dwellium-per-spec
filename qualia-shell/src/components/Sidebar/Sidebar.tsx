@@ -782,7 +782,6 @@ export default function Sidebar() {
                                     ref={searchInputRef}
                                     type="text"
                                     placeholder="AI filter widgets..."
-                                    autoComplete="off"
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     style={{

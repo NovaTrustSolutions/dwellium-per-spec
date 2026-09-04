@@ -177,8 +177,6 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     className="login-input"
                                     aria-label="Access password"
                                     placeholder="Access password"
-                                    name="dwellium-access-gate"
-                                    autoComplete="one-time-code"
                                     value={gateInput}
                                     onChange={(event) => setGateInput(event.target.value)}
                                     // focus without scrollIntoView so the logo card stays visible on short viewports

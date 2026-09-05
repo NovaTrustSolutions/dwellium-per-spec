@@ -5,7 +5,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
-import { ONE_SAVE_ENABLED } from '../../lib/oneSaveClient';
+import { ONE_SAVE_ENABLED, syncRateLimitStore } from '../../lib/oneSaveClient';
 import { syncStatusStore } from '../../lib/oneSaveStore';
 import { backendStatusStore } from '../../lib/backendStatusStore';
 import './SyncStatusPill.css';
@@ -21,6 +21,13 @@ export default function SyncStatusPill() {
         backendStatusStore.getSnapshot,
         backendStatusStore.getServerSnapshot,
     );
+    // Login-storm fix (swarm C item 3): a 429 from the objects API used to be
+    // swallowed as an indistinguishable `null` — this makes it visible instead.
+    const rate = useSyncExternalStore(
+        syncRateLimitStore.subscribe,
+        syncRateLimitStore.getSnapshot,
+        syncRateLimitStore.getServerSnapshot,
+    );
     if (!ONE_SAVE_ENABLED) return null;
 
     let text: string;
@@ -28,6 +35,9 @@ export default function SyncStatusPill() {
     let title: string | undefined;
     if (backend.state === 'offline') {
         text = 'Offline — will retry';
+        mod = ' sync-pill--offline';
+    } else if (rate.limited) {
+        text = 'Sync paused — retrying';
         mod = ' sync-pill--offline';
     } else if (sync.pending > 0) {
         text = 'Saving…';

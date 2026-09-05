@@ -29,8 +29,18 @@
  */
 
 import type { LocalStorageStore } from '../utils/createLocalStorageStore';
-import { oneSaveClient, ONE_SAVE_ENABLED } from './oneSaveClient';
+import { oneSaveClient, ONE_SAVE_ENABLED, type DwelliumObject } from './oneSaveClient';
 import { backendStatusStore } from './backendStatusStore';
+
+/**
+ * Ceiling asserted by `src/test/oneSaveLoginRequests.test.ts` for a fresh
+ * login across every registered store: 1 bulk `listAll` + a small constant
+ * slack for stores that still need their own PUT (first-ever login, nothing
+ * durable yet — migrate() backfills each). Was ~100-150 requests/login
+ * (N stores × hydrate GET + migrate's redundant re-GET), which tripped the
+ * backend's 300/min limiter. dod/login-requests memory key targets this.
+ */
+export const MAX_LOGIN_REQUESTS = 15;
 
 /** Write-through retry policy: total attempts and per-attempt backoff base (ms). */
 const WRITE_THROUGH_MAX_ATTEMPTS = 3;
@@ -63,8 +73,14 @@ export interface StaticSyncOptions<T> {
 }
 
 export interface SyncedStore<T> extends LocalStorageStore<T> {
-    /** Pull the durable backend value (if present) into the local cache. */
-    hydrate(): Promise<void>;
+    /**
+     * Pull the durable backend value (if present) into the local cache.
+     * `prefetched` lets bootstrap's bulk `listAll` hand this store its object
+     * directly (no per-store GET); omit it to fetch individually as before.
+     * `null` means "bulk fetch ran and confirmed this object doesn't exist"
+     * (also skips the GET); `undefined` (the default) means "fetch it yourself".
+     */
+    hydrate(prefetched?: DwelliumObject<unknown> | null): Promise<void>;
     /** Backfill a local-only value to the backend if none exists there yet. */
     migrate(): Promise<void>;
 }
@@ -72,7 +88,9 @@ export interface SyncedStore<T> extends LocalStorageStore<T> {
 interface RegistryEntry {
     /** Point this store's owner at `userId` (sets a holder, or no-op for static). */
     setOwner: (userId: string | null) => void;
-    hydrate: () => Promise<void>;
+    /** This store's current `${objectType}_${ownerId}` — lets bootstrap match a bulk-listed object to its store. */
+    objectId: () => string;
+    hydrate: (prefetched?: DwelliumObject<unknown> | null) => Promise<void>;
     migrate: () => Promise<void>;
 }
 
@@ -147,6 +165,12 @@ function makeSynced<T>(
 ): SyncedStore<T> {
     const objectId = (): string => `${objectType}_${ownerId()}`;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // Set by the most recent hydrate() this session; lets migrate() skip its
+    // own existence-check GET when hydrate() (bulk-fed or its own GET) already
+    // answered "does this object exist remotely?" — halves the request count
+    // on a first-ever login (see MAX_LOGIN_REQUESTS). `null` = unknown (no
+    // hydrate() ran yet this session) → migrate() falls back to its own GET.
+    let lastHydrateSeen: boolean | null = null;
 
     function scheduleWriteThrough(value: T): void {
         if (!ONE_SAVE_ENABLED) return;
@@ -212,9 +236,10 @@ function makeSynced<T>(
             scheduleWriteThrough(next);        // debounced durable write-through
         },
 
-        async hydrate() {
+        async hydrate(prefetched?: DwelliumObject<unknown> | null) {
             if (!ONE_SAVE_ENABLED) return;
-            const remote = await oneSaveClient.get<T>(objectId());
+            const remote = (prefetched !== undefined ? prefetched : await oneSaveClient.get<T>(objectId())) as DwelliumObject<T> | null;
+            lastHydrateSeen = remote != null;
             if (remote && remote.deletedAt == null) {
                 const value = remote.payload as T;
                 base.set(value, () => persistLocal(value));
@@ -223,14 +248,16 @@ function makeSynced<T>(
 
         async migrate() {
             if (!ONE_SAVE_ENABLED) return;
-            const existing = await oneSaveClient.get<T>(objectId());
-            if (existing) return; // already durable — don't clobber
+            // Reuse hydrate()'s answer when we have one this session — skips a
+            // second GET for the exact same object migrate() would otherwise ask about.
+            const exists = lastHydrateSeen ?? (await oneSaveClient.get<T>(objectId())) != null;
+            if (exists) return; // already durable — don't clobber
             const local = base.getSnapshot();
             await oneSaveClient.put({ id: objectId(), type: objectType, ownerId: ownerId(), payload: local });
         },
     };
 
-    const entry: RegistryEntry = { setOwner, hydrate: store.hydrate, migrate: store.migrate };
+    const entry: RegistryEntry = { setOwner, objectId, hydrate: store.hydrate, migrate: store.migrate };
     registry.push(entry);
     // Late-registered (lazy-loaded) store catches up if a user is already active.
     if (ONE_SAVE_ENABLED && currentUserId) {
@@ -274,16 +301,46 @@ export const oneSaveSync = {
         currentUserId = userId;
         for (const e of registry) e.setOwner(userId);
         if (!ONE_SAVE_ENABLED || !userId) return;
+
+        // One bulk GET fans out to every registered store instead of one GET
+        // per store (was the login request storm: 46+ stores × hydrate GET +
+        // migrate's redundant re-GET ≈ 100-150 requests, tripping the
+        // backend's rate limiter). `listAll` returns `null` — NOT `[]` — when
+        // the bulk call itself fails, so a real outage falls back to the old
+        // safe per-store GETs instead of a false "owner has zero objects"
+        // reading letting migrate() clobber existing remote data.
+        let bulk: DwelliumObject[] | null;
+        try {
+            bulk = await oneSaveClient.listAll(userId);
+        } catch {
+            bulk = null; // defensive: a test double or older client shape without listAll()
+        }
+
         // Isolate per-store failures: one store's hydrate/migrate rejecting must
         // not skip every store registered after it (allSettled also parallelizes
-        // the N round-trips, speeding login). hydrate and migrate stay in two
-        // ordered phases so no store is backfilled before all are hydrated.
-        await Promise.allSettled(registry.map((e) => e.hydrate()));
+        // any per-store round-trips, speeding login). hydrate and migrate stay in
+        // two ordered phases so no store is backfilled before all are hydrated.
+        if (bulk) {
+            const byId = new Map(bulk.map((obj) => [obj.id, obj] as const));
+            await Promise.allSettled(registry.map((e) => e.hydrate(byId.get(e.objectId()) ?? null)));
+        } else {
+            await Promise.allSettled(registry.map((e) => e.hydrate()));
+        }
         await Promise.allSettled(registry.map((e) => e.migrate()));
     },
 
     /** Test/diagnostic: how many stores are wrapped. */
     get registeredCount(): number {
         return registry.length;
+    },
+
+    /**
+     * Test/diagnostic: every registered store's CURRENT `${objectType}_${ownerId}`
+     * id (reflects whichever owner `setOwner`/`bootstrap` last set). Lets a test
+     * build a matching bulk-`listAll` fixture without hand-enumerating every
+     * store's objectType — see `src/test/oneSaveLoginRequests.test.ts`.
+     */
+    registeredObjectIds(): string[] {
+        return registry.map((e) => e.objectId());
     },
 };

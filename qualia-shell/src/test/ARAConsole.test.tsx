@@ -282,6 +282,84 @@ describe('ARAConsole', () => {
         expect(chatPayload.workspaceContext.name).toBe('Riverwood');
     });
 
+    // ── Swarm C item 1: "Thin context" notice is backend-origin-only ─────
+    describe('Thin context notice (origin-gated)', () => {
+        it('shows no notice (and no Pin context button) for a browser-key reply', async () => {
+            chatShouldThrow = true;
+            llmActive = true;
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+
+            const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            await user.type(textbox, 'What should I do next?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+            await screen.findByText('Offline LLM reply.');
+            expect(screen.queryByText(/Thin context/)).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Pin context' })).toBeNull();
+        });
+
+        it('shows the notice with a Pin context button for a backend reply with 0 sources', async () => {
+            const base = authFetch.getMockImplementation()!;
+            authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+                if (url.endsWith('/chat')) {
+                    return jsonResponse({
+                        success: true,
+                        data: {
+                            content: 'Thin answer.',
+                            mode: 'chief-of-staff',
+                            entityGuardianActive: false,
+                            contextSources: [],
+                            observability: { latencyMs: 50, contextBuildMs: 5, providerUsed: 'gpt-4o-mini', retryCount: 0 },
+                        },
+                    });
+                }
+                return base(url, opts);
+            });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+
+            const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            await user.type(textbox, 'What should I do next?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+            await screen.findByText('Thin answer.');
+            expect(await screen.findByText(/Thin context/)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Pin context' })).toBeInTheDocument();
+        });
+
+        it('shows no notice for a backend reply with 2 sources totalling 3 items', async () => {
+            const base = authFetch.getMockImplementation()!;
+            authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+                if (url.endsWith('/chat')) {
+                    return jsonResponse({
+                        success: true,
+                        data: {
+                            content: 'Well-grounded answer.',
+                            mode: 'chief-of-staff',
+                            entityGuardianActive: false,
+                            contextSources: [
+                                { name: 'Inbox', type: 'inbox', itemCount: 1, snippet: '1 item' },
+                                { name: 'ruVector', type: 'ruVector', itemCount: 2, snippet: '2 semantic matches' },
+                            ],
+                            observability: { latencyMs: 90, contextBuildMs: 8, providerUsed: 'gpt-4o-mini', retryCount: 0 },
+                        },
+                    });
+                }
+                return base(url, opts);
+            });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+
+            const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            await user.type(textbox, 'What should I do next?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+            await screen.findByText('Well-grounded answer.');
+            expect(screen.queryByText(/Thin context/)).not.toBeInTheDocument();
+        });
+    });
+
     it('creates notes and workitems from the conversation action panel', async () => {
         const user = userEvent.setup();
         render(<ARAConsole />);

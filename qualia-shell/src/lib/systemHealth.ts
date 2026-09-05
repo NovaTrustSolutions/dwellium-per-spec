@@ -7,6 +7,8 @@
  * the probes (`probeBackend`, `probeUrl`) do the network checks.
  */
 
+import { API_BASE } from '../config';
+
 export type HealthStatus = 'ok' | 'degraded' | 'down' | 'checking';
 export type HealthRequires = 'backend' | 'llm' | 'external' | 'local';
 
@@ -32,9 +34,38 @@ export interface HealthCtx {
     externalOk: Record<string, boolean>;
 }
 
+/**
+ * Backend status copy, derived from the actual API base (or the page's own
+ * origin when API_BASE is relative) instead of a hardcoded ":3000" — a
+ * deployed build (e.g. a Cloud Run URL) must never claim to be on :3000.
+ * Pure + exported so it's testable without mocking config.ts/window.
+ */
+export function backendConnectionText(apiBase: string): { ok: string; down: string } {
+    const raw = apiBase || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    let hostname = '';
+    let port = '';
+    try {
+        const u = new URL(raw);
+        hostname = u.hostname;
+        port = u.port;
+    } catch { /* malformed/relative apiBase — fall through to generic text */ }
+
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '[::1]';
+    if (hostname && isLocal) {
+        const p = port || '3000';
+        return { ok: `Connected on :${p}`, down: `Backend not reachable on :${p} — start it (or reconnect in Settings).` };
+    }
+    if (hostname) {
+        return { ok: `Connected (${hostname})`, down: `Backend not reachable (${hostname}) — start it (or reconnect in Settings).` };
+    }
+    return { ok: 'Connected', down: 'Backend not reachable — start it (or reconnect in Settings).' };
+}
+
+const BACKEND_TEXT = backendConnectionText(API_BASE);
+
 export const HEALTH_ITEMS: HealthItem[] = [
     { id: 'backend', label: 'Backend server', requires: 'backend', connectWidget: 'control-panel', connectLabel: 'Open Settings',
-      okText: 'Connected on :3000', downText: 'Backend not reachable on :3000 — start it (or reconnect in Settings).' },
+      okText: BACKEND_TEXT.ok, downText: BACKEND_TEXT.down },
     { id: 'llm', label: 'AI model key (LLM)', requires: 'llm', connectWidget: 'control-panel', connectLabel: 'Add key',
       okText: 'An LLM provider is configured', downText: 'No LLM key set — add one in Settings → API Keys.' },
     { id: 'stella-agent', label: 'Stella Agent', requires: 'backend', llmFallback: true, connectWidget: 'control-panel', connectLabel: 'Open Settings',

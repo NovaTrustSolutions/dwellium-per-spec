@@ -67,19 +67,17 @@ const REPORT_TEMPLATES = [
     { id: 'business-metrics', name: 'Business Metrics', icon: <PieChart size={16} />, color: '#f59e0b', description: 'KPIs and operational performance metrics' },
 ];
 
-const SCHEDULED_REPORTS = [
-    { id: 1, name: 'Monthly Delinquency', frequency: 'Monthly', nextRun: '2026-03-01', recipients: 'andy@dwellium.com, lisa@dwellium.com' },
-    { id: 2, name: 'Weekly Vacancy Summary', frequency: 'Weekly', nextRun: '2026-02-24', recipients: 'andy@dwellium.com' },
-    { id: 3, name: 'Quarterly Income Statement', frequency: 'Quarterly', nextRun: '2026-04-01', recipients: 'andy@dwellium.com, lisa@dwellium.com, nasser@dwellium.com' },
-];
-
-const METRICS_DATA = [
-    { label: 'Occupancy Rate', value: '94.2%', trend: '+1.3%', color: '#22c55e' },
-    { label: 'Avg. Days to Lease', value: '23', trend: '-4 days', color: 'var(--accent)' },
-    { label: 'Rent Collection Rate', value: '97.8%', trend: '+0.5%', color: '#0ea5e9' },
-    { label: 'Maintenance Response', value: '1.2 days', trend: '-0.3 days', color: '#f59e0b' },
-    { label: 'Net Operating Income', value: '$142,500', trend: '+6.2%', color: 'var(--accent)' },
-    { label: 'Delinquency Rate', value: '2.1%', trend: '-0.4%', color: '#ef4444' },
+// Metrics tab: only Occupancy Rate has a real source today (/stats).
+// Everything else here is accounting-derived data Dwellium doesn't have a
+// live feed for yet — shown honestly as "Not available" rather than a
+// plausible-looking invented number.
+const METRICS_META: { label: string; source: 'stats' | 'unavailable' }[] = [
+    { label: 'Occupancy Rate', source: 'stats' },
+    { label: 'Avg. Days to Lease', source: 'unavailable' },
+    { label: 'Rent Collection Rate', source: 'unavailable' },
+    { label: 'Maintenance Response', source: 'unavailable' },
+    { label: 'Net Operating Income', source: 'unavailable' },
+    { label: 'Delinquency Rate', source: 'unavailable' },
 ];
 
 export default function ReportingModule() {
@@ -91,6 +89,17 @@ export default function ReportingModule() {
     const [queryField, setQueryField] = useState('coi');
     const [queryResults, setQueryResults] = useState<any[]>([]);
     const [queryLoading, setQueryLoading] = useState(false);
+
+    // Metrics tab: real occupancy number from /stats (the only metric here
+    // with a live source — see METRICS_META).
+    const [occupancyRate, setOccupancyRate] = useState<string | null>(null);
+    const fetchMetrics = useCallback(async () => {
+        try {
+            const data = await strataGet<{ occupancyRate?: string }>('/stats');
+            setOccupancyRate(data?.occupancyRate ?? null);
+        } catch { setOccupancyRate(null); }
+    }, []);
+    useEffect(() => { if (tab === 'metrics') fetchMetrics(); }, [tab, fetchMetrics]);
 
     // Phase 9: Rollup state
     const [rollupView, setRollupView] = useState<RollupView>('insurance');
@@ -291,44 +300,35 @@ export default function ReportingModule() {
 
             {/* Scheduled Reports Tab */}
             {tab === 'scheduled' && !loading && (
-                <div className="s-glass-card">
-                    <h3 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600 }}>
-                        <Clock size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
-                        Scheduled Reports
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {SCHEDULED_REPORTS.map(sr => (
-                            <div key={sr.id} style={{
-                                padding: '12px 16px', borderRadius: 8,
-                                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{sr.name}</span>
-                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600 }}>{sr.frequency}</span>
-                                </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                                    <span>Next run: {sr.nextRun}</span>
-                                    <span style={{ margin: '0 8px' }}>·</span>
-                                    <span>Recipients: {sr.recipients}</span>
-                                </div>
-                            </div>
-                        ))}
+                <div className="s-glass-card" style={{ textAlign: 'center', padding: 40 }}>
+                    <Clock size={40} strokeWidth={1} style={{ color: 'var(--text-tertiary)', marginBottom: 12 }} />
+                    <h3 style={{ color: 'var(--text-primary)', margin: '0 0 6px' }}>Scheduled Reports</h3>
+                    <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>No scheduled reports yet.</p>
+                    <div style={{ display: 'inline-flex', marginTop: 12 }}>
+                        <NotYet reason="Recurring report schedules (frequency, recipients, next run) aren't wired to a backend store yet." />
                     </div>
                 </div>
             )}
 
-            {/* Metrics Tab */}
+            {/* Metrics Tab — only Occupancy Rate has a live source (/stats);
+                everything else is honestly marked unavailable rather than invented. */}
             {tab === 'metrics' && !loading && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-                    {METRICS_DATA.map(m => (
-                        <div key={m.label} className="s-glass-card" style={{ padding: '16px 20px' }}>
-                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5, marginBottom: 8 }}>{m.label}</div>
-                            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{m.value}</div>
-                            <div style={{ fontSize: 12, color: m.color, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <TrendingUp size={12} /> {m.trend}
+                    {METRICS_META.map(m => {
+                        const value = m.source === 'stats' && occupancyRate ? `${occupancyRate}%` : null;
+                        return (
+                            <div key={m.label} className="s-glass-card" style={{ padding: '16px 20px' }}>
+                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5, marginBottom: 8 }}>{m.label}</div>
+                                {value ? (
+                                    <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>{value}</div>
+                                ) : (
+                                    <div style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                                        {m.source === 'stats' ? 'Not available' : 'Not available — connect QuickBooks'}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

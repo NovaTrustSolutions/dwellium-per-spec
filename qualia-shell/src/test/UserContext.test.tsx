@@ -34,23 +34,6 @@ const wrapper = ({ children }: { children: ReactNode }) => (
     <UserProvider>{children}</UserProvider>
 );
 
-
-// Swarm C (2026-09-05) made login issue ONE bulk `GET /api/objects?owner=…` before any
-// widget call. These two flows mock fetch as an ORDERED sequence, so the bulk call would
-// eat the first canned 401. Answer object-store calls with an honest empty list and hand
-// everything else the queued responses in order.
-function urlAwareFetch(queue: Array<Record<string, unknown>>) {
-    return (input: RequestInfo | URL): Promise<unknown> => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-        if (url.includes('/api/objects')) {
-            return Promise.resolve({ ok: true, status: 200, json: async () => ({ success: true, data: [] }) });
-        }
-        // Exhausted queue → undefined, exactly what a bare vi.fn() returned before, so the
-        // flows that treat a missing response as a network failure keep their old meaning.
-        return Promise.resolve(queue.shift());
-    };
-}
-
 describe('UserContext', () => {
     beforeEach(() => {
         globalThis.fetch = vi.fn();
@@ -386,10 +369,9 @@ describe('UserContext', () => {
 
     it('does NOT log out when a widget call 401s and the refresh endpoint also 401s', async () => {
         const result = await renderAuthed();
-        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(urlAwareFetch([
-            { ok: false, status: 401 },   // widget data call
-            { ok: false, status: 401 },   // refresh rejects too
-        ]));
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
+            .mockResolvedValueOnce({ ok: false, status: 401 });  // refresh rejects too
 
         await act(async () => {
             await result.current.authFetch('/api/strata/vendors');
@@ -449,13 +431,20 @@ describe('UserContext', () => {
     // user's place. Instead the shell stays mounted (isAuthenticated stays true)
     // and `sessionExpired` flips so AuthGate overlays a re-auth modal.
 
+    // Route by URL, not by call order: One Save's bootstrap (GET /api/objects…) fires
+    // on mount alongside /api/auth/me, so an order-based queue hands the refresh's
+    // 401 to the sync call instead. 404 = "no remote object", never an auth signal.
+    const deadSessionFetch = async (url: string) => {
+        if (url === '/api/auth/me' || url === '/api/auth/refresh') return { ok: false, status: 401 };
+        if (url.startsWith('/api/objects')) return { ok: false, status: 404 };
+        throw new Error(`Unmocked: ${url}`);
+    };
+
     it('a confirmed-dead session WITH a stored identity stays mounted and flags sessionExpired', async () => {
         localStorage.setItem('dwellium-auth-token', 'valid-jwt');
         localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
         localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
-        (globalThis.fetch as ReturnType<typeof vi.fn>)
-            .mockResolvedValueOnce({ ok: false, status: 401 })  // /api/auth/me — unauthorized
-            .mockResolvedValueOnce({ ok: false, status: 401 }); // /api/auth/refresh — token rejected
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(deadSessionFetch);
 
         const { result } = renderHook(() => useUser(), { wrapper });
         await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -470,10 +459,7 @@ describe('UserContext', () => {
         localStorage.setItem('dwellium-auth-token', 'valid-jwt');
         localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
         localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
-        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(urlAwareFetch([
-            { ok: false, status: 401 },  // mount /api/auth/me
-            { ok: false, status: 401 },  // mount refresh → dead
-        ]));
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(deadSessionFetch);
 
         const { result } = renderHook(() => useUser(), { wrapper });
         await waitFor(() => expect(result.current.sessionExpired).toBe(true));

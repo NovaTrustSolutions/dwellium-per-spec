@@ -45,7 +45,9 @@ function urlAwareFetch(queue: Array<Record<string, unknown>>) {
         if (url.includes('/api/objects')) {
             return Promise.resolve({ ok: true, status: 200, json: async () => ({ success: true, data: [] }) });
         }
-        return Promise.resolve(queue.shift() ?? { ok: false, status: 404 });
+        // Exhausted queue → undefined, exactly what a bare vi.fn() returned before, so the
+        // flows that treat a missing response as a network failure keep their old meaning.
+        return Promise.resolve(queue.shift());
     };
 }
 

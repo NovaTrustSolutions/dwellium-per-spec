@@ -27,6 +27,7 @@ import {
 import MemoryGraphView from './MemoryGraphView';
 import { DEMO_DOCS, DEMO_QUESTIONS } from './demoCorpus';
 import './MemoryGraphRAG.css';
+import { getAuthToken } from '../../context/UserContext';
 
 export default function MemoryGraphRAG() {
     const { integrations } = useIntegrations();
@@ -130,7 +131,7 @@ export default function MemoryGraphRAG() {
         void (async () => {
             setBusy('Fetching transcripts…');
             try {
-                const res = await fetch(`${API_BASE}/api/transcribe/logs?limit=200`);
+                const res = await fetch(`${API_BASE}/api/transcribe/logs?limit=200`, { headers: { Authorization: `Bearer ${getAuthToken() || ''}` } });
                 if (!res.ok) throw new Error(`backend ${res.status}`);
                 const json = await res.json();
                 const logs = json.data || json.logs || [];

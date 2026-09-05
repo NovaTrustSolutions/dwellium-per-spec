@@ -19,6 +19,7 @@ import AuditLogSection from './AuditLogSection';
 import { setDemoWorkspace, useDemoWorkspace } from '../../lib/demoWorkspaceStore';
 import ScribeSettings from '../Scribe/ScribeSettings';
 import './ControlPanel.css';
+import { getAuthToken } from '../../context/UserContext';
 
 const ACCENT_PRESETS = [
     { label: 'Beacon Blue', color: '#0088cc' },
@@ -92,7 +93,7 @@ export default function ControlPanel() {
     };
 
     const loadCalendarEvents = async () => {
-        const res = await fetch(`${API_BASE}/api/calendar/events?maxResults=6`);
+        const res = await fetch(`${API_BASE}/api/calendar/events?maxResults=6`, { headers: { Authorization: `Bearer ${getAuthToken() || ''}` } });
         const json = await res.json();
         if (!json.success) throw new Error(json.error || 'Failed to load calendar events');
         setCalendarEvents(json.data || []);
@@ -160,7 +161,7 @@ export default function ControlPanel() {
             }
             const res = await fetch(`${API_BASE}/api/calendar/events`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken() || ''}` },
                 body: JSON.stringify({
                     summary: newEventTitle,
                     start: new Date(newEventStart).toISOString(),

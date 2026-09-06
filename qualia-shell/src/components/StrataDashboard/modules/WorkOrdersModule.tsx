@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     Wrench, Plus, X, RefreshCw, Filter, AlertTriangle, CheckCircle, Clock,
     DollarSign, Send, Camera, Pen, UserCheck, ArrowRight, Link, Phone, Mail,
@@ -270,7 +271,7 @@ export default function WorkOrdersModule() {
                         <div className="s-empty">No work orders found</div>
                     ) : (
                         workOrders.map(wo => (
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 key={wo.id}
                                 className={`s-list-item ${selectedWO?.id === wo.id ? 'active' : ''}`}
                                 onClick={() => setSelectedWO(wo)}
@@ -536,8 +537,8 @@ export default function WorkOrdersModule() {
 
             {/* New Work Order Modal */}
             {showForm && (
-                <div className="s-modal-overlay" onClick={() => setShowForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>New Work Order</h3>
                             <button className="s-btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button>

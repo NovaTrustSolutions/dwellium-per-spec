@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../../context/UserContext';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { useState, useEffect, useCallback } from 'react';
 import { Landmark, RefreshCw, Building2, DollarSign, Mail, Phone, FileText, Car, Plus, X, MapPin } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
@@ -122,7 +123,7 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                         <div className="s-empty">No owners found</div>
                     ) : (
                         owners.map(o => (
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 key={o.id}
                                 className={`s-list-item ${selected?.id === o.id ? 'active' : ''}`}
                                 onClick={() => selectOwner(o)}
@@ -342,8 +343,8 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
 
             {/* Add Owner Modal */}
             {showAddForm && (
-                <div className="s-modal-overlay" onClick={() => setShowAddForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowAddForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>Add Owner</h3>
                             <button className="s-btn-icon" onClick={() => setShowAddForm(false)}><X size={18} /></button>

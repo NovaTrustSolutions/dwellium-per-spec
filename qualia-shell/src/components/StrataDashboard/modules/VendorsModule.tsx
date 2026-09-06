@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { Truck, Search, RefreshCw, Plus, X, Shield, AlertTriangle, CheckCircle, Mail, Phone, DollarSign, FileText, Link2, Trash2, Tag, Filter, Building2, Unlink, Upload, Award, BarChart3, UserCheck, UserX, Clock, Settings2, ChevronUp, ChevronDown, ExternalLink, Star } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import { NotYet } from '../../common/NotYet';
@@ -739,7 +740,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                             const vTags: string[] = v.metadata?.serviceTags || [];
                             const typeColor = VENDOR_TYPE_COLORS[vType] || '#94a3b8';
                             return (
-                                <div
+                                <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                     key={v.id}
                                     className={`s-list-item ${selected?.id === v.id ? 'active' : ''}`}
                                     onClick={() => setSelected(v)}
@@ -1400,8 +1401,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             {/* Add Vendor Modal */}
             {showForm && (
-                <div className="s-modal-overlay" onClick={() => setShowForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>Add Vendor</h3>
                             <button className="s-btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button>
@@ -1464,8 +1465,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             {/* Edit Vendor Modal */}
             {showEditForm && selected && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
-                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
+                    <div role="presentation" style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Edit Vendor</h3>
                             <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
@@ -1524,8 +1525,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             {/* Delete Confirm Dialog */}
             {confirmDelete && (
-                <div className="s-modal-overlay" onClick={() => setConfirmDelete(null)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setConfirmDelete(null)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
                         <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px' }}>Delete Vendor?</h3>
                         <p className="s-text-muted" style={{ marginBottom: 20 }}>This action cannot be undone. The vendor record will be permanently removed.</p>

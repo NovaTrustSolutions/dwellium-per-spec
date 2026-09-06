@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { AlertTriangle, Archive, ArchiveRestore, BarChart3, BookOpen, Building2, Calendar, CalendarDays, Camera, Car, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, Clock, Coins, CreditCard, Dog, DollarSign, FileText, Globe, History, Home, Image as ImageIcon, Landmark, LayoutGrid, Link2, List, ListChecks, Mail, MapPin, Megaphone, Paperclip, Phone, PieChart, Plus, Power, RefreshCw, Scale, Search, Send, Settings2, Shield, ShieldCheck, StickyNote, Table2, Trash2, TrendingUp, Upload, User, Users, Wrench, X, Zap } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
@@ -136,7 +137,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit, onTo
                 {icon} {title}
                 <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
                     {onEdit && (
-                        <span
+                        <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
                             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
@@ -614,12 +615,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                 ) : cardView === 'grid' ? (
                     <div className="s-card-grid">
                         {filteredProperties.map(p => (
-                            <div key={p.id} className="s-glass-card s-clickable" onClick={() => openDetail(p)}>
+                            <div role="presentation" key={p.id} className="s-glass-card s-clickable" onClick={() => openDetail(p)}>
                                 <div className="s-prop-card-header">
                                     <div className="s-prop-icon"><Building2 size={20} /></div>
                                     <span className={`s-badge ${p.status}`}>{p.status}</span>
                                 </div>
-                                <h3 className="s-prop-name">{p.name}</h3>
+                                <h3 className="s-prop-name"><span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>{p.name}</span></h3>
                                 {hasPermission('strata:properties:address') && (
                                     <div className="s-prop-address"><MapPin size={12} /> {p.address}</div>
                                 )}
@@ -666,7 +667,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                     /* ── LIST / ROW VIEW ── */
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {filteredProperties.map(p => (
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 key={p.id}
                                 className="s-glass-card s-clickable"
                                 onClick={() => openDetail(p)}
@@ -735,8 +736,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                 {/* Add Property Modal */}
                 {showForm && (
-                    <div className="s-modal-overlay" onClick={() => setShowForm(false)}>
-                        <div className="s-modal" onClick={e => e.stopPropagation()}>
+                    <div role="presentation" className="s-modal-overlay" onClick={() => setShowForm(false)}>
+                        <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                             <div className="s-modal-header">
                                 <h3>Add Property</h3>
                                 <button className="s-btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button>
@@ -775,8 +776,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                 {/* Edit Property Modal */}
                 {showEditForm && selected && (
-                    <div className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
-                        <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                    <div role="presentation" className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
+                        <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                             <div className="s-modal-header">
                                 <h3>Edit Property Details</h3>
                                 <button className="s-btn-icon" onClick={() => setShowEditForm(false)}><X size={18} /></button>
@@ -1444,7 +1445,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 return (
                                     <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Fixed Assets unavailable.</div>}>
                                         <div className="s-glass-card" data-testid="fixed-assets-collapsible">
-                                            <div
+                                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-expanded={isOpen}
                                                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isOpen ? '1rem' : 0 }}
                                                 onClick={toggle}
                                             >
@@ -1530,7 +1531,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             const numB = parseInt(String(b.unitNumber).replace(/\D/g, '')) || 0;
                                             return numA - numB || String(a.unitNumber).localeCompare(String(b.unitNumber));
                                         }).map(u => (
-                                            <div
+                                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                 key={u.id}
                                                 className="s-turn-cell"
                                                 style={{
@@ -1940,7 +1941,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         ) : (
                                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
                                                 {filtered.map(item => (
-                                                    <div
+                                                    <div role="presentation"
                                                         key={item.id}
                                                         className="s-workitem-card"
                                                         onClick={() => setExpandedWorkitem(item)}
@@ -1954,7 +1955,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     >
                                                         {/* Card header — title + badges */}
                                                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-                                                            <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.title}</span>
+                                                            <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} style={{ flex: 1, fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.title}</span>
                                                         </div>
                                                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
                                                             <span style={{
@@ -2162,7 +2163,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                                                                     // Workitems / Legal / Compliance
                                                                     return (
-                                                                        <div
+                                                                        <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                                             key={item.id}
                                                                             onClick={() => setExpandedWorkitem(item)}
                                                                             style={{
@@ -2385,8 +2386,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Add Inspection Modal */}
             {showInspectionForm && selected && (
-                <div className="s-modal-overlay" onClick={() => setShowInspectionForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowInspectionForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>Add Property Inspection</h3>
                             <button className="s-btn-icon" onClick={() => setShowInspectionForm(false)}><X size={18} /></button>
@@ -2439,8 +2440,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Edit Budget Modal */}
             {showBudgetForm && selected && (
-                <div className="s-modal-overlay" onClick={() => setShowBudgetForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 500 }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowBudgetForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 500 }}>
                         <div className="s-modal-header">
                             <h3>Update Budgets & Financials</h3>
                             <button className="s-btn-icon" onClick={() => setShowBudgetForm(false)}><X size={18} /></button>
@@ -2495,8 +2496,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Delete Property Confirm */}
             {confirmDeleteProp && (
-                <div className="s-modal-overlay" onClick={() => setConfirmDeleteProp(null)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setConfirmDeleteProp(null)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
                         <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px' }}>Delete Property?</h3>
                         <p className="s-text-muted" style={{ marginBottom: 20 }}>This will permanently remove the property and all associated data. This action cannot be undone.</p>
@@ -2511,8 +2512,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Edit Property Modal (detail view) */}
             {showEditForm && selected && (
-                <div className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                         <div className="s-modal-header">
                             <h3>Edit Property Details</h3>
                             <button className="s-btn-icon" onClick={() => setShowEditForm(false)}><X size={18} /></button>

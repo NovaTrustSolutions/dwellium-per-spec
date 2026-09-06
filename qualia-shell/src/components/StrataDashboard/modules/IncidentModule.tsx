@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     AlertTriangle, Plus, X, RefreshCw, Search, Building2,
     Shield, Clock, FileText, ChevronDown, ChevronUp, Users,
@@ -255,7 +256,7 @@ Generated: ${new Date().toLocaleString()}
                         ) : filtered.map(inc => {
                             const prop = propMap.get(inc.propertyId);
                             return (
-                                <div key={inc.id}
+                                <div role="presentation" key={inc.id}
                                     onClick={() => setSelected(inc)}
                                     style={{
                                         padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
@@ -269,7 +270,7 @@ Generated: ${new Date().toLocaleString()}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                         <span style={{ color: SEVERITY_COLORS[inc.severity] }}>{getCategoryIcon(inc.category)}</span>
-                                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{inc.title}</span>
+                                        <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{inc.title}</span>
                                         <span style={{
                                             fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                                             background: `${STATUS_COLORS[inc.status]}15`,
@@ -416,11 +417,11 @@ Generated: ${new Date().toLocaleString()}
 
             {/* ═══ LOG INCIDENT MODAL ═══ */}
             {showForm && (
-                <div style={{
+                <div role="presentation" style={{
                     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-                }} onClick={() => setShowForm(false)}>
-                    <form onSubmit={handleCreate} onClick={e => e.stopPropagation()} style={{
+                }} onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}>
+                    <form onSubmit={handleCreate} style={{
                         background: '#0f172a', borderRadius: 12, padding: 24,
                         border: '1px solid rgba(255,255,255,0.1)',
                         width: 480, maxHeight: '85vh', overflowY: 'auto',

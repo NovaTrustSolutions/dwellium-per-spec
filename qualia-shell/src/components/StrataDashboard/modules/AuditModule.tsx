@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { strataGet } from '../strataApi';
 import { Search, RefreshCw, ChevronDown, ChevronRight, User, Clock, Shield, Filter, ChevronLeft, Plus, Archive, X, ShieldCheck, Zap, AlertTriangle, Activity } from 'lucide-react';
 import { strataPost } from '../strataApi';
@@ -332,7 +333,7 @@ export default function AuditModule() {
                                 const roleColor = ROLE_COLORS[entry.userRole] || '#94a3b8';
 
                                 return (
-                                    <div
+                                    <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                         key={entry.id}
                                         style={{
                                             padding: '12px 18px',
@@ -523,10 +524,10 @@ export default function AuditModule() {
 
             {/* ═══ LOG HISTORICAL EVENT MODAL ═══ */}
             {showHistForm && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onClick={() => setShowHistForm(false)}
                 >
-                    <div style={{ background: '#111827', borderRadius: 16, border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)', width: 480, maxWidth: '90vw', overflow: 'hidden' }}
+                    <div role="presentation" style={{ background: '#111827', borderRadius: 16, border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)', width: 480, maxWidth: '90vw', overflow: 'hidden' }}
                         onClick={e => e.stopPropagation()}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1e2a3d' }}>
@@ -749,7 +750,7 @@ export default function AuditModule() {
                             const sourceColor = SOURCE_COLORS[ev.source] ?? '#64748b';
                             const sev = ev.severity;
                             return (
-                                <div
+                                <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                     key={ev.id}
                                     data-testid="audit-unified-event-row"
                                     data-source={ev.source}

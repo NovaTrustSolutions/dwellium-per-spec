@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { Shield, Plus, X, Edit2, Trash2, AlertTriangle, CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp, Briefcase, BarChart3 } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import type { FolioGuardRollup, InsurancePolicy } from '../strataTypes';
@@ -181,7 +182,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                 ErrorBoundary wraps the whole surface per GR-13. */}
             <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12, marginBottom: 12 }}>FolioGuard unavailable.</div>}>
                 {folioguardRollup && (
-                    <div
+                    <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                         data-testid="insurance-folioguard-card"
                         className="s-glass-card"
                         style={{

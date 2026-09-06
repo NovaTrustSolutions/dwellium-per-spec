@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     Shield, Clock, Network, BarChart3, Truck, Building2,
     RefreshCw, Search, Plus, X, AlertTriangle, CheckCircle2,
@@ -972,7 +973,7 @@ export default function ComplianceEngine() {
                             fixture is present. Null-safe: renders nothing if the
                             fixture is missing (fail-soft per GR-13). */}
                         {section8Rollup && (
-                            <div
+                            <div role="presentation"
                                 data-testid="compliance-section8-card"
                                 className="s-glass-card"
                                 style={{
@@ -986,7 +987,7 @@ export default function ComplianceEngine() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                         <Shield size={14} color="#818cf8" />
                                         <div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
                                                 Section 8 (AHA) Rollup
                                             </div>
                                             <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginTop: 2 }} data-testid="compliance-section8-property">
@@ -1081,9 +1082,9 @@ export default function ComplianceEngine() {
 
             {/* ═══ ADD ITEM MODAL ═══ */}
             {showAddItem && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-                    onClick={() => setShowAddItem(false)}>
-                    <form onSubmit={handleAddItem} onClick={e => e.stopPropagation()} style={{
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+                    onClick={e => { if (e.target === e.currentTarget) setShowAddItem(false); }}>
+                    <form onSubmit={handleAddItem} style={{
                         background: '#0f172a', borderRadius: 12, padding: 24, border: '1px solid rgba(255,255,255,0.1)',
                         width: 450, maxHeight: '80vh', overflowY: 'auto',
                     }}>

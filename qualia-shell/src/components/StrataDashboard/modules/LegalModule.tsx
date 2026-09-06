@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../../context/UserContext';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { useState, useEffect, useCallback } from 'react';
 import {
     Scale, Plus, X, ChevronDown, ChevronUp, RefreshCw, AlertTriangle,
@@ -42,7 +43,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                         background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)',
                     }}>
                         {tag}
-                        <span onClick={() => onRemove(tag)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>×</span>
+                        <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-label={`Remove ${tag}`} onClick={() => onRemove(tag)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>×</span>
                     </span>
                 ))}
                 <input
@@ -65,7 +66,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                     boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                 }}>
                     {filtered.map(s => (
-                        <div
+                        <div role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAdd(s); setQuery(''); } }}
                             key={s}
                             onMouseDown={() => { onAdd(s); setQuery(''); }}
                             style={{
@@ -315,7 +316,7 @@ export default function LegalModule() {
                                     borderLeft: `3px solid ${getPriorityColor(wi.priority)}`,
                                 }}
                             >
-                                <div
+                                <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-expanded={expanded}
                                     onClick={() => setExpandedId(expanded ? null : wi.id)}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 12,
@@ -495,8 +496,8 @@ export default function LegalModule() {
 
             {/* Create Legal Issue Modal */}
             {showForm && (
-                <div className="s-modal-overlay" onClick={() => setShowForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
                         <div className="s-modal-header">
                             <h3><Scale size={18} style={{ verticalAlign: -3, marginRight: 8 }} /> New Legal Issue</h3>
                             <button className="s-btn-icon" onClick={() => { setShowForm(false); setFormTags([]); }}><X size={18} /></button>

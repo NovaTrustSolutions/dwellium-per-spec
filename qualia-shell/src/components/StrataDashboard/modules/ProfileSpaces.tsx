@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { Plus, X, Link2, FolderOpen, ChevronRight, Tag, Send, FileText, ClipboardList, Paperclip, Trash2, StickyNote } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import { useToast } from '../useToast';
@@ -235,7 +236,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                     overflowX: 'auto', padding: '0 8px',
                 }}>
                     {spaces.map(s => (
-                        <div
+                        <div role="presentation"
                             key={s.id}
                             onClick={() => setActiveSpace(s.id)}
                             style={{
@@ -247,7 +248,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                             }}
                         >
                             <FolderOpen size={12} />
-                            {s.name}
+                            <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>{s.name}</span>
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleDeleteSpace(s.id); }}
                                 style={{

@@ -511,8 +511,8 @@ export default function AccountingModule() {
 
             {/* Add Entry Modal */}
             {showAddEntry && (
-                <div className="s-modal-overlay" onClick={() => setShowAddEntry(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowAddEntry(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>New Journal Entry</h3>
                             <button className="s-btn-icon" onClick={() => setShowAddEntry(false)}><X size={18} /></button>

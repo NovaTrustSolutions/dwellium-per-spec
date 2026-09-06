@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     Users, Search, RefreshCw, Mail, Phone, MapPin, CreditCard,
     Home, Building2, Calendar, Shield, Car, Dog, FileText,
@@ -317,7 +318,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
                 {icon} {title}
                 <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
                     {onEdit && (
-                        <span
+                        <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
                             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
@@ -789,8 +790,8 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Bulk status modal */}
             {showBulkStatus && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowBulkStatus(false)}>
-                    <div style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }} onClick={e => e.stopPropagation()}>
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowBulkStatus(false)}>
+                    <div role="presentation" style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Bulk Status Change</h3>
                         <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>Change status for {bulkSelected.size} selected tenants:</p>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -1003,8 +1004,8 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Create Tenant Modal */}
             {showForm && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowForm(false)}>
-                    <div style={{ width: 480, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowForm(false)}>
+                    <div role="presentation" style={{ width: 480, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Add New Tenant</h3>
                             <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
@@ -1038,8 +1039,8 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Edit Tenant Modal */}
             {showEditForm && selected && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
-                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
+                    <div role="presentation" style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Edit Tenant</h3>
                             <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
@@ -1112,8 +1113,8 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Delete Confirm Dialog */}
             {confirmDelete && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setConfirmDelete(null)}>
-                    <div style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(239,68,68,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setConfirmDelete(null)}>
+                    <div role="presentation" style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(239,68,68,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                         <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Delete Tenant?</h3>
                         <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)' }}>This action cannot be undone. The tenant record will be permanently removed.</p>

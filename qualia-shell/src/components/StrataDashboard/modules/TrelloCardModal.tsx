@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { getAuthToken } from '../../../context/UserContext';
 import { X, ExternalLink, Paperclip, Calendar, Tag, CheckSquare, Square, Loader, Clock, MessageSquare, Image as ImageIcon } from 'lucide-react';
 
@@ -91,7 +92,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
     return (
         <>
             {/* Backdrop */}
-            <div
+            <div role="presentation"
                 onClick={() => selectedImage ? setSelectedImage(null) : onClose()}
                 style={{
                     position: 'fixed', inset: 0, zIndex: 9998,
@@ -101,7 +102,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
 
             {/* Image lightbox */}
             {selectedImage && (
-                <div
+                <div role="presentation"
                     onClick={() => setSelectedImage(null)}
                     style={{
                         position: 'fixed', inset: 0, zIndex: 10000,
@@ -243,7 +244,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                 const previewUrl = img.previews?.find(p => p.width >= 200)?.url || img.url;
                                                 if (imgError.has(img.id)) return null;
                                                 return (
-                                                    <div
+                                                    <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                         key={img.id}
                                                         onClick={() => setSelectedImage(img.url)}
                                                         style={{

@@ -12,6 +12,10 @@
  * forms / submissions route exists in strataApi.static.ts, strataApi.backend.ts
  * or the sibling backend's dwelliumRoutes.ts (it serves only /communications
  * and /communication-log).
+ *
+ * Same day: the inbox row was a mouse-only div and the letter buttons only
+ * highlighted on hover (4 jsx-a11y errors). The row is now role=button with an
+ * Enter/Space handler sharing the click path; the buttons have focus/blur twins.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
@@ -88,5 +92,32 @@ describe('CommunicationModule · Forms is a template catalog, never invented sub
         fireEvent.click(screen.getByText('Water heater question'));
         expect(screen.getByText('Is the heater covered by the lease?')).toBeTruthy();
         expect(screen.queryByText('No messages found')).toBeNull();
+    });
+
+    it('Inbox: message rows are keyboard-operable — role=button, tab stop, Enter and Space open them', async () => {
+        messages = [
+            { id: 'c1', channel: 'email', direction: 'inbound', subject: 'Water heater question', fromAddress: 'tenant@dwellium.example', toAddress: 'office@dwellium.example', preview: '', body: 'Is the heater covered by the lease?', createdAt: '2026-09-01T12:00:00.000Z' },
+            { id: 'c2', channel: 'sms', direction: 'outbound', subject: 'Parking reminder', fromAddress: 'office@dwellium.example', toAddress: 'tenant@dwellium.example', preview: '', body: 'Lot B closes Friday for restriping.', createdAt: '2026-09-02T12:00:00.000Z' },
+        ];
+        await renderAndOpen();
+        const first = await screen.findByRole('button', { name: /Water heater question/ });
+        const second = screen.getByRole('button', { name: /Parking reminder/ });
+        expect(first).toHaveAttribute('tabindex', '0');
+
+        fireEvent.keyDown(first, { key: 'Enter' });
+        expect(screen.getByText('Is the heater covered by the lease?')).toBeTruthy();
+
+        fireEvent.keyDown(second, { key: ' ' });
+        expect(screen.getByText('Lot B closes Friday for restriping.')).toBeTruthy();
+        expect(screen.queryByText('Is the heater covered by the lease?')).toBeNull();
+    });
+
+    it('Letters: template buttons highlight on keyboard focus and reset on blur (twins of the hover handlers)', async () => {
+        await renderAndOpen('Letters');
+        const btn = screen.getByRole('button', { name: /3-Day Notice to Pay or Quit/ });
+        fireEvent.focus(btn);
+        expect(btn.style.borderColor).toMatch(/239, 68, 68|#ef4444/); // lt.color for the 3-day notice
+        fireEvent.blur(btn);
+        expect(btn.style.borderColor).toMatch(/255, ?255, ?255, ?0\.06/);
     });
 });

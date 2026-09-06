@@ -44,6 +44,9 @@ const FORM_TEMPLATES = [
     { id: 'parking-request', name: 'Parking Spot Request' },
 ];
 
+/** Hover and keyboard focus share one highlight, so the letter buttons work without a mouse. */
+const highlight = (el: HTMLElement, on: boolean, color: string) => { el.style.borderColor = on ? color : 'rgba(255,255,255,0.06)'; };
+
 function channelColor(ch: string): string {
     switch (ch) {
         case 'email': return '#D6FE51';
@@ -98,6 +101,20 @@ export default function CommunicationModule() {
             m.preview?.toLowerCase().includes(q)
         );
     });
+
+    // Click and keyboard (Enter / Space) share this so the two paths can't drift.
+    const openMessage = (msg: Communication) => {
+        setSelected(msg);
+        // Task 2.2 — GR-13 click breadcrumb (fail-soft).
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.click',
+                message: 'communication.message.click',
+                level: 'info',
+                data: { id: msg.id, channel: msg.channel, direction: msg.direction },
+            });
+        } catch { /* no-op */ }
+    };
 
     return (
         <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Communication module unavailable.</div>}>
@@ -162,23 +179,16 @@ export default function CommunicationModule() {
                                     <div className="s-empty" data-testid="communication-empty">No messages found</div>
                                 ) : (
                                     filteredMessages.map(msg => (
+                                        // role over <button>: the row holds block content (invalid inside <button>);
+                                        // role/tabIndex/onKeyDown make it reachable and operable (LeasingModule kanban-card pattern).
                                         <div
                                             key={msg.id}
                                             data-testid="communication-row"
                                             data-channel={msg.channel}
                                             className={`s-list-item ${selected?.id === msg.id ? 'active' : ''}`}
-                                            onClick={() => {
-                                                setSelected(msg);
-                                                // Task 2.2 — GR-13 click breadcrumb (fail-soft).
-                                                try {
-                                                    Sentry.addBreadcrumb({
-                                                        category: 'ui.click',
-                                                        message: 'communication.message.click',
-                                                        level: 'info',
-                                                        data: { id: msg.id, channel: msg.channel, direction: msg.direction },
-                                                    });
-                                                } catch { /* no-op */ }
-                                            }}
+                                            role="button" tabIndex={0}
+                                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMessage(msg); } }}
+                                            onClick={() => openMessage(msg)}
                                         >
                                             <div className="s-list-item-top">
                                                 <div className="s-avatar" style={{ background: `${channelColor(msg.channel)}20`, color: channelColor(msg.channel) }}>
@@ -242,8 +252,10 @@ export default function CommunicationModule() {
                                     background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
                                     borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
                                 }}
-                                onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = lt.color; }}
-                                onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                onMouseOver={e => highlight(e.currentTarget, true, lt.color)}
+                                onMouseOut={e => highlight(e.currentTarget, false, lt.color)}
+                                onFocus={e => highlight(e.currentTarget, true, lt.color)}
+                                onBlur={e => highlight(e.currentTarget, false, lt.color)}
                             >
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: lt.color, flexShrink: 0 }} />
                                 <div>

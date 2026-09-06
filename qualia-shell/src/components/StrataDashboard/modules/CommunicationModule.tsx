@@ -2,12 +2,9 @@
  * CommunicationModule — Letters, Forms, Inbox (mirrors AppFolio Communication)
  */
 import { useState, useEffect, useCallback } from 'react';
-import {
-    Mail, RefreshCw, FileText, Inbox, Send, Plus,
-    Search, Clock, CheckCircle, AlertTriangle, Users, Clipboard
-
-} from 'lucide-react';
+import { Mail, RefreshCw, FileText, Inbox, Send, Search, Clipboard } from 'lucide-react';
 import { strataGet } from '../strataApi';
+import { NotYet } from '../../common/NotYet';
 import type { Communication } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
 // Task 2.2 — GR-13 observability wiring: ErrorBoundary wraps the
@@ -35,13 +32,16 @@ const LETTER_TEMPLATES = [
     { id: 'late-rent', name: 'Late Rent Reminder', category: 'Collections', color: '#ef4444' },
 ];
 
+// Template catalog only. Submission counts have no source — there is no forms /
+// submissions route in strataApi.static.ts, strataApi.backend.ts or the backend's
+// dwelliumRoutes.ts — so none are shown (Docs/code.md 2026-09-06).
 const FORM_TEMPLATES = [
-    { id: 'move-in-inspection', name: 'Move-In Inspection Form', submissions: 12 },
-    { id: 'move-out-inspection', name: 'Move-Out Inspection Form', submissions: 8 },
-    { id: 'maintenance-request', name: 'Maintenance Request Form', submissions: 34 },
-    { id: 'tenant-application', name: 'Rental Application', submissions: 19 },
-    { id: 'pet-agreement', name: 'Pet Agreement Form', submissions: 6 },
-    { id: 'parking-request', name: 'Parking Spot Request', submissions: 3 },
+    { id: 'move-in-inspection', name: 'Move-In Inspection Form' },
+    { id: 'move-out-inspection', name: 'Move-Out Inspection Form' },
+    { id: 'maintenance-request', name: 'Maintenance Request Form' },
+    { id: 'tenant-application', name: 'Rental Application' },
+    { id: 'pet-agreement', name: 'Pet Agreement Form' },
+    { id: 'parking-request', name: 'Parking Spot Request' },
 ];
 
 function channelColor(ch: string): string {
@@ -263,13 +263,7 @@ export default function CommunicationModule() {
                         <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Clipboard size={14} /> Form Templates
                         </h3>
-                        <button style={{
-                            padding: '4px 10px', borderRadius: 6, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-                            background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer',
-                            fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
-                        }}>
-                            <Plus size={12} /> New Form
-                        </button>
+                        <NotYet reason="Form submissions and New Form aren't wired to a backend store yet — this list is the template catalog." />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {FORM_TEMPLATES.map(ft => (
@@ -282,7 +276,6 @@ export default function CommunicationModule() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{ft.name}</div>
                                 </div>
-                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{ft.submissions} submissions</span>
                             </div>
                         ))}
                     </div>

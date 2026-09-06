@@ -7,7 +7,8 @@
  * "Mary H. Gallogly-Schmitt", …), applicants ("Tracy W. Terry", …), renewals
  * ("John Basher & Erin H. Devine" $2,650 → $2,915, …) and leasing agents ("Lisa M.",
  * "Andy K.") on every account — plus hardcoded "23" days-to-lease / "60%" online
- * payments / "51%" portal adoption cards on Metrics → Overview.
+ * payments / "51%" portal adoption cards on Metrics → Overview — and a hardcoded
+ * LISTING_STATUS default that stamped every vacant unit "Posted" on Vacancies.
  *
  * Fix: Rental Applications and Renewals derive from the real feeds the module already
  * fetches (/workitems?type=lease for application-stage rows and stage='renewal_offered'
@@ -15,7 +16,8 @@
  * for names). Guest Cards and Agent Performance have no source in strataApi.static.ts,
  * strataApi.backend.ts or the sibling backend's dwelliumRoutes.ts and show an honest
  * empty state with the shared <NotYet> chip. Metric cards with no source read
- * "Not available".
+ * "Not available". Vacancies drops the sourceless "Listing Status" column for a
+ * <NotYet> chip (Unit has no listing fields; no layer serves any).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
@@ -62,9 +64,11 @@ const OLD_FAKE_STRINGS = [
     'Lisa M.', 'Andy K.',
     // hardcoded metric literals on the Overview cards
     '23', '60%', '51%', 'Leases Signed (MTD)',
+    // LISTING_STATUS default → fake "Posted" badge on every vacant unit
+    'Posted', 'Not Posted', 'Listing Status',
 ];
 
-const CHANGED_TABS = ['Guest Cards', 'Rental Applications', 'Renewals', 'Metrics'];
+const CHANGED_TABS = ['Vacancies', 'Guest Cards', 'Rental Applications', 'Renewals', 'Metrics'];
 const METRIC_VIEWS = ['Leasing Funnel', 'Box Score', 'Agent Performance', 'Overview'];
 
 const inDays = (n: number): string => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
@@ -125,6 +129,27 @@ function expectNoneOf(strings: string[]) {
 }
 
 describe('LeasingModule · empty account → honest empty states, never the old hardcoded arrays', () => {
+    it('Vacancies: real vacant units render without the hardcoded "Posted" listing badge', async () => {
+        units = [
+            unit({ id: 'u1', unitNumber: 'A01', status: 'vacant', currentTenantId: null, leaseEnd: inDays(-12), rentAmount: 1295 }),
+            unit({ id: 'u2', unitNumber: 'B02', status: 'occupied', currentTenantId: 't1' }),
+        ];
+        properties = PROPERTIES;
+        await renderAndOpen('Vacancies');
+
+        const table = within(await screen.findByRole('table'));
+        expect(table.getByText('A01')).toBeTruthy();
+        expect(table.getByText('Riverwood Club')).toBeTruthy();
+        expect(table.getByText('$1,295')).toBeTruthy();
+        expect(table.getByText('12 days')).toBeTruthy();
+        expect(table.getByText('Vacant')).toBeTruthy();        // the unit's real status
+        expect(table.queryByText('B02')).toBeNull();            // occupied units are not vacancies
+        expect(table.queryByText('Listing Status')).toBeNull(); // the column had no source
+        expectNoneOf(['Posted', 'Not Posted', 'Premium']);
+        expect(screen.getByText('1 Vacant Units')).toBeTruthy();
+        expect(screen.getByRole('note')).toHaveTextContent(/Coming soon/);
+    });
+
     it('Guest Cards: "No guest cards yet." + Coming-soon chip, no fake prospects or bulk actions', async () => {
         await renderAndOpen('Guest Cards');
         expect(await screen.findByText('No guest cards yet.')).toBeTruthy();

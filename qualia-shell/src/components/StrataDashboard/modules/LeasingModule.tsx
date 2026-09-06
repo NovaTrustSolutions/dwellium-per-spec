@@ -5,11 +5,11 @@
  * Data honesty (Docs/code.md 2026-09-05 / 2026-09-06): every row rendered here comes
  * from a real feed — /workitems?type=lease, /units, /properties, /entities?type=tenant,
  * /leasing/alerts. Surfaces with no backend source yet (guest cards, leasing-agent
- * attribution, days-to-lease / online-payment / portal metrics) show an honest empty or
+ * attribution, unit listing status, days-to-lease / online-payment / portal metrics) show an honest empty or
  * "Not available" state with the shared <NotYet> chip instead of invented rows.
  */
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { AlertTriangle, ArrowRight, ArrowUpDown, BarChart3, Building2, Calendar, Check, CheckSquare, Clock, Columns3, Droplets, FileKey2, FileText, Flame, Globe, Home, List, PenTool, Percent, Plus, RefreshCw, RotateCw, Search, Send, Tag, Trash2, TrendingUp, UserCheck, UserPlus, Wifi, X, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ArrowUpDown, BarChart3, Building2, Calendar, Check, CheckSquare, Clock, Columns3, Droplets, FileKey2, FileText, Flame, Globe, Home, List, PenTool, Percent, Plus, RefreshCw, RotateCw, Search, Send, Trash2, TrendingUp, UserCheck, UserPlus, Wifi, X, Zap } from 'lucide-react';
 import { strataGet, strataPut, strataPost } from '../strataApi';
 import { sendForEsign } from '../../ESign/esignApi'; // plan 047 — Documenso proxy client
 import { bookingLinkFor } from '../../Scheduling/calcomLinks'; // plan 053 — cal.com showing bridge
@@ -142,11 +142,6 @@ function EmptyCard({ icon, title, message, reason, action }: { icon: ReactNode; 
 }
 
 /* Signals are now fetched live from GET /leasing/alerts */
-
-/* ── Listing status for vacancies (mirrors AppFolio Website/Internet) ── */
-const LISTING_STATUS: Record<string, { website: boolean; internet: boolean; premium: boolean }> = {
-    default: { website: true, internet: true, premium: false },
-};
 
 function renewalStatusColor(s: string) {
     switch (s) {
@@ -347,8 +342,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
             const prop = properties.find(p => p.id === u.propertyId);
             const leaseEnd = u.leaseEnd ? new Date(u.leaseEnd) : null;
             const daysVacant = leaseEnd ? Math.max(0, Math.floor((now.getTime() - leaseEnd.getTime()) / 86400000)) : 0;
-            const listing = LISTING_STATUS[u.id] || LISTING_STATUS.default;
-            return { ...u, propertyName: prop?.name || 'Unknown', sqft: u.sqFt, marketRent: u.rentAmount, daysVacant, listing };
+            return { ...u, propertyName: prop?.name || 'Unknown', sqft: u.sqFt, marketRent: u.rentAmount, daysVacant };
         });
         raw.sort((a, b) => {
             switch (vacancySort) {
@@ -461,7 +455,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
             {loading && <LoadingState message="Loading leasing data…" />}
             {!loading && error && <ErrorState message={error} onRetry={fetchLeases} />}
 
-            {/* ══════════ VACANCIES TAB (AppFolio: Days Vacant + Listing Status + Sort) ══════════ */}
+            {/* ══════════ VACANCIES TAB (AppFolio: Days Vacant + Sort — listing status has no unit-level source yet; see the NotYet chip) ══════════ */}
             {tab === 'vacancies' && !loading && (
                 <div className="s-glass-card">
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -469,6 +463,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             <Home size={14} style={{ verticalAlign: -2, marginRight: 6 }} />{vacantUnits.length} Vacant Units
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <NotYet reason="Listing status (website / internet syndication, premium placement) isn't tracked on units yet." />
                             <ArrowUpDown size={12} style={{ color: 'var(--text-tertiary)' }} />
                             <select value={vacancySort} onChange={e => setVacancySort(e.target.value as VacancySort)}
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-primary)', fontSize: 11 }}>
@@ -485,7 +480,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                    {['Unit', 'Property', 'BD/BA', 'Sq Ft', 'Market Rent', 'Days Vacant', 'Listing Status', 'Status'].map(h => (
+                                    {['Unit', 'Property', 'BD/BA', 'Sq Ft', 'Market Rent', 'Days Vacant', 'Status'].map(h => (
                                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -510,18 +505,6 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: `${daysVacantColor(u.daysVacant)}15`, color: daysVacantColor(u.daysVacant), fontWeight: 700 }}>
                                                 {u.daysVacant} days
                                             </span>
-                                        </td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <div style={{ display: 'flex', gap: 4 }}>
-                                                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: u.listing.website ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', color: u.listing.website ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
-                                                    <Globe size={8} style={{ verticalAlign: -1, marginRight: 2 }} />{u.listing.website ? 'Posted' : 'Not Posted'}
-                                                </span>
-                                                {u.listing.premium && (
-                                                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontWeight: 600 }}>
-                                                        <Tag size={8} style={{ verticalAlign: -1, marginRight: 2 }} />Premium
-                                                    </span>
-                                                )}
-                                            </div>
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
                                             <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', textTransform: 'uppercase', fontWeight: 600 }}>Vacant</span>

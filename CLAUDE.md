@@ -26,10 +26,14 @@ On any backend/network failure, keep the session and surface the global banner
 with a "Do you want to connect?" reconnect button. Only a real `401/403` clears
 auth (`src/context/UserContext.tsx`).
 
-### Never push without verified-green + Ilya's go
-Run the full gate green on the Mac first; never `git push`, `git reset --hard`,
-`git clean -fd`, or rewrite history on Ilya's behalf without an explicit go.
-Build with `npx react-router build`, NOT `npx vite build` (silent no-op).
+### Feature branches ship to CI; `main` never gets a direct push
+Standing authorization (Ilya, 2026-09-06): once the full gate is green on the
+Mac, push the feature branch and open a **draft PR** against `main` so the
+AppFolio Parity Gate runs on GitHub — work that only exists on one machine is
+unverified. `main` itself: never `git push` to it, never `git reset --hard`,
+`git clean -fd`, or rewrite history; it changes only through a PR after CI is
+green and Ilya says merge. Build with `npx react-router build`, NOT
+`npx vite build` (silent no-op).
 
 ---
 
@@ -157,6 +161,8 @@ Cross-phase cumulative deferred-item carry-forward state at HEAD-post-9.5: Phase
 
 - **Strict gate (mirrors CI; Task 8.11 ssr:true update):**
   `cd qualia-shell && npx tsc -b && npx vitest run && npx react-router build && VITE_APPFOLIO_SEEDS=false npx react-router build && cd .. && node Scripts/verify_no_pii_leak.mjs && SMOKE_TEST_SKIP_BUILD=true node Scripts/smoke_test_ssr_phase8.mjs`
+- **Ship a feature branch (after the strict gate is green):**
+  `git push -u origin HEAD:<readable-branch-name> && gh pr create --draft --base main --head <readable-branch-name> --fill`
 - **Dispatch parity gate:**
   `gh workflow run "AppFolio Parity Gate" -R NovaTrustSolutions/dwellium-per-spec --ref main`
 - **Watch latest run:**

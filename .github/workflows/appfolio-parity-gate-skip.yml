@@ -1,0 +1,32 @@
+# Twin of appfolio-parity-gate.yml, required by branch protection on `main`.
+#
+# The real gate only runs when a parity path changes (its `pull_request.paths`
+# list). Once "Build, test, and verify" is a required status check, a PR that
+# touches none of those paths (docs, Scripts, workflows) would never report
+# the check and could not merge. GitHub's documented fix ("Handling skipped
+# but required checks") is this file: a job with the SAME NAME that runs on the
+# complementary `paths-ignore` list and succeeds immediately.
+#
+# The two lists must stay identical — qualia-shell/src/test/ci/parityGateTwin.test.ts
+# fails if they drift.
+name: AppFolio Parity Gate (skip)
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'packages/types/**'
+      - 'qualia-shell/src/**'
+      - 'qualia-shell/app/**'
+      - 'qualia-shell/public/data/**'
+      - 'qualia-shell/src/test/appfolioParity/**'
+      - 'qualia-shell/src/components/StrataDashboard/fixtures/appfolioDerived/**'
+      - 'Scripts/derive_appfolio_fixtures.mjs'
+      - 'Scripts/verify_no_pii_leak.mjs'
+      - '.github/workflows/appfolio-parity-gate.yml'
+
+jobs:
+  gate:
+    name: Build, test, and verify
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No parity path changed in this PR — nothing to build or test; the required check is satisfied by this twin job."

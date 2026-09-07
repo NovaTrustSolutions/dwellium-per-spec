@@ -1091,8 +1091,8 @@ export default function ComplianceEngine() {
                         <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}><Shield size={18} style={{ verticalAlign: -3, marginRight: 8 }} /> Add Compliance Item</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                             <div>
-                                <label className="s-label">Entity Type *</label>
-                                <select name="entityType" required className="s-input">
+                                <label htmlFor="compliance-engine-entity-type" className="s-label">Entity Type *</label>
+                                <select id="compliance-engine-entity-type" name="entityType" required className="s-input">
                                     <option value="property">Property</option>
                                     <option value="vendor">Vendor</option>
                                     <option value="tenant">Tenant</option>
@@ -1100,21 +1100,21 @@ export default function ComplianceEngine() {
                                 </select>
                             </div>
                             <div>
-                                <label className="s-label">Entity *</label>
-                                <select name="entityId" required className="s-input">
+                                <label htmlFor="compliance-engine-entity" className="s-label">Entity *</label>
+                                <select id="compliance-engine-entity" name="entityId" required className="s-input">
                                     {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="s-label">Type *</label>
-                                <select name="itemType" required className="s-input">
+                                <label htmlFor="compliance-engine-type" className="s-label">Type *</label>
+                                <select id="compliance-engine-type" name="itemType" required className="s-input">
                                     {ITEM_TYPES.map(t => <option key={t} value={t}>{ITEM_TYPE_LABELS[t]}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="s-label">Status</label>
-                                <select name="status" className="s-input">
+                                <label htmlFor="compliance-engine-status" className="s-label">Status</label>
+                                <select id="compliance-engine-status" name="status" className="s-input">
                                     <option value="valid">Valid</option>
                                     <option value="warning">Warning</option>
                                     <option value="expired">Expired</option>
@@ -1122,28 +1122,28 @@ export default function ComplianceEngine() {
                                 </select>
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="s-label">Label *</label>
-                                <input name="label" required className="s-input" placeholder="e.g., Riverwood Club General Liability" />
+                                <label htmlFor="compliance-engine-label" className="s-label">Label *</label>
+                                <input id="compliance-engine-label" name="label" required className="s-input" placeholder="e.g., Riverwood Club General Liability" />
                             </div>
                             <div>
-                                <label className="s-label">Expiration Date</label>
-                                <input name="expirationDate" type="date" className="s-input" />
+                                <label htmlFor="compliance-engine-expiration-date" className="s-label">Expiration Date</label>
+                                <input id="compliance-engine-expiration-date" name="expirationDate" type="date" className="s-input" />
                             </div>
                             <div>
-                                <label className="s-label">Carrier / Issuer</label>
-                                <input name="carrier" className="s-input" placeholder="e.g., SafeGuard Insurance" />
+                                <label htmlFor="compliance-engine-carrier-issuer" className="s-label">Carrier / Issuer</label>
+                                <input id="compliance-engine-carrier-issuer" name="carrier" className="s-input" placeholder="e.g., SafeGuard Insurance" />
                             </div>
                             <div>
-                                <label className="s-label">Policy / Document #</label>
-                                <input name="policyNumber" className="s-input" placeholder="Optional" />
+                                <label htmlFor="compliance-engine-policy-document" className="s-label">Policy / Document #</label>
+                                <input id="compliance-engine-policy-document" name="policyNumber" className="s-input" placeholder="Optional" />
                             </div>
                             <div>
-                                <label className="s-label">Coverage Limits</label>
-                                <input name="coverageLimits" className="s-input" placeholder="e.g., $1M/$2M" />
+                                <label htmlFor="compliance-engine-coverage-limits" className="s-label">Coverage Limits</label>
+                                <input id="compliance-engine-coverage-limits" name="coverageLimits" className="s-input" placeholder="e.g., $1M/$2M" />
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="s-label">Notes</label>
-                                <textarea name="notes" className="s-input" rows={2} style={{ resize: 'vertical' }} />
+                                <label htmlFor="compliance-engine-notes" className="s-label">Notes</label>
+                                <textarea id="compliance-engine-notes" name="notes" className="s-input" rows={2} style={{ resize: 'vertical' }} />
                             </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>

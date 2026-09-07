@@ -372,21 +372,21 @@ function CorporateReviewInner() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <input type="file" onChange={e => setUploadFile(e.target.files?.[0] || null)}
                                 style={{ color: 'var(--text-secondary)', fontSize: 13 }} />
-                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Category</label>
-                            <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)}
+                            <label htmlFor="corporate-review-category" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Category</label>
+                            <select id="corporate-review-category" value={uploadCategory} onChange={e => setUploadCategory(e.target.value)}
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13 }}>
                                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Priority</label>
-                            <select value={uploadPriority} onChange={e => setUploadPriority(e.target.value as DocPriority)}
+                            <label htmlFor="corporate-review-priority" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Priority</label>
+                            <select id="corporate-review-priority" value={uploadPriority} onChange={e => setUploadPriority(e.target.value as DocPriority)}
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13 }}>
                                 <option value="critical">Critical</option>
                                 <option value="high">High</option>
                                 <option value="medium">Medium</option>
                                 <option value="low">Low</option>
                             </select>
-                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Notes</label>
-                            <textarea value={uploadNotes} onChange={e => setUploadNotes(e.target.value)}
+                            <label htmlFor="corporate-review-notes" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Notes</label>
+                            <textarea id="corporate-review-notes" value={uploadNotes} onChange={e => setUploadNotes(e.target.value)}
                                 rows={3} placeholder="Additional notes..."
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13, resize: 'vertical' }} />
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>

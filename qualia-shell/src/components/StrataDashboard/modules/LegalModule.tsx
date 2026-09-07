@@ -18,9 +18,11 @@ interface DwelliumUser {
 }
 
 /* ── Tag Autocomplete ── */
-function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
+function TagInput({ suggestions, selected, onAdd, onRemove, placeholder, inputId }: {
     suggestions: string[]; selected: string[]; onAdd: (tag: string) => void;
     onRemove: (tag: string) => void; placeholder: string;
+    /** id for the query input so the field's <label htmlFor> can reach it. */
+    inputId?: string;
 }) {
     const [query, setQuery] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
@@ -47,6 +49,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                     </span>
                 ))}
                 <input
+                    id={inputId}
                     value={query}
                     onChange={e => { setQuery(e.target.value); setShowDropdown(true); }}
                     onFocus={() => setShowDropdown(true)}
@@ -504,25 +507,25 @@ export default function LegalModule() {
                         </div>
                         <form onSubmit={handleCreate}>
                             <div className="s-form-group">
-                                <label>Issue Title</label>
-                                <input name="title" required placeholder="e.g. Eviction proceedings — Unit B3" className="s-input" />
+                                <label htmlFor="legal-issue-title">Issue Title</label>
+                                <input id="legal-issue-title" name="title" required placeholder="e.g. Eviction proceedings — Unit B3" className="s-input" />
                             </div>
                             <div className="s-form-group">
-                                <label>Description</label>
-                                <textarea name="description" rows={4} placeholder="Describe the legal issue…" className="s-input" style={{ resize: 'vertical' }} />
+                                <label htmlFor="legal-description">Description</label>
+                                <textarea id="legal-description" name="description" rows={4} placeholder="Describe the legal issue…" className="s-input" style={{ resize: 'vertical' }} />
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Priority</label>
-                                    <select name="priority" className="s-input">
+                                    <label htmlFor="legal-priority">Priority</label>
+                                    <select id="legal-priority" name="priority" className="s-input">
                                         <option value="high">High</option>
                                         <option value="medium" selected>Medium</option>
                                         <option value="low">Low</option>
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Legal Type</label>
-                                    <select name="legalType" className="s-input">
+                                    <label htmlFor="legal-legal-type">Legal Type</label>
+                                    <select id="legal-legal-type" name="legalType" className="s-input">
                                         <option value="eviction">Eviction</option>
                                         <option value="lease_dispute">Lease Dispute</option>
                                         <option value="property_damage">Property Damage</option>
@@ -534,8 +537,9 @@ export default function LegalModule() {
                                 </div>
                             </div>
                             <div className="s-form-group">
-                                <label>Tags (Properties & Tenants)</label>
+                                <label htmlFor="legal-tags">Tags (Properties & Tenants)</label>
                                 <TagInput
+                                    inputId="legal-tags"
                                     suggestions={allTagSuggestions}
                                     selected={formTags}
                                     onAdd={tag => setFormTags(prev => [...prev, tag])}
@@ -545,12 +549,13 @@ export default function LegalModule() {
                             </div>
                             {/* Access Control */}
                             <div className="s-form-group">
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <label htmlFor="legal-access-control" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Lock size={14} style={{ color: '#f59e0b' }} />
                                     Access Control
                                     <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 400 }}>(only selected users can view this issue)</span>
                                 </label>
                                 <TagInput
+                                    inputId="legal-access-control"
                                     suggestions={userSuggestions}
                                     selected={formAccessList.map(id => userIdToLabel.get(id) || id)}
                                     onAdd={label => {

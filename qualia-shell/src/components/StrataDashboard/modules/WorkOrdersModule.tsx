@@ -545,17 +545,17 @@ export default function WorkOrdersModule() {
                         </div>
                         <form onSubmit={handleCreate}>
                             <div className="s-form-group">
-                                <label>Title</label>
-                                <input name="title" required placeholder="Brief description of work needed" className="s-input" />
+                                <label htmlFor="work-orders-title">Title</label>
+                                <input id="work-orders-title" name="title" required placeholder="Brief description of work needed" className="s-input" />
                             </div>
                             <div className="s-form-group">
-                                <label>Description</label>
-                                <textarea name="description" rows={3} placeholder="Detailed description…" className="s-input" />
+                                <label htmlFor="work-orders-description">Description</label>
+                                <textarea id="work-orders-description" name="description" rows={3} placeholder="Detailed description…" className="s-input" />
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Priority</label>
-                                    <select name="priority" className="s-input">
+                                    <label htmlFor="work-orders-priority">Priority</label>
+                                    <select id="work-orders-priority" name="priority" className="s-input">
                                         <option value="medium">Medium</option>
                                         <option value="low">Low</option>
                                         <option value="high">High</option>
@@ -563,8 +563,8 @@ export default function WorkOrdersModule() {
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Property</label>
-                                    <select name="propertyId" className="s-input">
+                                    <label htmlFor="work-orders-property">Property</label>
+                                    <select id="work-orders-property" name="propertyId" className="s-input">
                                         <option value="">Select property…</option>
                                         {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
@@ -572,8 +572,8 @@ export default function WorkOrdersModule() {
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Estimated Cost ($)</label>
-                                    <input name="cost" type="number" min="0" className="s-input" placeholder="0" />
+                                    <label htmlFor="work-orders-estimated-cost">Estimated Cost ($)</label>
+                                    <input id="work-orders-estimated-cost" name="cost" type="number" min="0" className="s-input" placeholder="0" />
                                 </div>
                                 <div className="s-form-group s-form-check">
                                     <label><input type="checkbox" name="capex" /> Capital Expenditure (CapEx)</label>

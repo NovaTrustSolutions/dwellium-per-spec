@@ -284,12 +284,12 @@ export default function InsuranceModule({ propertyId }: Props) {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 8, marginBottom: 8 }}>
                         <div>
-                            <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>Effective</label>
-                            <input name="effectiveDate" type="date" defaultValue={editing?.effectiveDate || ''} className="s-input" style={{ fontSize: 11 }} />
+                            <label htmlFor="insurance-effective" style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>Effective</label>
+                            <input id="insurance-effective" name="effectiveDate" type="date" defaultValue={editing?.effectiveDate || ''} className="s-input" style={{ fontSize: 11 }} />
                         </div>
                         <div>
-                            <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>Expiration</label>
-                            <input name="expirationDate" type="date" defaultValue={editing?.expirationDate || ''} className="s-input" style={{ fontSize: 11 }} />
+                            <label htmlFor="insurance-expiration" style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>Expiration</label>
+                            <input id="insurance-expiration" name="expirationDate" type="date" defaultValue={editing?.expirationDate || ''} className="s-input" style={{ fontSize: 11 }} />
                         </div>
                         <input name="notes" placeholder="Notes" defaultValue={editing?.notes || ''} className="s-input" style={{ fontSize: 11 }} />
                     </div>

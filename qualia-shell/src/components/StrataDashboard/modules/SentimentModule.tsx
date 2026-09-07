@@ -179,16 +179,16 @@ function SentimentModuleInner() {
                     <h3 style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--text-primary)' }}>Record New Survey Response</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Tenant</label>
-                            <select value={newSurvey.tenantId} onChange={e => setNewSurvey(s => ({ ...s, tenantId: e.target.value }))}
+                            <label htmlFor="sentiment-tenant" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Tenant</label>
+                            <select id="sentiment-tenant" value={newSurvey.tenantId} onChange={e => setNewSurvey(s => ({ ...s, tenantId: e.target.value }))}
                                 style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}>
                                 <option value="">Select tenant...</option>
                                 {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Channel</label>
-                            <select value={newSurvey.channel} onChange={e => setNewSurvey(s => ({ ...s, channel: e.target.value }))}
+                            <label htmlFor="sentiment-channel" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Channel</label>
+                            <select id="sentiment-channel" value={newSurvey.channel} onChange={e => setNewSurvey(s => ({ ...s, channel: e.target.value }))}
                                 style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}>
                                 <option value="manual">Manual (phone/in-person)</option>
                                 <option value="email">Email</option>
@@ -207,8 +207,8 @@ function SentimentModuleInner() {
                             </div>
                         </div>
                         <div style={{ gridColumn: '1/-1' }}>
-                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Comments (optional)</label>
-                            <textarea value={newSurvey.comments} onChange={e => setNewSurvey(s => ({ ...s, comments: e.target.value }))} rows={3}
+                            <label htmlFor="sentiment-comments-optional" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Comments (optional)</label>
+                            <textarea id="sentiment-comments-optional" value={newSurvey.comments} onChange={e => setNewSurvey(s => ({ ...s, comments: e.target.value }))} rows={3}
                                 placeholder="Any notes from the conversation..."
                                 style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
                         </div>

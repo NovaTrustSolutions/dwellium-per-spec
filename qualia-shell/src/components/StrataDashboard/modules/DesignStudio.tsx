@@ -119,9 +119,9 @@ export default function DesignStudio() {
                 <div style={{ width: showHistory ? '35%' : '40%', display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {/* Design Type */}
                     <div>
-                        <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
                             Design Type
-                        </label>
+                        </span>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                             {DESIGN_TYPES.map(dt => (
                                 <button key={dt.id}
@@ -141,10 +141,10 @@ export default function DesignStudio() {
 
                     {/* Property selector */}
                     <div>
-                        <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
+                        <label htmlFor="design-studio-property-optional" style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
                             Property (optional)
                         </label>
-                        <select value={propertyId} onChange={e => setPropertyId(e.target.value)}
+                        <select id="design-studio-property-optional" value={propertyId} onChange={e => setPropertyId(e.target.value)}
                             style={{
                                 width: '100%', padding: '8px 10px', borderRadius: 6, fontSize: 12,
                                 background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
@@ -157,10 +157,10 @@ export default function DesignStudio() {
 
                     {/* Prompt */}
                     <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
+                        <label htmlFor="design-studio-design-prompt" style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
                             Design Prompt
                         </label>
-                        <textarea
+                        <textarea id="design-studio-design-prompt"
                             value={prompt}
                             onChange={e => setPrompt(e.target.value)}
                             placeholder="Describe the design you want, e.g., 'Two-bedroom apartment with open kitchen, 900 sq ft, L-shaped living room…'"

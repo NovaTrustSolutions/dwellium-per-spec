@@ -537,12 +537,12 @@ export default function AuditModule() {
                         <form onSubmit={handleLogHistorical} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                 <div>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
-                                    <input name="date" type="date" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
+                                    <label htmlFor="audit-date" style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
+                                    <input id="audit-date" name="date" type="date" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Type</label>
-                                    <select name="entityType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}>
+                                    <label htmlFor="audit-entity-type" style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Type</label>
+                                    <select id="audit-entity-type" name="entityType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}>
                                         <option value="property">Property</option>
                                         <option value="tenant">Tenant</option>
                                         <option value="vendor">Vendor</option>
@@ -554,12 +554,12 @@ export default function AuditModule() {
                                 </div>
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Name</label>
-                                <input name="entity" required placeholder="e.g. 128 Buena Vista Dr" style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
+                                <label htmlFor="audit-entity-name" style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Name</label>
+                                <input id="audit-entity-name" name="entity" required placeholder="e.g. 128 Buena Vista Dr" style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Event Type</label>
-                                <select name="eventType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}>
+                                <label htmlFor="audit-event-type" style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Event Type</label>
+                                <select id="audit-event-type" name="eventType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}>
                                     <option value="financial">Financial</option>
                                     <option value="legal">Legal</option>
                                     <option value="maintenance">Maintenance</option>
@@ -570,8 +570,8 @@ export default function AuditModule() {
                                 </select>
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-                                <textarea name="description" required rows={3} placeholder="Describe the historical event..." style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', resize: 'vertical' }} />
+                                <label htmlFor="audit-description" style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
+                                <textarea id="audit-description" name="description" required rows={3} placeholder="Describe the historical event..." style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', resize: 'vertical' }} />
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
                                 <button type="button" onClick={() => setShowHistForm(false)} style={{ padding: '8px 16px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>Cancel</button>

@@ -535,26 +535,26 @@ export default function AccountingModule() {
                         }}>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Date</label>
-                                    <input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="s-input" />
+                                    <label htmlFor="accounting-date">Date</label>
+                                    <input id="accounting-date" name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="s-input" />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Reference</label>
-                                    <input name="reference" placeholder="JE-2026-XXXX" className="s-input" />
+                                    <label htmlFor="accounting-reference">Reference</label>
+                                    <input id="accounting-reference" name="reference" placeholder="JE-2026-XXXX" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-form-group">
-                                <label>Description</label>
-                                <input name="description" required placeholder="e.g. Monthly rent roll" className="s-input" />
+                                <label htmlFor="accounting-description">Description</label>
+                                <input id="accounting-description" name="description" required placeholder="e.g. Monthly rent roll" className="s-input" />
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Debit Amount</label>
-                                    <input name="debit" type="number" min="0" step="0.01" placeholder="0.00" className="s-input" />
+                                    <label htmlFor="accounting-debit-amount">Debit Amount</label>
+                                    <input id="accounting-debit-amount" name="debit" type="number" min="0" step="0.01" placeholder="0.00" className="s-input" />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Credit Amount</label>
-                                    <input name="credit" type="number" min="0" step="0.01" placeholder="0.00" className="s-input" />
+                                    <label htmlFor="accounting-credit-amount">Credit Amount</label>
+                                    <input id="accounting-credit-amount" name="credit" type="number" min="0" step="0.01" placeholder="0.00" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-modal-footer">

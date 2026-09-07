@@ -351,13 +351,13 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                         </div>
                         <form onSubmit={handleAddOwner}>
                             <div className="s-form-group">
-                                <label>Owner/Entity Name</label>
-                                <input name="name" required placeholder="e.g. ZP Group LLC" className="s-input" />
+                                <label htmlFor="owners-owner-entity-name">Owner/Entity Name</label>
+                                <input id="owners-owner-entity-name" name="name" required placeholder="e.g. ZP Group LLC" className="s-input" />
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Entity Type</label>
-                                    <select name="entityType" className="s-input">
+                                    <label htmlFor="owners-entity-type">Entity Type</label>
+                                    <select id="owners-entity-type" name="entityType" className="s-input">
                                         <option value="owner">Individual</option>
                                         <option value="llc">LLC</option>
                                         <option value="trust">Trust</option>
@@ -365,13 +365,13 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Phone</label>
-                                    <input name="phone" type="tel" placeholder="(555) 000-0000" className="s-input" />
+                                    <label htmlFor="owners-phone">Phone</label>
+                                    <input id="owners-phone" name="phone" type="tel" placeholder="(555) 000-0000" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-form-group">
-                                <label>Email</label>
-                                <input name="email" type="email" placeholder="owner@example.com" className="s-input" />
+                                <label htmlFor="owners-email">Email</label>
+                                <input id="owners-email" name="email" type="email" placeholder="owner@example.com" className="s-input" />
                             </div>
                             <div className="s-modal-footer">
                                 <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowAddForm(false)}>Cancel</button>

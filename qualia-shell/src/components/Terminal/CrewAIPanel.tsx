@@ -10,6 +10,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Check } from 'lucide-react';
+import { isKnownFrameBlocked, hostOf } from '../../lib/frameBlocked';
 import './CrewAIPanel.css';
 
 const LS_URL = 'dwellium-crewai-url';
@@ -125,18 +126,34 @@ export default function CrewAIPanel() {
                             </>
                         )}
                     </div>
-                    <div className="cr-frame-wrap">
-                        <iframe
-                            key={iframeKey}
-                            className="cr-frame"
-                            src={url}
-                            title="CrewAI Control Plane"
-                            allow="clipboard-read; clipboard-write"
-                        />
-                    </div>
-                    <p className="cr-embed-note">
-                        The cloud control plane requires sign-in and may block embedding — if it stays blank, use <strong>Open ↗</strong>.
-                    </p>
+                    {isKnownFrameBlocked(url) ? (
+                        /* app.crewai.com answers X-Frame-Options: SAMEORIGIN + frame-ancestors, so an
+                           iframe can only ever show the browser's "refused to connect" page. */
+                        <div className="cr-blocked" role="status">
+                            <p className="cr-blocked-title">{hostOf(url)} doesn’t allow embedding</p>
+                            <p className="cr-blocked-body">
+                                That site tells browsers to refuse every other page as a frame, so an embedded view
+                                would only show “refused to connect”. Open it in its own window, or point the URL at a
+                                self-hosted CrewAI UI with <strong>Change</strong>.
+                            </p>
+                            <button className="cr-btn cr-btn--primary" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>Open ↗</button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="cr-frame-wrap">
+                                <iframe
+                                    key={iframeKey}
+                                    className="cr-frame"
+                                    src={url}
+                                    title="CrewAI Control Plane"
+                                    allow="clipboard-read; clipboard-write"
+                                />
+                            </div>
+                            <p className="cr-embed-note">
+                                A self-hosted UI may require sign-in — if it stays blank, use <strong>Open ↗</strong>.
+                            </p>
+                        </>
+                    )}
                 </>
             )}
         </div>

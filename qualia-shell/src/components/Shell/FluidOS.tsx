@@ -159,24 +159,10 @@ function buildQuickLinks(): Array<{ id: string; label: string; url: string }> {
 
 /* ── Preview: sites that refuse to be framed ────────────────────────────── */
 
-// ponytail: a static list of hosts whose CSP frame-ancestors / X-Frame-Options
-// forbid embedding (verified 2026-08-22: www.appfolio.com sends
-// `frame-ancestors 'self' *.appfolio.com …`). A no-cors fetch can't read those
-// headers, so this is the cheapest honest signal; upgrade path = a backend
-// HEAD probe (`/api/preview/probe`) if the list ever gets long.
-const FRAME_BLOCKED_HOSTS = [
-    'appfolio.com', 'google.com', 'gmail.com', 'youtube.com', 'office.com', 'live.com',
-    'microsoft.com', 'github.com', 'linkedin.com', 'facebook.com', 'instagram.com', 'x.com',
-    'twitter.com', 'dropbox.com', 'apple.com', 'icloud.com',
-];
-export function isKnownFrameBlocked(url: string): boolean {
-    try {
-        const host = new URL(url).hostname.toLowerCase();
-        return FRAME_BLOCKED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
-    } catch {
-        return false;
-    }
-}
+// The host list + check live in src/lib/frameBlocked.ts (shared with the
+// Terminal widget's CrewAI tab); re-exported here for existing imports.
+import { isKnownFrameBlocked } from '../../lib/frameBlocked';
+export { isKnownFrameBlocked };
 
 /* ── Component ────────────────────────────────────────────────────────────── */
 

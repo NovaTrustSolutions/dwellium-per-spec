@@ -4,6 +4,8 @@ import './FactCheckLog.css';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { getAuthToken } from '../../context/UserContext';
+import { describeBackendFailure, describeFactCheckFailure } from '../../lib/factCheckFailure';
 
 // ============================================
 // TYPES
@@ -100,7 +102,11 @@ export default function FactCheckLog() {
         setChecking(true);
 
         // ── 1) Try user-configured LLM first ──
-        if (hasActiveLlm(integrations.llm)) {
+        // 2026-09-08: remember WHY each path failed so the entry can say so,
+        // instead of the old blanket "No LLM configured and backend offline".
+        const llmActive = hasActiveLlm(integrations.llm);
+        let llmError: string | null = null;
+        if (llmActive) {
             try {
                 const llmRes = await callLlm({
                     systemPrompt: `You are a fact-checking assistant. Evaluate the user's claim and respond with JSON only. Schema: { "verdict": "verified"|"disputed"|"unverifiable"|"partially_true", "confidence": number between 0 and 1, "explanation": "1-3 sentence reasoning", "sources": [array of URL strings, may be empty] }. Be decisive: only mark unverifiable when the claim cannot be evaluated from general knowledge. Mark partially_true when the claim is partly accurate but misleading.`,
@@ -126,20 +132,25 @@ export default function FactCheckLog() {
                     setChecking(false);
                     return;
                 }
-            } catch {
-                // LLM call failed — fall through to backend
+                llmError = 'provider returned no text';
+            } catch (err) {
+                // LLM call failed — fall through to backend, keeping the reason.
+                llmError = err instanceof Error ? err.message : String(err);
             }
         }
 
-        // ── 2) Fall back to backend ──
+        // ── 2) Fall back to backend (session token: the route is gated) ──
+        let backendError: string;
         try {
+            const token = getAuthToken();
             const res = await fetch(API_FACT_CHECK, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ claims: [claimText] }),
             });
-            const json = await res.json();
-            if (json.success && json.data?.results) {
+            let json: any = null;
+            try { json = await res.json(); } catch { json = null; }
+            if (json?.success && json.data?.results) {
                 const results = json.data.results.map((r: any) => ({
                     id: crypto.randomUUID(),
                     claim: r.claim,
@@ -151,22 +162,35 @@ export default function FactCheckLog() {
                 }));
                 setEntries(prev => [...results, ...prev]);
                 setManualClaim('');
+                setChecking(false);
+                return;
             }
-        } catch {
-            // Both LLM and backend offline — show placeholder
-            setEntries(prev => [{
-                id: crypto.randomUUID(),
-                claim: claimText,
-                verdict: 'unverifiable',
-                confidence: 0,
-                explanation: 'No LLM configured and backend offline. Configure an LLM provider in Settings → API Keys to enable fact-checking.',
-                sources: [],
-                timestamp: Date.now(),
-            }, ...prev]);
-            setManualClaim('');
-        } finally {
-            setChecking(false);
+            backendError = json === null
+                ? describeBackendFailure('not-json', res.status)
+                : !res.ok
+                    ? describeBackendFailure('http', typeof json?.error === 'string' ? `${res.status}, ${json.error}` : res.status)
+                    : describeBackendFailure('rejected', typeof json?.error === 'string' ? json.error : 'success=false');
+        } catch (err) {
+            backendError = describeBackendFailure('network', err instanceof Error ? err.message : String(err));
         }
+
+        // Both paths failed — record an entry that names the real reasons.
+        setEntries(prev => [{
+            id: crypto.randomUUID(),
+            claim: claimText,
+            verdict: 'unverifiable',
+            confidence: 0,
+            explanation: describeFactCheckFailure({
+                llmActive,
+                llmProvider: integrations.llm.active,
+                llmError,
+                backendError,
+            }),
+            sources: [],
+            timestamp: Date.now(),
+        }, ...prev]);
+        setManualClaim('');
+        setChecking(false);
     };
 
     // ---- FILTERING ----

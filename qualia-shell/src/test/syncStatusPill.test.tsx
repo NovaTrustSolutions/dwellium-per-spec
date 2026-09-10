@@ -10,10 +10,21 @@ import { oneSaveClient } from '../lib/oneSaveClient';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import SyncStatusPill from '../components/Shell/SyncStatusPill';
 
-vi.mock('../lib/oneSaveClient', () => ({
-    ONE_SAVE_ENABLED: true,
-    oneSaveClient: { get: vi.fn(), put: vi.fn(), remove: vi.fn() },
-}));
+vi.mock('../lib/oneSaveClient', () => {
+    // useSyncExternalStore requires a REFERENTIALLY STABLE snapshot when
+    // nothing changed — a fresh object literal per call causes React's
+    // "getSnapshot should be cached" infinite-loop guard to trip.
+    const NOT_LIMITED = { limited: false, lastLimitedAt: null };
+    return {
+        ONE_SAVE_ENABLED: true,
+        oneSaveClient: { get: vi.fn(), put: vi.fn(), remove: vi.fn() },
+        syncRateLimitStore: {
+            subscribe: () => () => {},
+            getSnapshot: () => NOT_LIMITED,
+            getServerSnapshot: () => NOT_LIMITED,
+        },
+    };
+});
 
 const SAVED = {
     id: 'pill_account-a', type: 'pill', ownerId: 'account-a', schema: 1,

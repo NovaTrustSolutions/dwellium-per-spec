@@ -58,3 +58,31 @@ describe('Advisory Board — Run the board on the first screen', () => {
         expect(screen.queryByTestId('advisory-board-interview')).toBeNull();
     });
 });
+
+describe('Advisory Board — Enter-to-submit + empty-topic hint', () => {
+    beforeEach(() => { callLlmMock.mockReset(); callLlmMock.mockResolvedValue({ text: BOARD_MD }); });
+
+    it('Enter (without Shift) starts the interview when a topic exists; empty topic and Shift+Enter are no-ops', async () => {
+        render(<AdvisoryBoard />);
+        const textarea = screen.getByLabelText(/decision you want stress-tested/i);
+
+        fireEvent.keyDown(textarea, { key: 'Enter' }); // empty topic → startInterview no-ops
+        expect(callLlmMock).not.toHaveBeenCalled();
+
+        fireEvent.change(textarea, { target: { value: 'Raise rents 6% or hold at 3%?' } });
+        fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true }); // Shift+Enter → newline, not submit
+        expect(callLlmMock).not.toHaveBeenCalled();
+
+        fireEvent.keyDown(textarea, { key: 'Enter' }); // plain Enter → starts the interview
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(screen.getByTestId('advisory-board-interview')).toBeInTheDocument());
+    });
+
+    it('shows "Describe the decision to enable the board" only while the topic is empty', () => {
+        render(<AdvisoryBoard />);
+        expect(screen.getByText('Describe the decision to enable the board')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText(/decision you want stress-tested/i), { target: { value: 'Raise rents 6% or hold at 3%?' } });
+        expect(screen.queryByText('Describe the decision to enable the board')).toBeNull();
+    });
+});

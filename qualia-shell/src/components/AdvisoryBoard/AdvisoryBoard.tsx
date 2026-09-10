@@ -178,7 +178,16 @@ export default function AdvisoryBoard() {
                         value={topic}
                         placeholder="e.g. Raise renewal rents 6% across Woodland Parc, or hold at 3% to protect occupancy?"
                         onChange={(e) => setTopic(e.target.value)}
+                        onKeyDown={(e) => {
+                            // Enter submits (startInterview no-ops without a topic or while busy);
+                            // Shift+Enter keeps the default newline for multi-line decisions.
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                startInterview();
+                            }
+                        }}
                     />
+                    {!topic.trim() && <p className="ab__muted">Describe the decision to enable the board</p>}
                     <div className="ab__actions">
                         <button type="button" className="ab__btn" onClick={startInterview} disabled={!topic.trim() || !!busy}>
                             {busy === 'interview' ? <><Loader2 size={14} className="ab__spin" aria-hidden="true" /> Preparing questions…</> : 'Interview me first →'}

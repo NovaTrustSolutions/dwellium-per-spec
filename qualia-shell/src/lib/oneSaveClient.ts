@@ -27,6 +27,42 @@ export const ONE_SAVE_ENABLED =
 
 const OBJECTS_API = `${API_BASE}/api/objects`;
 
+/** Hard ceiling for a single `listAll` page — matches the backend's own MAX_LIST_LIMIT. */
+const BULK_LIST_LIMIT = 500;
+
+/**
+ * syncRateLimitStore — surfaces a 429 from the objects API instead of letting
+ * `call()`'s no-throw contract swallow it as an indistinguishable `null`.
+ * Login fans a bulk list (or, on fallback, N per-store GETs) across every
+ * registered One Save store; if the backend's request-rate limiter trips,
+ * the UI should say so (SyncStatusPill: "Sync paused — retrying") instead of
+ * silently degrading to localStorage. Mirrors `sessionHealthStore`'s shape
+ * (module-level external store, no React context) but is a DISTINCT concern:
+ * a 429 means the session is fine and just throttled, not dead.
+ */
+export interface SyncRateLimitSnapshot {
+    /** True since the most recent 429; cleared on the next successful call. */
+    limited: boolean;
+    /** Epoch ms of the most recent 429 (null = never this session). */
+    lastLimitedAt: number | null;
+}
+const RATE_OK: SyncRateLimitSnapshot = { limited: false, lastLimitedAt: null };
+let rateState: SyncRateLimitSnapshot = RATE_OK;
+const rateListeners = new Set<() => void>();
+function emitRate(): void {
+    rateListeners.forEach((cb) => cb());
+}
+export const syncRateLimitStore = {
+    subscribe(cb: () => void): () => void {
+        rateListeners.add(cb);
+        return () => { rateListeners.delete(cb); };
+    },
+    getSnapshot(): SyncRateLimitSnapshot { return rateState; },
+    getServerSnapshot(): SyncRateLimitSnapshot { return RATE_OK; },
+    /** Test escape hatch (repo convention: reset in beforeEach). */
+    reset(): void { rateState = RATE_OK; },
+};
+
 /** A persisted object — the universal unit of "One Save" storage. */
 export interface DwelliumObject<T = unknown> {
     id: string;
@@ -87,9 +123,18 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T 
             if ((res.status === 401 || res.status === 403) && token && !token.startsWith('static-')) {
                 sessionHealthStore.markAuthRejected();
             }
+            // The login-storm fix (bulk listAll + skip-redundant-migrate-GET)
+            // cuts requests dramatically, but a 429 must still be VISIBLE
+            // rather than collapsing into the same silent `null` as any other
+            // failure — see syncRateLimitStore above.
+            if (res.status === 429) {
+                rateState = { limited: true, lastLimitedAt: Date.now() };
+                emitRate();
+            }
             return null;
         }
         sessionHealthStore.markAuthOk();
+        if (rateState.limited) { rateState = RATE_OK; emitRate(); } // recovered
 
         const json: unknown = await res.json();
         if (isEnvelope<T>(json)) return json.data ?? null;
@@ -113,6 +158,26 @@ export const oneSaveClient = {
         const params = `?type=${encodeURIComponent(type)}&owner=${encodeURIComponent(ownerId)}`;
         const r = await call<DwelliumObject<T>[]>('GET', params);
         return r ?? [];
+    },
+
+    /**
+     * Bulk-list EVERY object (any type) for the owner in one round trip —
+     * login bootstrap uses this instead of one GET per registered store
+     * (46+ stores × hydrate+migrate was ~100-150 requests and tripped the
+     * backend's rate limiter). `owner` rides along for self-documentation;
+     * the backend derives the real owner from the authenticated session
+     * regardless (`objectRoutes.ts` never reads a query-string owner).
+     *
+     * UNLIKE `list()` (empty array on failure), this keeps `call()`'s
+     * null-on-failure DISTINCT from a real empty page: `null` means the bulk
+     * call itself failed (offline/disabled/non-OK/429) so the caller MUST
+     * fall back to per-store hydrate() — collapsing that to `[]` would read
+     * as "this owner has zero durable objects" and let migrate() clobber
+     * existing remote data with stale local values.
+     */
+    async listAll(ownerId: string, limit: number = BULK_LIST_LIMIT): Promise<DwelliumObject[] | null> {
+        const params = `?owner=${encodeURIComponent(ownerId)}&limit=${limit}`;
+        return call<DwelliumObject[]>('GET', params);
     },
 
     /**

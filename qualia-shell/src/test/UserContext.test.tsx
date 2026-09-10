@@ -431,13 +431,20 @@ describe('UserContext', () => {
     // user's place. Instead the shell stays mounted (isAuthenticated stays true)
     // and `sessionExpired` flips so AuthGate overlays a re-auth modal.
 
+    // Route by URL, not by call order: One Save's bootstrap (GET /api/objects…) fires
+    // on mount alongside /api/auth/me, so an order-based queue hands the refresh's
+    // 401 to the sync call instead. 404 = "no remote object", never an auth signal.
+    const deadSessionFetch = async (url: string) => {
+        if (url === '/api/auth/me' || url === '/api/auth/refresh') return { ok: false, status: 401 };
+        if (url.startsWith('/api/objects')) return { ok: false, status: 404 };
+        throw new Error(`Unmocked: ${url}`);
+    };
+
     it('a confirmed-dead session WITH a stored identity stays mounted and flags sessionExpired', async () => {
         localStorage.setItem('dwellium-auth-token', 'valid-jwt');
         localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
         localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
-        (globalThis.fetch as ReturnType<typeof vi.fn>)
-            .mockResolvedValueOnce({ ok: false, status: 401 })  // /api/auth/me — unauthorized
-            .mockResolvedValueOnce({ ok: false, status: 401 }); // /api/auth/refresh — token rejected
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(deadSessionFetch);
 
         const { result } = renderHook(() => useUser(), { wrapper });
         await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -452,9 +459,7 @@ describe('UserContext', () => {
         localStorage.setItem('dwellium-auth-token', 'valid-jwt');
         localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
         localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
-        (globalThis.fetch as ReturnType<typeof vi.fn>)
-            .mockResolvedValueOnce({ ok: false, status: 401 })  // mount /api/auth/me
-            .mockResolvedValueOnce({ ok: false, status: 401 }); // mount refresh → dead
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(deadSessionFetch);
 
         const { result } = renderHook(() => useUser(), { wrapper });
         await waitFor(() => expect(result.current.sessionExpired).toBe(true));

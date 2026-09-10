@@ -131,6 +131,14 @@ interface ChatMessage {
     observability?: MessageObservability;
     /** Phase-10 A2: Hermes run id backing this answer — enables thumbs-up/down voting. */
     hermesRunId?: string;
+    /**
+     * Where this reply came from. Only a 'backend' reply ever attempted real
+     * context retrieval, so only 'backend' replies are eligible for the
+     * "Thin context" notice (see `hasThinContext`) — a browser-key LLM
+     * fallback never had contextSources to begin with and isn't "thin", it's
+     * just a different path.
+     */
+    origin?: 'backend' | 'browser-llm';
 }
 
 interface VoiceStatus {
@@ -409,7 +417,9 @@ function exportConversation(messages: ChatMessage[]) {
 }
 
 function hasThinContext(message?: ChatMessage | null): boolean {
-    if (!message || message.role !== 'assistant') return false;
+    // Only a backend reply ever tried to gather contextSources — a browser-key
+    // reply has none by construction, so it is never "thin", it's a different path.
+    if (!message || message.role !== 'assistant' || message.origin !== 'backend') return false;
     const sourceCount = message.contextSources?.length || 0;
     const totalItems = message.contextSources?.reduce((sum, source) => sum + source.itemCount, 0) || 0;
     return sourceCount < 2 || totalItems < 3;
@@ -1222,6 +1232,7 @@ export default function ARAConsole() {
                 contextSources: data.data.contextSources,
                 observability: data.data.observability,
                 hermesRunId: hermesRec.id,
+                origin: 'backend',
             });
             // Streamed: finalize the placeholder in place (keeps its position); else append.
             const pid = placeholderId;
@@ -1306,6 +1317,7 @@ export default function ARAConsole() {
                             content: llmText,
                             mode: modeToUse,
                             hermesRunId: hermesRec.id,
+                            origin: 'browser-llm',
                         });
                         const sid = streamedId;
                         setMessages(prev => (sid
@@ -2500,6 +2512,14 @@ export default function ARAConsole() {
                     {thinContextWarning && (
                         <div className="ara-action-feedback ara-action-feedback--warning">
                             {thinContextWarning}
+                            {' '}
+                            <button
+                                type="button"
+                                className="ara-action-btn ara-handoff-btn"
+                                onClick={() => handleHandoffClick({ widgetId: 'file-manager', label: 'Files', icon: 'folder-open' })}
+                            >
+                                Pin context
+                            </button>
                         </div>
                     )}
 

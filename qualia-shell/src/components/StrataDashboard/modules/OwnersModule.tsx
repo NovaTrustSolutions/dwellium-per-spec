@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../../context/UserContext';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { useState, useEffect, useCallback } from 'react';
 import { Landmark, RefreshCw, Building2, DollarSign, Mail, Phone, FileText, Car, Plus, X, MapPin } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
@@ -122,7 +123,7 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                         <div className="s-empty">No owners found</div>
                     ) : (
                         owners.map(o => (
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 key={o.id}
                                 className={`s-list-item ${selected?.id === o.id ? 'active' : ''}`}
                                 onClick={() => selectOwner(o)}
@@ -342,21 +343,21 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
 
             {/* Add Owner Modal */}
             {showAddForm && (
-                <div className="s-modal-overlay" onClick={() => setShowAddForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowAddForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>Add Owner</h3>
                             <button className="s-btn-icon" onClick={() => setShowAddForm(false)}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddOwner}>
                             <div className="s-form-group">
-                                <label>Owner/Entity Name</label>
-                                <input name="name" required placeholder="e.g. ZP Group LLC" className="s-input" />
+                                <label htmlFor="owners-owner-entity-name">Owner/Entity Name</label>
+                                <input id="owners-owner-entity-name" name="name" required placeholder="e.g. ZP Group LLC" className="s-input" />
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Entity Type</label>
-                                    <select name="entityType" className="s-input">
+                                    <label htmlFor="owners-entity-type">Entity Type</label>
+                                    <select id="owners-entity-type" name="entityType" className="s-input">
                                         <option value="owner">Individual</option>
                                         <option value="llc">LLC</option>
                                         <option value="trust">Trust</option>
@@ -364,13 +365,13 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Phone</label>
-                                    <input name="phone" type="tel" placeholder="(555) 000-0000" className="s-input" />
+                                    <label htmlFor="owners-phone">Phone</label>
+                                    <input id="owners-phone" name="phone" type="tel" placeholder="(555) 000-0000" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-form-group">
-                                <label>Email</label>
-                                <input name="email" type="email" placeholder="owner@example.com" className="s-input" />
+                                <label htmlFor="owners-email">Email</label>
+                                <input id="owners-email" name="email" type="email" placeholder="owner@example.com" className="s-input" />
                             </div>
                             <div className="s-modal-footer">
                                 <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowAddForm(false)}>Cancel</button>

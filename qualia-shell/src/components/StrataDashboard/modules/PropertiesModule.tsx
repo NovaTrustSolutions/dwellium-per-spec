@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { AlertTriangle, Archive, ArchiveRestore, BarChart3, BookOpen, Building2, Calendar, CalendarDays, Camera, Car, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, Clock, Coins, CreditCard, Dog, DollarSign, FileText, Globe, History, Home, Image as ImageIcon, Landmark, LayoutGrid, Link2, List, ListChecks, Mail, MapPin, Megaphone, Paperclip, Phone, PieChart, Plus, Power, RefreshCw, Scale, Search, Send, Settings2, Shield, ShieldCheck, StickyNote, Table2, Trash2, TrendingUp, Upload, User, Users, Wrench, X, Zap } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
@@ -136,7 +137,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit, onTo
                 {icon} {title}
                 <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
                     {onEdit && (
-                        <span
+                        <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
                             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
@@ -614,12 +615,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                 ) : cardView === 'grid' ? (
                     <div className="s-card-grid">
                         {filteredProperties.map(p => (
-                            <div key={p.id} className="s-glass-card s-clickable" onClick={() => openDetail(p)}>
+                            <div role="presentation" key={p.id} className="s-glass-card s-clickable" onClick={() => openDetail(p)}>
                                 <div className="s-prop-card-header">
                                     <div className="s-prop-icon"><Building2 size={20} /></div>
                                     <span className={`s-badge ${p.status}`}>{p.status}</span>
                                 </div>
-                                <h3 className="s-prop-name">{p.name}</h3>
+                                <h3 className="s-prop-name"><span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>{p.name}</span></h3>
                                 {hasPermission('strata:properties:address') && (
                                     <div className="s-prop-address"><MapPin size={12} /> {p.address}</div>
                                 )}
@@ -666,7 +667,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                     /* ── LIST / ROW VIEW ── */
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {filteredProperties.map(p => (
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 key={p.id}
                                 className="s-glass-card s-clickable"
                                 onClick={() => openDetail(p)}
@@ -735,33 +736,33 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                 {/* Add Property Modal */}
                 {showForm && (
-                    <div className="s-modal-overlay" onClick={() => setShowForm(false)}>
-                        <div className="s-modal" onClick={e => e.stopPropagation()}>
+                    <div role="presentation" className="s-modal-overlay" onClick={() => setShowForm(false)}>
+                        <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                             <div className="s-modal-header">
                                 <h3>Add Property</h3>
                                 <button className="s-btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button>
                             </div>
                             <form onSubmit={handleCreate}>
                                 <div className="s-form-group">
-                                    <label>Property Name</label>
-                                    <input name="name" required placeholder="e.g. Skyline Tower" className="s-input" />
+                                    <label htmlFor="properties-property-name">Property Name</label>
+                                    <input id="properties-property-name" name="name" required placeholder="e.g. Skyline Tower" className="s-input" />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Address</label>
-                                    <input name="address" required placeholder="Full address" className="s-input" />
+                                    <label htmlFor="properties-address">Address</label>
+                                    <input id="properties-address" name="address" required placeholder="Full address" className="s-input" />
                                 </div>
                                 <div className="s-form-row">
                                     <div className="s-form-group">
-                                        <label>Type</label>
-                                        <select name="type" className="s-input">
+                                        <label htmlFor="properties-type">Type</label>
+                                        <select id="properties-type" name="type" className="s-input">
                                             <option value="residential">Residential</option>
                                             <option value="commercial">Commercial</option>
                                             <option value="mixed_use">Mixed Use</option>
                                         </select>
                                     </div>
                                     <div className="s-form-group">
-                                        <label>Unit Count</label>
-                                        <input name="unitCount" type="number" min="0" className="s-input" placeholder="0" />
+                                        <label htmlFor="properties-unit-count">Unit Count</label>
+                                        <input id="properties-unit-count" name="unitCount" type="number" min="0" className="s-input" placeholder="0" />
                                     </div>
                                 </div>
                                 <div className="s-modal-footer">
@@ -775,8 +776,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                 {/* Edit Property Modal */}
                 {showEditForm && selected && (
-                    <div className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
-                        <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                    <div role="presentation" className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
+                        <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                             <div className="s-modal-header">
                                 <h3>Edit Property Details</h3>
                                 <button className="s-btn-icon" onClick={() => setShowEditForm(false)}><X size={18} /></button>
@@ -792,8 +793,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 <h4 style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
                                 <div className="s-form-row">
                                     <div className="s-form-group">
-                                        <label>Rent Ready (Yes/No)</label>
-                                        <select 
+                                        <label htmlFor="properties-rent-ready-yes-no">Rent Ready (Yes/No)</label>
+                                        <select id="properties-rent-ready-yes-no" 
                                             className="s-input" 
                                             value={editFormData.rentReady || ''} 
                                             onChange={e => setEditFormData({...editFormData, rentReady: e.target.value})}
@@ -804,8 +805,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         </select>
                                     </div>
                                     <div className="s-form-group">
-                                        <label>Ready For Showing On</label>
-                                        <input 
+                                        <label htmlFor="properties-ready-for-showing-on">Ready For Showing On</label>
+                                        <input id="properties-ready-for-showing-on" 
                                             type="date" 
                                             className="s-input" 
                                             value={editFormData.readyForShowingOn || ''} 
@@ -814,8 +815,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     </div>
                                 </div>
                                 <div className="s-form-group" style={{ marginBottom: 20 }}>
-                                    <label>Lockbox Info</label>
-                                    <input 
+                                    <label htmlFor="properties-lockbox-info">Lockbox Info</label>
+                                    <input id="properties-lockbox-info" 
                                         className="s-input" 
                                         placeholder="e.g. Front Door - Code: 1234" 
                                         value={editFormData.lockbox || ''} 
@@ -826,8 +827,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 <h4 style={{ fontSize: 12, color: '#8cf8a2', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Property Descriptors</h4>
                                 <div className="s-form-row">
                                     <div className="s-form-group">
-                                        <label>County</label>
-                                        <input 
+                                        <label htmlFor="properties-county">County</label>
+                                        <input id="properties-county" 
                                             className="s-input" 
                                             placeholder="e.g. King County" 
                                             value={editFormData.county || ''} 
@@ -835,8 +836,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         />
                                     </div>
                                     <div className="s-form-group">
-                                        <label>Parcel ID</label>
-                                        <input 
+                                        <label htmlFor="properties-parcel-id">Parcel ID</label>
+                                        <input id="properties-parcel-id" 
                                             className="s-input" 
                                             value={editFormData.parcel || ''} 
                                             onChange={e => setEditFormData({...editFormData, parcel: e.target.value})}
@@ -845,8 +846,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 </div>
                                 <div className="s-form-row">
                                     <div className="s-form-group">
-                                        <label>Year Built</label>
-                                        <input 
+                                        <label htmlFor="properties-year-built">Year Built</label>
+                                        <input id="properties-year-built" 
                                             className="s-input" 
                                             placeholder="e.g. 1995" 
                                             value={editFormData.yearBuilt || ''} 
@@ -854,8 +855,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         />
                                     </div>
                                     <div className="s-form-group">
-                                        <label>Owner</label>
-                                        <input 
+                                        <label htmlFor="properties-owner">Owner</label>
+                                        <input id="properties-owner" 
                                             className="s-input" 
                                             value={editFormData.owner || ''} 
                                             onChange={e => setEditFormData({...editFormData, owner: e.target.value})}
@@ -863,8 +864,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     </div>
                                 </div>
                                 <div className="s-form-group" style={{ marginBottom: 20 }}>
-                                    <label>Description Note</label>
-                                    <textarea 
+                                    <label htmlFor="properties-description-note">Description Note</label>
+                                    <textarea id="properties-description-note" 
                                         className="s-input" 
                                         style={{ minHeight: 60, resize: 'vertical' }}
                                         placeholder="Add general description notes here..." 
@@ -876,8 +877,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 <h4 style={{ fontSize: 12, color: '#f8c28c', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Financial Baseline</h4>
                                 <div className="s-form-row">
                                     <div className="s-form-group">
-                                        <label>Purchase Price</label>
-                                        <input 
+                                        <label htmlFor="properties-purchase-price">Purchase Price</label>
+                                        <input id="properties-purchase-price" 
                                             className="s-input" 
                                             placeholder="$0.00" 
                                             value={editFormData.purchasePrice || ''} 
@@ -885,8 +886,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         />
                                     </div>
                                     <div className="s-form-group">
-                                        <label>Purchase Date</label>
-                                        <input 
+                                        <label htmlFor="properties-purchase-date">Purchase Date</label>
+                                        <input id="properties-purchase-date" 
                                             type="date" 
                                             className="s-input" 
                                             value={editFormData.purchaseDate || ''} 
@@ -1444,7 +1445,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 return (
                                     <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Fixed Assets unavailable.</div>}>
                                         <div className="s-glass-card" data-testid="fixed-assets-collapsible">
-                                            <div
+                                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-expanded={isOpen}
                                                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isOpen ? '1rem' : 0 }}
                                                 onClick={toggle}
                                             >
@@ -1530,7 +1531,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             const numB = parseInt(String(b.unitNumber).replace(/\D/g, '')) || 0;
                                             return numA - numB || String(a.unitNumber).localeCompare(String(b.unitNumber));
                                         }).map(u => (
-                                            <div
+                                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                 key={u.id}
                                                 className="s-turn-cell"
                                                 style={{
@@ -1940,7 +1941,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         ) : (
                                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
                                                 {filtered.map(item => (
-                                                    <div
+                                                    <div role="presentation"
                                                         key={item.id}
                                                         className="s-workitem-card"
                                                         onClick={() => setExpandedWorkitem(item)}
@@ -1954,7 +1955,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     >
                                                         {/* Card header — title + badges */}
                                                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-                                                            <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.title}</span>
+                                                            <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} style={{ flex: 1, fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.title}</span>
                                                         </div>
                                                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
                                                             <span style={{
@@ -2162,7 +2163,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                                                                     // Workitems / Legal / Compliance
                                                                     return (
-                                                                        <div
+                                                                        <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                                             key={item.id}
                                                                             onClick={() => setExpandedWorkitem(item)}
                                                                             style={{
@@ -2385,8 +2386,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Add Inspection Modal */}
             {showInspectionForm && selected && (
-                <div className="s-modal-overlay" onClick={() => setShowInspectionForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowInspectionForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>Add Property Inspection</h3>
                             <button className="s-btn-icon" onClick={() => setShowInspectionForm(false)}><X size={18} /></button>
@@ -2394,12 +2395,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                         <form onSubmit={handleAddInspection}>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Date</label>
-                                    <input type="date" required className="s-input" value={inspectionFormData.date} onChange={e => setInspectionFormData({...inspectionFormData, date: e.target.value})} />
+                                    <label htmlFor="properties-date">Date</label>
+                                    <input id="properties-date" type="date" required className="s-input" value={inspectionFormData.date} onChange={e => setInspectionFormData({...inspectionFormData, date: e.target.value})} />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Type</label>
-                                    <select className="s-input" value={inspectionFormData.type} onChange={e => setInspectionFormData({...inspectionFormData, type: e.target.value})}>
+                                    <label htmlFor="properties-type-2">Type</label>
+                                    <select id="properties-type-2" className="s-input" value={inspectionFormData.type} onChange={e => setInspectionFormData({...inspectionFormData, type: e.target.value})}>
                                         <option value="Annual">Annual</option>
                                         <option value="Move-In">Move-In</option>
                                         <option value="Move-Out">Move-Out</option>
@@ -2411,8 +2412,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Status/Result</label>
-                                    <select className="s-input" value={inspectionFormData.status} onChange={e => setInspectionFormData({...inspectionFormData, status: e.target.value})}>
+                                    <label htmlFor="properties-status-result">Status/Result</label>
+                                    <select id="properties-status-result" className="s-input" value={inspectionFormData.status} onChange={e => setInspectionFormData({...inspectionFormData, status: e.target.value})}>
                                         <option value="Pass">Pass</option>
                                         <option value="Fair">Fair</option>
                                         <option value="Fail">Fail</option>
@@ -2420,13 +2421,13 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Score (Optional)</label>
-                                    <input className="s-input" placeholder="e.g. 95/100" value={inspectionFormData.score} onChange={e => setInspectionFormData({...inspectionFormData, score: e.target.value})} />
+                                    <label htmlFor="properties-score-optional">Score (Optional)</label>
+                                    <input id="properties-score-optional" className="s-input" placeholder="e.g. 95/100" value={inspectionFormData.score} onChange={e => setInspectionFormData({...inspectionFormData, score: e.target.value})} />
                                 </div>
                             </div>
                             <div className="s-form-group" style={{ marginBottom: 20 }}>
-                                <label>Notes</label>
-                                <textarea className="s-input" style={{ minHeight: 60, resize: 'vertical' }} value={inspectionFormData.notes} onChange={e => setInspectionFormData({...inspectionFormData, notes: e.target.value})} />
+                                <label htmlFor="properties-notes">Notes</label>
+                                <textarea id="properties-notes" className="s-input" style={{ minHeight: 60, resize: 'vertical' }} value={inspectionFormData.notes} onChange={e => setInspectionFormData({...inspectionFormData, notes: e.target.value})} />
                             </div>
                             <div className="s-modal-footer">
                                 <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowInspectionForm(false)}>Cancel</button>
@@ -2439,8 +2440,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Edit Budget Modal */}
             {showBudgetForm && selected && (
-                <div className="s-modal-overlay" onClick={() => setShowBudgetForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 500 }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowBudgetForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 500 }}>
                         <div className="s-modal-header">
                             <h3>Update Budgets & Financials</h3>
                             <button className="s-btn-icon" onClick={() => setShowBudgetForm(false)}><X size={18} /></button>
@@ -2448,33 +2449,33 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                         <form onSubmit={handleUpdateBudget}>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Annual Operating Budget ($)</label>
-                                    <input type="number" className="s-input" value={budgetFormData.annualOperatingBudget || ''} onChange={e => setBudgetFormData({...budgetFormData, annualOperatingBudget: e.target.value})} />
+                                    <label htmlFor="properties-annual-operating-budget">Annual Operating Budget ($)</label>
+                                    <input id="properties-annual-operating-budget" type="number" className="s-input" value={budgetFormData.annualOperatingBudget || ''} onChange={e => setBudgetFormData({...budgetFormData, annualOperatingBudget: e.target.value})} />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Target Operating Reserve ($)</label>
-                                    <input type="number" className="s-input" value={budgetFormData.targetOperatingReserve || ''} onChange={e => setBudgetFormData({...budgetFormData, targetOperatingReserve: e.target.value})} />
+                                    <label htmlFor="properties-target-operating-reserve">Target Operating Reserve ($)</label>
+                                    <input id="properties-target-operating-reserve" type="number" className="s-input" value={budgetFormData.targetOperatingReserve || ''} onChange={e => setBudgetFormData({...budgetFormData, targetOperatingReserve: e.target.value})} />
                                 </div>
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Current Escrow Balance ($)</label>
-                                    <input type="number" className="s-input" value={budgetFormData.escrowBalance || ''} onChange={e => setBudgetFormData({...budgetFormData, escrowBalance: e.target.value})} />
+                                    <label htmlFor="properties-current-escrow-balance">Current Escrow Balance ($)</label>
+                                    <input id="properties-current-escrow-balance" type="number" className="s-input" value={budgetFormData.escrowBalance || ''} onChange={e => setBudgetFormData({...budgetFormData, escrowBalance: e.target.value})} />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>CapEx Budget ($)</label>
-                                    <input type="number" className="s-input" value={budgetFormData.capexBudget || ''} onChange={e => setBudgetFormData({...budgetFormData, capexBudget: e.target.value})} />
+                                    <label htmlFor="properties-capex-budget">CapEx Budget ($)</label>
+                                    <input id="properties-capex-budget" type="number" className="s-input" value={budgetFormData.capexBudget || ''} onChange={e => setBudgetFormData({...budgetFormData, capexBudget: e.target.value})} />
                                 </div>
                             </div>
                             <h4 style={{ fontSize: 13, color: 'var(--text-primary)', margin: '16px 0 8px', paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Operating Variance Thresholds</h4>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Amount Threshold ($)</label>
-                                    <input type="number" className="s-input" value={budgetFormData.varianceThresholdAmount || ''} onChange={e => setBudgetFormData({...budgetFormData, varianceThresholdAmount: e.target.value})} />
+                                    <label htmlFor="properties-amount-threshold">Amount Threshold ($)</label>
+                                    <input id="properties-amount-threshold" type="number" className="s-input" value={budgetFormData.varianceThresholdAmount || ''} onChange={e => setBudgetFormData({...budgetFormData, varianceThresholdAmount: e.target.value})} />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Percentage Threshold (%)</label>
-                                    <input type="number" className="s-input" value={budgetFormData.varianceThresholdPercentage || ''} onChange={e => setBudgetFormData({...budgetFormData, varianceThresholdPercentage: e.target.value})} />
+                                    <label htmlFor="properties-percentage-threshold">Percentage Threshold (%)</label>
+                                    <input id="properties-percentage-threshold" type="number" className="s-input" value={budgetFormData.varianceThresholdPercentage || ''} onChange={e => setBudgetFormData({...budgetFormData, varianceThresholdPercentage: e.target.value})} />
                                 </div>
                             </div>
                             <div className="s-modal-footer" style={{ marginTop: 24 }}>
@@ -2495,8 +2496,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Delete Property Confirm */}
             {confirmDeleteProp && (
-                <div className="s-modal-overlay" onClick={() => setConfirmDeleteProp(null)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setConfirmDeleteProp(null)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
                         <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px' }}>Delete Property?</h3>
                         <p className="s-text-muted" style={{ marginBottom: 20 }}>This will permanently remove the property and all associated data. This action cannot be undone.</p>
@@ -2511,8 +2512,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
             {/* Edit Property Modal (detail view) */}
             {showEditForm && selected && (
-                <div className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                         <div className="s-modal-header">
                             <h3>Edit Property Details</h3>
                             <button className="s-btn-icon" onClick={() => setShowEditForm(false)}><X size={18} /></button>
@@ -2527,54 +2528,54 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                             <h4 style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Rent Ready (Yes/No)</label>
-                                    <select className="s-input" value={editFormData.rentReady || ''} onChange={e => setEditFormData({...editFormData, rentReady: e.target.value})}>
+                                    <label htmlFor="properties-rent-ready-yes-no-2">Rent Ready (Yes/No)</label>
+                                    <select id="properties-rent-ready-yes-no-2" className="s-input" value={editFormData.rentReady || ''} onChange={e => setEditFormData({...editFormData, rentReady: e.target.value})}>
                                         <option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option>
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Ready For Showing On</label>
-                                    <input type="date" className="s-input" value={editFormData.readyForShowingOn || ''} onChange={e => setEditFormData({...editFormData, readyForShowingOn: e.target.value})} />
+                                    <label htmlFor="properties-ready-for-showing-on-2">Ready For Showing On</label>
+                                    <input id="properties-ready-for-showing-on-2" type="date" className="s-input" value={editFormData.readyForShowingOn || ''} onChange={e => setEditFormData({...editFormData, readyForShowingOn: e.target.value})} />
                                 </div>
                             </div>
                             <div className="s-form-group" style={{ marginBottom: 20 }}>
-                                <label>Lockbox Info</label>
-                                <input className="s-input" placeholder="e.g. Front Door - Code: 1234" value={editFormData.lockbox || ''} onChange={e => setEditFormData({...editFormData, lockbox: e.target.value})} />
+                                <label htmlFor="properties-lockbox-info-2">Lockbox Info</label>
+                                <input id="properties-lockbox-info-2" className="s-input" placeholder="e.g. Front Door - Code: 1234" value={editFormData.lockbox || ''} onChange={e => setEditFormData({...editFormData, lockbox: e.target.value})} />
                             </div>
                             <h4 style={{ fontSize: 12, color: '#8cf8a2', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Property Descriptors</h4>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>County</label>
-                                    <input className="s-input" placeholder="e.g. King County" value={editFormData.county || ''} onChange={e => setEditFormData({...editFormData, county: e.target.value})} />
+                                    <label htmlFor="properties-county-2">County</label>
+                                    <input id="properties-county-2" className="s-input" placeholder="e.g. King County" value={editFormData.county || ''} onChange={e => setEditFormData({...editFormData, county: e.target.value})} />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Parcel ID</label>
-                                    <input className="s-input" value={editFormData.parcel || ''} onChange={e => setEditFormData({...editFormData, parcel: e.target.value})} />
+                                    <label htmlFor="properties-parcel-id-2">Parcel ID</label>
+                                    <input id="properties-parcel-id-2" className="s-input" value={editFormData.parcel || ''} onChange={e => setEditFormData({...editFormData, parcel: e.target.value})} />
                                 </div>
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Year Built</label>
-                                    <input className="s-input" placeholder="e.g. 1995" value={editFormData.yearBuilt || ''} onChange={e => setEditFormData({...editFormData, yearBuilt: e.target.value})} />
+                                    <label htmlFor="properties-year-built-2">Year Built</label>
+                                    <input id="properties-year-built-2" className="s-input" placeholder="e.g. 1995" value={editFormData.yearBuilt || ''} onChange={e => setEditFormData({...editFormData, yearBuilt: e.target.value})} />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Owner</label>
-                                    <input className="s-input" value={editFormData.owner || ''} onChange={e => setEditFormData({...editFormData, owner: e.target.value})} />
+                                    <label htmlFor="properties-owner-2">Owner</label>
+                                    <input id="properties-owner-2" className="s-input" value={editFormData.owner || ''} onChange={e => setEditFormData({...editFormData, owner: e.target.value})} />
                                 </div>
                             </div>
                             <div className="s-form-group" style={{ marginBottom: 20 }}>
-                                <label>Description Note</label>
-                                <textarea className="s-input" style={{ minHeight: 60, resize: 'vertical' }} placeholder="Add general description notes here..." value={editFormData.description || ''} onChange={e => setEditFormData({...editFormData, description: e.target.value})} />
+                                <label htmlFor="properties-description-note-2">Description Note</label>
+                                <textarea id="properties-description-note-2" className="s-input" style={{ minHeight: 60, resize: 'vertical' }} placeholder="Add general description notes here..." value={editFormData.description || ''} onChange={e => setEditFormData({...editFormData, description: e.target.value})} />
                             </div>
                             <h4 style={{ fontSize: 12, color: '#f8c28c', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Financial Baseline</h4>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Purchase Price</label>
-                                    <input className="s-input" placeholder="$0.00" value={editFormData.purchasePrice || ''} onChange={e => setEditFormData({...editFormData, purchasePrice: e.target.value})} />
+                                    <label htmlFor="properties-purchase-price-2">Purchase Price</label>
+                                    <input id="properties-purchase-price-2" className="s-input" placeholder="$0.00" value={editFormData.purchasePrice || ''} onChange={e => setEditFormData({...editFormData, purchasePrice: e.target.value})} />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Purchase Date</label>
-                                    <input type="date" className="s-input" value={editFormData.purchaseDate || ''} onChange={e => setEditFormData({...editFormData, purchaseDate: e.target.value})} />
+                                    <label htmlFor="properties-purchase-date-2">Purchase Date</label>
+                                    <input id="properties-purchase-date-2" type="date" className="s-input" value={editFormData.purchaseDate || ''} onChange={e => setEditFormData({...editFormData, purchaseDate: e.target.value})} />
                                 </div>
                             </div>
                             <div className="s-modal-footer" style={{ marginTop: 24 }}>

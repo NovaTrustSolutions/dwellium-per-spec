@@ -517,10 +517,14 @@ function OverviewContent() {
                 setComms(commsData.slice(0, 10));
             }
 
-            // Calendar (non-dwellium service)
+            // Calendar (non-dwellium service). Accepts either a bare array or
+            // the { success, data: [] } envelope some backend routes wrap
+            // responses in — same defensive shape-guard already used above
+            // for /properties and /comms.
             if (calRes.status === 'fulfilled' && calRes.value.ok) {
-                const calData = await calRes.value.json();
-                setEvents(Array.isArray(calData) ? calData.slice(0, 6) : []);
+                const calData: any = await calRes.value.json();
+                const list = Array.isArray(calData) ? calData : (calData?.data ?? []);
+                setEvents(list.slice(0, 6));
             }
         } catch {
             // silently fail — sections will show empty states

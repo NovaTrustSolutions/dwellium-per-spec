@@ -477,7 +477,7 @@ export default function StrataAdminSettings() {
                                                     gap: '8px',
                                                 }}>
                                                     {group.keys.map(key => (
-                                                        <label key={key} style={{
+                                                        <label key={key} aria-label={formatKeyName(key)} style={{
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             gap: '10px',

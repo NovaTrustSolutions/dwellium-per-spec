@@ -16,6 +16,7 @@ import { getSpeakerSettings } from './speakerSettings';
 import { LocalVoiceLibrary } from './LocalVoiceLibrary';
 import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
+import { probeBackend } from '../../lib/systemHealth';
 import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
@@ -464,14 +465,24 @@ export default function TranscriptionHub() {
     });
 
     // --- Backend reachability (surfaced, not silently swallowed) ---
+    // Single source of truth, shared with System Health's "Transcription Hub"
+    // row: both hit systemHealth's probeBackend() (GET {API_BASE}/health,
+    // success = res.ok) so the banner here and the System Health status can
+    // never disagree for the same backend response. Previously this probed
+    // a *different* endpoint (/logs) with its own success rule, which could
+    // — and did — desync from System Health.
     const [backendOffline, setBackendOffline] = useState(false);
+    useEffect(() => {
+        let cancelled = false;
+        probeBackend(API_BASE).then(ok => { if (!cancelled) setBackendOffline(!ok); });
+        return () => { cancelled = true; };
+    }, []);
 
     // --- Load transcriptions from backend on mount (source of truth) ---
     useEffect(() => {
         (async () => {
             try {
                 const res = await fetch(`${API_TRANSCRIBE}/logs?limit=200`);
-                setBackendOffline(!res.ok);
                 if (res.ok) {
                     const json = await res.json();
                     if (json.success && json.data?.length > 0) {
@@ -496,7 +507,8 @@ export default function TranscriptionHub() {
                     }
                 }
             } catch (err) {
-                setBackendOffline(true);
+                // Not the reachability signal (see probeBackend effect above) —
+                // just fall back to whatever's in localStorage.
                 console.warn('[TranscriptionHub] Could not load logs from backend, using localStorage fallback:', err);
             }
         })();

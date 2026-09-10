@@ -21,6 +21,8 @@ Keep the session and surface the global banner (`src/components/Shell/BackendCon
 + `src/lib/backendStatusStore.ts`); only a real `401/403` clears auth
 (`src/context/UserContext.tsx`).
 
-### Never push without verified-green + Ilya's go
-Full gate green on the Mac first; build with `npx react-router build`, never
-`npx vite build` (silent no-op).
+### Feature branches ship to CI; `main` never gets a direct push
+Full gate green on the Mac first, then push the feature branch and open a draft
+PR (standing authorization, Ilya 2026-09-06); `main` changes only through a PR
+after CI is green and Ilya says merge. Build with `npx react-router build`,
+never `npx vite build` (silent no-op).

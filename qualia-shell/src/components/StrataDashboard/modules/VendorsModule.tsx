@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { Truck, Search, RefreshCw, Plus, X, Shield, AlertTriangle, CheckCircle, Mail, Phone, DollarSign, FileText, Link2, Trash2, Tag, Filter, Building2, Unlink, Upload, Award, BarChart3, UserCheck, UserX, Clock, Settings2, ChevronUp, ChevronDown, ExternalLink, Star } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import { NotYet } from '../../common/NotYet';
@@ -739,7 +740,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                             const vTags: string[] = v.metadata?.serviceTags || [];
                             const typeColor = VENDOR_TYPE_COLORS[vType] || '#94a3b8';
                             return (
-                                <div
+                                <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                     key={v.id}
                                     className={`s-list-item ${selected?.id === v.id ? 'active' : ''}`}
                                     onClick={() => setSelected(v)}
@@ -1400,31 +1401,31 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             {/* Add Vendor Modal */}
             {showForm && (
-                <div className="s-modal-overlay" onClick={() => setShowForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>Add Vendor</h3>
                             <button className="s-btn-icon" onClick={() => setShowForm(false)}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleCreate}>
                             <div className="s-form-group">
-                                <label>Company Name</label>
-                                <input name="name" required placeholder="Vendor company name" className="s-input" />
+                                <label htmlFor="vendors-company-name">Company Name</label>
+                                <input id="vendors-company-name" name="name" required placeholder="Vendor company name" className="s-input" />
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Email</label>
-                                    <input name="email" type="email" placeholder="contact@vendor.com" className="s-input" />
+                                    <label htmlFor="vendors-email">Email</label>
+                                    <input id="vendors-email" name="email" type="email" placeholder="contact@vendor.com" className="s-input" />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Phone</label>
-                                    <input name="phone" placeholder="555-000-0000" className="s-input" />
+                                    <label htmlFor="vendors-phone">Phone</label>
+                                    <input id="vendors-phone" name="phone" placeholder="555-000-0000" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Specialty</label>
-                                    <select name="specialty" className="s-input">
+                                    <label htmlFor="vendors-specialty">Specialty</label>
+                                    <select id="vendors-specialty" name="specialty" className="s-input">
                                         <option value="plumbing">Plumbing</option>
                                         <option value="hvac">HVAC</option>
                                         <option value="electrical">Electrical</option>
@@ -1437,20 +1438,20 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Vendor Type</label>
-                                    <select name="vendorType" className="s-input">
+                                    <label htmlFor="vendors-vendor-type">Vendor Type</label>
+                                    <select id="vendors-vendor-type" name="vendorType" className="s-input">
                                         {VENDOR_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}
                                     </select>
                                 </div>
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Service Tags <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>(comma-separated)</span></label>
-                                    <input name="serviceTags" placeholder="e.g. emergency, 24hr, licensed" className="s-input" />
+                                    <label htmlFor="vendors-service-tags-comma-separated">Service Tags <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>(comma-separated)</span></label>
+                                    <input id="vendors-service-tags-comma-separated" name="serviceTags" placeholder="e.g. emergency, 24hr, licensed" className="s-input" />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>COI Expiry Date</label>
-                                    <input name="coiExpiry" type="date" className="s-input" />
+                                    <label htmlFor="vendors-coi-expiry-date">COI Expiry Date</label>
+                                    <input id="vendors-coi-expiry-date" name="coiExpiry" type="date" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-modal-footer">
@@ -1464,8 +1465,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             {/* Edit Vendor Modal */}
             {showEditForm && selected && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
-                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
+                    <div role="presentation" style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Edit Vendor</h3>
                             <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
@@ -1478,24 +1479,24 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
                             <h4 style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                                <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Name</label><input className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input className="s-input" value={editFormData.phone || ''} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
+                                <div style={{ gridColumn: '1 / -1' }}><label htmlFor="vendors-vendor-name" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Name</label><input id="vendors-vendor-name" className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
+                                <div><label htmlFor="vendors-email-2" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input id="vendors-email-2" className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
+                                <div><label htmlFor="vendors-phone-2" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input id="vendors-phone-2" className="s-input" value={editFormData.phone || ''} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
                             </div>
 
                             <h4 style={{ fontSize: 11, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Service Details</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Specialty</label><input className="s-input" value={editFormData.specialty || ''} onChange={e => setEditFormData({...editFormData, specialty: e.target.value})} placeholder="e.g. Plumbing & HVAC" /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Type</label><select className="s-input" value={editFormData.vendorType || 'Other'} onChange={e => setEditFormData({...editFormData, vendorType: e.target.value})}>{VENDOR_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}</select></div>
+                                <div><label htmlFor="vendors-specialty-2" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Specialty</label><input id="vendors-specialty-2" className="s-input" value={editFormData.specialty || ''} onChange={e => setEditFormData({...editFormData, specialty: e.target.value})} placeholder="e.g. Plumbing & HVAC" /></div>
+                                <div><label htmlFor="vendors-vendor-type-2" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Type</label><select id="vendors-vendor-type-2" className="s-input" value={editFormData.vendorType || 'Other'} onChange={e => setEditFormData({...editFormData, vendorType: e.target.value})}>{VENDOR_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}</select></div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>COI Expiry</label><input className="s-input" type="date" value={editFormData.coiExpiry || ''} onChange={e => setEditFormData({...editFormData, coiExpiry: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Rating (0-5)</label><input className="s-input" type="number" min="0" max="5" step="0.5" value={editFormData.rating || 0} onChange={e => setEditFormData({...editFormData, rating: e.target.value})} /></div>
+                                <div><label htmlFor="vendors-coi-expiry" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>COI Expiry</label><input id="vendors-coi-expiry" className="s-input" type="date" value={editFormData.coiExpiry || ''} onChange={e => setEditFormData({...editFormData, coiExpiry: e.target.value})} /></div>
+                                <div><label htmlFor="vendors-rating-0-5" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Rating (0-5)</label><input id="vendors-rating-0-5" className="s-input" type="number" min="0" max="5" step="0.5" value={editFormData.rating || 0} onChange={e => setEditFormData({...editFormData, rating: e.target.value})} /></div>
                             </div>
 
                             <div style={{ marginBottom: 16 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</label>
-                                <textarea className="s-input" style={{ minHeight: 50, resize: 'vertical' }} value={editFormData.notes || ''} onChange={e => setEditFormData({...editFormData, notes: e.target.value})} placeholder="Internal notes about this vendor…" />
+                                <label htmlFor="vendors-notes" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</label>
+                                <textarea id="vendors-notes" className="s-input" style={{ minHeight: 50, resize: 'vertical' }} value={editFormData.notes || ''} onChange={e => setEditFormData({...editFormData, notes: e.target.value})} placeholder="Internal notes about this vendor…" />
                             </div>
 
                             <h4 style={{ fontSize: 11, color: '#06b6d4', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Entity Tags</h4>
@@ -1524,8 +1525,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             {/* Delete Confirm Dialog */}
             {confirmDelete && (
-                <div className="s-modal-overlay" onClick={() => setConfirmDelete(null)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
+                <div role="presentation" className="s-modal-overlay" onClick={() => setConfirmDelete(null)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
                         <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px' }}>Delete Vendor?</h3>
                         <p className="s-text-muted" style={{ marginBottom: 20 }}>This action cannot be undone. The vendor record will be permanently removed.</p>

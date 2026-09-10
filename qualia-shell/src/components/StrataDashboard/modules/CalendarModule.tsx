@@ -2,6 +2,7 @@
  * CalendarModule — Scheduling & events view with Apple/Google Calendar integration
  */
 import { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     CalendarDays, RefreshCw, ChevronLeft, ChevronRight, Clock,
     Building2, Wrench, FileKey2, Settings, CheckCircle2, XCircle,
@@ -299,7 +300,7 @@ export default function CalendarModule() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {/* Subscribe via webcal */}
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                                     background: 'rgba(255,59,48,0.06)', borderRadius: 8, border: '1px solid rgba(255,59,48,0.15)',
@@ -318,7 +319,7 @@ export default function CalendarModule() {
                             </div>
 
                             {/* Download ICS */}
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                                     background: 'rgba(255,149,0,0.06)', borderRadius: 8, border: '1px solid rgba(255,149,0,0.15)',
@@ -403,7 +404,7 @@ export default function CalendarModule() {
                                         const isSelected = dateStr === selectedDate;
 
                                         return (
-                                            <div
+                                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                 key={day}
                                                 data-date={dateStr}
                                                 onClick={() => setSelectedDate(isSelected ? null : dateStr)}
@@ -495,7 +496,7 @@ export default function CalendarModule() {
                                         .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''))
                                         .slice(0, 30)
                                         .map(ev => (
-                                            <div
+                                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                 key={ev.id}
                                                 data-testid={ev.type === 'inspection' ? 'calendar-inspection-event' : undefined}
                                                 data-due-date={ev.type === 'inspection' ? ev.dueDate ?? undefined : undefined}

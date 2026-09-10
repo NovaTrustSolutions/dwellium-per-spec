@@ -112,6 +112,10 @@ interface Automation {
     requiresApproval: boolean;
     owner: 'andy' | 'lisa';
     setupGuide: string[];
+    /** True for rows that came from the built-in AUTOMATIONS_SEED catalog
+     * rather than a user's own data. Seeded rows show a "Sample" badge and
+     * are excluded from the Total/Workflows counters (see Samples stat). */
+    seeded?: boolean;
 }
 
 type OwnerTab = 'andy' | 'lisa';
@@ -168,6 +172,8 @@ function seedAutomation(base: Partial<Automation> & { id: string; name: string; 
         requiresApproval: base.requiresApproval ?? false,
         owner: base.owner ?? 'andy',
         setupGuide: base.setupGuide ?? [],
+        // Every row built by this helper comes from the built-in catalog below.
+        seeded: true,
     };
 }
 
@@ -492,18 +498,21 @@ export default function AutomationHub() {
             const saved = localStorage.getItem(STORAGE_KEY_AUTOMATIONS);
             if (saved) {
                 const cached: Automation[] = JSON.parse(saved);
-                // Merge new seeds + backfill missing fields on existing entries
+                // Seed only an EMPTY store. Previously this always re-injected
+                // any AUTOMATIONS_SEED id missing from the cache, so the
+                // sample catalog silently grew back into a user's real data
+                // forever. Once the store has any rows (real or sample), the
+                // catalog is never merged in again — only a missing
+                // setupGuide is backfilled on rows that still match a known
+                // seed id.
+                if (cached.length === 0) return AUTOMATIONS_SEED;
                 const seedMap = new Map(AUTOMATIONS_SEED.map(s => [s.id, s]));
-                const merged = cached.map(a => {
+                return cached.map(a => {
                     const seed = seedMap.get(a.id);
                     if (seed && !a.setupGuide) return { ...a, setupGuide: seed.setupGuide };
                     if (!a.setupGuide) return { ...a, setupGuide: [] };
                     return a;
                 });
-                const cachedIds = new Set(cached.map(a => a.id));
-                const newSeeds = AUTOMATIONS_SEED.filter(s => !cachedIds.has(s.id));
-                if (newSeeds.length > 0) return [...merged, ...newSeeds];
-                return merged;
             }
         } catch { /* ignore */ }
         return AUTOMATIONS_SEED;
@@ -745,6 +754,15 @@ export default function AutomationHub() {
                         >
                             {auto.status}
                         </span>
+                        {auto.seeded && (
+                            <span
+                                className="ahub__card-status"
+                                title="Sample data from the built-in catalog — not one of your own automations"
+                                style={{ color: '#94a3b8', background: 'rgba(148,163,184,0.14)' }}
+                            >
+                                Sample
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -1237,6 +1255,10 @@ export default function AutomationHub() {
     // ──── RENDER: AUTOMATIONS TAB ────
     const renderAutomations = () => {
         const ownerAutomations = automations.filter(a => a.owner === ownerTab);
+        // Cards still show every row (real + sample) — only the summary
+        // counters below exclude seeded/sample rows, per the Samples stat.
+        const realAutomations = ownerAutomations.filter(a => !a.seeded);
+        const sampleAutomations = ownerAutomations.filter(a => a.seeded);
         const software = ownerAutomations.filter(a => a.category === 'software');
         const process = ownerAutomations.filter(a => a.category === 'process');
         const ownerLabel = ownerTab === 'andy' ? 'Andy' : 'Lisa';
@@ -1266,24 +1288,30 @@ export default function AutomationHub() {
                 {/* Summary Bar */}
                 <div className="ahub__summary-bar">
                     <div className="ahub__summary-stat">
-                        <div className="ahub__summary-value">{ownerAutomations.length}</div>
+                        <div className="ahub__summary-value">{realAutomations.length}</div>
                         <div className="ahub__summary-label">Total</div>
                     </div>
                     <div className="ahub__summary-stat">
                         <div className="ahub__summary-value" style={{ color: '#22c55e' }}>
-                            {ownerAutomations.filter(a => a.status === 'active').length}
+                            {realAutomations.filter(a => a.status === 'active').length}
                         </div>
                         <div className="ahub__summary-label">Active</div>
                     </div>
                     <div className="ahub__summary-stat">
                         <div className="ahub__summary-value" style={{ color: '#3b82f6' }}>
-                            {software.length + process.length}
+                            {realAutomations.length}
                         </div>
                         <div className="ahub__summary-label">{ownerLabel}’s Workflows</div>
                     </div>
                     <div className="ahub__summary-stat">
-                        <div className="ahub__summary-value">{auditLog.filter(e => ownerAutomations.some(a => a.id === e.automationId)).length}</div>
+                        <div className="ahub__summary-value">{auditLog.filter(e => realAutomations.some(a => a.id === e.automationId)).length}</div>
                         <div className="ahub__summary-label">Runs</div>
+                    </div>
+                    <div className="ahub__summary-stat">
+                        <div className="ahub__summary-value" style={{ color: 'var(--text-tertiary)' }}>
+                            {sampleAutomations.length}
+                        </div>
+                        <div className="ahub__summary-label">Samples</div>
                     </div>
                 </div>
 

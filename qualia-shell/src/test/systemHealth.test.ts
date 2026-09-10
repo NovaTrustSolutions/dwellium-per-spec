@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveStatus, summarize, HEALTH_ITEMS, type HealthItem, type HealthCtx } from '../lib/systemHealth';
+import { resolveStatus, summarize, HEALTH_ITEMS, backendConnectionText, type HealthItem, type HealthCtx } from '../lib/systemHealth';
 
 const item = (over: Partial<HealthItem>): HealthItem => ({ id: 'x', label: 'X', requires: 'backend', downText: '', ...over });
 const ctx = (o: Partial<HealthCtx>): HealthCtx => ({ backendOk: false, llmOk: false, externalOk: {}, ...o });
@@ -46,5 +46,34 @@ describe('systemHealth registry', () => {
     });
     it('every item has a downText and a label', () => {
         for (const i of HEALTH_ITEMS) { expect(i.label).toBeTruthy(); expect(typeof i.downText).toBe('string'); }
+    });
+});
+
+describe('systemHealth.backendConnectionText', () => {
+    it('shows the real port for a localhost API_BASE', () => {
+        const t = backendConnectionText('http://localhost:3000');
+        expect(t.ok).toBe('Connected on :3000');
+        expect(t.down).toContain(':3000');
+    });
+
+    it('shows a different local port when API_BASE uses one', () => {
+        const t = backendConnectionText('http://127.0.0.1:4001');
+        expect(t.ok).toBe('Connected on :4001');
+    });
+
+    it('never shows :3000 for a deployed (non-localhost) API_BASE — shows the host instead', () => {
+        const t = backendConnectionText('https://dwellium-backend-abc123-uc.a.run.app');
+        expect(t.ok).not.toContain(':3000');
+        expect(t.down).not.toContain(':3000');
+        expect(t.ok).toBe('Connected (dwellium-backend-abc123-uc.a.run.app)');
+        expect(t.down).toContain('dwellium-backend-abc123-uc.a.run.app');
+    });
+
+    it('HEALTH_ITEMS.backend copy is wired to backendConnectionText(API_BASE), not a separate hardcoded string', async () => {
+        const { API_BASE } = await import('../config');
+        const backendItem = HEALTH_ITEMS.find(i => i.id === 'backend')!;
+        const expected = backendConnectionText(API_BASE);
+        expect(backendItem.okText).toBe(expected.ok);
+        expect(backendItem.downText).toBe(expected.down);
     });
 });

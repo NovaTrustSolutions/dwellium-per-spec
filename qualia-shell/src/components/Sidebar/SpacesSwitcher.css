@@ -5,11 +5,30 @@
 }
 
 .spaces-switcher__label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 24px;
     font-size: 10px;
     font-weight: var(--fw-semibold, 600);
     letter-spacing: 0.08em;
     color: var(--text-tertiary);
     padding: 0 4px 6px;
+}
+
+/* Right end of the SPACES row: the ⌘K search trigger (CommandPill). */
+.spaces-switcher__trailing {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    letter-spacing: normal;
+}
+
+.spaces-switcher__trailing--compact {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 6px;
 }
 
 .spaces-switcher__row {
@@ -20,6 +39,13 @@
 
 .spaces-switcher--compact .spaces-switcher__row {
     align-items: center;
+}
+
+/* One list item per Space; the button inside carries the interaction
+   (jsx-a11y: interactive elements must not take the listitem role). */
+.spaces-switcher--compact .spaces-switcher__item {
+    display: flex;
+    justify-content: center;
 }
 
 .spaces-switcher__btn {

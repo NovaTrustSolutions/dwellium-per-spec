@@ -56,7 +56,6 @@ vi.mock('../context/WindowContext', () => ({
 
 import FluidOS, { cockpitPrefsStore, isKnownFrameBlocked, topWindowId } from '../components/Shell/FluidOS';
 import FluidLauncher from '../components/Shell/FluidLauncher';
-import CommandPill from '../components/Shell/CommandPill';
 
 function makeUser(partial: Partial<DwelliumUser>): DwelliumUser {
     return {
@@ -522,13 +521,3 @@ describe('preview: sites that refuse framing (AppFolio etc.)', () => {
     });
 });
 
-describe('CommandPill × Cockpit', () => {
-    it('the ⌘K pill is hidden while the cockpit is open (it overlapped the header) and back afterwards', () => {
-        fluidOsStore.setEnabled(true);
-        const { container, rerender } = render(<CommandPill />);
-        expect(container.querySelector('.cmd-pill')).not.toBeInTheDocument();
-        fluidOsStore.setOpen(false);
-        rerender(<CommandPill />);
-        expect(container.querySelector('.cmd-pill')).toBeInTheDocument();
-    });
-});

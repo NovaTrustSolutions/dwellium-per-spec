@@ -16,6 +16,9 @@
     padding: 8px 12px;
     border-bottom: 1px solid var(--border-default);
     flex-shrink: 0;
+    /* narrow panes (Cockpit centre pane, small windows): wrap, never overflow the panel */
+    flex-wrap: wrap;
+    row-gap: 6px;
 }
 .lf-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .lf-url {

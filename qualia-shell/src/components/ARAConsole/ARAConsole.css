@@ -19,6 +19,13 @@
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     -webkit-font-smoothing: antialiased;
     isolation: isolate;
+    /* Text in the ARA window must be selectable in every layout — Classic
+       window, Holocron OS tab, Cockpit pane. global.css puts `user-select: none`
+       on <body>, which every descendant inherits as its used value; opting the
+       console root back in covers all three because they render the same tree.
+       (Same pattern as Antigravity.css.) */
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 /* [D2] Ambient radial gradient using persona accent */
@@ -2757,6 +2764,8 @@
     cursor: col-resize;
     z-index: 35;
     background: transparent;
+    -webkit-user-select: none;
+    user-select: none; /* drag handle: dragging it must not start a text selection */
 }
 .ara-side-divider:hover,
 .ara-side-divider:active { background: rgba(var(--ara-accent-rgb, 99 102 241), 0.35); }

@@ -159,23 +159,22 @@ function buildQuickLinks(): Array<{ id: string; label: string; url: string }> {
 
 /* ── Preview: sites that refuse to be framed ────────────────────────────── */
 
-// ponytail: a static list of hosts whose CSP frame-ancestors / X-Frame-Options
-// forbid embedding (verified 2026-08-22: www.appfolio.com sends
-// `frame-ancestors 'self' *.appfolio.com …`). A no-cors fetch can't read those
-// headers, so this is the cheapest honest signal; upgrade path = a backend
-// HEAD probe (`/api/preview/probe`) if the list ever gets long.
-const FRAME_BLOCKED_HOSTS = [
-    'appfolio.com', 'google.com', 'gmail.com', 'youtube.com', 'office.com', 'live.com',
-    'microsoft.com', 'github.com', 'linkedin.com', 'facebook.com', 'instagram.com', 'x.com',
-    'twitter.com', 'dropbox.com', 'apple.com', 'icloud.com',
-];
-export function isKnownFrameBlocked(url: string): boolean {
-    try {
-        const host = new URL(url).hostname.toLowerCase();
-        return FRAME_BLOCKED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
-    } catch {
-        return false;
+// The host list + check live in src/lib/frameBlocked.ts (shared with the
+// Terminal widget's CrewAI tab); re-exported here for existing imports.
+import { isKnownFrameBlocked } from '../../lib/frameBlocked';
+export { isKnownFrameBlocked };
+
+/** Id of the front-most (highest z-index) non-minimized desktop window, or null.
+ *  Exported for tests. The cockpit follows this to bring an already-open
+ *  widget's tab to the front when the sidebar or ⌘K focuses its window. */
+export function topWindowId(ws: ReadonlyArray<{ id: string; zIndex: number; minimized: boolean }>): string | null {
+    let best: string | null = null;
+    let z = -Infinity;
+    for (const w of ws) {
+        if (w.minimized) continue;
+        if (w.zIndex > z) { z = w.zIndex; best = w.id; }
     }
+    return best;
 }
 
 /* ── Component ────────────────────────────────────────────────────────────── */
@@ -299,11 +298,17 @@ export default function FluidOS() {
     }, [openWindow, restoreWindow, focusWindow]);
 
     /* Adopt desktop windows opened while the cockpit is up (⌘K, deep links)
-       as tabs — otherwise they'd land invisibly behind the overlay. */
+       as tabs — otherwise they'd land invisibly behind the overlay. Also follow
+       focus: the sidebar and ⌘K raise an already-open window (z-index bump)
+       instead of opening a new one, so the matching tab must come to the front
+       too — otherwise the click lands on a window hidden behind the cockpit and
+       the tab stays in the background. */
     const seenWindowIds = useRef<Set<string>>(new Set(windows.map((w) => w.id)));
+    const topWindowRef = useRef<string | null>(topWindowId(windows));
     useEffect(() => {
         if (!state.enabled || !state.open) {
             seenWindowIds.current = new Set(windows.map((w) => w.id));
+            topWindowRef.current = topWindowId(windows);
             return;
         }
         windows.forEach((w) => {
@@ -311,6 +316,12 @@ export default function FluidOS() {
             seenWindowIds.current.add(w.id);
             openInCockpit(w.component, w.title, w.icon);
         });
+        const top = topWindowId(windows);
+        if (top && top !== topWindowRef.current) {
+            topWindowRef.current = top;
+            const w = windows.find((x) => x.id === top);
+            if (w) openInCockpit(w.component, w.title, w.icon);
+        }
     }, [windows, state.enabled, state.open, openInCockpit]);
 
     /* Splitters (Sidebar resize-handle pattern: mousedown → window listeners). */

@@ -54,7 +54,7 @@ vi.mock('../context/WindowContext', () => ({
     }),
 }));
 
-import FluidOS, { cockpitPrefsStore, isKnownFrameBlocked } from '../components/Shell/FluidOS';
+import FluidOS, { cockpitPrefsStore, isKnownFrameBlocked, topWindowId } from '../components/Shell/FluidOS';
 import FluidLauncher from '../components/Shell/FluidLauncher';
 import CommandPill from '../components/Shell/CommandPill';
 
@@ -270,6 +270,43 @@ describe('FluidOS cockpit', () => {
         expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
         expect(container.querySelector('.alpha-widget')).toBeInTheDocument();
         expect(fluidOsStore.getSnapshot().open).toBe(true);
+    });
+
+    it('brings an already-open tab to the front when its desktop window is focused (sidebar / ⌘K raise a window instead of opening one)', () => {
+        const user = makeUser({ email: 'lisa@dwellium.com' });
+        const { rerender } = renderCockpitForUser(user);
+        const view = () => (
+            <UserContext.Provider value={{ user, isAuthenticated: true } as any}>
+                <FluidOS />
+            </UserContext.Provider>
+        );
+        // Two widgets open while the cockpit is up: both adopted, the newest (Terminal) in front.
+        windowsState = [
+            { id: 'w-alpha', component: 'alpha', title: 'Alpha', icon: 'layout-grid', minimized: false, zIndex: 1 },
+            { id: 'w-term', component: 'terminal', title: 'Terminal', icon: 'terminal', minimized: false, zIndex: 2 },
+        ];
+        rerender(view());
+        expect(screen.getByRole('tab', { name: 'Terminal' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'false');
+
+        // The sidebar click on the already-open Alpha only raises its window (z-index bump).
+        windowsState = [
+            { id: 'w-alpha', component: 'alpha', title: 'Alpha', icon: 'layout-grid', minimized: false, zIndex: 3 },
+            { id: 'w-term', component: 'terminal', title: 'Terminal', icon: 'terminal', minimized: false, zIndex: 2 },
+        ];
+        rerender(view());
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tab', { name: 'Terminal' })).toHaveAttribute('aria-selected', 'false');
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+    });
+
+    it('topWindowId picks the highest non-minimized z-index', () => {
+        expect(topWindowId([])).toBeNull();
+        expect(topWindowId([
+            { id: 'a', zIndex: 5, minimized: false },
+            { id: 'b', zIndex: 9, minimized: true },
+            { id: 'c', zIndex: 7, minimized: false },
+        ])).toBe('c');
     });
 
     it('dock-back from a popout re-opens a collapsed cockpit and the widget lands as a cockpit tab', () => {

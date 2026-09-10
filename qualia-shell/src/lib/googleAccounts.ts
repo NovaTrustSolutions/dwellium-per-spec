@@ -50,22 +50,53 @@ function normalizeAccount(a: unknown): GoogleAccount {
     };
 }
 
+/**
+ * Why the account list could not be read. Only `missing-route` means the backend
+ * lacks the multi-account routes; everything else is a live backend saying no
+ * (rate limiter, expired session, outage) and must not be reported as "apply the
+ * backend patch" — that mislabel sent people to the wrong fix.
+ */
+export type GoogleAccountsFailure = 'missing-route' | 'unauthorized' | 'rate-limited' | 'unavailable' | 'network';
+
+export function classifyBackendFailure(status: number): { reason: GoogleAccountsFailure; error: string } {
+    if (status === 404) return { reason: 'missing-route', error: 'Backend multi-account route not found — apply the backend patch.' };
+    if (status === 401 || status === 403) return { reason: 'unauthorized', error: `The backend rejected your session (${status}) — sign out and back in.` };
+    if (status === 429) return { reason: 'rate-limited', error: 'The backend is rate-limiting requests right now — retry in a minute.' };
+    return { reason: 'unavailable', error: `The backend answered ${status} — it may be restarting; retry shortly.` };
+}
+
+/** One-line note for the Settings card; only the missing-route case points at the backend patch. */
+export function failureNote(reason: GoogleAccountsFailure | undefined, error?: string): string {
+    switch (reason) {
+        case 'missing-route':
+            return 'Multi-account connect needs the backend OAuth routes. Apply the backend patch (Docs/Google_MultiAccount_Backend.md) and set up a Google Cloud OAuth app.';
+        case 'unauthorized':
+            return error ?? 'The backend rejected your session — sign out and back in.';
+        case 'rate-limited':
+            return error ?? 'The backend is rate-limiting requests right now — retry in a minute.';
+        case 'unavailable':
+        case 'network':
+        default:
+            return error ?? 'The backend could not be reached — retry shortly.';
+    }
+}
+
 export interface GoogleAccountsResult {
     accounts: GoogleAccount[];
-    /** false when the backend multi-account route isn't available. */
+    /** false when the account list could not be read; see `reason` for why. */
     available: boolean;
+    reason?: GoogleAccountsFailure;
     error?: string;
 }
 
 export async function listGoogleAccounts(): Promise<GoogleAccountsResult> {
-    if (typeof window === 'undefined') return { accounts: [], available: false };
+    if (typeof window === 'undefined') return { accounts: [], available: false, reason: 'network' };
     try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
         const res = await fetch(`${API_BASE}/api/google/accounts`, { headers: headers(), signal: ctrl.signal });
         clearTimeout(timer);
-        if (res.status === 404) return { accounts: [], available: false, error: 'Backend multi-account route not found — apply the backend patch.' };
-        if (!res.ok) return { accounts: [], available: false, error: `Backend returned ${res.status}` };
+        if (!res.ok) return { accounts: [], available: false, ...classifyBackendFailure(res.status) };
         const data = await envelope(res);
         const arr = Array.isArray(data)
             ? data
@@ -74,7 +105,7 @@ export async function listGoogleAccounts(): Promise<GoogleAccountsResult> {
                 : [];
         return { accounts: arr.map(normalizeAccount), available: true };
     } catch (e) {
-        return { accounts: [], available: false, error: e instanceof Error ? e.message : 'Network error' };
+        return { accounts: [], available: false, reason: 'network', error: `The backend could not be reached (${e instanceof Error ? e.message : 'network error'}) — retry shortly.` };
     }
 }
 
@@ -97,8 +128,7 @@ export async function startGoogleAuth(scopes: Array<'gmail' | 'calendar'>): Prom
             headers: headers(),
             body: JSON.stringify({ scopes }),
         });
-        if (res.status === 404) return { available: false, error: 'Backend multi-account route not found — apply the backend patch.' };
-        if (!res.ok) return { available: false, error: `Backend returned ${res.status}` };
+        if (!res.ok) return { available: false, error: classifyBackendFailure(res.status).error };
         const data = await envelope(res);
         const url = typeof (data as Record<string, unknown>)?.url === 'string' ? (data as Record<string, unknown>).url as string : undefined;
         return url ? { url, available: true } : { available: false, error: 'No auth URL returned by backend' };

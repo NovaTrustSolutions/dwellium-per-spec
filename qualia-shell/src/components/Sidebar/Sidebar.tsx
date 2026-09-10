@@ -8,6 +8,7 @@ import { rankWidgetSearchResults, WidgetSearchMatch } from './widgetSearch';
 import { getIcon, isLucideKey } from './iconMap';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import SpacesSwitcher from './SpacesSwitcher';
+import CommandPill from '../Shell/CommandPill';
 import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, hideTerminalOnce } from '../../lib/hiddenWidgetsStore';
 import { useGridLock } from '../../hooks/useGridLock';
 import { backendStatusStore } from '../../lib/backendStatusStore';
@@ -610,7 +611,8 @@ export default function Sidebar() {
             </div>
 
             {/* Spaces (Way 2) — one click swaps the whole canvas */}
-            <SpacesSwitcher compact={iconOnly} />
+            {/* The ⌘K search trigger rides the SPACES row instead of floating over the desktop. */}
+            <SpacesSwitcher compact={iconOnly} trailing={<CommandPill compact={iconOnly} />} />
 
             {/* Personalized greeting + temperature */}
             {!iconOnly && !collapsed && user && (

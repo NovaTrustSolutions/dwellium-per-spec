@@ -36,7 +36,6 @@ import MorningBriefBanner from './MorningBriefBanner';
 import FirstRunCard from './FirstRunCard';
 import TagHotkey from './TagHotkey';
 import DictationHotkey from './DictationHotkey';
-import CommandPill from './CommandPill';
 import ShortcutSheet from './ShortcutSheet';
 import WalkthroughOverlay from './WalkthroughOverlay';
 import SyncStatusPill from './SyncStatusPill';
@@ -149,7 +148,6 @@ function ShellLayout() {
             <Sidebar />
             <Desktop />
             <CommandPalette />
-            <CommandPill />
             <ShortcutSheet />
             <AssistantLauncher />
             <SystemHealthBanner />

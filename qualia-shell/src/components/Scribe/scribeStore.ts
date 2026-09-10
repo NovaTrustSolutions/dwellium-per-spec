@@ -390,12 +390,20 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
         } catch (err: any) {
             const local = getLocalFile(filepath);
             if (local) {
+                // A TypeError is the network layer (backend unreachable). Anything
+                // else is the backend's own answer — typically "File not found"
+                // after its storage was reset — so say that, mark the local copy
+                // unsaved and push it back up instead of claiming the backend is down.
+                const offline = err instanceof TypeError;
                 set((s) => ({
-                    openFiles: [...s.openFiles, { filepath, content: local.content, dirty: local.dirty, scrollTop: 0 }],
+                    openFiles: [...s.openFiles, { filepath, content: local.content, dirty: offline ? local.dirty : true, scrollTop: 0 }],
                     activeFilepath: filepath,
                     loading: false,
-                    error: `Backend offline — opened local copy. ${err.message}`,
+                    error: offline
+                        ? `Backend offline — opened local copy. ${err.message}`
+                        : `The backend has no copy of this file (${err.message}) — opened your local copy and re-uploading it.`,
                 }));
+                if (!offline) void get().saveFile(filepath);
                 return;
             }
             set({ loading: false, error: err.message });

@@ -11,6 +11,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import {
     listGoogleAccounts,
+    failureNote,
+    type GoogleAccountsFailure,
     startGoogleAuth,
     disconnectGoogleAccount,
     setGoogleAccountEnabled,
@@ -52,6 +54,7 @@ export default function GoogleAccountsSection() {
     const cached = integrations.google.accounts ?? [];
     const [live, setLive] = useState<GoogleAccount[] | null>(null);
     const [available, setAvailable] = useState<boolean | null>(null);
+    const [reason, setReason] = useState<GoogleAccountsFailure | undefined>(undefined);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
 
@@ -60,6 +63,7 @@ export default function GoogleAccountsSection() {
         setError(null);
         const r = await listGoogleAccounts();
         setAvailable(r.available);
+        setReason(r.reason);
         if (r.available) {
             setLive(r.accounts);
             update(b => ({ ...b, google: { ...b.google, accounts: r.accounts } }));
@@ -136,13 +140,15 @@ export default function GoogleAccountsSection() {
                 </label>
 
                 {available === false && (
-                    <div style={{
+                    <div role="status" style={{
                         margin: '8px 0', padding: '10px 12px', borderRadius: 9, fontSize: 12.5,
                         background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)', color: '#fde68a',
+                        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
                     }}>
-                        Multi-account connect needs the backend OAuth routes. Apply the backend patch
-                        (<code>Docs/Google_MultiAccount_Backend.md</code>) and set up a Google Cloud OAuth app.
-                        {error ? <div style={{ marginTop: 4, opacity: 0.85 }}>{error}</div> : null}
+                        <span style={{ flex: 1, minWidth: 200 }}>{failureNote(reason, error ?? undefined)}</span>
+                        {reason !== 'missing-route' && (
+                            <button type="button" style={ghostBtn} onClick={() => void refresh()} disabled={busy}>Retry</button>
+                        )}
                     </div>
                 )}
 

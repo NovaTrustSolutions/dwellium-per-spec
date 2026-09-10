@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useCallback, useMemo, useState, lazy, Suspense, type ChangeEvent } from 'react';
-import { Check, Eye, Maximize, Upload } from 'lucide-react';
+import { Maximize, Upload } from 'lucide-react';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { search } from '@codemirror/search';
@@ -65,7 +65,9 @@ export default function Scribe() {
     const activeFile = openFiles.find((f) => f.filepath === activeFilepath);
 
     // ── Live preview (MacDown parity) ──
-    const [previewVisible, setPreviewVisible] = useState(false);
+    // Toggled from the DocumentToolbar (Contents / Minimap / Preview); hidden in focus mode like the others.
+    const previewVisibleRaw = useScribeStore((s) => s.previewVisible);
+    const previewVisible = previewVisibleRaw && !focusMode;
     const previewRef = useRef<HTMLDivElement>(null);
 
     // Scroll-sync: editor scroll position drives the preview proportionally.
@@ -296,12 +298,6 @@ export default function Scribe() {
                 <FindReplace getView={() => viewRef.current} />
                 {focusMode && <FocusExitChip />}
                 <div className="scribe__editor" ref={containerRef} />
-                <button
-                    type="button"
-                    className={`scribe__preview-toggle ${previewVisible ? 'on' : ''}`}
-                    onClick={() => setPreviewVisible((v) => !v)}
-                    title="Toggle live preview"
-                ><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{previewVisible ? <Check size={14} aria-hidden /> : <Eye size={14} aria-hidden />} Preview</span></button>
                 {previewVisible && (
                     <>
                         <Splitter

@@ -7,7 +7,7 @@
  * delete uses scribeStore.deleteFile. Styling matches Dwellium fey dark.
  */
 import { useState, type ReactNode } from 'react';
-import { List, Map, Search, Maximize, Clock, Plus, Download, Trash2, Check } from 'lucide-react';
+import { List, Map, Eye, Search, Maximize, Clock, Plus, Download, Trash2, Check } from 'lucide-react';
 import { useScribeStore } from './scribeStore';
 import { getActiveEditorView } from './markdownConfig';
 import { markdownToPdfBytes, downloadPdf } from './pdfExport';
@@ -21,6 +21,8 @@ export function DocumentToolbar() {
     const setTocVisible = useScribeStore((s) => s.setTocVisible);
     const minimapVisible = useScribeStore((s) => s.minimapVisible);
     const setMinimapVisible = useScribeStore((s) => s.setMinimapVisible);
+    const previewVisible = useScribeStore((s) => s.previewVisible);
+    const setPreviewVisible = useScribeStore((s) => s.setPreviewVisible);
     const findReplaceOpen = useScribeStore((s) => s.findReplaceOpen);
     const setFindReplaceOpen = useScribeStore((s) => s.setFindReplaceOpen);
     const focusMode = useScribeStore((s) => s.focusMode);
@@ -124,6 +126,12 @@ export function DocumentToolbar() {
                 title={minimapVisible ? 'Hide minimap' : 'Show minimap'}
                 active={minimapVisible}
                 onClick={() => setMinimapVisible(!minimapVisible)}
+            />
+            <ToolbarBtn
+                label={<><Eye size={14} aria-hidden /> Preview</>}
+                title={previewVisible ? 'Hide live preview' : 'Show live preview (rendered Markdown beside the editor)'}
+                active={previewVisible}
+                onClick={() => setPreviewVisible(!previewVisible)}
             />
             <ToolbarBtn
                 label={<><Search size={14} aria-hidden /> Find</>}

@@ -101,6 +101,9 @@ interface ScribeState {
 
     minimapVisible: boolean;
     setMinimapVisible: (v: boolean) => void;
+    /** Live Markdown preview column (toggled from the toolbar, like Contents / Minimap). */
+    previewVisible: boolean;
+    setPreviewVisible: (v: boolean) => void;
 
     createVersion: (filepath: string) => Promise<string | null>;
 
@@ -339,6 +342,8 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
 
     minimapVisible: true,
     setMinimapVisible: (v) => set({ minimapVisible: v }),
+    previewVisible: false,
+    setPreviewVisible: (v) => set({ previewVisible: v }),
 
     createVersion: async (filepath) => {
         try {

@@ -11,6 +11,7 @@
  * (SentimentModule) strataApi rewire shape — see commit body.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     Upload, Filter, CheckCircle2, XCircle, Clock, FileText,
     Search, RefreshCw, AlertTriangle, Plus
@@ -279,7 +280,7 @@ function CorporateReviewInner() {
                     </div>
                 )}
                 {filtered.map(doc => (
-                    <div
+                    <div role="presentation"
                         key={doc.id}
                         data-testid={`corporate-review-card-${doc.id}`}
                         onClick={() => setSelected(selected?.id === doc.id ? null : doc)}
@@ -291,7 +292,7 @@ function CorporateReviewInner() {
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <FileText size={16} style={{ color: 'var(--accent)' }} />
-                            <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{doc.filename}</span>
+                            <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-expanded={selected?.id === doc.id} style={{ flex: 1, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{doc.filename}</span>
                             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: STATUS_COLORS[doc.status] + '22', color: STATUS_COLORS[doc.status], fontWeight: 600 }}>
                                 {doc.status.toUpperCase()}
                             </span>
@@ -362,30 +363,30 @@ function CorporateReviewInner() {
 
             {/* Upload Modal */}
             {showUpload && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
+                <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
                     onClick={() => setShowUpload(false)}>
-                    <div style={{ ...cardStyle, width: 420, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
+                    <div role="presentation" style={{ ...cardStyle, width: 420, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Upload size={16} /> Upload Document for Review
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <input type="file" onChange={e => setUploadFile(e.target.files?.[0] || null)}
                                 style={{ color: 'var(--text-secondary)', fontSize: 13 }} />
-                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Category</label>
-                            <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)}
+                            <label htmlFor="corporate-review-category" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Category</label>
+                            <select id="corporate-review-category" value={uploadCategory} onChange={e => setUploadCategory(e.target.value)}
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13 }}>
                                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Priority</label>
-                            <select value={uploadPriority} onChange={e => setUploadPriority(e.target.value as DocPriority)}
+                            <label htmlFor="corporate-review-priority" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Priority</label>
+                            <select id="corporate-review-priority" value={uploadPriority} onChange={e => setUploadPriority(e.target.value as DocPriority)}
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13 }}>
                                 <option value="critical">Critical</option>
                                 <option value="high">High</option>
                                 <option value="medium">Medium</option>
                                 <option value="low">Low</option>
                             </select>
-                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Notes</label>
-                            <textarea value={uploadNotes} onChange={e => setUploadNotes(e.target.value)}
+                            <label htmlFor="corporate-review-notes" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Notes</label>
+                            <textarea id="corporate-review-notes" value={uploadNotes} onChange={e => setUploadNotes(e.target.value)}
                                 rows={3} placeholder="Additional notes..."
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13, resize: 'vertical' }} />
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>

@@ -2,12 +2,9 @@
  * CommunicationModule — Letters, Forms, Inbox (mirrors AppFolio Communication)
  */
 import { useState, useEffect, useCallback } from 'react';
-import {
-    Mail, RefreshCw, FileText, Inbox, Send, Plus,
-    Search, Clock, CheckCircle, AlertTriangle, Users, Clipboard
-
-} from 'lucide-react';
+import { Mail, RefreshCw, FileText, Inbox, Send, Search, Clipboard } from 'lucide-react';
 import { strataGet } from '../strataApi';
+import { NotYet } from '../../common/NotYet';
 import type { Communication } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
 // Task 2.2 — GR-13 observability wiring: ErrorBoundary wraps the
@@ -35,14 +32,20 @@ const LETTER_TEMPLATES = [
     { id: 'late-rent', name: 'Late Rent Reminder', category: 'Collections', color: '#ef4444' },
 ];
 
+// Template catalog only. Submission counts have no source — there is no forms /
+// submissions route in strataApi.static.ts, strataApi.backend.ts or the backend's
+// dwelliumRoutes.ts — so none are shown (Docs/code.md 2026-09-06).
 const FORM_TEMPLATES = [
-    { id: 'move-in-inspection', name: 'Move-In Inspection Form', submissions: 12 },
-    { id: 'move-out-inspection', name: 'Move-Out Inspection Form', submissions: 8 },
-    { id: 'maintenance-request', name: 'Maintenance Request Form', submissions: 34 },
-    { id: 'tenant-application', name: 'Rental Application', submissions: 19 },
-    { id: 'pet-agreement', name: 'Pet Agreement Form', submissions: 6 },
-    { id: 'parking-request', name: 'Parking Spot Request', submissions: 3 },
+    { id: 'move-in-inspection', name: 'Move-In Inspection Form' },
+    { id: 'move-out-inspection', name: 'Move-Out Inspection Form' },
+    { id: 'maintenance-request', name: 'Maintenance Request Form' },
+    { id: 'tenant-application', name: 'Rental Application' },
+    { id: 'pet-agreement', name: 'Pet Agreement Form' },
+    { id: 'parking-request', name: 'Parking Spot Request' },
 ];
+
+/** Hover and keyboard focus share one highlight, so the letter buttons work without a mouse. */
+const highlight = (el: HTMLElement, on: boolean, color: string) => { el.style.borderColor = on ? color : 'rgba(255,255,255,0.06)'; };
 
 function channelColor(ch: string): string {
     switch (ch) {
@@ -98,6 +101,20 @@ export default function CommunicationModule() {
             m.preview?.toLowerCase().includes(q)
         );
     });
+
+    // Click and keyboard (Enter / Space) share this so the two paths can't drift.
+    const openMessage = (msg: Communication) => {
+        setSelected(msg);
+        // Task 2.2 — GR-13 click breadcrumb (fail-soft).
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.click',
+                message: 'communication.message.click',
+                level: 'info',
+                data: { id: msg.id, channel: msg.channel, direction: msg.direction },
+            });
+        } catch { /* no-op */ }
+    };
 
     return (
         <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Communication module unavailable.</div>}>
@@ -162,23 +179,16 @@ export default function CommunicationModule() {
                                     <div className="s-empty" data-testid="communication-empty">No messages found</div>
                                 ) : (
                                     filteredMessages.map(msg => (
+                                        // role over <button>: the row holds block content (invalid inside <button>);
+                                        // role/tabIndex/onKeyDown make it reachable and operable (LeasingModule kanban-card pattern).
                                         <div
                                             key={msg.id}
                                             data-testid="communication-row"
                                             data-channel={msg.channel}
                                             className={`s-list-item ${selected?.id === msg.id ? 'active' : ''}`}
-                                            onClick={() => {
-                                                setSelected(msg);
-                                                // Task 2.2 — GR-13 click breadcrumb (fail-soft).
-                                                try {
-                                                    Sentry.addBreadcrumb({
-                                                        category: 'ui.click',
-                                                        message: 'communication.message.click',
-                                                        level: 'info',
-                                                        data: { id: msg.id, channel: msg.channel, direction: msg.direction },
-                                                    });
-                                                } catch { /* no-op */ }
-                                            }}
+                                            role="button" tabIndex={0}
+                                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMessage(msg); } }}
+                                            onClick={() => openMessage(msg)}
                                         >
                                             <div className="s-list-item-top">
                                                 <div className="s-avatar" style={{ background: `${channelColor(msg.channel)}20`, color: channelColor(msg.channel) }}>
@@ -242,8 +252,10 @@ export default function CommunicationModule() {
                                     background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
                                     borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
                                 }}
-                                onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = lt.color; }}
-                                onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                onMouseOver={e => highlight(e.currentTarget, true, lt.color)}
+                                onMouseOut={e => highlight(e.currentTarget, false, lt.color)}
+                                onFocus={e => highlight(e.currentTarget, true, lt.color)}
+                                onBlur={e => highlight(e.currentTarget, false, lt.color)}
                             >
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: lt.color, flexShrink: 0 }} />
                                 <div>
@@ -263,13 +275,7 @@ export default function CommunicationModule() {
                         <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Clipboard size={14} /> Form Templates
                         </h3>
-                        <button style={{
-                            padding: '4px 10px', borderRadius: 6, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-                            background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer',
-                            fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
-                        }}>
-                            <Plus size={12} /> New Form
-                        </button>
+                        <NotYet reason="Form submissions and New Form aren't wired to a backend store yet — this list is the template catalog." />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {FORM_TEMPLATES.map(ft => (
@@ -282,7 +288,6 @@ export default function CommunicationModule() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{ft.name}</div>
                                 </div>
-                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{ft.submissions} submissions</span>
                             </div>
                         ))}
                     </div>

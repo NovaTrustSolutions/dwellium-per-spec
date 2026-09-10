@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     Wrench, AlertTriangle, FileText, Shield, Clock,
     User, ChevronDown, Mail, ShieldCheck, Umbrella
@@ -173,7 +174,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                     {visibleEvents.map((ev, idx) => {
                         const color = eventColor(ev.type, ev.priority, ev.severity);
                         return (
-                            <div
+                            <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                 key={ev.id + idx}
                                 data-testid="property-timeline-event"
                                 data-source={ev.type}

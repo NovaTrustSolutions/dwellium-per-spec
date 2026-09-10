@@ -1,26 +1,30 @@
 /**
- * LeasingModule — Full leasing hub (mirrors AppFolio Leasing)
+ * LeasingModule — Leasing hub (mirrors AppFolio Leasing)
  * Tabs: Vacancies, Guest Cards, Rental Applications, Leases, Renewals, Metrics, Signals
- * ALL AppFolio features implemented: Days Vacant, Listing Status, Guest Card bulk actions,
- * Activity Timeline, Source Analytics, Rental App screening, Countersign queue,
- * Renewal search/filter, Box Score, Leasing Funnel, Agent Performance
+ *
+ * Data honesty (Docs/code.md 2026-09-05 / 2026-09-06): every row rendered here comes
+ * from a real feed — /workitems?type=lease, /units, /properties, /entities?type=tenant,
+ * /leasing/alerts. Surfaces with no backend source yet (guest cards, leasing-agent
+ * attribution, unit listing status, days-to-lease / online-payment / portal metrics) show an honest empty or
+ * "Not available" state with the shared <NotYet> chip instead of invented rows.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, ArrowRight, ArrowUpDown, BarChart3, Building2, Calendar, Check, CheckSquare, ChevronDown, ChevronUp, Clock, Columns3, Droplets, Eye, FileKey2, FileText, Filter, Flame, Globe, Home, Link2, List, Mail, MessageSquare, PenTool, Percent, Phone, Plus, RefreshCw, RotateCw, Search, Send, Shield, Tag, Trash2, TrendingUp, UserCheck, UserPlus, Wifi, X, Zap } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { AlertTriangle, ArrowRight, ArrowUpDown, BarChart3, Building2, Calendar, Check, CheckSquare, Clock, Columns3, Droplets, FileKey2, FileText, Flame, Globe, Home, List, PenTool, Percent, Plus, RefreshCw, RotateCw, Search, Send, Trash2, TrendingUp, UserCheck, UserPlus, Wifi, X, Zap } from 'lucide-react';
 import { strataGet, strataPut, strataPost } from '../strataApi';
 import { sendForEsign } from '../../ESign/esignApi'; // plan 047 — Documenso proxy client
 import { bookingLinkFor } from '../../Scheduling/calcomLinks'; // plan 053 — cal.com showing bridge
-import type { Workitem, Property, Unit } from '../strataTypes';
+import type { Workitem, Property, Unit, EntityProfile } from '../strataTypes';
 import ProfileSpaces from './ProfileSpaces';
 import { useUser } from '../../../context/UserContext';
 import { useStrataNav } from '../StrataNavContext';
 import { useToast } from '../useToast';
 import { LoadingState, ErrorState } from '../StateView';
+import { NotYet } from '../../common/NotYet';
 
 type LeaseTab = 'vacancies' | 'guest-cards' | 'applications' | 'leases' | 'renewals' | 'metrics' | 'signals';
 type VacancySort = 'days_vacant' | 'rent' | 'property' | 'unit';
 type LeaseFilter = 'all' | 'countersign' | 'out_for_signing' | 'printed';
-type RenewalStatus = 'all' | 'eligible' | 'pending' | 'prepared';
+type RenewalStatus = 'all' | 'eligible' | 'pending';
 type MetricView = 'overview' | 'funnel' | 'box-score' | 'agent-performance';
 type DocStatus = 'draft' | 'pending_review' | 'approved' | 'sent' | 'signed' | 'countersigned';
 
@@ -87,62 +91,57 @@ const MOVEIN_CHECKLIST = [
     { key: 'mailbox_assigned', label: 'Mailbox key assigned' },
 ];
 
-/* ── Real AppFolio guest card data with activity tracking ── */
-const MOCK_GUEST_CARDS = [
-    { id: 'gc7', name: 'Cullins, Kenderequs', email: '—', phone: '—', source: 'a friend', interestedIn: 'Riverwood Club Apartments', date: '2026-03-04', status: 'new', activity: 'Guest Card Created', activityDate: '2026-03-04' },
-    { id: 'gc8', name: 'Atterbury, Marilyn', email: '—', phone: '—', source: 'a friend', interestedIn: 'Riverwood Club Apartments', date: '2026-03-04', status: 'contacted', activity: 'Text Sent', activityDate: '2026-03-04' },
-    { id: 'gc9', name: 'mullin, Antoinette', email: '—', phone: '—', source: 'Zumper', interestedIn: 'Woodland Parc Townhomes', date: '2026-03-02', status: 'contacted', activity: 'Text Sent', activityDate: '2026-03-02' },
-    { id: 'gc10', name: 'Mckoy, Jordan', email: '—', phone: '—', source: 'Website', interestedIn: 'Woodland Parc Townhomes - 2794-5', date: '2026-02-25', status: 'contacted', activity: 'Email Sent', activityDate: '2026-02-25' },
-    { id: 'gc11', name: 'Blackwell, Alexandria', email: '—', phone: '—', source: 'Website', interestedIn: 'Woodland Parc Townhomes - 2794-5', date: '2026-02-25', status: 'contacted', activity: 'Email Sent', activityDate: '2026-02-25' },
-    { id: 'gc12', name: 'Byers, Demetris', email: '—', phone: '—', source: 'a friend', interestedIn: 'Riverwood Club Apartments - H15', date: '2026-02-23', status: 'contacted', activity: 'Text Sent', activityDate: '2026-02-23' },
-    { id: 'gc1', name: 'Mary H. Gallogly-Schmitt', email: '—', phone: '—', source: 'AppFolio', interestedIn: 'Riverwood Club Apartments', date: '2026-02-13', status: 'new', activity: 'Guest Card Created', activityDate: '2026-02-13' },
-    { id: 'gc2', name: 'Brianna L. Keck', email: '—', phone: '—', source: 'AppFolio', interestedIn: 'Woodland Parc Townhomes', date: '2026-02-13', status: 'new', activity: 'Guest Card Created', activityDate: '2026-02-13' },
-    { id: 'gc3', name: 'Keontae D. Coats', email: '—', phone: '—', source: 'AppFolio', interestedIn: 'Woodland Parc Townhomes', date: '2026-02-07', status: 'contacted', activity: 'Text Sent', activityDate: '2026-02-07' },
-    { id: 'gc4', name: 'Ian C. Hennessey', email: '—', phone: '—', source: 'AppFolio', interestedIn: 'Riverwood Club Apartments', date: '2026-02-06', status: 'contacted', activity: 'Email Sent', activityDate: '2026-02-06' },
-    { id: 'gc5', name: 'Michael Maselli', email: '—', phone: '—', source: 'AppFolio', interestedIn: 'Woodland Parc Townhomes', date: '2026-02-04', status: 'toured', activity: 'Tour Completed', activityDate: '2026-02-04' },
-    { id: 'gc6', name: 'David Canoy', email: '—', phone: '—', source: 'AppFolio', interestedIn: 'Woodland Parc Townhomes', date: '2026-02-03', status: 'applied', activity: 'Application Submitted', activityDate: '2026-02-03' },
-];
+/* ── No prospect (guest card) or leasing-agent store exists in strataApi.static.ts,
+   strataApi.backend.ts or the backend's dwelliumRoutes.ts — those surfaces render an
+   honest empty state below. Applications and renewals derive from the real
+   /workitems (type=lease) and /units feeds. Never hardcode rows here. ── */
 
-/* ── Real AppFolio rental application data ── */
-const MOCK_APPLICATIONS = [
-    { id: 'app1', applicant: 'Tracy W. Terry', unit: 'Riverwood Club Apartments - H07', property: 'Riverwood Club Apartments', desiredMoveIn: '2026-03-01', status: 'converting', dateReceived: '2026-02-08', screening: 'Approved', marketRent: 1200 },
-    { id: 'app2', applicant: 'Marcella V. Walker', unit: 'Riverwood Club Apartments - J03', property: 'Riverwood Club Apartments', desiredMoveIn: '2026-03-15', status: 'converting', dateReceived: '2026-02-11', screening: 'Approved', marketRent: 1350 },
-    { id: 'app3', applicant: 'Bradley D. Beishir', unit: 'Riverwood Club Apartments - H02', property: 'Riverwood Club Apartments', desiredMoveIn: '2026-03-01', status: 'approved', dateReceived: '2026-02-11', screening: 'Approved', marketRent: 1200 },
-];
+/** Backend routes disagree on returning a bare array vs { data: [] } —
+ * accept both (same guard as ManagerHome / AccountingModule). */
+function asArray<T>(v: T[] | { data: T[] } | null | undefined): T[] {
+    if (Array.isArray(v)) return v;
+    if (v && Array.isArray((v as { data: T[] }).data)) return (v as { data: T[] }).data;
+    return [];
+}
 
-/* ── Real AppFolio renewal data with actions ── */
-const MOCK_RENEWALS = [
-    { id: 'r1', tenant: 'John Basher & Erin H. Devine', unit: 'Woodland Parc 2771-2', currentRent: 2650, proposedRent: 2915, expiry: '—', status: 'eligible', monthToMonth: false },
-    { id: 'r2', tenant: 'Eumeko K. Fuller-Barrow', unit: 'Woodland Parc 2782-6', currentRent: 3000, proposedRent: 2750, expiry: '—', status: 'eligible', monthToMonth: false },
-    { id: 'r3', tenant: 'Jonathan G. Laosy', unit: 'Woodland Parc 2826-4', currentRent: 2750, proposedRent: 2750, expiry: '2026-01-31', status: 'countersign', monthToMonth: false },
-    { id: 'r4', tenant: 'Fletcher A. Glass', unit: 'Riverwood D09', currentRent: 1375, proposedRent: 1375, expiry: '2026-03-31', status: 'eligible', monthToMonth: false },
-    { id: 'r5', tenant: 'Jillian C. Ellison', unit: 'Riverwood D11', currentRent: 469, proposedRent: 469, expiry: '2026-03-31', status: 'eligible', monthToMonth: true },
-];
+const getStage = (lease: Workitem): string => lease.metadata?.stage || 'applied';
+
+/** Pipeline stages that are still an application (not yet a signed lease). */
+const APPLICATION_STAGES = new Set(['applied', 'screening', 'approved']);
+
+/** Occupied units whose lease ends within this window (or already ended) are
+ * renewal-eligible — the same 90-day window the backend's GET /leasing/alerts uses. */
+const RENEWAL_WINDOW_DAYS = 90;
+const daysUntil = (iso: string): number => Math.floor((new Date(iso).getTime() - Date.now()) / 86400000);
+const numOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+interface RenewalRow {
+    id: string;
+    status: 'eligible' | 'pending';
+    tenant: string;
+    unitId: string | null;
+    unitNumber: string;
+    propertyId: string | null;
+    propertyName: string;
+    currentRent: number | null;
+    proposedRent: number | null;
+    expiry: string | null;
+}
+
+/** Honest empty state for a surface with no backend source yet. */
+function EmptyCard({ icon, title, message, reason, action }: { icon: ReactNode; title: string; message: string; reason: string; action?: ReactNode }) {
+    return (
+        <div className="s-glass-card" style={{ textAlign: 'center', padding: 40 }}>
+            <div style={{ color: 'var(--text-tertiary)', marginBottom: 12, display: 'flex', justifyContent: 'center' }}>{icon}</div>
+            <h3 style={{ color: 'var(--text-primary)', margin: '0 0 6px' }}>{title}</h3>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>{message}</p>
+            <div style={{ display: 'inline-flex', marginTop: 12 }}><NotYet reason={reason} /></div>
+            {action && <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>{action}</div>}
+        </div>
+    );
+}
 
 /* Signals are now fetched live from GET /leasing/alerts */
-
-/* ── Listing status for vacancies (mirrors AppFolio Website/Internet) ── */
-const LISTING_STATUS: Record<string, { website: boolean; internet: boolean; premium: boolean }> = {
-    default: { website: true, internet: true, premium: false },
-};
-
-/* ── Agent performance data ── */
-const MOCK_AGENTS = [
-    { name: 'Lisa M.', guestCards: 8, tours: 5, applications: 3, leasesSigned: 2, conversionRate: 25 },
-    { name: 'Andy K.', guestCards: 4, tours: 2, applications: 1, leasesSigned: 1, conversionRate: 25 },
-];
-
-function gcStatusColor(s: string) {
-    switch (s) {
-        case 'new': return '#0ea5e9';
-        case 'contacted': return '#f59e0b';
-        case 'toured': return '#D6FE51';
-        case 'applied': return '#22c55e';
-        case 'waitlisted': return '#94a3b8';
-        case 'inactive': return '#475569';
-        default: return '#94a3b8';
-    }
-}
 
 function renewalStatusColor(s: string) {
     switch (s) {
@@ -152,16 +151,6 @@ function renewalStatusColor(s: string) {
         case 'sent': return '#D6FE51';
         case 'accepted': return '#22c55e';
         case 'declined': return '#ef4444';
-        default: return '#94a3b8';
-    }
-}
-
-function appStatusColor(s: string) {
-    switch (s) {
-        case 'converting': return '#f59e0b';
-        case 'approved': return '#22c55e';
-        case 'denied': return '#ef4444';
-        case 'pending': return '#0ea5e9';
         default: return '#94a3b8';
     }
 }
@@ -185,13 +174,12 @@ export default function LeasingModule() {
     const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
     const [selectedLease, setSelectedLease] = useState<Workitem | null>(null);
     const [leasingAlerts, setLeasingAlerts] = useState<LeasingAlert[]>([]);
+    const [tenants, setTenants] = useState<EntityProfile[]>([]);
     // New AppFolio feature states
     const [vacancySort, setVacancySort] = useState<VacancySort>('days_vacant');
     const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>('all');
     const [renewalFilter, setRenewalFilter] = useState<RenewalStatus>('all');
     const [metricView, setMetricView] = useState<MetricView>('overview');
-    const [selectedGCs, setSelectedGCs] = useState<Set<string>>(new Set());
-    const [includeM2M, setIncludeM2M] = useState(true);
     const [renewalSearch, setRenewalSearch] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
 
@@ -210,23 +198,25 @@ export default function LeasingModule() {
     const fetchLeases = useCallback(async () => {
         setLoading(true);
         try {
-            const [leaseData, propData, unitData, alertData] = await Promise.all([
-                strataGet<Workitem[]>('/workitems', { type: 'lease' }),
-                strataGet<Property[]>('/properties'),
-                strataGet<Unit[]>('/units').catch(() => [] as Unit[]),
+            const [leaseData, propData, unitData, alertData, tenantData] = await Promise.all([
+                strataGet<Workitem[] | { data: Workitem[] }>('/workitems', { type: 'lease' }),
+                strataGet<Property[] | { data: Property[] }>('/properties'),
+                strataGet<Unit[] | { data: Unit[] }>('/units').catch(() => [] as Unit[]),
                 strataGet<{ alerts: LeasingAlert[] }>('/leasing/alerts').catch(() => ({ alerts: [] })),
+                // Tenant names for renewal-eligible units (units only carry currentTenantId).
+                strataGet<EntityProfile[] | { data: EntityProfile[] }>('/entities', { type: 'tenant' }).catch(() => [] as EntityProfile[]),
             ]);
-            setLeases(leaseData);
-            setProperties(propData);
-            setUnits(unitData);
+            setLeases(asArray(leaseData));
+            setProperties(asArray(propData));
+            setUnits(asArray(unitData));
             setLeasingAlerts(alertData.alerts || []);
+            setTenants(asArray(tenantData));
         } catch (e) { console.error(e); setError('Failed to load leasing data'); }
         setLoading(false);
     }, []);
 
     useEffect(() => { fetchLeases(); }, [fetchLeases]);
 
-    const getStage = (lease: Workitem): string => lease.metadata?.stage || 'applied';
     const getLeasesByStage = (stageKey: string) => leases.filter(l => getStage(l) === stageKey);
 
     const moveToStage = async (lease: Workitem, newStage: string) => {
@@ -352,8 +342,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
             const prop = properties.find(p => p.id === u.propertyId);
             const leaseEnd = u.leaseEnd ? new Date(u.leaseEnd) : null;
             const daysVacant = leaseEnd ? Math.max(0, Math.floor((now.getTime() - leaseEnd.getTime()) / 86400000)) : 0;
-            const listing = LISTING_STATUS[u.id] || LISTING_STATUS.default;
-            return { ...u, propertyName: prop?.name || 'Unknown', sqft: u.sqFt, marketRent: u.rentAmount, daysVacant, listing };
+            return { ...u, propertyName: prop?.name || 'Unknown', sqft: u.sqFt, marketRent: u.rentAmount, daysVacant };
         });
         raw.sort((a, b) => {
             switch (vacancySort) {
@@ -367,22 +356,66 @@ DRAFT — This document must be reviewed by legal counsel before execution.
         return raw;
     }, [units, properties, vacancySort]);
 
-    // Guest card source analytics
-    const sourceBreakdown = useMemo(() => {
-        const counts: Record<string, number> = {};
-        MOCK_GUEST_CARDS.forEach(gc => { counts[gc.source] = (counts[gc.source] || 0) + 1; });
-        return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([source, count]) => ({ source, count, pct: Math.round(count / MOCK_GUEST_CARDS.length * 100) }));
-    }, []);
+    // Rental applications = lease workitems still in an application stage (the Add
+    // Application modal writes stage 'applied'; the pipeline board shows the same rows).
+    const applications = useMemo(() => leases.filter(l => APPLICATION_STAGES.has(getStage(l))), [leases]);
 
-    // Filtered renewals
+    const propertyName = useCallback((id: string | null) => properties.find(p => p.id === id)?.name || '', [properties]);
+
+    // Renewals: offers already prepared (stage 'renewal_offered' workitems written by
+    // POST /leasing/renewals) + occupied units whose lease ends inside the window.
+    // Proposed rent has no source until an offer exists — shown as '—', never guessed.
+    const renewals = useMemo<RenewalRow[]>(() => {
+        const offers = leases.filter(l => getStage(l) === 'renewal_offered');
+        const offeredUnitIds = new Set(offers.map(o => o.metadata?.unitId).filter(Boolean));
+        const pending = offers.map(o => ({
+            id: o.id, status: 'pending' as const,
+            tenant: o.metadata?.applicantName || o.title,
+            unitId: o.metadata?.unitId || null, unitNumber: o.metadata?.unitNumber || '',
+            propertyId: o.propertyId, propertyName: o.metadata?.propertyName || propertyName(o.propertyId),
+            currentRent: numOrNull(o.metadata?.currentRent), proposedRent: numOrNull(o.metadata?.proposedRent),
+            expiry: o.metadata?.leaseEnd || null,
+        }));
+        const eligible = units
+            .filter(u => u.status === 'occupied' && !!u.leaseEnd && daysUntil(u.leaseEnd) <= RENEWAL_WINDOW_DAYS && !offeredUnitIds.has(u.id))
+            .map(u => ({
+                id: `unit-${u.id}`, status: 'eligible' as const,
+                tenant: u.currentTenantId ? (tenants.find(t => t.id === u.currentTenantId)?.name || u.currentTenantId) : '—',
+                unitId: u.id, unitNumber: u.unitNumber,
+                propertyId: u.propertyId, propertyName: propertyName(u.propertyId),
+                currentRent: numOrNull(u.rentAmount), proposedRent: null,
+                expiry: u.leaseEnd,
+            }))
+            .sort((a, b) => (a.expiry || '').localeCompare(b.expiry || ''));
+        return [...pending, ...eligible];
+    }, [leases, units, tenants, propertyName]);
+    const eligibleRenewalCount = renewals.filter(r => r.status === 'eligible').length;
+
     const filteredRenewals = useMemo(() => {
-        return MOCK_RENEWALS.filter(r => {
-            if (!includeM2M && r.monthToMonth) return false;
+        const q = renewalSearch.trim().toLowerCase();
+        return renewals.filter(r => {
             if (renewalFilter !== 'all' && r.status !== renewalFilter) return false;
-            if (renewalSearch && !r.tenant.toLowerCase().includes(renewalSearch.toLowerCase()) && !r.unit.toLowerCase().includes(renewalSearch.toLowerCase())) return false;
+            if (q && ![r.tenant, r.unitNumber, r.propertyName].some(s => s.toLowerCase().includes(q))) return false;
             return true;
         });
-    }, [renewalFilter, includeM2M, renewalSearch]);
+    }, [renewals, renewalFilter, renewalSearch]);
+
+    // Proposed rent has no source of its own — ask for it rather than guessing.
+    const prepareRenewalOffer = async (r: RenewalRow) => {
+        const raw = window.prompt(`Proposed monthly rent for ${r.tenant} — ${r.unitNumber || r.propertyName}`, r.currentRent != null ? String(r.currentRent) : '');
+        if (raw == null) return;
+        const proposedRent = Number(raw);
+        if (!Number.isFinite(proposedRent) || proposedRent <= 0) { showToast('Enter a valid proposed rent', 'error'); return; }
+        try {
+            await strataPost('/leasing/renewals', {
+                tenantName: r.tenant, unitId: r.unitId, unitNumber: r.unitNumber,
+                propertyId: r.propertyId || '', propertyName: r.propertyName,
+                currentRent: r.currentRent, proposedRent, leaseEnd: r.expiry,
+            });
+            showToast(`Renewal offer prepared for ${r.tenant}`, 'success');
+            fetchLeases();
+        } catch { showToast('Failed to prepare renewal offer', 'error'); }
+    };
 
     return (
         <div className="s-module">
@@ -422,7 +455,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
             {loading && <LoadingState message="Loading leasing data…" />}
             {!loading && error && <ErrorState message={error} onRetry={fetchLeases} />}
 
-            {/* ══════════ VACANCIES TAB (AppFolio: Days Vacant + Listing Status + Sort) ══════════ */}
+            {/* ══════════ VACANCIES TAB (AppFolio: Days Vacant + Sort — listing status has no unit-level source yet; see the NotYet chip) ══════════ */}
             {tab === 'vacancies' && !loading && (
                 <div className="s-glass-card">
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -430,6 +463,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             <Home size={14} style={{ verticalAlign: -2, marginRight: 6 }} />{vacantUnits.length} Vacant Units
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <NotYet reason="Listing status (website / internet syndication, premium placement) isn't tracked on units yet." />
                             <ArrowUpDown size={12} style={{ color: 'var(--text-tertiary)' }} />
                             <select value={vacancySort} onChange={e => setVacancySort(e.target.value as VacancySort)}
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-primary)', fontSize: 11 }}>
@@ -446,7 +480,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                    {['Unit', 'Property', 'BD/BA', 'Sq Ft', 'Market Rent', 'Days Vacant', 'Listing Status', 'Status'].map(h => (
+                                    {['Unit', 'Property', 'BD/BA', 'Sq Ft', 'Market Rent', 'Days Vacant', 'Status'].map(h => (
                                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -473,18 +507,6 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                             </span>
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
-                                            <div style={{ display: 'flex', gap: 4 }}>
-                                                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: u.listing.website ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', color: u.listing.website ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
-                                                    <Globe size={8} style={{ verticalAlign: -1, marginRight: 2 }} />{u.listing.website ? 'Posted' : 'Not Posted'}
-                                                </span>
-                                                {u.listing.premium && (
-                                                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontWeight: 600 }}>
-                                                        <Tag size={8} style={{ verticalAlign: -1, marginRight: 2 }} />Premium
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '8px 12px' }}>
                                             <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', textTransform: 'uppercase', fontWeight: 600 }}>Vacant</span>
                                         </td>
                                     </tr>
@@ -495,155 +517,57 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                 </div>
             )}
 
-            {/* ══════════ GUEST CARDS TAB (AppFolio: Bulk Actions + Activity + Source Analytics) ══════════ */}
+            {/* ══════════ GUEST CARDS TAB — no prospect store exists yet; honest empty state ══════════ */}
             {tab === 'guest-cards' && !loading && (
-                <>
-                    {/* Source Analytics Bar */}
-                    <div className="s-glass-card" style={{ marginBottom: 12, padding: '12px 16px' }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8 }}>Lead Source Breakdown</div>
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                            {sourceBreakdown.map(s => (
-                                <div key={s.source} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.source === 'Website' ? '#0ea5e9' : s.source === 'Zumper' ? '#22c55e' : s.source === 'a friend' ? '#f59e0b' : '#D6FE51' }} />
-                                    <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>{s.source}</span>
-                                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{s.count} ({s.pct}%)</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="s-glass-card">
-                        {/* Bulk Actions Bar */}
-                        <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
-                                    <UserPlus size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Guest Cards
-                                </span>
-                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{MOCK_GUEST_CARDS.length} prospects</span>
-                            </div>
-                            {selectedGCs.size > 0 && (
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600, marginRight: 4 }}>{selectedGCs.size} selected:</span>
-                                    {[
-                                        { label: 'Mark Active', icon: <Eye size={10} /> },
-                                        { label: 'Mark Inactive', icon: <UserCheck size={10} /> },
-                                        { label: 'Mark Waitlisted', icon: <Clock size={10} /> },
-                                        { label: 'Send Email', icon: <Mail size={10} /> },
-                                        { label: 'Send Text', icon: <MessageSquare size={10} /> },
-                                        { label: 'Send App Link', icon: <Link2 size={10} /> },
-                                        { label: 'Send Showing Link', icon: <Eye size={10} /> },
-                                    ].map(a => (
-                                        <button key={a.label} onClick={() => {
-                                            if (a.label.startsWith('Mark')) {
-                                                const newStatus = a.label === 'Mark Active' ? 'contacted' : a.label === 'Mark Inactive' ? 'inactive' : 'waitlisted';
-                                                showToast(`${selectedGCs.size} guest card(s) marked as ${newStatus}`, 'success');
-                                                setSelectedGCs(new Set());
-                                            } else if (a.label === 'Send Email') {
-                                                strataPost('/gmail/send', { to: 'bulk@placeholder', subject: 'Leasing Follow-up', body: `Bulk email to ${selectedGCs.size} guest cards` })
-                                                    .then(() => showToast(`Email queued for ${selectedGCs.size} guest card(s)`, 'success'))
-                                                    .catch(() => showToast('Failed to send bulk email', 'error'));
-                                            } else {
-                                                showToast(`${a.label} sent to ${selectedGCs.size} guest card(s)`, 'info');
-                                            }
-                                        }}
-                                            style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                            {a.icon} {a.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                    <th style={{ padding: '8px 12px', width: 30 }}>
-                                        <input type="checkbox" checked={selectedGCs.size === MOCK_GUEST_CARDS.length}
-                                            onChange={() => setSelectedGCs(prev => prev.size === MOCK_GUEST_CARDS.length ? new Set() : new Set(MOCK_GUEST_CARDS.map(gc => gc.id)))}
-                                            style={{ accentColor: '#D6FE51' }} />
-                                    </th>
-                                    {['Name', 'Interested In', 'Latest Interest', 'Most Recent Activity', 'Source', 'Status', 'Schedule'].map(h => (
-                                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {MOCK_GUEST_CARDS.map(gc => (
-                                    <tr key={gc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: selectedGCs.has(gc.id) ? 'color-mix(in srgb, var(--accent) 6%, transparent)' : 'transparent' }}>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <input type="checkbox" checked={selectedGCs.has(gc.id)}
-                                                onChange={() => setSelectedGCs(prev => { const n = new Set(prev); if (n.has(gc.id)) n.delete(gc.id); else n.add(gc.id); return n; })}
-                                                style={{ accentColor: '#D6FE51' }} />
-                                        </td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}>{gc.name}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{gc.interestedIn}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{gc.date}</td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>{gc.activity}</div>
-                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{gc.activityDate}</div>
-                                        </td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: gc.source === 'Website' ? 'rgba(14,165,233,0.12)' : gc.source === 'Zumper' ? 'rgba(16,185,129,0.12)' : 'color-mix(in srgb, var(--accent) 12%, transparent)', color: gc.source === 'Website' ? '#0ea5e9' : gc.source === 'Zumper' ? '#22c55e' : '#D6FE51', fontWeight: 600 }}>{gc.source}</span>
-                                        </td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${gcStatusColor(gc.status)}15`, color: gcStatusColor(gc.status), fontWeight: 600, textTransform: 'capitalize' }}>{gc.status}</span>
-                                        </td>
-                                        {/* ── plan 053 cal.com bridge (Scheduling builder) — prefilled showing link ── */}
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <button
-                                                onClick={() => {
-                                                    const link = bookingLinkFor('showing-30min', { name: gc.name, email: gc.email, notes: gc.interestedIn });
-                                                    if (!link) { showToast('Set VITE_CALCOM_URL to enable showing links', 'info'); return; }
-                                                    window.open(link, '_blank', 'noopener');
-                                                }}
-                                                style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', fontSize: 10, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
-                                            >
-                                                <Calendar size={10} /> Schedule showing
-                                            </button>
-                                        </td>
-                                        {/* ── end plan 053 bridge ── */}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
+                <EmptyCard
+                    icon={<UserPlus size={40} strokeWidth={1} />}
+                    title="Guest Cards"
+                    message="No guest cards yet."
+                    reason="Prospect intake (guest cards, lead source, showing activity, bulk follow-up) has no backend store yet — nothing is listed until one exists."
+                    action={
+                        // plan 053 cal.com bridge — generic showing link until there is a prospect to prefill
+                        <button className="s-btn s-btn-ghost" onClick={() => {
+                            const link = bookingLinkFor('showing-30min', {});
+                            if (!link) { showToast('Set VITE_CALCOM_URL to enable showing links', 'info'); return; }
+                            window.open(link, '_blank', 'noopener');
+                        }}><Calendar size={14} /> Schedule showing</button>
+                    }
+                />
             )}
 
             {/* ══════════ RENTAL APPLICATIONS TAB (AppFolio: Grouped by Unit + Screening) ══════════ */}
             {tab === 'applications' && !loading && (
                 <>
-                    {/* AppFolio-style applications grouped by property */}
+                    {/* Real rows: lease workitems still in an application stage (same rows as the pipeline below). */}
                     <div className="s-glass-card" style={{ marginBottom: 12 }}>
                         <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
-                            <FileText size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Rental Applications ({MOCK_APPLICATIONS.length})
+                            <FileText size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Rental Applications ({applications.length})
                         </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                    {['Applicant', 'Property — Unit', 'Market Rent', 'Desired Move-In', 'Date Received', 'Screening', 'Status'].map(h => (
-                                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {MOCK_APPLICATIONS.map(app => (
-                                    <tr key={app.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                        <td style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600 }}>{app.applicant}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{app.unit}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>${app.marketRent.toLocaleString()}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{app.desiredMoveIn}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{app.dateReceived}</td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: app.screening === 'Approved' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)', color: app.screening === 'Approved' ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
-                                                <Shield size={8} style={{ verticalAlign: -1, marginRight: 2 }} />{app.screening}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${appStatusColor(app.status)}15`, color: appStatusColor(app.status), fontWeight: 600, textTransform: 'capitalize' }}>{app.status}</span>
-                                        </td>
+                        {applications.length === 0 ? (
+                            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>No rental applications yet — use “Add Application” to start one.</div>
+                        ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                        {['Applicant', 'Property — Unit', 'Monthly Rent', 'Desired Move-In', 'Received', 'Stage'].map(h => (
+                                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {applications.map(app => (
+                                        <tr key={app.id} className="s-clickable" onClick={() => setSelectedLease(app)} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                            <td style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600 }}>{app.metadata?.applicantName || app.title}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{[propertyName(app.propertyId) || app.metadata?.property, app.metadata?.requestedUnit].filter(Boolean).join(' — ') || '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{app.metadata?.monthlyRent ? `$${Number(app.metadata.monthlyRent).toLocaleString()}` : '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{app.metadata?.moveInDate || '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{new Date(app.createdAt).toLocaleDateString()}</td>
+                                            <td style={{ padding: '8px 12px' }}><span className={`s-badge ${getStage(app)}`}>{getStage(app)}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
 
                     {/* Existing Lease Pipeline (Kanban/Table) */}
@@ -789,7 +713,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                 </div>
             )}
 
-            {/* ══════════ RENEWALS TAB (AppFolio: Search + Filter + M2M + Actions) ══════════ */}
+            {/* ══════════ RENEWALS TAB — prepared offers (stage 'renewal_offered') + occupied units with a lease ending within 90 days ══════════ */}
             {tab === 'renewals' && !loading && (
                 <div className="s-glass-card">
                     {/* Search/Filter header */}
@@ -798,20 +722,15 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
                                 <RotateCw size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Lease Renewals
                             </span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, color: 'var(--text-secondary)' }}>
-                                    <input type="checkbox" checked={includeM2M} onChange={() => setIncludeM2M(!includeM2M)} style={{ accentColor: '#D6FE51' }} />
-                                    Include M2M
-                                </label>
-                            </div>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{eligibleRenewalCount} eligible · {renewals.length - eligibleRenewalCount} offers out</span>
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                             <div style={{ position: 'relative', flex: 1 }}>
                                 <Search size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                                <input value={renewalSearch} onChange={e => setRenewalSearch(e.target.value)} placeholder="Search tenant or unit..."
+                                <input value={renewalSearch} onChange={e => setRenewalSearch(e.target.value)} placeholder="Search tenant, unit or property..."
                                     style={{ width: '100%', padding: '6px 8px 6px 26px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12 }} />
                             </div>
-                            {(['all', 'eligible', 'countersign'] as RenewalStatus[]).map(f => (
+                            {(['all', 'eligible', 'pending'] as RenewalStatus[]).map(f => (
                                 <button key={f} onClick={() => setRenewalFilter(f)}
                                     style={{ padding: '5px 10px', border: 'none', borderRadius: 4, background: renewalFilter === f ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(255,255,255,0.04)', color: renewalFilter === f ? '#D6FE51' : '#64748b', cursor: 'pointer', fontSize: 11, fontWeight: 500, textTransform: 'capitalize' }}>
                                     {f === 'all' ? 'All' : f}
@@ -819,72 +738,51 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             ))}
                         </div>
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                        <thead>
-                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                {['Tenant', 'Unit', 'Current Rent', 'Proposed Rent', 'Change', 'Expiration', 'Type', 'Status', 'Action'].map(h => (
-                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredRenewals.map(r => {
-                                const diff = r.proposedRent - r.currentRent;
-                                return (
-                                    <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.tenant}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{r.unit}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>${r.currentRent.toLocaleString()}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>${r.proposedRent.toLocaleString()}</td>
-                                        <td style={{ padding: '8px 12px', color: diff > 0 ? '#22c55e' : diff < 0 ? '#ef4444' : '#64748b', fontWeight: 600 }}>
-                                            {diff > 0 ? `+$${diff.toLocaleString()}` : diff < 0 ? `-$${Math.abs(diff).toLocaleString()}` : '$0'}
-                                        </td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{r.expiry}</td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            {r.monthToMonth && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(168,85,247,0.12)', color: '#a855f7', fontWeight: 600 }}>M2M</span>}
-                                        </td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${renewalStatusColor(r.status)}15`, color: renewalStatusColor(r.status), fontWeight: 600, textTransform: 'capitalize' }}>{r.status}</span>
-                                        </td>
-                                        <td style={{ padding: '8px 12px' }}>
-                                            {r.status === 'eligible' && (
-                                                <button onClick={async () => {
-                                                    try {
-                                                        const propMatch = properties.find(p => r.unit.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]));
-                                                        await strataPost('/leasing/renewals', {
-                                                            tenantName: r.tenant, unitNumber: r.unit,
-                                                            propertyId: propMatch?.id || '', propertyName: propMatch?.name || '',
-                                                            currentRent: r.currentRent, proposedRent: r.proposedRent, leaseEnd: r.expiry,
-                                                        });
-                                                        showToast(`Renewal offer prepared for ${r.tenant}`, 'success');
-                                                        fetchLeases();
-                                                    } catch { showToast('Failed to prepare renewal offer', 'error'); }
-                                                }}
-                                                    style={{ padding: '3px 8px', border: 'none', borderRadius: 4, background: 'rgba(14,165,233,0.15)', color: '#0ea5e9', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
-                                                    <Send size={9} style={{ verticalAlign: -1, marginRight: 2 }} />Prepare Offer
-                                                </button>
-                                            )}
-                                            {r.status === 'countersign' && (
-                                                <button onClick={async () => {
-                                                    const matchedLease = leases.find(l => l.metadata?.applicantName?.includes(r.tenant.split(' ')[0]));
-                                                    if (matchedLease) {
-                                                        try {
-                                                            await strataPost(`/leasing/countersign/${matchedLease.id}`, {});
-                                                            showToast(`Renewal countersigned for ${r.tenant}`, 'success');
-                                                            fetchLeases();
-                                                        } catch { showToast('Failed to countersign', 'error'); }
-                                                    } else { showToast('No matching lease workitem found', 'error'); }
-                                                }}
-                                                    style={{ padding: '3px 8px', border: 'none', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
-                                                    <PenTool size={9} style={{ verticalAlign: -1, marginRight: 2 }} />Countersign
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    {filteredRenewals.length === 0 ? (
+                        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                            {renewals.length === 0
+                                ? `No renewals due yet — occupied units with a lease ending within ${RENEWAL_WINDOW_DAYS} days, and offers prepared here, appear in this list.`
+                                : 'No renewals match this filter.'}
+                        </div>
+                    ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                    {['Tenant', 'Unit', 'Current Rent', 'Proposed Rent', 'Change', 'Expiration', 'Status', 'Action'].map(h => (
+                                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredRenewals.map(r => {
+                                    const diff = r.proposedRent != null && r.currentRent != null ? r.proposedRent - r.currentRent : null;
+                                    return (
+                                        <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.tenant}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{[r.propertyName, r.unitNumber].filter(Boolean).join(' · ') || '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{r.currentRent != null ? `$${r.currentRent.toLocaleString()}` : '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.proposedRent != null ? `$${r.proposedRent.toLocaleString()}` : '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: diff != null && diff > 0 ? '#22c55e' : diff != null && diff < 0 ? '#ef4444' : '#64748b', fontWeight: 600 }}>
+                                                {diff == null ? '—' : diff > 0 ? `+$${diff.toLocaleString()}` : diff < 0 ? `-$${Math.abs(diff).toLocaleString()}` : '$0'}
+                                            </td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{r.expiry || '—'}</td>
+                                            <td style={{ padding: '8px 12px' }}>
+                                                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${renewalStatusColor(r.status)}15`, color: renewalStatusColor(r.status), fontWeight: 600, textTransform: 'capitalize' }}>{r.status}</span>
+                                            </td>
+                                            <td style={{ padding: '8px 12px' }}>
+                                                {r.status === 'eligible' && (
+                                                    <button onClick={() => prepareRenewalOffer(r)}
+                                                        style={{ padding: '3px 8px', border: 'none', borderRadius: 4, background: 'rgba(14,165,233,0.15)', color: '#0ea5e9', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                                                        <Send size={9} style={{ verticalAlign: -1, marginRight: 2 }} />Prepare Offer
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             )}
 
@@ -908,22 +806,25 @@ DRAFT — This document must be reviewed by legal counsel before execution.
 
                     {metricView === 'overview' && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                            {/* value: null = no live source yet → "Not available", never a plausible-looking number */}
                             {[
-                                { label: 'Occupancy Rate', value: units.length > 0 ? `${Math.round((1 - vacantUnits.length / units.length) * 100)}%` : '—', color: '#22c55e', icon: <Building2 size={18} /> },
-                                { label: 'Avg. Days to Lease', value: '23', color: 'var(--accent)', icon: <Clock size={18} /> },
-                                { label: 'Active Applications', value: `${MOCK_APPLICATIONS.length}`, color: '#f59e0b', icon: <FileText size={18} /> },
-                                { label: 'Leases Signed (MTD)', value: `${leases.filter(l => getStage(l) === 'lease_signed').length}`, color: '#0ea5e9', icon: <FileKey2 size={18} /> },
-                                { label: 'Pending Renewals', value: `${MOCK_RENEWALS.filter(r => r.status === 'eligible').length}`, color: 'var(--accent)', icon: <RotateCw size={18} /> },
-                                { label: 'Avg. Rent', value: leases.length > 0 ? `$${Math.round(leases.reduce((s, l) => s + (l.metadata?.monthlyRent || 0), 0) / leases.length).toLocaleString()}` : '—', color: 'var(--accent)', icon: <TrendingUp size={18} /> },
-                                { label: 'Online Payments', value: '60%', color: '#22c55e', icon: <Percent size={18} /> },
-                                { label: 'Portal Adoption', value: '51%', color: '#0ea5e9', icon: <Globe size={18} /> },
+                                { label: 'Occupancy Rate', value: units.length > 0 ? `${Math.round((1 - vacantUnits.length / units.length) * 100)}%` : null, color: '#22c55e', icon: <Building2 size={18} /> },
+                                { label: 'Avg. Days to Lease', value: null, color: 'var(--accent)', icon: <Clock size={18} /> },
+                                { label: 'Active Applications', value: `${applications.length}`, color: '#f59e0b', icon: <FileText size={18} /> },
+                                { label: 'Leases Signed', value: `${leases.filter(l => getStage(l) === 'lease_signed').length}`, color: '#0ea5e9', icon: <FileKey2 size={18} /> },
+                                { label: 'Pending Renewals', value: `${eligibleRenewalCount}`, color: 'var(--accent)', icon: <RotateCw size={18} /> },
+                                { label: 'Avg. Rent', value: leases.length > 0 ? `$${Math.round(leases.reduce((s, l) => s + (l.metadata?.monthlyRent || 0), 0) / leases.length).toLocaleString()}` : null, color: 'var(--accent)', icon: <TrendingUp size={18} /> },
+                                { label: 'Online Payments', value: null, color: '#22c55e', icon: <Percent size={18} /> },
+                                { label: 'Portal Adoption', value: null, color: '#0ea5e9', icon: <Globe size={18} /> },
                             ].map(m => (
                                 <div key={m.label} className="s-glass-card" style={{ padding: '16px 20px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                                         <span style={{ color: m.color }}>{m.icon}</span>
                                         <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>{m.label}</span>
                                     </div>
-                                    <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>{m.value}</div>
+                                    {m.value
+                                        ? <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>{m.value}</div>
+                                        : <div style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Not available</div>}
                                 </div>
                             ))}
                         </div>
@@ -931,13 +832,12 @@ DRAFT — This document must be reviewed by legal counsel before execution.
 
                     {metricView === 'funnel' && (
                         <div className="s-glass-card" style={{ padding: 20 }}>
-                            <h3 style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Leasing Funnel — This Month</h3>
+                            <h3 style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Leasing Funnel</h3>
+                            {/* Guest cards / tours have no store yet, so the funnel honestly starts at Applications. */}
                             {[
-                                { stage: 'Guest Cards', count: MOCK_GUEST_CARDS.length, color: '#0ea5e9', width: 100 },
-                                { stage: 'Tours/Showings', count: MOCK_GUEST_CARDS.filter(gc => gc.status === 'toured').length, color: 'var(--accent)', width: 75 },
-                                { stage: 'Applications', count: MOCK_APPLICATIONS.length, color: '#f59e0b', width: 50 },
-                                { stage: 'Approved', count: MOCK_APPLICATIONS.filter(a => a.status === 'approved').length + MOCK_APPLICATIONS.filter(a => a.status === 'converting').length, color: '#22c55e', width: 35 },
-                                { stage: 'Leases Signed', count: leases.filter(l => getStage(l) === 'lease_signed').length, color: 'var(--accent)', width: 20 },
+                                { stage: 'Applications', count: applications.length, color: '#f59e0b', width: 100 },
+                                { stage: 'Approved', count: applications.filter(a => getStage(a) === 'approved').length, color: '#22c55e', width: 66 },
+                                { stage: 'Leases Signed', count: leases.filter(l => getStage(l) === 'lease_signed').length, color: 'var(--accent)', width: 33 },
                             ].map((f, i, arr) => (
                                 <div key={f.stage} style={{ marginBottom: 12 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -953,6 +853,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                     </div>
                                 </div>
                             ))}
+                            <NotYet reason="Guest cards and tours/showings aren't tracked yet — the funnel starts at Applications." />
                         </div>
                     )}
 
@@ -997,36 +898,12 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                     )}
 
                     {metricView === 'agent-performance' && (
-                        <div className="s-glass-card">
-                            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
-                                <UserCheck size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Leasing Agent Performance
-                            </div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                        {['Agent', 'Guest Cards', 'Tours', 'Applications', 'Leases Signed', 'Conversion Rate'].map(h => (
-                                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {MOCK_AGENTS.map(a => (
-                                        <tr key={a.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{a.name}</td>
-                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{a.guestCards}</td>
-                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{a.tours}</td>
-                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{a.applications}</td>
-                                            <td style={{ padding: '8px 12px', color: '#22c55e', fontWeight: 600 }}>{a.leasesSigned}</td>
-                                            <td style={{ padding: '8px 12px' }}>
-                                                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: a.conversionRate >= 20 ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)', color: a.conversionRate >= 20 ? '#22c55e' : '#f59e0b', fontWeight: 700 }}>
-                                                    {a.conversionRate}%
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <EmptyCard
+                            icon={<UserCheck size={40} strokeWidth={1} />}
+                            title="Leasing Agent Performance"
+                            message="Not available"
+                            reason="Lease workitems carry no leasing-agent attribution (guest cards, tours, applications, conversion per agent) yet."
+                        />
                     )}
                 </>
             )}

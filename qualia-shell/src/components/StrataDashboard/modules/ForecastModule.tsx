@@ -115,8 +115,8 @@ function ForecastModuleInner() {
             {/* Controls */}
             <div style={{ background: '#1e2537', borderRadius: 12, padding: 16, marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
                 <div>
-                    <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Property</label>
-                    <select
+                    <label htmlFor="forecast-property" style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Property</label>
+                    <select id="forecast-property"
                         value={selectedProperty}
                         onChange={e => setSelectedProperty(e.target.value)}
                         data-testid="forecast-property-select"

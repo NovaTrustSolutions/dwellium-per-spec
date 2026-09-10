@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import { ArrowRightLeft, Building2, CheckCircle2, ChevronDown, ChevronUp, Clock, FolderKanban, GitBranch, Home, Layers, LayoutGrid, List, Plus, RefreshCw, Search, StickyNote, Tag, Truck, Users, XCircle } from 'lucide-react';
 import { strataGet, strataPost, strataPut, isStaticMode } from '../strataApi';
 import { notYetMessage } from '../../common/NotYet';
@@ -204,7 +205,7 @@ function ProjectsModuleInner() {
                 borderLeft: `3px solid ${getStatusColor(wi.status)}`,
                 transition: 'all 0.15s ease',
             }}>
-                <div
+                <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-expanded={expanded}
                     onClick={() => setExpanded(!expanded)}
                     style={{
                         display: 'flex', alignItems: 'flex-start', gap: 10,
@@ -295,7 +296,7 @@ function ProjectsModuleInner() {
 
         return (
             <div data-testid={`projects-entity-group-${groupKey}`} className="s-glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div
+                <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-expanded={!collapsed}
                     onClick={() => setCollapsed(!collapsed)}
                     style={{
                         display: 'flex', alignItems: 'center', gap: 10,

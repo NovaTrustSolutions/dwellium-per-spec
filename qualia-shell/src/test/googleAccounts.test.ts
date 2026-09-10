@@ -8,6 +8,7 @@ import {
     listGoogleAccounts,
     startGoogleAuth,
     disconnectGoogleAccount,
+    failureNote,
 } from '../lib/googleAccounts';
 
 function mockFetch(impl: (url: string, init?: RequestInit) => { status: number; body?: unknown }) {
@@ -92,5 +93,36 @@ describe('disconnectGoogleAccount', () => {
         const r = await disconnectGoogleAccount('acc1');
         expect(r.ok).toBe(false);
         expect(r.error).toMatch(/500/);
+    });
+});
+
+describe('failure reasons (a live backend saying no is not a missing patch)', () => {
+    it.each([
+        [404, 'missing-route', /apply the backend patch/i],
+        [401, 'unauthorized', /sign out and back in/i],
+        [403, 'unauthorized', /sign out and back in/i],
+        [429, 'rate-limited', /rate-limiting/i],
+        [503, 'unavailable', /answered 503/i],
+    ])('maps HTTP %s to %s', async (status, reason, text) => {
+        mockFetch(() => ({ status }));
+        const r = await listGoogleAccounts();
+        expect(r.available).toBe(false);
+        expect(r.reason).toBe(reason);
+        expect(r.error).toMatch(text);
+        expect(failureNote(r.reason, r.error)).toMatch(text);
+    });
+
+    it('only the missing-route note mentions the backend patch', () => {
+        expect(failureNote('missing-route')).toMatch(/Google_MultiAccount_Backend\.md/);
+        for (const reason of ['unauthorized', 'rate-limited', 'unavailable', 'network'] as const) {
+            expect(failureNote(reason)).not.toMatch(/backend patch/i);
+        }
+    });
+
+    it('network failures say the backend could not be reached', async () => {
+        globalThis.fetch = vi.fn(async () => { throw new Error('boom'); }) as unknown as typeof fetch;
+        const r = await listGoogleAccounts();
+        expect(r.reason).toBe('network');
+        expect(r.error).toMatch(/could not be reached/);
     });
 });

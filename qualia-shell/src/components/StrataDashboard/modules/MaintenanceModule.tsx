@@ -4,6 +4,7 @@
  * Plus rich detail panel with Trello metadata, structured sections
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     Wrench, RefreshCw, ClipboardCheck, RotateCw, Home, FolderKanban,
     ShoppingCart, Package, Landmark, AlertTriangle, CheckCircle, Clock,
@@ -164,7 +165,7 @@ function GroupHeader({ label, count, color, icon }: { label: string; count: numb
 function ItemCard({ item, selected, onClick }: { item: Workitem; selected: boolean; onClick: () => void }) {
     const meta = item.metadata || {};
     return (
-        <div
+        <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
             onClick={onClick}
             style={{
                 padding: '10px 12px', cursor: 'pointer', borderRadius: 8,
@@ -1141,8 +1142,8 @@ function DispatchModal({ onSubmit, onClose }: {
     const [notes, setNotes] = useState('');
 
     return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-            <div onClick={e => e.stopPropagation()} style={{ background: '#1e2130', borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+            <div role="presentation" onClick={e => e.stopPropagation()} style={{ background: '#1e2130', borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 16, fontWeight: 700 }}>Dispatch Work Order</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>

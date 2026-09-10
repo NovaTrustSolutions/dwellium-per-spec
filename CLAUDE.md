@@ -26,10 +26,14 @@ On any backend/network failure, keep the session and surface the global banner
 with a "Do you want to connect?" reconnect button. Only a real `401/403` clears
 auth (`src/context/UserContext.tsx`).
 
-### Never push without verified-green + Ilya's go
-Run the full gate green on the Mac first; never `git push`, `git reset --hard`,
-`git clean -fd`, or rewrite history on Ilya's behalf without an explicit go.
-Build with `npx react-router build`, NOT `npx vite build` (silent no-op).
+### Feature branches ship to CI; `main` never gets a direct push
+Standing authorization (Ilya, 2026-09-06): once the full gate is green on the
+Mac, push the feature branch and open a **draft PR** against `main` so the
+AppFolio Parity Gate runs on GitHub — work that only exists on one machine is
+unverified. `main` itself: never `git push` to it, never `git reset --hard`,
+`git clean -fd`, or rewrite history; it changes only through a PR after CI is
+green and Ilya says merge. Build with `npx react-router build`, NOT
+`npx vite build` (silent no-op).
 
 ---
 
@@ -92,6 +96,7 @@ Cross-phase cumulative deferred-item carry-forward state at HEAD-post-9.5: Phase
 - `AppFolio Parity Gate` (`.github/workflows/appfolio-parity-gate.yml`) runs on push to `main` + PRs touching parity paths. Blocking gates: `tsc -b`, `vitest`, both `vite build` modes (`VITE_APPFOLIO_SEEDS={true,false}`), `verify_no_pii_leak.mjs` strict-scope.
 - **Playwright baseline E2E was split at Phase-7 Task 7.3** into 2 distinct steps: (a) **Playwright axe-baseline E2E (a11y assertion-blocking)** with `continue-on-error: false` BLOCKING (gated on 7.2's hard assertion `expect(axeResults.violations.length).toBe(0)`); (b) **Playwright screenshot-baseline E2E (visual regression; sheltered pending Linux baselines)** with `continue-on-error: true` sheltered (pending Linux baseline mechanism at Tasks 7.4-7.6; Task 0.0.9 captured darwin-only). Do not flip the screenshot-baseline step back to blocking without committing the Linux snapshots first (Tasks 7.4 + 7.5 unlock that flip at Task 7.6; **Task 7.4 LAID the INFRASTRUCTURE at NEW `.github/workflows/capture-linux-baselines.yml` workflow_dispatch-only job — dispatch via `gh workflow run "Capture Linux Playwright Baselines (workflow_dispatch only)" --ref main -f reason="<reason>" -f dry_run=<true|false>`**).
 - `PII Scan` (`.github/workflows/pii-scan.yml`) runs on every push and PR.
+- **Branch protection on `main` (2026-09-06, run-anywhere step 2):** `main` accepts changes only through a pull request; required status checks are `Build, test, and verify` (the parity gate job) and `Run verify_no_pii_leak.mjs` (PII Scan); force-pushes and deletions are blocked and the rules apply to admins too. Because the parity gate is paths-filtered, `.github/workflows/appfolio-parity-gate-skip.yml` runs a same-named job on the complementary `paths-ignore` list so docs-only PRs still report the check; `qualia-shell/src/test/ci/parityGateTwin.test.ts` fails if the two lists drift. Change the rules with `gh api -X PUT repos/NovaTrustSolutions/dwellium-per-spec/branches/main/protection` or the repo's Settings → Branches page.
 - **Paths-filter quirk.** Sweeps + tasks touching only `Scripts/**`, `Docs/**`, `Docs/Baselines/**`, `qualia-shell/e2e/**`, `qualia-shell/playwright.baseline.config.ts`, `playwright.config.ts`, `.env.example`, root `.gitignore`, or root `CLAUDE.md` fall outside parity-gate paths filter — verification needs `gh workflow run`. Auto-fire triggers via `qualia-shell/src/**`, `qualia-shell/app/**` (added v2.68.1 post-Task-8.6), or `.github/workflows/**` self-reference. **🎯 axe-baseline.spec.ts re-attribution (6.8 PRE0 finding):** `qualia-shell/e2e/axe-baseline.spec.ts` is informational-by-spec-design (no `expect()` on violation count), NOT just by workflow `continue-on-error: true`. Making axe-baseline blocking requires SPEC EDIT + workflow step-split (executed at Phase-7 Block A; see history).
 - **Push-trigger flake.** Push-triggered runs have not fired reliably; prefer manual dispatch when no auto-run appears within ~90s. **Empirical observation at Task 8.10 merge cycle (Q-Δ3 LOCK):** 1st PR push from fresh feature branch may not fire auto-CI within ~90s window (sister-shape to push-trigger flake observations across Phase-6/7); force-push from rebased branch reliably triggers it (Task 8.10 PR #79 force-push from `73c79c8` fired Parity Gate run [26083267532](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26083267532) within ~30s — empirically confirms paths-filter effectiveness at the 2nd-PR-push event altitude).
 
@@ -157,6 +162,8 @@ Cross-phase cumulative deferred-item carry-forward state at HEAD-post-9.5: Phase
 
 - **Strict gate (mirrors CI; Task 8.11 ssr:true update):**
   `cd qualia-shell && npx tsc -b && npx vitest run && npx react-router build && VITE_APPFOLIO_SEEDS=false npx react-router build && cd .. && node Scripts/verify_no_pii_leak.mjs && SMOKE_TEST_SKIP_BUILD=true node Scripts/smoke_test_ssr_phase8.mjs`
+- **Ship a feature branch (after the strict gate is green):**
+  `git push -u origin HEAD:<readable-branch-name> && gh pr create --draft --base main --head <readable-branch-name> --fill`
 - **Dispatch parity gate:**
   `gh workflow run "AppFolio Parity Gate" -R NovaTrustSolutions/dwellium-per-spec --ref main`
 - **Watch latest run:**

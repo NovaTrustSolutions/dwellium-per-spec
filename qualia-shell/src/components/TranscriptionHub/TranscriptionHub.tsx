@@ -24,6 +24,7 @@ import AIDegradedState from '../Shell/AIDegradedState';
 import { scanSegmentsViaLlm, buildNotebookLmQuery } from './legalShieldClient';
 import { buildMatchedStatutes, dedupMatchedStatutes, formatSimilarity } from './statuteMatch';
 import type { LegalScanResult as LegalScanResultLlm } from './legalShieldClient';
+import { getAuthToken } from '../../context/UserContext';
 
 // Open the user's NotebookLM (preferring their Calendar Google email) with a
 // pre-filled query. Mirrors NotebookLMContext.openNotebookLM but inline here so
@@ -746,7 +747,7 @@ export default function TranscriptionHub() {
                 try {
                     const res = await fetch(`${API_BASE}/api/transcribe/process-segment`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken() || ''}` },
                         body: JSON.stringify({
                             speaker: item.speaker,
                             text: item.text,
@@ -804,7 +805,7 @@ export default function TranscriptionHub() {
             const scriptToUse = script.trim() || 'No specific script loaded. Provide general coaching: keep the speaker on topic, professional, and concise. Flag any unprofessional language or tangents.';
 
             try {
-                const authToken = localStorage.getItem('dwellium-token') || '';
+                const authToken = getAuthToken() || '';
                 const response = await fetch(`${API_BASE}/api/ara/meeting-manager`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}) },

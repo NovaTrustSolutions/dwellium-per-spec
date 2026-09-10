@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     AlertTriangle, Plus, X, RefreshCw, Search, Building2,
     Shield, Clock, FileText, ChevronDown, ChevronUp, Users,
@@ -255,7 +256,7 @@ Generated: ${new Date().toLocaleString()}
                         ) : filtered.map(inc => {
                             const prop = propMap.get(inc.propertyId);
                             return (
-                                <div key={inc.id}
+                                <div role="presentation" key={inc.id}
                                     onClick={() => setSelected(inc)}
                                     style={{
                                         padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
@@ -269,7 +270,7 @@ Generated: ${new Date().toLocaleString()}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                         <span style={{ color: SEVERITY_COLORS[inc.severity] }}>{getCategoryIcon(inc.category)}</span>
-                                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{inc.title}</span>
+                                        <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{inc.title}</span>
                                         <span style={{
                                             fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                                             background: `${STATUS_COLORS[inc.status]}15`,
@@ -315,14 +316,14 @@ Generated: ${new Date().toLocaleString()}
                         <div style={{ padding: '16px 20px', maxHeight: 500, overflowY: 'auto' }}>
                             {/* Property */}
                             <div style={{ marginBottom: 14 }}>
-                                <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Property</label>
+                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Property</span>
                                 <button className="s-property-link" style={{ fontSize: 13 }} onClick={() => navigateToProperty(selected.propertyId)}>{propMap.get(selected.propertyId)?.name || selected.propertyId}</button>
                                 {selected.unitId && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>Unit: <button className="s-unit-link" style={{ fontSize: 11 }} onClick={() => navigateToUnit(selected.unitId!, selected.propertyId)}>{selected.unitId}</button></span>}
                             </div>
 
                             {/* Description */}
                             <div style={{ marginBottom: 14 }}>
-                                <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Description</label>
+                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Description</span>
                                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                     {selected.description || 'No description provided.'}
                                 </p>
@@ -331,19 +332,19 @@ Generated: ${new Date().toLocaleString()}
                             {/* Details grid */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
                                 <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Reported By</label>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Reported By</span>
                                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.reportedBy || '—'}</span>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Incident Date</label>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Incident Date</span>
                                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.reportedAt ? new Date(selected.reportedAt).toLocaleString() : '—'}</span>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Police Report #</label>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Police Report #</span>
                                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.policeReportNumber || '—'}</span>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Insurance Claim</label>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Insurance Claim</span>
                                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.insuranceClaimId || '—'}</span>
                                 </div>
                             </div>
@@ -351,9 +352,9 @@ Generated: ${new Date().toLocaleString()}
                             {/* Witnesses */}
                             {selected.witnesses.length > 0 && (
                                 <div style={{ marginBottom: 14 }}>
-                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
                                         <Users size={10} style={{ verticalAlign: -1, marginRight: 4 }} /> Witnesses
-                                    </label>
+                                    </span>
                                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                         {selected.witnesses.map((w, i) => (
                                             <span key={i} style={{
@@ -369,7 +370,7 @@ Generated: ${new Date().toLocaleString()}
                             {/* Resolution */}
                             {selected.resolution && (
                                 <div style={{ marginBottom: 14 }}>
-                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Resolution</label>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Resolution</span>
                                     <p style={{ margin: 0, fontSize: 12, color: '#22c55e', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                         {selected.resolution}
                                     </p>
@@ -416,11 +417,11 @@ Generated: ${new Date().toLocaleString()}
 
             {/* ═══ LOG INCIDENT MODAL ═══ */}
             {showForm && (
-                <div style={{
+                <div role="presentation" style={{
                     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-                }} onClick={() => setShowForm(false)}>
-                    <form onSubmit={handleCreate} onClick={e => e.stopPropagation()} style={{
+                }} onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}>
+                    <form onSubmit={handleCreate} style={{
                         background: '#0f172a', borderRadius: 12, padding: 24,
                         border: '1px solid rgba(255,255,255,0.1)',
                         width: 480, maxHeight: '85vh', overflowY: 'auto',
@@ -435,54 +436,54 @@ Generated: ${new Date().toLocaleString()}
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="s-label">Property *</label>
-                                <select name="propertyId" required className="s-input">
+                                <label htmlFor="incident-property" className="s-label">Property *</label>
+                                <select id="incident-property" name="propertyId" required className="s-input">
                                     <option value="">Select property…</option>
                                     {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="s-label">Category *</label>
-                                <select name="category" required className="s-input">
+                                <label htmlFor="incident-category" className="s-label">Category *</label>
+                                <select id="incident-category" name="category" required className="s-input">
                                     {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="s-label">Severity *</label>
-                                <select name="severity" required className="s-input">
+                                <label htmlFor="incident-severity" className="s-label">Severity *</label>
+                                <select id="incident-severity" name="severity" required className="s-input">
                                     <option value="high">High</option>
                                     <option value="medium" selected>Medium</option>
                                     <option value="low">Low</option>
                                 </select>
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="s-label">Title *</label>
-                                <input name="title" required className="s-input" placeholder="Brief incident title…" />
+                                <label htmlFor="incident-title" className="s-label">Title *</label>
+                                <input id="incident-title" name="title" required className="s-input" placeholder="Brief incident title…" />
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="s-label">Description</label>
-                                <textarea name="description" className="s-input" rows={4} placeholder="Detailed description of the incident…"
+                                <label htmlFor="incident-description" className="s-label">Description</label>
+                                <textarea id="incident-description" name="description" className="s-input" rows={4} placeholder="Detailed description of the incident…"
                                     style={{ resize: 'vertical' }} />
                             </div>
                             <div>
-                                <label className="s-label">Reported By</label>
-                                <input name="reportedBy" className="s-input" placeholder="Name" />
+                                <label htmlFor="incident-reported-by" className="s-label">Reported By</label>
+                                <input id="incident-reported-by" name="reportedBy" className="s-input" placeholder="Name" />
                             </div>
                             <div>
-                                <label className="s-label">Incident Date/Time</label>
-                                <input name="reportedAt" type="datetime-local" className="s-input" />
+                                <label htmlFor="incident-incident-date-time" className="s-label">Incident Date/Time</label>
+                                <input id="incident-incident-date-time" name="reportedAt" type="datetime-local" className="s-input" />
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="s-label">Witnesses (comma-separated)</label>
-                                <input name="witnesses" className="s-input" placeholder="John Smith, Jane Doe" />
+                                <label htmlFor="incident-witnesses-comma-separated" className="s-label">Witnesses (comma-separated)</label>
+                                <input id="incident-witnesses-comma-separated" name="witnesses" className="s-input" placeholder="John Smith, Jane Doe" />
                             </div>
                             <div>
-                                <label className="s-label">Police Report #</label>
-                                <input name="policeReportNumber" className="s-input" placeholder="Optional" />
+                                <label htmlFor="incident-police-report" className="s-label">Police Report #</label>
+                                <input id="incident-police-report" name="policeReportNumber" className="s-input" placeholder="Optional" />
                             </div>
                             <div>
-                                <label className="s-label">Unit # (if applicable)</label>
-                                <input name="unitId" className="s-input" placeholder="Optional" />
+                                <label htmlFor="incident-unit-if-applicable" className="s-label">Unit # (if applicable)</label>
+                                <input id="incident-unit-if-applicable" name="unitId" className="s-input" placeholder="Optional" />
                             </div>
                         </div>
 

@@ -164,6 +164,19 @@ function buildQuickLinks(): Array<{ id: string; label: string; url: string }> {
 import { isKnownFrameBlocked } from '../../lib/frameBlocked';
 export { isKnownFrameBlocked };
 
+/** Id of the front-most (highest z-index) non-minimized desktop window, or null.
+ *  Exported for tests. The cockpit follows this to bring an already-open
+ *  widget's tab to the front when the sidebar or ⌘K focuses its window. */
+export function topWindowId(ws: ReadonlyArray<{ id: string; zIndex: number; minimized: boolean }>): string | null {
+    let best: string | null = null;
+    let z = -Infinity;
+    for (const w of ws) {
+        if (w.minimized) continue;
+        if (w.zIndex > z) { z = w.zIndex; best = w.id; }
+    }
+    return best;
+}
+
 /* ── Component ────────────────────────────────────────────────────────────── */
 
 export default function FluidOS() {
@@ -285,11 +298,17 @@ export default function FluidOS() {
     }, [openWindow, restoreWindow, focusWindow]);
 
     /* Adopt desktop windows opened while the cockpit is up (⌘K, deep links)
-       as tabs — otherwise they'd land invisibly behind the overlay. */
+       as tabs — otherwise they'd land invisibly behind the overlay. Also follow
+       focus: the sidebar and ⌘K raise an already-open window (z-index bump)
+       instead of opening a new one, so the matching tab must come to the front
+       too — otherwise the click lands on a window hidden behind the cockpit and
+       the tab stays in the background. */
     const seenWindowIds = useRef<Set<string>>(new Set(windows.map((w) => w.id)));
+    const topWindowRef = useRef<string | null>(topWindowId(windows));
     useEffect(() => {
         if (!state.enabled || !state.open) {
             seenWindowIds.current = new Set(windows.map((w) => w.id));
+            topWindowRef.current = topWindowId(windows);
             return;
         }
         windows.forEach((w) => {
@@ -297,6 +316,12 @@ export default function FluidOS() {
             seenWindowIds.current.add(w.id);
             openInCockpit(w.component, w.title, w.icon);
         });
+        const top = topWindowId(windows);
+        if (top && top !== topWindowRef.current) {
+            topWindowRef.current = top;
+            const w = windows.find((x) => x.id === top);
+            if (w) openInCockpit(w.component, w.title, w.icon);
+        }
     }, [windows, state.enabled, state.open, openInCockpit]);
 
     /* Splitters (Sidebar resize-handle pattern: mousedown → window listeners). */

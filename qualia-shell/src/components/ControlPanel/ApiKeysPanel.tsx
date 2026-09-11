@@ -455,38 +455,45 @@ function RecallCard({ bundle, update, removeSecret }: CardProps) {
 // ApiKeyField and encrypted at rest exactly like every other vault secret —
 // `avatarClient.ts` reads it straight from the vault; it never leaves the
 // browser except TO Anam over TLS.
+//
+// There is no on/off switch here on purpose: the harness uses Anam whenever a
+// key is saved AND an agent's avatar profile picked "Anam (your key)" in the
+// Avatar setup panel (`getConfigured()` = key present). The card used to show
+// an "Enabled" checkbox that nothing read (`AnamConfig.enabled` is
+// informational, see types/integrations.ts) — it now states the real status.
 function AnamCard({ bundle, update, removeSecret }: CardProps) {
     const cfg: AnamConfig = bundle.anam || { apiKey: '', enabled: false };
-    const setField = (patch: Partial<AnamConfig>) => update(b => ({
+    const setKey = (apiKey: string) => update(b => ({
         ...b,
-        anam: { ...cfg, ...patch },
+        anam: { ...cfg, apiKey },
     }));
     const removeKey = () => removeSecret(b => ({
         ...b,
         anam: { ...cfg, apiKey: '' },
     }));
+    const active = cfg.apiKey.length > 0;
     return (
         <div className="cp-integration-card" style={{ marginBottom: 12 }}>
             <div className="cp-integration-card__header">
                 <span className="cp-integration-card__title">Anam Avatar Engine</span>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
-                    <input
-                        type="checkbox"
-                        checked={cfg.enabled}
-                        onChange={e => setField({ enabled: e.target.checked })}
-                    />
-                    Enabled
-                </label>
+                <span
+                    role="status"
+                    aria-label={active ? 'Anam Avatar Engine: active, key saved' : 'Anam Avatar Engine: not configured'}
+                    style={{ fontSize: 11, color: active ? 'var(--accent-text, #000)' : 'var(--text-tertiary)', background: active ? 'var(--accent-subtle, rgba(214,254,81,0.15))' : 'transparent', border: `1px solid ${active ? 'var(--accent, #D6FE51)' : 'var(--border-default)'}`, borderRadius: 999, padding: '2px 8px' }}
+                >
+                    {active ? 'Active — key saved' : 'Not configured'}
+                </span>
             </div>
             <p style={{ color: 'var(--text-tertiary)', fontSize: 11, margin: '0 0 8px' }}>
                 Powers the live interactive avatar (ARA, Stella). Calls go directly from your
-                browser to api.anam.ai using this key. Get a key at anam.ai.
+                browser to api.anam.ai using this key. Get a key at anam.ai. Each agent opts in
+                under Avatar setup → Provider → "Anam (your key)"; there is no separate switch.
             </p>
             <ApiKeyField
                 label="Anam API key"
                 provider="anam"
                 value={cfg.apiKey}
-                onChange={v => setField({ apiKey: v })}
+                onChange={setKey}
                 onRemove={removeKey}
                 placeholder="anam-…"
             />

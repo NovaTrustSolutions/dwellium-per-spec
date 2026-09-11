@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // ── Mock UserContext with correct relative path from test file ───────────
 vi.mock('../context/UserContext', async (importOriginal) => {
@@ -18,13 +18,16 @@ vi.mock('../config', () => ({
 
 const mockAuthFetch = vi.fn();
 
-// Mock ResizeObserver
+// Mock ResizeObserver — keeps the callbacks so a test can fire a layout tick.
+const resizeCallbacks: Array<() => void> = [];
 class MockResizeObserver {
+    constructor(cb: () => void) { resizeCallbacks.push(cb); }
     observe = vi.fn();
     unobserve = vi.fn();
     disconnect = vi.fn();
 }
 globalThis.ResizeObserver = MockResizeObserver as any;
+const fireResize = () => { for (const cb of resizeCallbacks) cb(); };
 
 // ── Mock xterm.js — the live session renders through it; assert on term.write ──
 const mockTerm = vi.hoisted(() => ({
@@ -244,5 +247,64 @@ describe('Terminal', () => {
         await waitFor(() => {
             expect(mockTerm.write).toHaveBeenCalledWith('flat-shell-live\n');
         });
+    });
+});
+
+/**
+ * Cockpit report (2026-09-10): a red "Failed to fetch" sat in the terminal
+ * header while the shell kept working — one dropped 350 ms poll was shown as a
+ * permanent error, and nothing ever cleared it. A session the backend had
+ * dropped (Cloud Run instance replaced) still read "Live". Every layout tick
+ * sent a resize, and the PTY answered each with a fresh prompt line.
+ */
+describe('Terminal — transient failures, backend-ended sessions, resize', () => {
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const errorPill = () => document.querySelector('.qualia-terminal__status--error');
+    afterEach(() => { cleanup(); resizeCallbacks.length = 0; mockTerm.cols = 80; mockTerm.rows = 24; });
+
+    it('one dropped output poll shows nothing; a streak shows a status; the next success clears it', async () => {
+        let mode: 'ok' | 'fail' = 'ok';
+        const base = mockAuthFetch.getMockImplementation()!;
+        mockAuthFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (url.includes('/output') && mode === 'fail') throw new TypeError('Failed to fetch');
+            return base(url, opts);
+        });
+        render(<Terminal />);
+        await screen.findByText('Live');
+
+        mode = 'fail'; await wait(400); mode = 'ok'; // at most two failed polls
+        await wait(800);
+        expect(errorPill()).toBeNull();
+        expect(screen.getByText('Live')).toBeInTheDocument();
+
+        mode = 'fail';
+        await waitFor(() => expect(errorPill()?.textContent).toMatch(/not reaching the browser \(Failed to fetch\)/), { timeout: 4000 });
+        expect(screen.getByText('Live')).toBeInTheDocument(); // the session itself is not declared dead
+
+        mode = 'ok';
+        await waitFor(() => expect(errorPill()).toBeNull(), { timeout: 3000 });
+    }, 15000);
+
+    it('a 404 on output marks the session Exited and asks for a Restart', async () => {
+        const base = mockAuthFetch.getMockImplementation()!;
+        mockAuthFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (url.includes('/output')) return json({ success: false, error: 'Session not found' }, false, 404);
+            return base(url, opts);
+        });
+        render(<Terminal />);
+        await waitFor(() => expect(screen.getByText(/^Exited/)).toBeInTheDocument(), { timeout: 3000 });
+        expect(errorPill()?.textContent).toMatch(/ended on the backend — press Restart/);
+    });
+
+    it('resize reaches the PTY only when the grid size changed', async () => {
+        render(<Terminal />);
+        await screen.findByText('Live');
+        const resizes = () => mockAuthFetch.mock.calls.filter(([u, o]) => String(u).includes('/resize') && (o as RequestInit | undefined)?.method === 'POST').length;
+        fireResize(); await wait(250);
+        fireResize(); await wait(250);
+        expect(resizes()).toBe(1); // same 80×24 twice → one POST
+        mockTerm.cols = 100;
+        fireResize(); await wait(250);
+        expect(resizes()).toBe(2);
     });
 });

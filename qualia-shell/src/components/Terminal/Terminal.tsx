@@ -39,6 +39,9 @@ interface TerminalSession {
 const API_TERMINAL = `${API_BASE}/api/terminal`;
 const OUTPUT_LIMIT = 200_000;
 const POLL_INTERVAL_MS = 350;
+// A single dropped poll (network blip, Cloud Run instance swap, laptop wake) is
+// not an error the user can act on; only a streak is worth a red status.
+const POLL_FAILURES_BEFORE_ERROR = 3;
 
 function trimOutput(next: string): string {
     if (next.length <= OUTPUT_LIMIT) return next;
@@ -100,6 +103,11 @@ export default function Terminal() {
     const scrollRef = useRef<HTMLPreElement | null>(null);
     const cursorRef = useRef(0);
     const sessionIdRef = useRef<string | null>(null);
+    const pollInFlightRef = useRef(false);
+    const pollFailuresRef = useRef(0);
+    const pollErrorShownRef = useRef(false);
+    const inputErrorShownRef = useRef(false);
+    const lastSizeRef = useRef<{ cols: number; rows: number } | null>(null);
     const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const closedRef = useRef(false);
     // xterm.js terminal emulator — interprets ANSI + full-screen apps (vim, etc.).
@@ -137,8 +145,10 @@ export default function Terminal() {
                 method: 'POST',
                 body: JSON.stringify({ input }),
             });
+            if (inputErrorShownRef.current) { inputErrorShownRef.current = false; setError(null); }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to send terminal input');
+            inputErrorShownRef.current = true;
+            setError(`Keystrokes did not reach the terminal (${err instanceof Error ? err.message : 'send failed'}) — type again.`);
         }
     }, [authFetch]);
 
@@ -163,14 +173,19 @@ export default function Terminal() {
     }, [sendRawInput, offline]);
 
     const pollOutput = useCallback(async () => {
-        if (!sessionIdRef.current || closedRef.current) return;
+        if (!sessionIdRef.current || closedRef.current || pollInFlightRef.current) return;
+        pollInFlightRef.current = true;
         try {
             const res = await authFetch(`${API_TERMINAL}/sessions/${sessionIdRef.current}/output?cursor=${cursorRef.current}`);
             const json = await res.json().catch(() => null);
             const d = json?.data ?? json;
             if (!res.ok || !json?.success || !d) {
                 if (res.status === 404) {
+                    // The backend no longer has this session (instance replaced,
+                    // idle cleanup). Say so instead of leaving "Live" in the header.
                     closedRef.current = true;
+                    setSession((prev) => (prev ? { ...prev, closedAt: prev.closedAt ?? new Date().toISOString() } : prev));
+                    setError('Terminal session ended on the backend — press Restart for a new shell.');
                 } else {
                     throw new Error(json?.error || `Terminal poll failed (${res.status})`);
                 }
@@ -187,8 +202,17 @@ export default function Terminal() {
             cursorRef.current = (typeof d.cursor === 'number' ? d.cursor : d.nextCursor) ?? cursorRef.current;
             setCursor(cursorRef.current);
             if (d.session) setSession(d.session);
+            // A successful poll ends any failure streak; drop the status it raised.
+            pollFailuresRef.current = 0;
+            if (pollErrorShownRef.current) { pollErrorShownRef.current = false; setError(null); }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Terminal poll failed');
+            pollFailuresRef.current += 1;
+            if (pollFailuresRef.current >= POLL_FAILURES_BEFORE_ERROR) {
+                pollErrorShownRef.current = true;
+                setError(`Terminal output is not reaching the browser (${err instanceof Error ? err.message : 'poll failed'}) — still retrying.`);
+            }
+        } finally {
+            pollInFlightRef.current = false;
         }
     }, [authFetch, writeToTerm]);
 
@@ -205,11 +229,16 @@ export default function Terminal() {
             rows = Math.max(12, Math.floor((rect.height - 24) / 19));
         }
         if (!cols || !rows) return;
+        // Every resize reaches the PTY as SIGWINCH and bash reprints its prompt;
+        // layout ticks that leave the grid the same size must not send one.
+        const last = lastSizeRef.current;
+        if (last && last.cols === cols && last.rows === rows) return;
         try {
             await authFetch(`${API_TERMINAL}/sessions/${sessionIdRef.current}/resize`, {
                 method: 'POST',
                 body: JSON.stringify({ cols, rows }),
             });
+            lastSizeRef.current = { cols, rows };
         } catch {
             // Keep the session usable even if resize fails.
         }
@@ -239,6 +268,10 @@ export default function Terminal() {
         setCursor(0);
         cursorRef.current = 0;
         closedRef.current = false;
+        pollFailuresRef.current = 0;
+        pollErrorShownRef.current = false;
+        inputErrorShownRef.current = false;
+        lastSizeRef.current = null;
 
         try {
             const capsRes = await authFetch(`${API_TERMINAL}/capabilities`);

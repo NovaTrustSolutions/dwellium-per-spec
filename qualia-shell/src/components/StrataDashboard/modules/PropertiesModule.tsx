@@ -19,6 +19,8 @@ import FixedAssetsTable from './__properties/FixedAssetsTable';
 import { useStrataNav } from '../StrataNavContext';
 // Plan 053 Whiteboard bridge — single import + single JSX line (see whiteboardBridge.tsx).
 import { WhiteboardAction } from '../../Whiteboard/whiteboardBridge';
+// Exterior photo (uploaded photo, else the backend's Street View proxy) — see PropertyPhoto.tsx.
+import { PropertyPhoto } from './PropertyPhoto';
 
 interface LinkedData {
     workitems: Workitem[];
@@ -616,6 +618,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                     <div className="s-card-grid">
                         {filteredProperties.map(p => (
                             <div role="presentation" key={p.id} className="s-glass-card s-clickable" onClick={() => openDetail(p)}>
+                                <PropertyPhoto property={p} variant="card" />
                                 <div className="s-prop-card-header">
                                     <div className="s-prop-icon"><Building2 size={20} /></div>
                                     <span className={`s-badge ${p.status}`}>{p.status}</span>
@@ -673,6 +676,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 onClick={() => openDetail(p)}
                                 style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px' }}
                             >
+                                <PropertyPhoto property={p} variant="row" />
                                 <div className="s-prop-icon" style={{ flexShrink: 0 }}><Building2 size={18} /></div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1045,6 +1049,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                             {/* ───── PROPERTY HEADER (always visible) ───── */}
                             {hasPermission('strata:properties:kpi') && (
                                 <div className="s-glass-card s-detail-card">
+                                    <PropertyPhoto property={selected} variant="hero" />
                                     <div className="s-detail-header">
                                         <div>
                                             <h2>{selected.name}</h2>

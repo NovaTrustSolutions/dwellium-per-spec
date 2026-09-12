@@ -1446,6 +1446,11 @@ function matchWriteRoute(method: string, path: string, body: any): any {
 export function strataGet<T>(path: string, params?: Record<string, string>): Promise<T> {
     return matchRoute(path, params) as Promise<T>;
 }
+// Static mode has no photo proxy: answer like an unconfigured backend (503) so
+// PropertyPhoto renders nothing rather than a fake picture.
+export async function strataGetBlob(_path: string): Promise<{ status: number; blob?: Blob; headers?: Headers }> {
+    return { status: 503 };
+}
 export function strataPost<T>(path: string, body: unknown): Promise<T> {
     return Promise.resolve(matchWriteRoute('POST', path, body) as T);
 }

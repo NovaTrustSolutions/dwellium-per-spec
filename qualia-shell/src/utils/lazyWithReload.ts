@@ -8,6 +8,12 @@ const CHUNK_LOAD_PATTERNS = [
     /Loading chunk [\w-]+ failed/i,
 ];
 
+/** True for the errors a stale tab gets when a newer deploy renamed the chunk it tries to load. */
+export function isChunkLoadError(err: unknown): boolean {
+    const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err ?? '');
+    return CHUNK_LOAD_PATTERNS.some((re) => re.test(msg));
+}
+
 export function lazyWithReload<T extends React.ComponentType<any>>(
     importer: () => Promise<{ default: T }>
 ) {

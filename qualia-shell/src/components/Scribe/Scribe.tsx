@@ -3,7 +3,7 @@
  * AI redlines, inline comments, versioning, and table of contents.
  */
 
-import { useEffect, useRef, useCallback, useMemo, useState, lazy, Suspense, type ChangeEvent } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState, lazy, Suspense, type ChangeEvent, Component, type ReactNode, type ErrorInfo } from 'react';
 import { Maximize, Upload } from 'lucide-react';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
@@ -43,6 +43,37 @@ import './Scribe.css';
 
 // Sub-component altitude → bare React.lazy (NOT lazyWithReload; see repo 2-layer rule).
 const InteractiveDocs = lazy(() => import('./idocs/InteractiveDocs'));
+import { isChunkLoadError } from '../../utils/lazyWithReload';
+
+/**
+ * Interactive Docs is loaded on demand. When a newer Dwellium has been deployed
+ * since this tab opened, the old chunk name is gone and the import rejects —
+ * the user saw "an error whenever I click Interactive Docs" (2026-09-10, nine
+ * deploys that day). Say what happened and offer the reload instead of a
+ * generic crash; any other error stays visible with a retry.
+ */
+export class IdocsLoadBoundary extends Component<{ children: ReactNode; onBackToDoc?: () => void }, { error: Error | null }> {
+    state = { error: null as Error | null };
+    static getDerivedStateFromError(error: Error) { return { error }; }
+    componentDidCatch(error: Error, info: ErrorInfo) { console.error('[Scribe] Interactive Docs failed to load', error, info.componentStack); }
+    render() {
+        const { error } = this.state;
+        if (!error) return this.props.children;
+        const stale = isChunkLoadError(error);
+        return (
+            <div className="scribe__status scribe__status--error" role="alert" data-state={stale ? 'stale-deploy' : 'idocs-error'} style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', padding: 14 }}>
+                <strong>{stale ? 'Interactive Docs didn’t load — a newer Dwellium was deployed since this tab opened.' : 'Interactive Docs hit an error.'}</strong>
+                <span style={{ opacity: 0.85 }}>{stale ? 'Reload to pick up the new version; your open Doc tabs are kept locally.' : error.message}</span>
+                <span style={{ display: 'flex', gap: 8 }}>
+                    {stale
+                        ? <button type="button" onClick={() => window.location.reload()}>Reload</button>
+                        : <button type="button" onClick={() => this.setState({ error: null })}>Try again</button>}
+                    {this.props.onBackToDoc && <button type="button" onClick={this.props.onBackToDoc}>Back to Doc</button>}
+                </span>
+            </div>
+        );
+    }
+}
 
 export default function Scribe() {
     usePerUserIdentity();
@@ -230,9 +261,11 @@ export default function Scribe() {
         return (
             <div className="scribe">
                 <TabBar />
-                <Suspense fallback={<div style={{ padding: 16, color: 'var(--text-secondary)' }}>Loading Interactive Docs…</div>}>
-                    <InteractiveDocs />
-                </Suspense>
+                <IdocsLoadBoundary onBackToDoc={() => useScribeStore.getState().setEditorMode('document')}>
+                    <Suspense fallback={<div style={{ padding: 16, color: 'var(--text-secondary)' }}>Loading Interactive Docs…</div>}>
+                        <InteractiveDocs />
+                    </Suspense>
+                </IdocsLoadBoundary>
             </div>
         );
     }

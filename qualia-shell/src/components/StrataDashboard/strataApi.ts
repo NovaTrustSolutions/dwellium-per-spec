@@ -79,7 +79,7 @@ export function strataDelete(path: string): Promise<void> {
 }
 
 /** Authenticated binary GET (property photos); resolves with the HTTP status instead of throwing. */
-export function strataGetBlob(path: string): Promise<{ status: number; blob?: Blob; headers?: Headers }> {
+export function strataGetBlob(path: string): Promise<{ status: number; blob?: Blob; headers?: Headers; body?: string }> {
     return pick().strataGetBlob(path);
 }
 

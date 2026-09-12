@@ -52,13 +52,13 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
 }
 
 /** Authenticated GET of a binary (image) — never throws on HTTP errors; the caller keys on `status`. */
-export interface BlobResponse { status: number; blob?: Blob; headers?: Headers }
+export interface BlobResponse { status: number; blob?: Blob; headers?: Headers; /** Error body text on non-2xx (JSON from the backend), so callers can tell a missing route from a real "not found". */ body?: string }
 export async function strataGetBlob(path: string): Promise<BlobResponse> {
     const headers: Record<string, string> = { 'X-Qualia-API': 'v2' };
     const token = getAuthToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${API_BASE}${path}`, { headers });
-    if (!res.ok) return { status: res.status, headers: res.headers };
+    if (!res.ok) return { status: res.status, headers: res.headers, body: await res.text().catch(() => '') };
     return { status: res.status, blob: await res.blob(), headers: res.headers };
 }
 

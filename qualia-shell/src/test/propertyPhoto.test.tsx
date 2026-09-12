@@ -35,15 +35,25 @@ describe('PropertyPhoto', () => {
     });
 
     it('404 → an honest "No street photo" tile on cards, nothing on rows', async () => {
-        blobMock.mockResolvedValue({ status: 404 });
+        blobMock.mockResolvedValue({ status: 404, body: JSON.stringify({ success: false, error: 'No Street View imagery for this address' }) });
         const { unmount } = render(<PropertyPhoto property={prop()} variant="card" />);
         await screen.findByText('No street photo');
         expect(screen.getByRole('img', { name: /no street photo available/ })).toBeInTheDocument();
         unmount();
-        __resetPropertyPhotoCache(); blobMock.mockResolvedValue({ status: 404 });
+        __resetPropertyPhotoCache(); blobMock.mockResolvedValue({ status: 404, body: JSON.stringify({ success: false, error: 'No Street View imagery for this address' }) });
         const { container } = render(<PropertyPhoto property={prop()} variant="row" />);
         await waitFor(() => expect(container.querySelector('[data-state="loading"]')).toBeNull());
         expect(container.innerHTML).toBe('');
+    });
+
+    it('404 from a backend that does not have the route yet → nothing rendered, never a "No street photo" claim', async () => {
+        blobMock.mockResolvedValue({ status: 404, body: JSON.stringify({ success: false, error: 'Not found', requestId: 'abc' }) });
+        const { container } = render(<PropertyPhoto property={prop()} variant="card" />);
+        await waitFor(() => expect(container.innerHTML).toBe(''));
+        expect(screen.queryByText('No street photo')).toBeNull();
+        const second = render(<PropertyPhoto property={prop({ id: 'p9', name: 'Other' })} variant="hero" />);
+        expect(second.container.innerHTML).toBe('');
+        expect(blobMock).toHaveBeenCalledTimes(1);
     });
 
     it('503 (no key on the backend) → renders nothing, and the next card does not ask again', async () => {

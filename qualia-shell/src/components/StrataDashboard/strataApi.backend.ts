@@ -51,6 +51,17 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
     return res.json();
 }
 
+/** Authenticated GET of a binary (image) — never throws on HTTP errors; the caller keys on `status`. */
+export interface BlobResponse { status: number; blob?: Blob; headers?: Headers }
+export async function strataGetBlob(path: string): Promise<BlobResponse> {
+    const headers: Record<string, string> = { 'X-Qualia-API': 'v2' };
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}${path}`, { headers });
+    if (!res.ok) return { status: res.status, headers: res.headers };
+    return { status: res.status, blob: await res.blob(), headers: res.headers };
+}
+
 export function strataGet<T>(path: string, params?: Record<string, string>): Promise<T> {
     return request<T>('GET', path, undefined, params);
 }

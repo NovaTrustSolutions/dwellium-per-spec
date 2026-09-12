@@ -2592,3 +2592,56 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
     outline-offset: 2px;
     border-radius: 3px;
 }
+
+/* ── Property exterior photo (card / row / hero) — modules/PropertyPhoto.tsx ── */
+.strata-dashboard .s-prop-photo {
+    position: relative;
+    margin: 0 0 12px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border: 1px solid var(--s-glass-border);
+}
+.strata-dashboard .s-prop-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.strata-dashboard .s-prop-photo--card { aspect-ratio: 16 / 10; }
+.strata-dashboard .s-prop-photo--hero { width: 100%; height: 220px; margin-bottom: 16px; }
+.strata-dashboard .s-prop-photo--row {
+    width: 56px;
+    height: 42px;
+    flex-shrink: 0;
+    margin: 0;
+    border-radius: 8px;
+}
+.strata-dashboard .s-prop-photo--empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--s-text-tertiary);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+}
+.strata-dashboard .s-prop-photo--loading {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 6%, transparent) 25%, color-mix(in srgb, var(--accent) 14%, transparent) 50%, color-mix(in srgb, var(--accent) 6%, transparent) 75%);
+    background-size: 200% 100%;
+    animation: s-prop-photo-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes s-prop-photo-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .strata-dashboard .s-prop-photo--loading { animation: none; } }
+.strata-dashboard .s-prop-photo__caption {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+}

@@ -78,6 +78,11 @@ export function strataDelete(path: string): Promise<void> {
     return pick().strataDelete(path);
 }
 
+/** Authenticated binary GET (property photos); resolves with the HTTP status instead of throwing. */
+export function strataGetBlob(path: string): Promise<{ status: number; blob?: Blob; headers?: Headers }> {
+    return pick().strataGetBlob(path);
+}
+
 // ── Cursor Pagination ──────────────────────────────────────
 // Re-export PaginatedResponse type so existing imports from strataTypes
 // and consumers continue to resolve. Both impls export the same shape.

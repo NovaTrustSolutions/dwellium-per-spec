@@ -10,7 +10,7 @@ import { API_BASE } from '../config';
 import { useIntegrations } from './useIntegrations';
 import { hasActiveLlm } from '../lib/llmClient';
 import {
-    HEALTH_ITEMS, resolveStatus, summarize, probeBackend, probeUrl, externalUrl,
+    HEALTH_ITEMS, resolveStatus, summarize, probeBackend, probeUrl, externalUrl, probeLocal,
     type HealthStatus, type HealthItem,
 } from '../lib/systemHealth';
 
@@ -40,7 +40,8 @@ export function useSystemHealth() {
         const externalOk: Record<string, boolean> = {};
         externalItems.forEach((i, idx) => { externalOk[i.id] = probes[idx + 1] as boolean; });
 
-        const ctx = { backendOk, llmOk, externalOk };
+        const localOk = probeLocal();
+        const ctx = { backendOk, llmOk, externalOk, localOk };
         setResults(HEALTH_ITEMS.map((item) => ({ item, status: resolveStatus(item, ctx) })));
         setChecking(false);
         runningRef.current = false;

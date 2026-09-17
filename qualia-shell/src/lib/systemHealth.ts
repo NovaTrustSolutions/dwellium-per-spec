@@ -8,6 +8,7 @@
  */
 
 import { API_BASE } from '../config';
+import { peekCmn } from './memoryGraphRag/shared';
 
 export type HealthStatus = 'ok' | 'degraded' | 'down' | 'checking';
 export type HealthRequires = 'backend' | 'llm' | 'external' | 'local';
@@ -32,6 +33,7 @@ export interface HealthCtx {
     backendOk: boolean;
     llmOk: boolean;
     externalOk: Record<string, boolean>;
+    localOk?: Record<string, { ok: boolean; detail?: string }>;
 }
 
 /**
@@ -85,7 +87,7 @@ export const HEALTH_ITEMS: HealthItem[] = [
     { id: 'thought-weaver', label: 'Thought Weaver', requires: 'backend', llmFallback: true, connectWidget: 'control-panel', connectLabel: 'Open Settings',
       okText: 'Ready', downText: 'Needs the backend running, or a personal LLM key.' },
     { id: 'memory-graph-rag', label: 'Cognitive M Network', requires: 'local',
-      okText: 'Local engine ready', downText: 'Local engine unavailable.' },
+      okText: 'Local engine ready · saved locally', downText: 'Memory is not being saved (see detail).' },
     { id: 'open-notebook', label: 'Open Notebook', requires: 'external', externalDefaultUrl: 'http://localhost:8502', externalLsKey: 'dwellium-open-notebook-url',
       connectWidget: 'notebooklm-context', connectLabel: 'Open tab', okText: 'Running', downText: 'Not running — start it (Docker) from NotebookLM → Open Notebook tab.' },
     { id: 'langflow', label: 'LangFlow', requires: 'external', externalDefaultUrl: 'http://localhost:7860', externalLsKey: 'dwellium-langflow-url',
@@ -94,10 +96,18 @@ export const HEALTH_ITEMS: HealthItem[] = [
       connectWidget: 'terminal', connectLabel: 'Open tab', okText: 'Running', downText: 'Not running — Terminal → Paperclip tab (npx paperclipai onboard --yes).' },
 ];
 
+/** Real liveness check for local-only engines (Cognitive Memory Network). */
+export function probeLocal(): Record<string, { ok: boolean; detail?: string }> {
+    const cmn = peekCmn();
+    return {
+        'memory-graph-rag': cmn ? cmn.probe() : { ok: true, detail: 'Not started yet' },
+    };
+}
+
 /** Pure status resolution from probe results. */
 export function resolveStatus(item: HealthItem, ctx: HealthCtx): HealthStatus {
     switch (item.requires) {
-        case 'local': return 'ok';
+        case 'local': return ctx.localOk?.[item.id]?.ok === false ? 'down' : 'ok';
         case 'llm': return ctx.llmOk ? 'ok' : 'down';
         case 'external': return ctx.externalOk[item.id] ? 'ok' : 'down';
         case 'backend':

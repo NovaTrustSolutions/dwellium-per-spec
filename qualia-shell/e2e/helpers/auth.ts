@@ -56,6 +56,9 @@ export async function loginAs(
         '["Property Management","AI Tools","Filing Cabinet"]',
       );
       localStorage.setItem('qualia_sidebar_icon_only', 'false');
+      // Plan 057: the HalocronOS intro video (HalocronOsIntro.tsx) overlays the
+      // shell and swallows sidebar clicks while it plays; mark it played.
+      sessionStorage.setItem('halocron-os-intro-played', '1');
       // Default-startup-stack auto-opens ARA + Strata on a fresh EMPTY canvas —
       // exactly what every e2e context is. Seed the one-shot flag so specs keep
       // their clean-desktop baseline (its absence broke the axe-baseline

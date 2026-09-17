@@ -19,7 +19,10 @@ import {
     type LayeredInput, type LayeredGraph, type Layer, type WaveResult, type Camera,
 } from './layeredLayout';
 
-type Props = LayeredInput & { query?: string; llmActive?: boolean };
+import type { CmnMetrics } from '../../lib/memoryGraphRag/shared';
+
+/** `metrics` = measured network telemetry (plan 057); when absent the HUD shows '—', never invented numbers. */
+type Props = LayeredInput & { query?: string; llmActive?: boolean; metrics?: CmnMetrics };
 
 const COLORS: Record<string, string> = {
     ontology: '#22d3ee', fact: '#a78bfa', passage: '#6366f1', hi: '#D6FE51', conflict: '#ff8a3d', beam: '#ffcf6b',

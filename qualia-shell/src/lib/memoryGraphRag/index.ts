@@ -17,7 +17,7 @@
  */
 import { callLlm } from '../llmClient';
 import { MemoryStore, type MemorySnapshot } from './memory';
-import { makeExtractionAgent, makeConflictResolver } from './agents';
+import { makeExtractionAgent, makeConflictResolver, localExtract } from './agents';
 import { typeBasedBridges, similarityBridges } from './bridging';
 import { detectConflicts } from './conflicts';
 import { retrieve } from './retrieve';
@@ -56,11 +56,15 @@ export class MemoryGraphRagEngine {
         this.conflictResolver = makeConflictResolver(this.llm);
     }
 
-    /** Extract from each document into the three layers, then bridge + de-conflict. */
-    async ingest(docs: SourceDocument[]): Promise<void> {
+    /**
+     * Extract from each document into the three layers, then bridge + de-conflict.
+     * `offline: true` forces the local heuristic extractor even when an LLM is
+     * configured — background/auto ingestion must never spend the user's API key.
+     */
+    async ingest(docs: SourceDocument[], opts: { offline?: boolean } = {}): Promise<void> {
         for (const doc of docs) {
             if (!doc.text?.trim()) continue;
-            const result = await this.extractionAgent.extract(doc);
+            const result = opts.offline ? localExtract(doc) : await this.extractionAgent.extract(doc);
             this.store.ingest(result);
         }
         await this.rebuild();
@@ -130,6 +134,8 @@ export class MemoryGraphRagEngine {
         this.store.passages = fresh.passages;
     }
 }
+
+export type { MemorySnapshot } from './memory';
 
 export function createMemoryGraphRagEngine(opts: MemoryGraphRagOptions = {}): MemoryGraphRagEngine {
     return new MemoryGraphRagEngine(opts);

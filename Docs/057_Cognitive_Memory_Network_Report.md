@@ -44,6 +44,27 @@ Before: the "Cognitive M Network" was one widget with a private, in-memory engin
 
 Every lane's patch was produced in an isolated git worktree, verified by an executed check (`tsc --noEmit` + targeted vitest + required/forbidden content greps), then reviewed line-by-line and applied with explicit `git add` paths. Earlier GLM attempts failed on authentication (root-caused and fixed in Ringer's `glm` wrapper: isolated `CLAUDE_CONFIG_DIR`); no GLM code landed.
 
-## 5. Browser walkthrough (localhost:5177, worktree build)
+## 5. Browser walkthrough — NOT DONE
 
-_Pending — requires the access password on the preview tab. To be appended with screenshots: paste → reload → still present; Scribe save → document count rises without opening the widget; HUD readouts; System Health row._
+**Status: not verified in a browser.** Everything in §2 rests on the executed test suite and the
+strict gate, not on a live session. Why it did not happen on 2026-09-17:
+
+- A local preview (`localhost:5177`, this worktree) cannot sign Ilya in: stage 2 requires a real
+  backend session, his Architect account exists only in the production backend, and the local
+  backend's `data/dwellium.db` has no row for it (read-only query, 8 users, none his).
+- Pointing the preview at the production API (`VITE_API_URL=https://argyleholocron.netlify.app`)
+  fails in the browser with `blocked by CORS policy: No 'Access-Control-Allow-Origin' header`
+  (console, verbatim).
+- A CLI draft deploy of a local build would not help either: `NETLIFY_API_PROXY_TARGET` is a
+  site-level env var, so a locally written `_redirects` contains only `/* /index.html 200` and
+  the draft would not proxy `/api/*`. The site has no PR deploy previews
+  (`deploy-preview-122--argyleholocron.netlify.app` → 404).
+- Agent-side deploys are blocked by the Claude Code classifier ("Production Deploy").
+
+**What would verify it (10 min, needs Ilya):** merge or branch-deploy PR #122 through Netlify's
+own build (site env present), sign in on that URL, then: paste text in the widget → reload → still
+present (STORAGE "SAVED · N KB"); save a Scribe note → Cognitive M Network document count rises
+without opening the widget; System Health row reads "Local engine ready · saved locally";
+CognitiveHarness log feed shows the real `ingest`/`query` events.
+
+See `FUCKUPS.md` entry 2026-09-17 for the process failure behind this section.

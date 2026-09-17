@@ -74,3 +74,13 @@ _(appended as lanes land)_
   `tsc -b` exit 0 · vitest 346 files / 3,019 tests passed · `react-router build` exit 0.
   Acceptance #3 grep over MemoryGraphView.tsx + CognitiveHarness.tsx: no matches.
   Report: `Docs/057_Cognitive_Memory_Network_Report.md` (browser section pending sign-in).
+- 2026-09-17 15:12 — Browser proof + regression. `qualia-shell/e2e/cmn-057.spec.ts` (Ringer worker
+  claude-sonnet-5, PASS attempt 1) — 5/5 green alone (11.5 s) and inside the full suite. Full
+  Playwright suite, CI-equivalent (`VITE_ONE_SAVE=false`, static API, chromium): branch **34 passed /
+  42 failed** vs `main` @ 20f8a33 **30 passed / 41 failed** on the same Mac, same command. Title-diff of
+  failures: the 41 are identical on both (pre-existing: Stella/screenshot-baseline/login specs need
+  services this static setup lacks); the one branch-only title (`ara-text-select › Cockpit`) passes
+  2/2 on re-run and its Holocron OS sibling fails on `main` too → flake, not regression. Helper fix
+  `bbce7fb`: loginAs marks the HalocronOS intro as played (it swallowed sidebar clicks). Gotcha
+  recorded: a worktree `.env` with `VITE_ONE_SAVE=true` + a live local backend hydrates REAL saved
+  layouts into e2e and breaks every click — run e2e with `VITE_ONE_SAVE=false`.

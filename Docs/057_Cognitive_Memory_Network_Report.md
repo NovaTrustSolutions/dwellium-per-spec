@@ -30,7 +30,7 @@ Before: the "Cognitive M Network" was one widget with a private, in-memory engin
 - **Re-ingesting a document that shrank** leaves its old higher-index passages behind (documented in code). Reset clears everything.
 - **No agent uses `recall()` yet.** The network is fed app-wide; it is not yet *read* app-wide beyond the two widgets + System Health.
 - **Backend accelerators** (`BackendEmbeddingProvider`, `/api/mgrag/*`) remain unimplemented; everything runs client-side.
-- **Browser walkthrough:** see §5 — pending sign-in at the time of writing.
+- **Browser walkthrough:** done via Playwright — see §5.
 
 ## 4. How it was built (swarm record)
 
@@ -44,27 +44,27 @@ Before: the "Cognitive M Network" was one widget with a private, in-memory engin
 
 Every lane's patch was produced in an isolated git worktree, verified by an executed check (`tsc --noEmit` + targeted vitest + required/forbidden content greps), then reviewed line-by-line and applied with explicit `git add` paths. Earlier GLM attempts failed on authentication (root-caused and fixed in Ringer's `glm` wrapper: isolated `CLAUDE_CONFIG_DIR`); no GLM code landed.
 
-## 5. Browser walkthrough — NOT DONE
+## 5. Browser walkthrough — DONE (Playwright, real Chromium, logged in as Andy)
 
-**Status: not verified in a browser.** Everything in §2 rests on the executed test suite and the
-strict gate, not on a live session. Why it did not happen on 2026-09-17:
+Ran on 2026-09-17 via the repo's own e2e harness (`e2e/helpers/auth.ts::loginAs`, offline
+session, static API — the same mechanism every existing e2e spec uses). Spec:
+`qualia-shell/e2e/cmn-057.spec.ts` (written by a Ringer worker, claude-sonnet-5, verified by
+an executed Playwright run — PASS on attempt 1, 486 s including the dev-server boot).
+Screenshots live in `Docs/evidence/057/`.
 
-- A local preview (`localhost:5177`, this worktree) cannot sign Ilya in: stage 2 requires a real
-  backend session, his Architect account exists only in the production backend, and the local
-  backend's `data/dwellium.db` has no row for it (read-only query, 8 users, none his).
-- Pointing the preview at the production API (`VITE_API_URL=https://argyleholocron.netlify.app`)
-  fails in the browser with `blocked by CORS policy: No 'Access-Control-Allow-Origin' header`
-  (console, verbatim).
-- A CLI draft deploy of a local build would not help either: `NETLIFY_API_PROXY_TARGET` is a
-  site-level env var, so a locally written `_redirects` contains only `/* /index.html 200` and
-  the draft would not proxy `/api/*`. The site has no PR deploy previews
-  (`deploy-preview-122--argyleholocron.netlify.app` → 404).
-- Agent-side deploys are blocked by the Claude Code classifier ("Production Deploy").
+| # | What the browser proved | Assertion | Evidence |
+|---|---|---|---|
+| 1 | Paste text → header chip "Saved locally · N KB"; `localStorage['dwellium-cmn-v1:<andy>'].snapshot.passages.length > 0` | passed | `01-ingested.png` |
+| 2 | `page.reload()` → chip still "Saved locally", passages count unchanged; widget shows "Files indexed · 3 entities, 2 facts, 1 passages" | passed | `02-after-reload.png` |
+| 3 | A Foundry capture seeded before login is ingested **without opening any widget** (`seen` gains a `foundry:` key within 15 s) | passed | `03-autofeed.png` |
+| 4 | Ask "Who serviced the boiler?" → HUD shows `LATENCY <n> ms`, `STORAGE SAVED · 1 KB`, `RELEVANCE 0.354`, "Offline extractive mode"; page contains no `TPS`, no `99.x%`, no `VERIFIED` | passed | `04-hud.png` |
+| 5 | System Health row "Cognitive M Network" visible with status "Local engine ready" | passed | `05-system-health.png` |
+| 6 | Cognitive Harness shows "Not connected" for unbacked subsystems and a CONNECTED/DEGRADED header driven by the probe | passed | `06-harness.png` |
 
-**What would verify it (10 min, needs Ilya):** merge or branch-deploy PR #122 through Netlify's
-own build (site env present), sign in on that URL, then: paste text in the widget → reload → still
-present (STORAGE "SAVED · N KB"); save a Scribe note → Cognitive M Network document count rises
-without opening the widget; System Health row reads "Local engine ready · saved locally";
-CognitiveHarness log feed shows the real `ingest`/`query` events.
+**Regression (app still works):** full Playwright suite, CI-equivalent (`VITE_ONE_SAVE=false`, static API): branch 34 passed / 42 failed vs `main` 30 passed / 41 failed, same Mac, same command. The 41 failures are title-identical on both (pre-existing, environment-bound); the single branch-only title passes 2/2 on re-run → flake. Strict gate unchanged: `tsc -b` 0 · 3,019 vitest · build 0. Details + the `VITE_ONE_SAVE` gotcha: plan 057 verification log.
 
-See `FUCKUPS.md` entry 2026-09-17 for the process failure behind this section.
+**Not covered by this walkthrough (still true):** Ilya's own production login was not exercised
+(the Architect account lives only in the production backend; a local preview cannot reach it —
+CORS). The behaviour above is the same code path any signed-in user hits.
+
+Process record of the detour that preceded this: `FUCKUPS.md`, entry 2026-09-17.

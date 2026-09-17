@@ -69,3 +69,8 @@ cmn.metrics(); cmn.probe(); await cmn.reset();  // reset = user-initiated only
 ## Verification log
 
 _(appended as lanes land)_
+
+- 2026-09-17 — core `4008876`, lanes A–C `6d8000b`, lane D `784f22f`. Strict gate on the Mac:
+  `tsc -b` exit 0 · vitest 346 files / 3,019 tests passed · `react-router build` exit 0.
+  Acceptance #3 grep over MemoryGraphView.tsx + CognitiveHarness.tsx: no matches.
+  Report: `Docs/057_Cognitive_Memory_Network_Report.md` (browser section pending sign-in).

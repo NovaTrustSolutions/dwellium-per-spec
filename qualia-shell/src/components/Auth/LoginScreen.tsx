@@ -270,6 +270,12 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                 Resident? Sign in here
                             </button>
                         )}
+
+                        <nav className="login-info-links" aria-label="Information pages">
+                            <a href="/privacy">Privacy</a>
+                            <a href="/terms">Terms</a>
+                            <a href="/help">Help</a>
+                        </nav>
                     </div>
                 </div>
             </div>

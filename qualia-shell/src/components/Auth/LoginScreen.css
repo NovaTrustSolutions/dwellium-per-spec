@@ -602,3 +602,21 @@
 .login-google-alt {
     margin-top: 4px;
 }
+
+/* ── Privacy / Terms / Help links under the card ── */
+.login-info-links {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 14px;
+}
+
+.login-info-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px; /* WCAG 2.5.8 */
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}

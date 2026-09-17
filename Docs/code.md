@@ -2,6 +2,13 @@
 
 Append-only log. Each entry: error → root cause → fix → prevention.
 
+## 2026-09-17 — Resident footer Privacy / Terms / Help were dead `href="#"` links
+
+- **Error:** the three footer links on the resident sign-in screen went nowhere; the staff screens had no such links at all.
+- **Root cause:** the screen was converted from a standalone HTML mock-up and the placeholder hrefs were never given destinations; no pages existed.
+- **Fix (`feat/legal-help-pages`):** public routes `/privacy`, `/terms`, `/help` (`app/routes/*.tsx` → `src/components/Legal/InfoPages.tsx`), linked from both sign-in screens. Every factual sentence on the Privacy page maps to code (see the file header). Governing law: State of Georgia, venue Fulton County (owner decision 2026-09-17); text is not lawyer-reviewed.
+- **Prevention:** `src/test/infoPages.test.tsx` fails if the footer hrefs are not the three real paths, and if the pages ever claim SOC 2 / ISO / HIPAA / 24-7 / an uptime %. Routes outside the app shell get no CSS reset — clear the UA body margin yourself (`body:has(.info-page)`).
+
 ## 2026-09-17 — Pre-login screens: keyboard reaches a hidden card, Back leaves the site, low-contrast resident text
 
 - **Error (measured on the live site, Playwright):** on the landing splash, real Tab presses reached the hidden "Access password" input (`visibleOnTop=false`); splash / staff card / resident view all shared `/`, so browser Back went to `about:blank`; resident H1 `textContent` was "Welcome to YourResident Portal"; resident placeholder/footer text 2.47–2.48:1, "Staff login" 3.93:1, white "Sign In" on its gradient 3.97→2.46:1 (WCAG 1.4.3 needs 4.5:1); gate input had no `<label>`/`id`/`name`/`autocomplete`; the background video autoplayed under `prefers-reduced-motion` (the global CSS rule only stops CSS animations).

@@ -61,6 +61,10 @@ export default [
     // standalone — no auth shell; config arrives via query once and persists
     // in the phone's localStorage).
     route('/capture', 'routes/capture.tsx'),
+    // Public information pages (no auth shell; linked from both sign-in screens).
+    route('/privacy', 'routes/privacy.tsx'),
+    route('/terms', 'routes/terms.tsx'),
+    route('/help', 'routes/help.tsx'),
     index('routes/default.tsx'),
     route('*', 'routes/default.tsx', { id: 'splat' }),
 ] satisfies RouteConfig;

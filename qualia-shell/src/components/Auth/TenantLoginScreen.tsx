@@ -333,9 +333,9 @@ export default function TenantLoginScreen({ onBackToAdmin }: TenantLoginScreenPr
             <footer className="tenant-login__footer">
                 <span>© 2026 StrataAstra Property Management</span>
                 <div className="tenant-login__footer-links">
-                    <a href="#">Privacy</a>
-                    <a href="#">Terms</a>
-                    <a href="#">Help</a>
+                    <a href="/privacy">Privacy</a>
+                    <a href="/terms">Terms</a>
+                    <a href="/help">Help</a>
                 </div>
             </footer>
         </div>

@@ -25,6 +25,12 @@ describe('public information pages', () => {
         expect(container.textContent).not.toMatch(/SOC ?2|ISO ?27001|HIPAA|GDPR[- ]compliant|24\/7|99\.\d+ ?%/i);
     });
 
+    it('Terms name Georgia law and Fulton County venue (owner decision 2026-09-17)', () => {
+        const { container } = render(<TermsPage />);
+        expect(container.textContent).toMatch(/laws of the State of Georgia/);
+        expect(container.textContent).toMatch(/courts located in Fulton County, Georgia/);
+    });
+
     it('resident footer links point at real pages, not "#"', () => {
         const { container } = render(<TenantLoginScreen />);
         const hrefs = [...container.querySelectorAll('.tenant-login__footer-links a')].map(a => a.getAttribute('href'));

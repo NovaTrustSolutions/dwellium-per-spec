@@ -196,6 +196,16 @@ export function TermsPage() {
                 broken or if continuing would create a legal or security risk.
             </p>
 
+            <h2>Governing law</h2>
+            <p>
+                These terms are governed by the laws of the State of Georgia, USA, without regard to its
+                conflict-of-law rules. Any dispute arising from these terms or from use of Dwellium will be
+                brought in the state or federal courts located in Fulton County, Georgia, and you and
+                Dwellium consent to the jurisdiction of those courts. Nothing in this section removes
+                consumer protections given to you by the law of the place where you live that cannot be
+                waived by agreement.
+            </p>
+
             <h2>Changes to these terms</h2>
             <p>
                 When these terms change, the date at the top changes with them. Continuing to use Dwellium

@@ -6,7 +6,7 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 
 - **Error:** the three footer links on the resident sign-in screen went nowhere; the staff screens had no such links at all.
 - **Root cause:** the screen was converted from a standalone HTML mock-up and the placeholder hrefs were never given destinations; no pages existed.
-- **Fix (`feat/legal-help-pages`):** public routes `/privacy`, `/terms`, `/help` (`app/routes/*.tsx` → `src/components/Legal/InfoPages.tsx`), linked from both sign-in screens. Every factual sentence on the Privacy page maps to code (see the file header). Governing-law clause intentionally absent until the owner names the jurisdiction; text is not lawyer-reviewed.
+- **Fix (`feat/legal-help-pages`):** public routes `/privacy`, `/terms`, `/help` (`app/routes/*.tsx` → `src/components/Legal/InfoPages.tsx`), linked from both sign-in screens. Every factual sentence on the Privacy page maps to code (see the file header). Governing law: State of Georgia, venue Fulton County (owner decision 2026-09-17); text is not lawyer-reviewed.
 - **Prevention:** `src/test/infoPages.test.tsx` fails if the footer hrefs are not the three real paths, and if the pages ever claim SOC 2 / ISO / HIPAA / 24-7 / an uptime %. Routes outside the app shell get no CSS reset — clear the UA body margin yourself (`body:has(.info-page)`).
 
 ## 2026-09-17 — Pre-login screens: keyboard reaches a hidden card, Back leaves the site, low-contrast resident text

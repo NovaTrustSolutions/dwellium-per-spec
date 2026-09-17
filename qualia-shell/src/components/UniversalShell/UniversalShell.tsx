@@ -20,14 +20,15 @@
  *   • Data fetching — adapters own their own hooks.
  *   • RBAC enforcement — containers enforce their own checks; the shell
  *     merely hides container buttons when the permKey is denied.
- *   • Navigation persistence — single useState for now; a router-backed
- *     version can replace it without changing the adapter contract.
+ *   • Navigation persistence — backed by universalShellStore (per-user,
+ *     One Save-synced); see setUniversalShellState / useUniversalShellState.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
 import { AdapterBoundary } from './AdapterBoundary';
 import { adaptersForSurface } from './adapterRegistry';
+import { setUniversalShellState, useUniversalShellState } from '../../utils/universalShellStore';
 import {
     SHELL_COLUMN_LABELS,
     SHELL_COLUMN_ORDER,
@@ -50,7 +51,7 @@ function EmptyColumn({ columnId }: { columnId: ShellColumnId }) {
         <div className="us-column-empty">
             <div className="us-column-empty__label">{SHELL_COLUMN_LABELS[columnId]}</div>
             <div className="us-column-empty__body">
-                This container doesn&apos;t populate this column.
+                Nothing here for this container yet — pick another container above.
             </div>
         </div>
     );
@@ -71,12 +72,25 @@ export default function UniversalShell({
         [surface, hasPermission],
     );
 
-    const [activeId, setActiveId] = useState<string>(() => {
-        if (initialContainerId && visibleAdapters.some(a => a.id === initialContainerId)) {
-            return initialContainerId;
-        }
-        return visibleAdapters[0]?.id ?? '';
-    });
+    const { activeContainerId: storedId } = useUniversalShellState();
+
+    const setActiveId = (id: string): void => setUniversalShellState({ activeContainerId: id });
+
+    // initialContainerId is applied once per mount (written into the store),
+    // after which the stored id governs — otherwise the prop would pin the
+    // shell and the switcher could never change container.
+    const initialIsVisible =
+        !!initialContainerId && visibleAdapters.some(a => a.id === initialContainerId);
+    useEffect(() => {
+        if (initialIsVisible) setUniversalShellState({ activeContainerId: initialContainerId });
+    }, [initialIsVisible, initialContainerId]);
+
+    // Stored id (if still visible to this role) → first visible adapter. A
+    // stored id the role can no longer see falls back silently, not empty.
+    const activeId =
+        storedId && visibleAdapters.some(a => a.id === storedId)
+            ? storedId
+            : visibleAdapters[0]?.id ?? '';
 
     if (visibleAdapters.length === 0) {
         return (
@@ -106,7 +120,11 @@ export default function UniversalShell({
                 <div className="us-header__brand">
                     <span className="us-header__glyph">◫</span>
                     <span className="us-header__title">Universal Shell</span>
-                    <span className="us-header__surface">{surface.toUpperCase()}</span>
+                    {surface !== 'any' && (
+                        <span className="us-header__surface">
+                            {surface === 'strata' ? 'Strata' : 'Astra'}
+                        </span>
+                    )}
                 </div>
                 <nav className="us-switcher" aria-label="Container switcher">
                     {visibleAdapters.map(a => (

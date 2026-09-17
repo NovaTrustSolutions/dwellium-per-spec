@@ -21,7 +21,9 @@
 import type { ContainerAdapter, AdapterSurface } from './types';
 import { filingOverviewAdapter } from './adapters/FilingOverviewAdapter';
 import { strataMaintenanceAdapter } from './adapters/StrataMaintenanceAdapter';
-import { astraPortfolioAdapter } from './adapters/AstraPortfolioAdapter';
+// ponytail: astraPortfolioAdapter is placeholder text in all four columns
+// (no real data yet) — hidden from the switcher until it has real content.
+// Re-enable by re-adding it to ADAPTER_REGISTRY below once wired to real data.
 
 /**
  * Ordered list of registered adapters. Order controls the default
@@ -30,7 +32,6 @@ import { astraPortfolioAdapter } from './adapters/AstraPortfolioAdapter';
 export const ADAPTER_REGISTRY: ContainerAdapter[] = [
     filingOverviewAdapter,
     strataMaintenanceAdapter,
-    astraPortfolioAdapter,
 ];
 
 /**

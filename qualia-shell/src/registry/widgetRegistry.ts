@@ -256,7 +256,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         id: 'universal-shell',
         label: 'Universal Shell',
         description: 'Four-column workbench: filing cabinet, scratch pad, canvas and orchestrator side by side.',
-        tip: { tryThis: 'Drag a file from the cabinet onto the canvas.', related: ['file-explorer', 'scribe'] },
+        tip: { tryThis: 'Switch containers in the header — your notes and last container are remembered.', related: ['file-explorer', 'scribe'] },
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/UniversalShell/UniversalShell')),
         minWidth: 960,

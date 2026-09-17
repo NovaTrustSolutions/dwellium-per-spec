@@ -7,21 +7,19 @@
  * conflict resolution → Personalized-PageRank retrieval → grounded answer.
  *
  * Uses the per-user LLM (llmClient) when configured, and a deterministic
- * offline heuristic otherwise — so it works fully local-first. The engine lives
- * in a ref; counts/views read from its store and re-render on a version bump.
+ * offline heuristic otherwise — so it works fully local-first. The engine is the
+ * app-wide shared Cognitive Memory Network (plan 057): persisted per user, fed by
+ * every local store, re-rendered via useSyncExternalStore.
  */
-import { useCallback, useContext, useRef, useState } from 'react';
+import { useCallback, useContext, useRef, useState, useSyncExternalStore } from 'react';
 import { Globe, List, Scale, Sparkles } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
-import { getTaggedItems, tagStoreUserIdHolder } from '../../lib/tagStore';
-import { foundryStore, foundryUserIdHolder } from '../Foundry/foundryStore';
-import { synthesisStore, synthesisUserIdHolder } from '../Synthesis/synthesisStore';
-import { useScribeStore } from '../Scribe/scribeStore';
+import { getCmn } from '../../lib/memoryGraphRag/shared';
+import { tagDocuments, scribeDocuments, captureDocuments } from '../../lib/memoryGraphRag/sources';
 import {
-    createMemoryGraphRagEngine, type MemoryGraphRagEngine,
     type SourceDocument, type QueryAnswer, type ConflictResolution,
 } from '../../lib/memoryGraphRag';
 import MemoryGraphView from './MemoryGraphView';
@@ -34,9 +32,8 @@ export default function MemoryGraphRAG() {
     const userCtx = useContext(UserContext);
     const uid = userCtx?.user?.id ?? null;
     const llmReady = hasActiveLlm(integrations.llm);
-    const engineRef = useRef<MemoryGraphRagEngine | null>(null);
-    const [, force] = useState(0);
-    const bump = () => force((n) => n + 1);
+    const cmn = getCmn(uid, integrations.llm);
+    useSyncExternalStore(cmn.subscribe, cmn.getVersion, cmn.getVersion);
 
     const [pasteTitle, setPasteTitle] = useState('');
     const [pasteText, setPasteText] = useState('');
@@ -48,13 +45,6 @@ export default function MemoryGraphRAG() {
     const [toast, setToast] = useState('');
     const fileRef = useRef<HTMLInputElement>(null);
 
-    const getEngine = useCallback((): MemoryGraphRagEngine => {
-        if (!engineRef.current) {
-            engineRef.current = createMemoryGraphRagEngine({ llm: integrations.llm });
-        }
-        return engineRef.current;
-    }, [integrations.llm]);
-
     const flash = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
     const ingest = useCallback(async (docs: SourceDocument[], label: string) => {
@@ -62,14 +52,13 @@ export default function MemoryGraphRAG() {
         if (real.length === 0) { flash('Nothing to ingest'); return; }
         setBusy(`Ingesting ${real.length} doc(s)…`);
         try {
-            await getEngine().ingest(real);
-            bump();
-            const c = getEngine().store.counts();
-            flash(`${label}: +${real.length} doc(s) → ${c.entities} entities, ${c.facts} facts, ${c.passages} passages`);
+            const r = await cmn.ingest(real, label);
+            const c = cmn.metrics().counts;
+            flash(`${label}: +${r.ingested} doc(s)${r.skipped ? `, ${r.skipped} unchanged` : ''} → ${c.entities} entities, ${c.facts} facts, ${c.passages} passages`);
         } catch (e: any) {
             flash(`Ingest failed: ${e?.message || e}`);
         } finally { setBusy(''); }
-    }, [getEngine]);
+    }, [cmn]);
 
     const ingestPaste = () => {
         if (!pasteText.trim()) { flash('Paste some text first'); return; }
@@ -95,36 +84,12 @@ export default function MemoryGraphRAG() {
         void ingest(docs, 'Uploaded');
     };
 
-    const pullTags = () => {
-        tagStoreUserIdHolder.current = uid;
-        const items = getTaggedItems();
-        const docs: SourceDocument[] = items.map((it) => ({
-            sourceId: `tag:${it.id}`, sourceKind: 'tag', title: it.title,
-            text: `${it.title}. Tags: ${it.tags.join(', ')}. Source: ${it.source}.`,
-        }));
-        void ingest(docs, 'Tag File');
-    };
+    const pullTags = () => { void ingest(tagDocuments(uid), 'Tag File'); };
 
-    const pullScribe = () => {
-        const openFiles = useScribeStore.getState().openFiles;
-        const docs: SourceDocument[] = openFiles.map((f) => ({
-            sourceId: `scribe:${f.filepath}`, sourceKind: 'scribe', title: f.filepath.split('/').pop() || f.filepath, text: f.content || '',
-        }));
-        void ingest(docs, 'Scribe docs');
-    };
+    const pullScribe = () => { void ingest(scribeDocuments(), 'Scribe docs'); };
 
     // Captures: Foundry intake items + captured Syntheses (per-user local stores).
-    const pullCaptures = () => {
-        foundryUserIdHolder.current = uid;
-        synthesisUserIdHolder.current = uid;
-        const foundry = foundryStore.getSnapshot();
-        const synth = synthesisStore.getSnapshot();
-        const docs: SourceDocument[] = [
-            ...foundry.map((it) => ({ sourceId: `foundry:${it.id}`, sourceKind: 'capture' as const, title: (it.rawContent || '').slice(0, 60) || 'Capture', text: it.rawContent || '' })),
-            ...synth.map((s) => ({ sourceId: `synthesis:${s.id}`, sourceKind: 'synthesis' as const, title: s.query || 'Synthesis', text: `${s.query}\n\n${s.result}` })),
-        ];
-        void ingest(docs, 'Captures');
-    };
+    const pullCaptures = () => { void ingest(captureDocuments(uid), 'Captures'); };
 
     // Transcripts: TranscriptionHub saved logs (backend — graceful when offline).
     const pullTranscripts = () => {
@@ -177,34 +142,35 @@ export default function MemoryGraphRAG() {
 
     const ask = useCallback(async () => {
         if (!query.trim()) return;
-        if (!engineRef.current || engineRef.current.store.counts().passages === 0) { flash('Ingest documents first'); return; }
+        if (cmn.metrics().counts.passages === 0) { flash('Ingest documents first'); return; }
         setBusy('Retrieving + answering…');
         try {
-            const a = await getEngine().answer(query.trim());
+            const a = await cmn.answer(query.trim());
             setAnswer(a);
         } catch (e: any) {
             flash(`Query failed: ${e?.message || e}`);
         } finally { setBusy(''); }
-    }, [query, getEngine]);
+    }, [query, cmn]);
 
-    const reset = () => { engineRef.current = createMemoryGraphRagEngine({ llm: integrations.llm }); setAnswer(null); bump(); flash('Memory reset'); };
+    const reset = () => { void cmn.reset(); setAnswer(null); flash('Memory reset'); };
 
-    const engine = engineRef.current;
-    const counts = engine?.store.counts() ?? { types: 0, schemaRelations: 0, entities: 0, facts: 0, passages: 0 };
-    const types = engine ? [...engine.store.types.values()].sort((a, b) => b.count - a.count).slice(0, 12) : [];
-    const facts = engine ? [...engine.store.facts.values()].slice(0, 14) : [];
-    const passages = engine ? [...engine.store.passages.values()].slice(0, 10) : [];
-    const resolutions: ConflictResolution[] = engine?.lastResolutions ?? [];
-    const entName = (id: string) => engine?.store.entities.get(id)?.name ?? id;
+    const engine = cmn.engine;
+    const metrics = cmn.metrics();
+    const counts = metrics.counts;
+    const types = [...engine.store.types.values()].sort((a, b) => b.count - a.count).slice(0, 12);
+    const facts = [...engine.store.facts.values()].slice(0, 14);
+    const passages = [...engine.store.passages.values()].slice(0, 10);
+    const resolutions: ConflictResolution[] = engine.lastResolutions ?? [];
+    const entName = (id: string) => engine.store.entities.get(id)?.name ?? id;
 
     // Full graph data for the layered visualization (the panels above use slices).
     const scene = {
-        types: engine ? [...engine.store.types.values()] : [],
-        schemaRelations: engine ? [...engine.store.schemaRelations.values()] : [],
-        entities: engine ? [...engine.store.entities.values()] : [],
-        facts: engine ? [...engine.store.facts.values()] : [],
-        passages: engine ? [...engine.store.passages.values()] : [],
-        bridges: engine?.bridges ?? [],
+        types: [...engine.store.types.values()],
+        schemaRelations: [...engine.store.schemaRelations.values()],
+        entities: [...engine.store.entities.values()],
+        facts: [...engine.store.facts.values()],
+        passages: [...engine.store.passages.values()],
+        bridges: engine.bridges,
         resolutions,
         nodeScores: answer?.nodeScores ?? null,
         rankedPassageIds: answer?.rankedPassages.map((rp) => rp.passage.id) ?? [],
@@ -234,6 +200,12 @@ export default function MemoryGraphRAG() {
             <div className="mgr__head">
                 <div className="mgr__title"><Globe size={16} aria-hidden /> Cognitive M Network</div>
                 <span className={`mgr__llm ${llmReady ? 'is-on' : ''}`}>{llmReady ? `LLM: ${integrations.llm.active}` : 'Offline (heuristic) mode'}</span>
+                <span className={`mgr__llm ${metrics.persist === 'ok' ? 'is-on' : ''}`}>
+                    {metrics.persist === 'ok' ? `Saved locally · ${Math.round(metrics.persistedBytes / 1024)} KB` :
+                        metrics.persist === 'empty' ? 'Nothing saved yet' :
+                        metrics.persist === 'full' ? 'NOT SAVED — browser storage full' : 'NOT SAVED — storage unavailable'}
+                </span>
+                {metrics.lastQueryMs !== null && <span className="mgr__llm">Last query {metrics.lastQueryMs} ms</span>}
                 <div className="mgr__spacer" />
                 <div className="mgr__viewtoggle" role="tablist" aria-label="View">
                     <button className={`mgr__seg ${view === 'graph' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'graph'} onClick={() => setView('graph')}>◈ Network</button>
@@ -299,6 +271,7 @@ export default function MemoryGraphRAG() {
                     rankedPassageIds={scene.rankedPassageIds}
                     query={query}
                     llmActive={llmReady}
+                    metrics={metrics}
                 />
             )}
 

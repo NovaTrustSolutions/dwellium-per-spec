@@ -7,19 +7,20 @@
  * a ~1.8k-particle drifting field, a query beam, a real BFS wavefront
  * (propagateWave) that sweeps the graph from the seed and drives the HUD time
  * step, bloom + vignette post-processing, and edge-flow particles on the lit
- * retrieval path. Hover/click any node to inspect it. HUD sparklines are biased
- * by real telemetry (telemetryBase). Geometry + propagation are pure
- * (layeredLayout.ts, unit-tested); honors reduced-motion and pauses when hidden.
+ * retrieval path. Hover/click any node to inspect it. HUD readouts + sparklines
+ * are measured from the shared CMN engine (`metrics: CmnMetrics`), never
+ * invented. Geometry + propagation are pure (layeredLayout.ts, unit-tested);
+ * honors reduced-motion and pauses when hidden.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Scale } from 'lucide-react';
 import {
     buildLayeredGraph, nodeWorld, project3D, layerWorldCenter, propagateWave, ambientField,
-    sparkSeries, telemetryBase, DEFAULT_CAMERA,
+    DEFAULT_CAMERA,
     type LayeredInput, type LayeredGraph, type Layer, type WaveResult, type Camera,
 } from './layeredLayout';
 
-import type { CmnMetrics } from '../../lib/memoryGraphRag/shared';
+import type { CmnMetrics, CmnEvent } from '../../lib/memoryGraphRag/shared';
 
 /** `metrics` = measured network telemetry (plan 057); when absent the HUD shows '—', never invented numbers. */
 type Props = LayeredInput & { query?: string; llmActive?: boolean; metrics?: CmnMetrics };
@@ -57,7 +58,6 @@ export default function MemoryGraphView(props: Props) {
         [props.types, props.entities, props.facts, props.passages, props.bridges, props.resolutions, props.nodeScores, props.rankedPassageIds]);
     const wave = useMemo(() => propagateWave(graph, graph.coreId, 64), [graph]);
     const ambient = useMemo(() => ambientField(600, 90210), []);
-    const telemetry = useMemo(() => telemetryBase(graph), [graph]);
 
     const wrapRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -298,7 +298,7 @@ export default function MemoryGraphView(props: Props) {
         <div className="mgv" ref={wrapRef}>
             <canvas ref={canvasRef} className="mgv__canvas" role="img"
                 aria-label={`Cognitive Memory Network: ${graph.stats.ontology.total} ontology types, ${graph.stats.fact.total} fact entities, ${graph.stats.passage.total} passages`} />
-            <MemoryGraphHud graph={graph} waveMax={wave.maxStep} telemetry={telemetry} query={props.query} llmActive={props.llmActive} input={props} />
+            <MemoryGraphHud graph={graph} waveMax={wave.maxStep} query={props.query} llmActive={props.llmActive} input={props} metrics={props.metrics} />
             {selected && <NodeInspector id={selected} graph={graph} input={props} onClose={() => setSelected(null)} />}
         </div>
     );
@@ -337,31 +337,55 @@ function NodeInspector({ id, graph, input, onClose }: { id: string; graph: Layer
 }
 
 // ── HUD overlay ─────────────────────────────────────────────────────────────
-function MemoryGraphHud({ graph, waveMax, telemetry, query, llmActive, input }: { graph: LayeredGraph; waveMax: number; telemetry: { signal: number; flow: number; healing: number }; query?: string; llmActive?: boolean; input: LayeredInput }) {
+const FLAT_SERIES = Array(40).fill(0.04);
+
+/** Normalises a measured series to 0.04..0.96; flat line at 0.04 when there's nothing to show. */
+function normalizedSeries(vals: number[]): number[] {
+    if (vals.length === 0) return FLAT_SERIES;
+    const max = Math.max(...vals, 1e-6);
+    const norm = vals.map((v) => Math.max(0.04, Math.min(0.96, v / max)));
+    return norm.length > 1 ? norm : [norm[0], norm[0]];
+}
+
+function MemoryGraphHud({ graph, waveMax, query, llmActive, input, metrics: m }: { graph: LayeredGraph; waveMax: number; query?: string; llmActive?: boolean; input: LayeredInput; metrics?: CmnMetrics }) {
     const [tick, setTick] = useState(0);
     useEffect(() => { if (reducedMotion()) return; const id = window.setInterval(() => setTick((n) => (n + 1) % 100000), 160); return () => window.clearInterval(id); }, []);
     const q = graph.queryActive;
-    const conf = input.resolutions && input.resolutions.length ? Math.min(0.99, 0.8 + input.resolutions.length * 0.03) : 0.92;
-    const health = (99.0 + ((graph.totalEdges % 10) / 10)).toFixed(1);
     const coreLabel = graph.coreId ? graph.byId.get(graph.coreId)?.label ?? '—' : '—';
     const topPassage = (input.rankedPassageIds ?? []).map((id) => input.passages.find((p) => p.id === id)).find(Boolean);
     const topScore = topPassage && input.nodeScores ? input.nodeScores.get(`passage:${topPassage.id}`) ?? 0 : 0;
     const denom = waveMax || 64; const timeStep = q ? (tick % (denom + 1)) : 0;
-    // sparkline shapes biased toward the real telemetry level
-    const band = (base: number, seed: number) => sparkSeries(seed, 40).map((v) => Math.max(0.04, Math.min(0.96, base * 0.55 + v * 0.45)));
-    const sig = useMemo(() => band(telemetry.signal, 11), [telemetry.signal]);
-    const flow = useMemo(() => band(telemetry.flow, 29), [telemetry.flow]);
-    const heal = useMemo(() => band(telemetry.healing, 53), [telemetry.healing]);
-    const roll = (arr: number[], k: number) => arr.map((_, i) => arr[(i + k) % arr.length]);
+    const hasConflicts = (input.resolutions?.length ?? 0) > 0;
+
+    // real sparklines, newest-first `m.events` → oldest→newest window of the latest 40
+    const recentEvents = useMemo<CmnEvent[]>(() => (m?.events ?? []).slice(0, 40).reverse(), [m]);
+    const sig = useMemo(() => normalizedSeries(recentEvents.filter((e) => e.kind === 'query').map((e) => e.ms ?? 0)), [recentEvents]);
+    const flow = useMemo(() => normalizedSeries(recentEvents.filter((e) => e.kind === 'ingest').map((e) => e.ms ?? 0)), [recentEvents]);
+    const heal = useMemo(() => {
+        let running = 0;
+        const vals = recentEvents.map((e) => (e.kind === 'conflict' ? ++running : running));
+        return running === 0 ? FLAT_SERIES : normalizedSeries(vals);
+    }, [recentEvents]);
+
+    const storageLine = (): { text: string; cls?: string } => {
+        switch (m?.persist) {
+            case 'ok': return { text: `SAVED · ${Math.round(m.persistedBytes / 1024)} KB`, cls: 'ok' };
+            case 'empty': return { text: 'NOTHING SAVED', cls: 'dim' };
+            case 'full': return { text: 'NOT SAVED · STORAGE FULL' };
+            case 'unavailable': return { text: 'NOT SAVED' };
+            default: return { text: '—' };
+        }
+    };
+    const storage = storageLine();
 
     return (
         <div className="mgv-hud">
             <div className="mgv-hud__title">COGNITIVE MEMORY NETWORK<span>SELF-HEALING · ADJUDICATED · SOURCE-GROUNDED</span></div>
             <div className="mgv-panel mgv-pos-status">
                 <h5>SYSTEM STATUS</h5>
-                <div className="mgv-row"><span>NETWORK HEALTH</span><b className="ok">{health}%</b></div>
-                <div className="mgv-row"><span>ADJUDICATION AGENT</span><b className="ok">ACTIVE</b></div>
-                <div className="mgv-row"><span>SELF-HEALING</span><b className="ok">ENABLED</b></div>
+                <div className="mgv-row"><span>STORAGE</span><b className={storage.cls}>{storage.text}</b></div>
+                <div className="mgv-row"><span>CONFLICTS RESOLVED</span><b className="ok">{m?.conflictsResolved ?? (input.resolutions?.length ?? 0)}</b></div>
+                <div className="mgv-row"><span>BRIDGES</span><b className="ok">{m?.bridges ?? '—'}</b></div>
                 <div className="mgv-row"><span>PAGERANK SEARCH</span><b className={q ? 'ok' : 'dim'}>{q ? 'PROPAGATING' : 'IDLE'}</b></div>
             </div>
             <div className="mgv-panel mgv-pos-overview">
@@ -383,13 +407,12 @@ function MemoryGraphHud({ graph, waveMax, telemetry, query, llmActive, input }: 
             <div className="mgv-cap mgv-cap--ontology"><b>01 ONTOLOGY LAYER</b><span>Abstract structures · Taxonomies & rules · Schema graph</span></div>
             <div className="mgv-cap mgv-cap--fact"><b>02 FACT LAYER</b><span>Claims & relationships · Temporal · Probabilistic</span></div>
             <div className="mgv-cap mgv-cap--passage"><b>03 PASSAGE LAYER</b><span>Source documents · Grounded text · Immutable records</span></div>
-            {q && <div className="mgv-tag mgv-tag--conflict">CONFLICT ZONE<span>TOPOLOGICAL DEFECT</span></div>}
-            {q && <div className="mgv-tag mgv-tag--repair">REPAIRING…<span>Reinforcing connection · Establishing consistency · Healing topology</span></div>}
+            {hasConflicts && <div className="mgv-tag mgv-tag--conflict">CONFLICT ZONE<span>TOPOLOGICAL DEFECT</span></div>}
+            {hasConflicts && <div className="mgv-tag mgv-tag--repair">RESOLVED {input.resolutions!.length} contradiction(s)<span>Reinforcing connection · Establishing consistency · Healing topology</span></div>}
             <div className="mgv-panel mgv-pos-adj">
                 <h5>ADJUDICATION AGENT</h5>
-                <div className="mgv-row"><span>STATUS</span><b className="ok">ACTIVE</b></div>
-                <div className="mgv-row"><span>CONFIDENCE</span><b>{conf.toFixed(2)}</b></div>
-                <div className="mgv-row"><span>ACTION</span><b className="warn">{input.resolutions?.length ? 'REPAIR' : 'MONITOR'}</b></div>
+                <div className="mgv-row"><span>RELEVANCE</span><b className={topPassage ? 'ok' : 'dim'}>{topPassage ? topScore.toFixed(3) : '—'}</b></div>
+                <div className="mgv-row"><span>ACTION</span><b className="warn">{hasConflicts ? 'REPAIR' : 'MONITOR'}</b></div>
             </div>
             <div className="mgv-panel mgv-pos-query">
                 <h5>SEARCH QUERY</h5>
@@ -404,18 +427,16 @@ function MemoryGraphHud({ graph, waveMax, telemetry, query, llmActive, input }: 
             </div>
             <div className="mgv-panel mgv-pos-metrics">
                 <h5>REAL-TIME METRICS</h5>
-                <Spark label="SIGNAL STRENGTH" data={roll(sig, tick)} color="#22d3ee" />
-                <Spark label="NETWORK FLOW" data={roll(flow, tick)} color="#a78bfa" />
-                <Spark label="HEALING EVENTS" data={roll(heal, tick * 2)} color="#D6FE51" />
-                <div className="mgv-metricrow"><div><span>TPS</span><b>{(11000 + (tick * 137) % 3200).toLocaleString()}</b></div><div><span>LATENCY</span><b>{28 + (tick % 14)} ms</b></div></div>
+                <Spark label="SIGNAL STRENGTH" data={sig} color="#22d3ee" />
+                <Spark label="NETWORK FLOW" data={flow} color="#a78bfa" />
+                <Spark label="HEALING EVENTS" data={heal} color="#D6FE51" />
+                <div className="mgv-metricrow"><div><span>LATENCY</span><b>{m?.lastQueryMs ?? '—'} ms</b></div><div><span>INGEST</span><b>{m?.lastIngestMs ?? '—'} ms</b></div></div>
             </div>
             <div className="mgv-panel mgv-pos-trace">
                 <h5>SOURCE TRACE</h5>
                 {topPassage ? (<>
                     <div className="mgv-kv"><span>DOCUMENT</span><b className="mono">{topPassage.title || topPassage.sourceId}</b></div>
-                    <div className="mgv-kv"><span>SOURCE</span><b>{topPassage.sourceKind}</b></div>
                     <div className="mgv-kv"><span>RELEVANCE</span><b className="ok">{topScore.toFixed(3)}</b></div>
-                    <div className="mgv-kv"><span>VERIFIED</span><b className="ok">TRUE</b></div>
                 </>) : <div className="mgv-empty-trace">Run a query to trace grounded evidence.</div>}
             </div>
         </div>

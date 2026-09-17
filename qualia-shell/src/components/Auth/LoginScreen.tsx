@@ -10,7 +10,7 @@
  * Google login is retained behind VITE_GOOGLE_LOGIN=true (off by default).
  */
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useUser } from '../../context/UserContext';
 import { AlertCircle, Shield } from 'lucide-react';
 import GoogleSignInButton from './GoogleSignInButton';
@@ -40,6 +40,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     const { login, loginLocal, loginWithGoogle } = useUser();
     const effectiveAccounts = useEffectiveAccounts();
     const [hasClicked, setHasClicked] = useState(false);
+    const [reduceMotion, setReduceMotion] = useState(false);
     const [stage, setStage] = useState<Stage>('gate');
     const [gateInput, setGateInput] = useState('');
     const [email, setEmail] = useState('');
@@ -47,6 +48,21 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
     const [offlineOffer, setOfflineOffer] = useState(false);
+
+    // Each view owns a URL hash so the browser Back button returns to the
+    // splash instead of leaving the site (effect-time only — SSR-safe).
+    useEffect(() => {
+        const sync = () => setHasClicked(window.location.hash === '#signin');
+        sync();
+        window.addEventListener('hashchange', sync);
+        return () => window.removeEventListener('hashchange', sync);
+    }, []);
+
+    const openSignIn = () => {
+        setReduceMotion(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+        setHasClicked(true);
+        if (window.location.hash !== '#signin') window.location.hash = 'signin';
+    };
 
     const submitGate = (event?: FormEvent) => {
         event?.preventDefault();
@@ -110,7 +126,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     };
 
     return (
-        <>
+        <main>
             <video
                 className="login-video-bg"
                 poster="/assets/hero-bg.webp"
@@ -118,23 +134,24 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                 loop
                 playsInline
                 preload="none"
-                autoPlay={hasClicked}
-                key={hasClicked ? 'play' : 'idle'}
+                autoPlay={hasClicked && !reduceMotion}
+                key={hasClicked && !reduceMotion ? 'play' : 'idle'}
+                aria-hidden="true"
             >
-                {hasClicked && <source src="/assets/nebula-bg-1280.mp4" type="video/mp4" />}
+                {hasClicked && !reduceMotion && <source src="/assets/nebula-bg-1280.mp4" type="video/mp4" />}
             </video>
 
             {/* Mouse-convenience backdrop — the accessible control is the Sign in button inside. */}
             <div
                 role="presentation"
                 className={`login-start-overlay ${hasClicked ? 'is-hidden' : ''}`}
-                onClick={() => setHasClicked(true)}
+                onClick={openSignIn}
             >
                 {!hasClicked && (
                     <div className="login-front">
                         <h1 className="login-front__name">{PRODUCT_NAME}</h1>
                         <p className="login-front__value">{VALUE_STATEMENT}</p>
-                        <button type="button" className="login-primary-btn" onClick={() => setHasClicked(true)}>Sign in</button>
+                        <button type="button" className="login-primary-btn" onClick={openSignIn}>Sign in</button>
                         {GOOGLE_LOGIN_ENABLED && (
                             <div className="login-front__google">
                                 <GoogleSignInButton onCredential={loginWithGoogle} />
@@ -149,10 +166,10 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                 )}
             </div>
 
-            <div className={`login-backdrop ${hasClicked ? 'is-active' : ''}`}>
-                <div className="login-bg-orb login-bg-orb--1" />
-                <div className="login-bg-orb login-bg-orb--2" />
-                <div className="login-bg-orb login-bg-orb--3" />
+            <div className={`login-backdrop ${hasClicked ? 'is-active' : ''}`} inert={!hasClicked}>
+                <div className="login-bg-orb login-bg-orb--1" aria-hidden="true" />
+                <div className="login-bg-orb login-bg-orb--2" aria-hidden="true" />
+                <div className="login-bg-orb login-bg-orb--3" aria-hidden="true" />
 
                 <div className="login-container">
                     <div className="login-header">
@@ -161,7 +178,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
 
                     <div className="login-card">
                         {error && (
-                            <div className="login-error">
+                            <div className="login-error" role="alert">
                                 <AlertCircle size={14} />
                                 {error}
                             </div>
@@ -170,13 +187,15 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                         {stage === 'gate' && (
                             <form className="login-step" onSubmit={submitGate}>
                                 <span className="login-quick__label">Account Login</span>
-                                <h2>Enter access password</h2>
+                                <h1>Enter access password</h1>
                                 <p>Enter the AstraStrata access password to continue.</p>
+                                <label className="login-label" htmlFor="login-gate-password">Access password</label>
                                 <input
                                     type="password"
+                                    id="login-gate-password"
+                                    name="access-password"
                                     className="login-input"
-                                    aria-label="Access password"
-                                    placeholder="Access password"
+                                    autoComplete="current-password"
                                     value={gateInput}
                                     onChange={(event) => setGateInput(event.target.value)}
                                     // focus without scrollIntoView so the logo card stays visible on short viewports
@@ -189,22 +208,24 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                         {stage === 'credential' && (
                             <form className="login-step" onSubmit={(event) => { void submitCredential(event); }}>
                                 <span className="login-quick__label">Account Login</span>
-                                <h2>Sign in</h2>
+                                <h1>Sign in</h1>
+                                <label className="login-label" htmlFor="login-email">Email</label>
                                 <input
                                     type="email"
+                                    id="login-email"
+                                    name="email"
                                     className="login-input"
-                                    aria-label="Email"
-                                    placeholder="Email"
                                     autoComplete="username"
                                     value={email}
                                     onChange={(event) => setEmail(event.target.value)}
                                     ref={(el) => el?.focus({ preventScroll: true })}
                                 />
+                                <label className="login-label" htmlFor="login-password">Password</label>
                                 <input
                                     type="password"
+                                    id="login-password"
+                                    name="password"
                                     className="login-input"
-                                    aria-label="Password"
-                                    placeholder="Password"
                                     autoComplete="current-password"
                                     value={password}
                                     onChange={(event) => setPassword(event.target.value)}
@@ -252,6 +273,6 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                     </div>
                 </div>
             </div>
-        </>
+        </main>
     );
 }

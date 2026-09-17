@@ -1,0 +1,57 @@
+/* Public Privacy / Terms / Help pages — self-contained so they render the same
+   with or without the app theme. Text #e6e9ef on #0a1628 = 14.6:1; links
+   #85c1e9 = 9.3:1; muted #b0b8c8 = 9.1:1 (WCAG 1.4.3). */
+/* These routes do not load the app shell's reset, so clear the UA body margin. */
+body:has(.info-page) {
+    margin: 0;
+    background: #0a1628;
+}
+
+.info-page {
+    min-height: 100vh;
+    background: #0a1628;
+    color: #e6e9ef;
+    font-family: var(--font-primary, 'Hanken Grotesk', 'Inter', -apple-system, sans-serif);
+    font-size: 16px;
+    line-height: 1.65;
+}
+
+.info-page a { color: #85c1e9; text-underline-offset: 3px; }
+.info-page a:hover { color: #d6eaf8; }
+.info-page a:focus-visible { outline: 2px solid #d6eaf8; outline-offset: 3px; border-radius: 3px; }
+
+.info-page__skip { position: absolute; left: -9999px; }
+.info-page__skip:focus { left: 16px; top: 12px; background: #0a1628; padding: 8px 12px; z-index: 10; }
+
+.info-page__header,
+.info-page__main,
+.info-page__footer { max-width: 72ch; margin: 0 auto; padding: 0 20px; }
+
+.info-page__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(176, 184, 200, 0.25);
+}
+
+.info-page__brand { font-size: 20px; font-weight: 700; text-decoration: none; color: #f4f6f9 !important; }
+
+.info-page__nav { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.info-page__nav a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 10px; border-radius: 8px; text-decoration: none; }
+.info-page__nav a[aria-current='page'] { background: rgba(133, 193, 233, 0.16); color: #f4f6f9; }
+
+.info-page__main { padding-top: 32px; padding-bottom: 48px; }
+.info-page__main h1 { font-size: 34px; line-height: 1.2; margin: 0 0 8px; color: #f4f6f9; }
+.info-page__main h2 { font-size: 20px; margin: 36px 0 8px; color: #f4f6f9; }
+.info-page__main p, .info-page__main li, .info-page__main dd { margin: 0 0 12px; }
+.info-page__main ul, .info-page__main ol { padding-left: 22px; margin: 0 0 12px; }
+.info-page__main dt { font-weight: 600; margin-top: 16px; }
+.info-page__main dd { margin-left: 0; }
+.info-page__meta { color: #b0b8c8; font-size: 14px; }
+
+.info-page__footer { padding-top: 20px; padding-bottom: 40px; border-top: 1px solid rgba(176, 184, 200, 0.25); }
+.info-page__footer a { display: inline-flex; align-items: center; min-height: 32px; }

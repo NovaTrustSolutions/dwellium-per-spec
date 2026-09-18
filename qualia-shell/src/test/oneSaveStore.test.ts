@@ -323,4 +323,28 @@ describe('oneSaveStore bootstrap isolation', () => {
         expect(calledIds).toContain('boot-a_user-1'); // the rejecting store was attempted
         expect(calledIds).toContain('boot-b_user-1'); // the later store STILL hydrated
     });
+    it('hydrate never overwrites a local edit made while its GET was in flight', async () => {
+        const holder: { current: string | null } = { current: null };
+        const resolveKey = () => `race:${holder.current ?? '_anonymous'}`;
+        const store = withSync(
+            createLocalStorageStore<string>({ key: resolveKey, deserializer: (raw) => raw ?? '', defaultValue: '' }),
+            { objectType: 'race', holder, resolveKey, debounceMs: 10 },
+        );
+        await oneSaveSync.bootstrap('user-1');
+
+        let release!: (v: DwelliumObject | null) => void;
+        vi.mocked(oneSaveClient.get).mockImplementation(() => new Promise((r) => { release = r; }));
+
+        const hydrating = store.hydrate();
+        store.set('typed locally', () => localStorage.setItem(resolveKey(), 'typed locally'));
+        release(savedObject('race_user-1', 'user-1', 'stale remote'));
+        await hydrating;
+
+        expect(store.getSnapshot()).toBe('typed locally');
+
+        // Control: with no local edit in flight, the remote value IS applied.
+        vi.mocked(oneSaveClient.get).mockResolvedValue(savedObject('race_user-1', 'user-1', 'fresh remote'));
+        await store.hydrate();
+        expect(store.getSnapshot()).toBe('fresh remote');
+    });
 });

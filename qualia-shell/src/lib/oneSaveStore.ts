@@ -171,6 +171,9 @@ function makeSynced<T>(
     // on a first-ever login (see MAX_LOGIN_REQUESTS). `null` = unknown (no
     // hydrate() ran yet this session) → migrate() falls back to its own GET.
     let lastHydrateSeen: boolean | null = null;
+    // Bumped on every local set(); hydrate() compares before/after its await so a
+    // remote snapshot fetched BEFORE a local edit never overwrites that edit.
+    let localWriteSeq = 0;
 
     function scheduleWriteThrough(value: T): void {
         if (!ONE_SAVE_ENABLED) return;
@@ -232,14 +235,20 @@ function makeSynced<T>(
         reset: base.reset,
 
         set(next, persistToStorage) {
+            localWriteSeq++;
             base.set(next, persistToStorage); // instant localStorage cache (unchanged)
             scheduleWriteThrough(next);        // debounced durable write-through
         },
 
         async hydrate(prefetched?: DwelliumObject<unknown> | null) {
             if (!ONE_SAVE_ENABLED) return;
+            const seqAtStart = localWriteSeq;
             const remote = (prefetched !== undefined ? prefetched : await oneSaveClient.get<T>(objectId())) as DwelliumObject<T> | null;
             lastHydrateSeen = remote != null;
+            // A local edit landed while the GET was in flight (e.g. typing in a
+            // just-opened lazy widget): local is newer and is already queued for
+            // write-through — applying the stale remote would eat the user's input.
+            if (localWriteSeq !== seqAtStart) return;
             if (remote && remote.deletedAt == null) {
                 const value = remote.payload as T;
                 base.set(value, () => persistLocal(value));

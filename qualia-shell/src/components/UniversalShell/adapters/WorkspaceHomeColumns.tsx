@@ -10,11 +10,12 @@
  * Kept lightweight (no heavy widget embeds) so the shell stays fast; each
  * column drives the real app via the same events the sidebar / ⌘K use.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { FolderTree, FileText, Tag, Files, HardDrive, Send, Check } from 'lucide-react';
 import { useWindows } from '../../../context/WindowContext';
 import { openWidget, parseCommand } from '../../../lib/dwelliumCommands';
+import { setUniversalShellState, useUniversalShellState } from '../../../utils/universalShellStore';
 
 const FILE_WIDGETS = [
     { id: 'file-explorer', label: 'File Explorer', Icon: FolderTree },
@@ -42,17 +43,9 @@ export function FilingCabinetHome() {
     );
 }
 
-const SCRATCH_KEY = 'dwellium-universal-scratch';
-
 export function ScratchPadHome() {
-    const [text, setText] = useState('');
-    useEffect(() => {
-        try { setText(localStorage.getItem(SCRATCH_KEY) || ''); } catch { /* */ }
-    }, []);
-    const onChange = (v: string) => {
-        setText(v);
-        try { localStorage.setItem(SCRATCH_KEY, v); } catch { /* */ }
-    };
+    const { scratch: text } = useUniversalShellState();
+    const onChange = (v: string) => setUniversalShellState({ scratch: v });
     return (
         <div className="ush-col">
             <textarea

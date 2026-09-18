@@ -21,7 +21,9 @@
 import type { ContainerAdapter, AdapterSurface } from './types';
 import { filingOverviewAdapter } from './adapters/FilingOverviewAdapter';
 import { strataMaintenanceAdapter } from './adapters/StrataMaintenanceAdapter';
-import { astraPortfolioAdapter } from './adapters/AstraPortfolioAdapter';
+// ponytail: astraPortfolioAdapter is placeholder text in all four columns
+// (no real data yet) — hidden from the switcher until it has real content.
+// Re-enable by re-adding it to ADAPTER_REGISTRY below once wired to real data.
 
 /**
  * Ordered list of registered adapters. Order controls the default
@@ -30,13 +32,15 @@ import { astraPortfolioAdapter } from './adapters/AstraPortfolioAdapter';
 export const ADAPTER_REGISTRY: ContainerAdapter[] = [
     filingOverviewAdapter,
     strataMaintenanceAdapter,
-    astraPortfolioAdapter,
 ];
 
 /**
- * Filter adapters by surface. "any" adapters always appear.
+ * Filter adapters by surface. "any" adapters always appear; the "any"
+ * surface (the widget's default) lists every adapter — otherwise the
+ * switcher shows a single container and there is nothing to switch.
  */
 export function adaptersForSurface(surface: AdapterSurface): ContainerAdapter[] {
+    if (surface === 'any') return ADAPTER_REGISTRY;
     return ADAPTER_REGISTRY.filter(a => a.surface === surface || a.surface === 'any');
 }
 

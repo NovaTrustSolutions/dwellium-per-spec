@@ -99,6 +99,9 @@ export const recentActivityUserIdHolder: UserIdHolder = makeHolder();
 /** Onboarding walkthrough — per-user spotlight-tour "done" flag (walkthroughStore). */
 export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 058 — per-user Universal Shell nav persistence (universalShellStore). */
+export const universalShellUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -131,6 +134,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     walkthroughUserIdHolder,
     gridLockUserIdHolder,
     stellaPrefsUserIdHolder,
+    universalShellUserIdHolder,
 ];
 
 /**

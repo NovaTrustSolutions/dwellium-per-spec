@@ -85,8 +85,10 @@
     color: var(--text-primary);
 }
 
-.us-switcher__item--active {
-    background: var(--bg-surface);
+.us-switcher__item--active,
+.us-switcher__item--active:hover {
+    /* filled pill: inverse text needs the inverse background, or the label vanishes on dark */
+    background: var(--text-primary);
     border-color: var(--text-primary);
     color: var(--text-inverse);
 }

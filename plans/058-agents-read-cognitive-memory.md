@@ -19,3 +19,10 @@
 3. Strict gate green; e2e regression vs `main` shows no new failures.
 
 ## Verification log
+- 2026-09-17 — core `f724d5a` (recallContext + 5 tests), agents `bfc8537` (Ringer lanes: Stella /
+  ARA / Hermes, claude-sonnet-5; ARA + Hermes PASS attempt 1, Stella's production change PASS with a
+  test-typing fix on apply). Gate on the Mac: `tsc -b` 0 · vitest 347 files / 3,030 tests · build 0.
+  Full Playwright suite, isolated on :5199 (`playwright.port5199.config.ts`, `VITE_ONE_SAVE=false`):
+  branch 40 failed / 36 passed vs `main` @ 07880ca 40 failed / 36 passed — identical titles, zero
+  branch-only failures, cmn-057 spec 5/5. (Earlier runs on :5173 were poisoned by a foreign dev
+  server — FUCKUPS.md 2026-09-17.)

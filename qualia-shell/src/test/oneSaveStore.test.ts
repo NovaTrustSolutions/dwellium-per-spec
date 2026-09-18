@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { oneSaveSync, withSync, syncStatusStore } from '../lib/oneSaveStore';
 import { oneSaveClient } from '../lib/oneSaveClient';
+import { syncRateLimitStore, markRateLimited } from '../lib/syncRateLimitStore';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import type { DwelliumObject } from '../lib/oneSaveClient';
 
@@ -77,6 +78,7 @@ describe('oneSaveStore write-through retry', () => {
         vi.useFakeTimers();
         vi.mocked(oneSaveClient.put).mockReset();
         vi.mocked(oneSaveClient.get).mockReset();
+        syncRateLimitStore.reset();
         backendStatusStore.reset();
     });
 
@@ -84,6 +86,36 @@ describe('oneSaveStore write-through retry', () => {
         backendStatusStore.reset();
         vi.useRealTimers();
     });
+
+    it('stops after one attempt on a 429 (no backoff retry), replay parked', async () => {
+        const holder: { current: string | null } = { current: 'account-a' };
+        const resolveKey = () => `race-test:${holder.current ?? '_anonymous'}`;
+        const markOffline = vi.spyOn(backendStatusStore, 'markOffline');
+
+        // 429-shaped failure: put resolves null AND the rate-limit store reports limited.
+        vi.mocked(oneSaveClient.put).mockResolvedValue(null);
+        markRateLimited();
+
+        const store = withSync(
+            createLocalStorageStore<string>({
+                key: resolveKey,
+                deserializer: (raw) => raw ?? '',
+                defaultValue: '',
+            }),
+            { objectType: 'race-test', holder, resolveKey, debounceMs: 10 },
+        );
+
+        store.set('v', () => localStorage.setItem(resolveKey(), 'v'));
+        // debounce (10) only — if a backoff retry fired, this window wouldn't include it.
+        await vi.advanceTimersByTimeAsync(10 + 500 + 1000);
+
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(1);
+        expect(markOffline).toHaveBeenCalledTimes(1);
+        expect(backendStatusStore.getSnapshot().state).toBe('offline');
+    });
+
+    // Control: with `limited` false, the existing 3-attempt behaviour is
+    // unchanged — see the neighbouring "retries up to the cap" test above.
 
     it('retries a failed write and succeeds on a later attempt (no banner)', async () => {
         const holder: { current: string | null } = { current: 'account-a' };

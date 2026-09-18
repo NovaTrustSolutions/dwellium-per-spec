@@ -30,6 +30,7 @@
 
 import type { LocalStorageStore } from '../utils/createLocalStorageStore';
 import { oneSaveClient, ONE_SAVE_ENABLED, type DwelliumObject } from './oneSaveClient';
+import { syncRateLimitStore } from './syncRateLimitStore';
 import { backendStatusStore } from './backendStatusStore';
 
 /**
@@ -208,6 +209,10 @@ function makeSynced<T>(
                     emitSync();
                     return;
                 }
+                // A 429 means WE are the excess load on the shared bucket —
+                // retrying only adds more requests to it. Stop after this one
+                // attempt and fall through to the parked-replay path below.
+                if (syncRateLimitStore.getSnapshot().limited) break;
                 // Last attempt failed → don't sleep, fall through to surface it.
                 if (attempt < WRITE_THROUGH_MAX_ATTEMPTS - 1) {
                     await new Promise((resolve) =>

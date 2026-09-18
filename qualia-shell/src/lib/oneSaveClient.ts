@@ -30,38 +30,11 @@ const OBJECTS_API = `${API_BASE}/api/objects`;
 /** Hard ceiling for a single `listAll` page — matches the backend's own MAX_LIST_LIMIT. */
 const BULK_LIST_LIMIT = 500;
 
-/**
- * syncRateLimitStore — surfaces a 429 from the objects API instead of letting
- * `call()`'s no-throw contract swallow it as an indistinguishable `null`.
- * Login fans a bulk list (or, on fallback, N per-store GETs) across every
- * registered One Save store; if the backend's request-rate limiter trips,
- * the UI should say so (SyncStatusPill: "Sync paused — retrying") instead of
- * silently degrading to localStorage. Mirrors `sessionHealthStore`'s shape
- * (module-level external store, no React context) but is a DISTINCT concern:
- * a 429 means the session is fine and just throttled, not dead.
- */
-export interface SyncRateLimitSnapshot {
-    /** True since the most recent 429; cleared on the next successful call. */
-    limited: boolean;
-    /** Epoch ms of the most recent 429 (null = never this session). */
-    lastLimitedAt: number | null;
-}
-const RATE_OK: SyncRateLimitSnapshot = { limited: false, lastLimitedAt: null };
-let rateState: SyncRateLimitSnapshot = RATE_OK;
-const rateListeners = new Set<() => void>();
-function emitRate(): void {
-    rateListeners.forEach((cb) => cb());
-}
-export const syncRateLimitStore = {
-    subscribe(cb: () => void): () => void {
-        rateListeners.add(cb);
-        return () => { rateListeners.delete(cb); };
-    },
-    getSnapshot(): SyncRateLimitSnapshot { return rateState; },
-    getServerSnapshot(): SyncRateLimitSnapshot { return RATE_OK; },
-    /** Test escape hatch (repo convention: reset in beforeEach). */
-    reset(): void { rateState = RATE_OK; },
-};
+// syncRateLimitStore lives in its own module (plan 059) so oneSaveStore can read
+// it without importing from this file — 43 test files mock this module, and a
+// missing export on a mock throws inside the code under test.
+import { syncRateLimitStore, markRateLimited, clearRateLimited } from './syncRateLimitStore';
+export { syncRateLimitStore, type SyncRateLimitSnapshot } from './syncRateLimitStore';
 
 /** A persisted object — the universal unit of "One Save" storage. */
 export interface DwelliumObject<T = unknown> {
@@ -128,13 +101,12 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T 
             // rather than collapsing into the same silent `null` as any other
             // failure — see syncRateLimitStore above.
             if (res.status === 429) {
-                rateState = { limited: true, lastLimitedAt: Date.now() };
-                emitRate();
+                markRateLimited();
             }
             return null;
         }
         sessionHealthStore.markAuthOk();
-        if (rateState.limited) { rateState = RATE_OK; emitRate(); } // recovered
+        clearRateLimited(); // recovered
 
         const json: unknown = await res.json();
         if (isEnvelope<T>(json)) return json.data ?? null;

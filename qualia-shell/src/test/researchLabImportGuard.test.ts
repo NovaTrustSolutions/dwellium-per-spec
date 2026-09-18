@@ -152,7 +152,8 @@ describe('Research Lab import firewall (structural isolation)', () => {
 
     it('trusted transit: oneSaveStore.ts import surface is pinned', () => {
         const specs = specifiersOf(resolve(SRC, 'lib/oneSaveStore.ts')).sort();
-        expect(specs).toEqual(['../utils/createLocalStorageStore', './backendStatusStore', './oneSaveClient']);
+        // './syncRateLimitStore' (plan 059) is a leaf: no imports of its own, pure state.
+        expect(specs).toEqual(['../utils/createLocalStorageStore', './backendStatusStore', './oneSaveClient', './syncRateLimitStore']);
     });
 
     it('direction guard: nothing outside the research modules imports the research stores or researchLlm', () => {

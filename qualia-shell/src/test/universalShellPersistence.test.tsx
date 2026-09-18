@@ -22,7 +22,7 @@ vi.mock('../lib/oneSaveClient', () => ({
 }));
 
 import React from 'react';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UserContext } from '../context/UserContext';
 import { WindowProvider } from '../context/WindowContext';
@@ -39,6 +39,10 @@ import { universalShellUserIdHolder } from '../lib/perUserIdentity';
 function userValue(uid: string | null) {
     return { user: uid ? { id: uid } : null, hasPermission: () => true } as unknown as never;
 }
+
+/** Scope switcher queries to the nav — the Maintenance adapter's own columns
+ *  also render buttons whose names contain "maintenance" once its lazy chunks load. */
+const switcher = () => within(screen.getByRole('navigation', { name: 'Container switcher' }));
 
 function renderShell(opts: { surface?: 'any' | 'strata' | 'astra'; initialContainerId?: string; uid?: string | null } = {}) {
     const { surface = 'any', initialContainerId, uid = 'u-andy' } = opts;
@@ -66,7 +70,7 @@ describe('UniversalShell persistence', () => {
         const user = userEvent.setup();
         const { unmount } = renderShell({ surface: 'strata' });
 
-        const maintenanceBtn = await screen.findByRole('button', { name: /maintenance/i });
+        const maintenanceBtn = await switcher().findByRole('button', { name: /maintenance/i });
         await user.click(maintenanceBtn);
         expect(maintenanceBtn).toHaveAttribute('aria-pressed', 'true');
 
@@ -75,7 +79,7 @@ describe('UniversalShell persistence', () => {
         universalShellStore.reset();
         renderShell({ surface: 'strata' });
 
-        const restored = await screen.findByRole('button', { name: /maintenance/i });
+        const restored = await switcher().findByRole('button', { name: /maintenance/i });
         expect(restored).toHaveAttribute('aria-pressed', 'true');
     });
 
@@ -125,20 +129,20 @@ describe('UniversalShell persistence', () => {
 
         renderShell({ surface: 'strata' });
 
-        const overviewBtn = await screen.findByRole('button', { name: /overview/i });
+        const overviewBtn = await switcher().findByRole('button', { name: /overview/i });
         expect(overviewBtn).toHaveAttribute('aria-pressed', 'true');
         // No crash / empty-state render — the maintenance button is present too.
-        expect(screen.getByRole('button', { name: /maintenance/i })).toBeInTheDocument();
+        expect(switcher().getByRole('button', { name: /maintenance/i })).toBeInTheDocument();
     });
 
     it('applies initialContainerId on mount but still lets the switcher change container', async () => {
         const user = userEvent.setup();
         renderShell({ surface: 'strata', initialContainerId: 'strata-maintenance' });
 
-        const maintenanceBtn = await screen.findByRole('button', { name: /maintenance/i });
+        const maintenanceBtn = await switcher().findByRole('button', { name: /maintenance/i });
         await waitFor(() => expect(maintenanceBtn).toHaveAttribute('aria-pressed', 'true'));
 
-        const overviewBtn = screen.getByRole('button', { name: /overview/i });
+        const overviewBtn = switcher().getByRole('button', { name: /overview/i });
         await user.click(overviewBtn);
         await waitFor(() => expect(overviewBtn).toHaveAttribute('aria-pressed', 'true'));
         expect(maintenanceBtn).toHaveAttribute('aria-pressed', 'false');

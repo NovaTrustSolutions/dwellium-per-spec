@@ -35,9 +35,12 @@ export const ADAPTER_REGISTRY: ContainerAdapter[] = [
 ];
 
 /**
- * Filter adapters by surface. "any" adapters always appear.
+ * Filter adapters by surface. "any" adapters always appear; the "any"
+ * surface (the widget's default) lists every adapter — otherwise the
+ * switcher shows a single container and there is nothing to switch.
  */
 export function adaptersForSurface(surface: AdapterSurface): ContainerAdapter[] {
+    if (surface === 'any') return ADAPTER_REGISTRY;
     return ADAPTER_REGISTRY.filter(a => a.surface === surface || a.surface === 'any');
 }
 

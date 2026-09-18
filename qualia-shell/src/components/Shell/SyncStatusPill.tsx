@@ -4,10 +4,10 @@
  * Renders nothing when One Save is off or nothing has been saved this session.
  */
 
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, useState, useEffect } from 'react';
 import { ONE_SAVE_ENABLED, syncRateLimitStore } from '../../lib/oneSaveClient';
 import { syncStatusStore } from '../../lib/oneSaveStore';
-import { backendStatusStore } from '../../lib/backendStatusStore';
+import { backendStatusStore, rateLimitCountdownText } from '../../lib/backendStatusStore';
 import './SyncStatusPill.css';
 
 export default function SyncStatusPill() {
@@ -28,6 +28,18 @@ export default function SyncStatusPill() {
         syncRateLimitStore.getSnapshot,
         syncRateLimitStore.getServerSnapshot,
     );
+    // Countdown text ticks every second while rate-limited (plan 060 phase 2:
+    // reuse the same wording as the banner instead of "Sync paused — retrying").
+    const [countdownText, setCountdownText] = useState<string | null>(null);
+    useEffect(() => {
+        if (backend.state !== 'rate-limited' || backend.retryAt == null) { setCountdownText(null); return; }
+        const retryAt = backend.retryAt;
+        const tick = () => setCountdownText(rateLimitCountdownText(retryAt));
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [backend.state, backend.retryAt]);
+
     if (!ONE_SAVE_ENABLED) return null;
 
     let text: string;
@@ -35,6 +47,9 @@ export default function SyncStatusPill() {
     let title: string | undefined;
     if (backend.state === 'offline') {
         text = 'Offline — will retry';
+        mod = ' sync-pill--offline';
+    } else if (backend.state === 'rate-limited' && countdownText != null) {
+        text = countdownText;
         mod = ' sync-pill--offline';
     } else if (rate.limited) {
         text = 'Sync paused — retrying';

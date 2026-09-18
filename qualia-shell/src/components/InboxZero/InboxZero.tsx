@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore, Suspense, lazy } from 'react';
 import {
     ArrowDown, ArrowRight, ArrowUp, Bot, Brain, Building2, Check, ClipboardList, Clock, Cloud,
     Download, FileSpreadsheet, FileText, Film, Folder, FolderOpen, FolderTree, Hourglass, Image,
@@ -39,9 +39,9 @@ import {
     useSettings as useSettingsQuery, useEmailBody,
     inboxKeys,
 } from './useInboxQueries';
-import { readSse } from '../../lib/readSse';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { useWidgetMemory } from '../../lib/widgetMemory';
+import { backendStatusStore } from '../../lib/backendStatusStore';
 
 // QueryClient is provided at the App level via QueryProvider.
 
@@ -255,11 +255,19 @@ export default function InboxZero() {
     const items = itemsQuery.data?.items ?? [];
     const stats = statsQuery.data ?? null;
     const newsletters = newslettersQuery.data ?? [];
-    const loading = itemsQuery.isLoading;
+    // Plan 060 phase 2: a rate-limited failure should look like "still
+    // loading", not "broken" — the global banner already explains why.
+    const backendStatus = useSyncExternalStore(
+        backendStatusStore.subscribe,
+        backendStatusStore.getSnapshot,
+        backendStatusStore.getServerSnapshot,
+    );
+    const isRateLimited = backendStatus.state === 'rate-limited';
+    const loading = itemsQuery.isLoading || (itemsQuery.isError && isRateLimited);
     // Distinguish a genuine "all caught up" empty state from a failed fetch — without
     // this guard the UI shows the celebratory "Inbox Zero!" message even when the
     // backend request errored (misleading the operator into thinking nothing is pending).
-    const itemsError = itemsQuery.isError;
+    const itemsError = itemsQuery.isError && !isRateLimited;
     const itemsErrorMessage =
         itemsQuery.error instanceof Error ? itemsQuery.error.message : 'Unable to load inbox';
     const metrics = metricsQuery.data ?? null;
@@ -354,24 +362,13 @@ export default function InboxZero() {
         setSettingsDirty(true);
     };
 
-    // GAP-01: real-time inbox updates → invalidate React Query cache.
-    // fetch-based SSE (not EventSource) so the request carries the session
-    // Bearer like every other /api/* call; readSse reconnects with backoff.
+    // Inbox updates via polling — no backend /stream route exists (plan 060 §8).
     useEffect(() => {
-        const sse = readSse(`${INBOX_API}/stream`, {
-            onEvent: ({ event }) => {
-                if (event === 'inbox:new' || event === 'inbox:status-change') invalidateInbox();
-            },
-            // onError: disconnected — React Query's staleTime + the poll below cover it
-        });
-
-        // Polling fallback — 60s (reduced from 900s because SSE handles real-time)
         const poll = window.setInterval(() => {
             invalidateInbox();
         }, 60_000);
 
         return () => {
-            sse.abort();
             clearInterval(poll);
         };
     }, [invalidateInbox]);

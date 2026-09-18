@@ -8,7 +8,7 @@
  * useSyncExternalStore (SSR-safe: getServerSnapshot → 'online' → renders null).
  */
 import { useSyncExternalStore, useState, useEffect } from 'react';
-import { backendStatusStore } from '../../lib/backendStatusStore';
+import { backendStatusStore, rateLimitCountdownText } from '../../lib/backendStatusStore';
 
 export default function BackendConnectionBanner() {
     const snap = useSyncExternalStore(
@@ -36,5 +36,26 @@ export default function BackendConnectionBanner() {
     // The visible banner is gone; the auto-reconnect effects above are kept so a
     // backend blip still heals itself silently and never logs anyone out.
     void dismissed; void setDismissed;
+
+    // Plan 060 phase 2: rate-limited IS shown — it's not "backend down", it's
+    // "backend said slow down", and the countdown answers the "why is
+    // everything broken" question the offline banner used to answer.
+    const [countdownText, setCountdownText] = useState<string | null>(null);
+    useEffect(() => {
+        if (snap.state !== 'rate-limited' || snap.retryAt == null) { setCountdownText(null); return; }
+        const retryAt = snap.retryAt;
+        const tick = () => setCountdownText(rateLimitCountdownText(retryAt));
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [snap.state, snap.retryAt]);
+
+    if (snap.state === 'rate-limited' && countdownText != null) {
+        return (
+            <div className="backend-connection-banner" role="status" aria-live="polite">
+                {countdownText}
+            </div>
+        );
+    }
     return null;
 }

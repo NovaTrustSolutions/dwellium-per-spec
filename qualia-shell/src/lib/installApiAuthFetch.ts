@@ -13,9 +13,22 @@
  * path if a caller ever needs the refresh-on-401 behaviour of authFetch.
  */
 import { API_BASE } from '../config';
+import { backendStatusStore } from './backendStatusStore';
 
 const TOKEN_KEY = 'dwellium-auth-token';
 const FLAG = '__dwelliumApiAuthFetch';
+/** Default pause when a 429 arrives with no `Retry-After` header. */
+const DEFAULT_RETRY_AFTER_SEC = 60;
+
+/** Plan 060 phase 2: any `/api/*` 429 — from ANY widget, not just One Save —
+ *  drives the same global banner/pill state as oneSaveClient's 429 handling. */
+function reportIfRateLimited(res: Response): void {
+    if (res.status !== 429) return;
+    const header = res.headers?.get?.('Retry-After');
+    const sec = header != null ? Number(header) : NaN;
+    const retryAfterSec = Number.isFinite(sec) ? sec : DEFAULT_RETRY_AFTER_SEC;
+    backendStatusStore.markRateLimited(Date.now() + retryAfterSec * 1000);
+}
 
 function isApiUrl(input: RequestInfo | URL): boolean {
     const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -41,8 +54,13 @@ export function installApiAuthFetch(): void {
     if (typeof window === 'undefined' || (window as unknown as Record<string, unknown>)[FLAG]) return;
     const orig = window.fetch.bind(window);
     window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        const api = (() => {
+            try { return isApiUrl(input); } catch { return false; }
+        })();
+        const tag = (p: Promise<Response>): Promise<Response> =>
+            api ? p.then((res) => { reportIfRateLimited(res); return res; }) : p;
         try {
-            if (isApiUrl(input)) {
+            if (api) {
                 const token = localStorage.getItem(TOKEN_KEY);
                 // Skip local/offline pseudo-sessions — the backend can't validate them.
                 if (token && !token.startsWith('static-')) {
@@ -51,14 +69,14 @@ export function installApiAuthFetch(): void {
                     );
                     if (!headers.has('Authorization')) {
                         headers.set('Authorization', `Bearer ${token}`);
-                        return orig(input, { ...init, headers });
+                        return tag(orig(input, { ...init, headers }));
                     }
                 }
             }
         } catch {
             /* fall through to the untouched call */
         }
-        return orig(input, init);
+        return tag(orig(input, init));
     };
     (window as unknown as Record<string, unknown>)[FLAG] = true;
 }

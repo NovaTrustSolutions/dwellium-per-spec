@@ -13,18 +13,28 @@
 import { API_BASE } from '../config';
 import { isBackendDownError, BACKEND_DOWN_MESSAGE, friendlyLoadError } from './backendStatus';
 
-export type BackendConnState = 'online' | 'offline' | 'checking';
+export type BackendConnState = 'online' | 'offline' | 'checking' | 'rate-limited';
 
 export interface BackendStatusSnapshot {
     state: BackendConnState;
     message: string | null;
     lastCheckedAt: number | null;
+    /** Epoch ms when the rate limit's Retry-After window opens (only set while 'rate-limited'). */
+    retryAt: number | null;
 }
 
-const ONLINE: BackendStatusSnapshot = { state: 'online', message: null, lastCheckedAt: null };
+const ONLINE: BackendStatusSnapshot = { state: 'online', message: null, lastCheckedAt: null, retryAt: null };
 
 let current: BackendStatusSnapshot = ONLINE;
+// The state to restore to once the rate limit's window opens (whatever the
+// store was showing right before markRateLimited fired).
+let preRateLimitState: BackendStatusSnapshot = ONLINE;
+let rateLimitTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
+
+function clearRateLimitTimer(): void {
+    if (rateLimitTimer) { clearTimeout(rateLimitTimer); rateLimitTimer = null; }
+}
 
 function emit() {
     listeners.forEach((l) => l());
@@ -47,6 +57,12 @@ function authHeader(): Record<string, string> {
  * stays as an instant-retry fallback.
  */
 export const AUTO_CONNECT_DELAYS_MS = [0, 2000, 5000, 10000, 20000] as const;
+
+/** Shared "N s left" countdown text (banner + SyncStatusPill both use it). */
+export function rateLimitCountdownText(retryAt: number): string {
+    const secondsLeft = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
+    return `Too many requests — retrying in ${secondsLeft}s`;
+}
 /** Delay before auto-attempt N (0-based); null once the schedule is exhausted. */
 export function autoConnectDelay(attempt: number): number | null {
     return attempt >= 0 && attempt < AUTO_CONNECT_DELAYS_MS.length ? AUTO_CONNECT_DELAYS_MS[attempt] : null;
@@ -99,16 +115,47 @@ export const backendStatusStore = {
 
     /** Mark the backend unreachable. NEVER logs anyone out — only surfaces the banner. */
     markOffline(reason?: string | null): void {
+        clearRateLimitTimer();
         const message = friendlyLoadError(reason) || BACKEND_DOWN_MESSAGE;
-        current = { state: 'offline', message, lastCheckedAt: Date.now() };
+        current = { state: 'offline', message, lastCheckedAt: Date.now(), retryAt: null };
         emit();
     },
 
     /** Mark the backend reachable again — clears the banner. */
     markOnline(): void {
         stopAuto(); // reconnected (or forced online) → cancel any pending auto-retry
+        clearRateLimitTimer();
         if (current.state === 'online' && current.message === null) return;
-        current = { state: 'online', message: null, lastCheckedAt: Date.now() };
+        current = { state: 'online', message: null, lastCheckedAt: Date.now(), retryAt: null };
+        emit();
+    },
+
+    /**
+     * Mark the shared bucket as rate-limited (plan 060 phase 2). `retryAt` is
+     * an epoch-ms timestamp — when it passes, the store auto-clears back to
+     * whatever state it showed right before (a single timer; re-arms on every
+     * call so a fresh 429 during the pause just extends it).
+     */
+    markRateLimited(retryAt: number): void {
+        if (current.state !== 'rate-limited') preRateLimitState = current;
+        clearRateLimitTimer();
+        current = { state: 'rate-limited', message: null, lastCheckedAt: Date.now(), retryAt };
+        emit();
+        const delay = Math.max(0, retryAt - Date.now());
+        rateLimitTimer = setTimeout(() => {
+            rateLimitTimer = null;
+            if (current.state !== 'rate-limited') return; // already changed (e.g. markOffline)
+            current = preRateLimitState;
+            emit();
+        }, delay);
+    },
+
+    /** The bucket answered a call successfully before `retryAt`: drop the countdown now
+     *  so the banner never keeps counting while sync has already resumed. */
+    clearRateLimited(): void {
+        if (current.state !== 'rate-limited') return;
+        clearRateLimitTimer();
+        current = preRateLimitState;
         emit();
     },
 
@@ -125,7 +172,7 @@ export const backendStatusStore = {
      * Returns true if the backend is reachable.
      */
     async checkConnection(): Promise<boolean> {
-        current = { state: 'checking', message: current.message, lastCheckedAt: current.lastCheckedAt };
+        current = { state: 'checking', message: current.message, lastCheckedAt: current.lastCheckedAt, retryAt: null };
         emit();
         try {
             await fetch(`${API_BASE}/api/auth/me`, { method: 'GET', headers: authHeader() });
@@ -153,7 +200,9 @@ export const backendStatusStore = {
     /** Test escape-hatch — reset to the initial online state. */
     reset(): void {
         stopAuto();
+        clearRateLimitTimer();
         current = ONLINE;
+        preRateLimitState = ONLINE;
         emit();
     },
 };

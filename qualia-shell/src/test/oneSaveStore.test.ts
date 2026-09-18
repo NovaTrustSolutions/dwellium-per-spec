@@ -12,6 +12,12 @@ vi.mock('../lib/oneSaveClient', () => ({
         get: vi.fn(),
         put: vi.fn(),
         remove: vi.fn(),
+        // Default: every pre-existing test in this file exercises the per-id
+        // `put()` fallback path unchanged — 'unsupported' latches oneSaveStore's
+        // batchUnsupported flag on first flush, same as an old backend. Tests
+        // for the batch path itself override this per-test (see "batched
+        // write-through" below) and reset the flag via syncStatusStore.reset().
+        putBatch: vi.fn().mockResolvedValue('unsupported'),
     },
 }));
 
@@ -93,8 +99,10 @@ describe('oneSaveStore write-through retry', () => {
         const markOffline = vi.spyOn(backendStatusStore, 'markOffline');
 
         // 429-shaped failure: put resolves null AND the rate-limit store reports limited.
+        // retryAt is already in the past (-1s) so this test exercises the EXISTING
+        // 059 mid-attempt break, not the phase-1 pre-schedule pause (covered below).
         vi.mocked(oneSaveClient.put).mockResolvedValue(null);
-        markRateLimited();
+        markRateLimited(-1);
 
         const store = withSync(
             createLocalStorageStore<string>({
@@ -200,6 +208,81 @@ describe('oneSaveStore write-through retry', () => {
             .mocked(oneSaveClient.put)
             .mock.calls.some(([obj]) => obj.ownerId === 'account-b' || obj.id.includes('account-b'));
         expect(targetedB).toBe(false);
+    });
+
+    // Plan 060 phase 1 — honor Retry-After: pause ALL sync until the window opens.
+    it('holds the write until the Retry-After window opens (no put before retryAt)', async () => {
+        const holder: { current: string | null } = { current: 'account-a' };
+        const resolveKey = () => `race-test:${holder.current ?? '_anonymous'}`;
+
+        vi.mocked(oneSaveClient.put).mockResolvedValue(savedObject('race-test_account-a', 'account-a', 'v'));
+        markRateLimited(30); // retryAt = now + 30s
+
+        const store = withSync(
+            createLocalStorageStore<string>({
+                key: resolveKey,
+                deserializer: (raw) => raw ?? '',
+                defaultValue: '',
+            }),
+            { objectType: 'race-test', holder, resolveKey, debounceMs: 10 },
+        );
+
+        store.set('v', () => localStorage.setItem(resolveKey(), 'v'));
+        // Normal debounce (10ms) elapses — the pause must still be holding it.
+        await vi.advanceTimersByTimeAsync(10);
+        expect(oneSaveClient.put).not.toHaveBeenCalled();
+
+        // The rest of the 30s window elapses — now it flushes.
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(1);
+    });
+
+    it('coalesces writes issued during the pause into a single flush', async () => {
+        const holder: { current: string | null } = { current: 'account-a' };
+        const resolveKey = () => `race-test:${holder.current ?? '_anonymous'}`;
+
+        vi.mocked(oneSaveClient.put).mockResolvedValue(savedObject('race-test_account-a', 'account-a', 'v2'));
+        markRateLimited(30);
+
+        const store = withSync(
+            createLocalStorageStore<string>({
+                key: resolveKey,
+                deserializer: (raw) => raw ?? '',
+                defaultValue: '',
+            }),
+            { objectType: 'race-test', holder, resolveKey, debounceMs: 10 },
+        );
+
+        store.set('v1', () => localStorage.setItem(resolveKey(), 'v1'));
+        await vi.advanceTimersByTimeAsync(15_000);
+        store.set('v2', () => localStorage.setItem(resolveKey(), 'v2')); // re-arms the same timer
+
+        await vi.advanceTimersByTimeAsync(30_000);
+
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(1);
+        expect(oneSaveClient.put).toHaveBeenCalledWith(expect.objectContaining({ payload: 'v2' }));
+    });
+
+    it('retryAt already in the past behaves like normal debounce', async () => {
+        const holder: { current: string | null } = { current: 'account-a' };
+        const resolveKey = () => `race-test:${holder.current ?? '_anonymous'}`;
+
+        vi.mocked(oneSaveClient.put).mockResolvedValue(savedObject('race-test_account-a', 'account-a', 'v'));
+        syncRateLimitStore.reset(); // limited: false, retryAt: null → normal debounceMs path
+
+        const store = withSync(
+            createLocalStorageStore<string>({
+                key: resolveKey,
+                deserializer: (raw) => raw ?? '',
+                defaultValue: '',
+            }),
+            { objectType: 'race-test', holder, resolveKey, debounceMs: 10 },
+        );
+
+        store.set('v', () => localStorage.setItem(resolveKey(), 'v'));
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -378,5 +461,165 @@ describe('oneSaveStore bootstrap isolation', () => {
         vi.mocked(oneSaveClient.get).mockResolvedValue(savedObject('race_user-1', 'user-1', 'fresh remote'));
         await store.hydrate();
         expect(store.getSnapshot()).toBe('fresh remote');
+    });
+});
+
+// Plan 060 phase 4 — module-level flush queue: many stores' debounced writes
+// coalesce into one oneSaveClient.putBatch call instead of one PUT each.
+describe('oneSaveStore batched write-through', () => {
+    function makeBatchStore(objectType: string, ownerId = 'account-a') {
+        const holder: { current: string | null } = { current: ownerId };
+        const resolveKey = () => `${objectType}:${holder.current ?? '_anonymous'}`;
+        const store = withSync(
+            createLocalStorageStore<string>({
+                key: resolveKey,
+                deserializer: (raw) => raw ?? '',
+                defaultValue: '',
+            }),
+            { objectType, holder, resolveKey, debounceMs: 10 },
+        );
+        return { store, holder, resolveKey };
+    }
+
+    beforeEach(async () => {
+        vi.useFakeTimers();
+        vi.mocked(oneSaveClient.put).mockReset();
+        vi.mocked(oneSaveClient.get).mockReset();
+        vi.mocked(oneSaveClient.putBatch).mockReset();
+        syncRateLimitStore.reset();
+        backendStatusStore.reset();
+        syncStatusStore.reset(); // clears the flush queue + batchUnsupported flag
+        // Reset the shared currentUserId so newly-registered stores below don't
+        // get late-registration-catch-up'd onto a previous test's bootstrap user
+        // (see the "bootstrap isolation" describe above — same pattern).
+        await oneSaveSync.bootstrap(null);
+    });
+
+    afterEach(() => {
+        syncStatusStore.reset();
+        backendStatusStore.reset();
+        vi.useRealTimers();
+    });
+
+    it('a set() that lands while putBatch is in flight is sent in the next flush, not dropped', async () => {
+        let release!: (v: { saved: string[]; failed: [] }) => void;
+        vi.mocked(oneSaveClient.putBatch)
+            .mockImplementationOnce(() => new Promise((r) => { release = r; }))
+            .mockResolvedValueOnce({ saved: ['batch-a_account-a'], failed: [] });
+        const a = makeBatchStore('batch-a');
+
+        a.store.set('v1', () => localStorage.setItem(a.resolveKey(), 'v1'));
+        await vi.advanceTimersByTimeAsync(10); // flush #1 starts, awaiting the network
+        expect(oneSaveClient.putBatch).toHaveBeenCalledTimes(1);
+
+        a.store.set('v2', () => localStorage.setItem(a.resolveKey(), 'v2')); // newer value, same id
+        release({ saved: ['batch-a_account-a'], failed: [] });
+        await vi.advanceTimersByTimeAsync(1000); // flush #1 settles; re-arm fires flush #2
+
+        expect(oneSaveClient.putBatch).toHaveBeenCalledTimes(2);
+        const second = vi.mocked(oneSaveClient.putBatch).mock.calls[1][0];
+        expect(second.map((o) => o.payload)).toEqual(['v2']);
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+    });
+
+    it('three stores set within the debounce window ⇒ one putBatch call with three objects', async () => {
+        vi.mocked(oneSaveClient.putBatch).mockResolvedValue({
+            saved: ['batch-a_account-a', 'batch-b_account-a', 'batch-c_account-a'],
+            failed: [],
+        });
+
+        const a = makeBatchStore('batch-a');
+        const b = makeBatchStore('batch-b');
+        const c = makeBatchStore('batch-c');
+
+        a.store.set('va', () => localStorage.setItem(a.resolveKey(), 'va'));
+        b.store.set('vb', () => localStorage.setItem(b.resolveKey(), 'vb'));
+        c.store.set('vc', () => localStorage.setItem(c.resolveKey(), 'vc'));
+
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.putBatch).toHaveBeenCalledTimes(1);
+        expect(oneSaveClient.put).not.toHaveBeenCalled();
+        const objects = vi.mocked(oneSaveClient.putBatch).mock.calls[0][0];
+        expect(objects).toHaveLength(3);
+        expect(objects.map((o) => o.payload).sort()).toEqual(['va', 'vb', 'vc']);
+
+        // Each store's own bookkeeping updated from the shared batch result.
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+        expect(syncStatusStore.getSnapshot().lastSavedAt).toBeTypeOf('number');
+    });
+
+    it('putBatch reporting "unsupported" (404, old backend) ⇒ falls back to three puts', async () => {
+        vi.mocked(oneSaveClient.putBatch).mockResolvedValue('unsupported');
+        vi.mocked(oneSaveClient.put).mockImplementation(async (obj) =>
+            savedObject(obj.id, obj.ownerId, obj.payload),
+        );
+
+        const a = makeBatchStore('batch-d');
+        const b = makeBatchStore('batch-e');
+        const c = makeBatchStore('batch-f');
+
+        a.store.set('va', () => localStorage.setItem(a.resolveKey(), 'va'));
+        b.store.set('vb', () => localStorage.setItem(b.resolveKey(), 'vb'));
+        c.store.set('vc', () => localStorage.setItem(c.resolveKey(), 'vc'));
+
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.putBatch).toHaveBeenCalledTimes(1);
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(3);
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+    });
+
+    it('account switch mid-window drops the switched store from the batch', async () => {
+        vi.mocked(oneSaveClient.putBatch).mockResolvedValue({
+            saved: ['batch-g_account-a'],
+            failed: [],
+        });
+
+        const a = makeBatchStore('batch-g');
+        const b = makeBatchStore('batch-h');
+
+        a.store.set('va', () => localStorage.setItem(a.resolveKey(), 'va'));
+        b.store.set('vb', () => localStorage.setItem(b.resolveKey(), 'vb'));
+        b.holder.current = 'account-b'; // switched before the flush fires
+
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.putBatch).toHaveBeenCalledTimes(1);
+        const objects = vi.mocked(oneSaveClient.putBatch).mock.calls[0][0];
+        expect(objects).toHaveLength(1);
+        expect(objects[0].id).toBe('batch-g_account-a');
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+    });
+
+    it('a 207 with one failed id parks only that store, other stores are saved', async () => {
+        vi.mocked(oneSaveClient.putBatch).mockResolvedValue({
+            saved: ['batch-i_account-a'],
+            failed: [{ id: 'batch-j_account-a', error: 'owner mismatch' }],
+        });
+
+        const a = makeBatchStore('batch-i');
+        const b = makeBatchStore('batch-j');
+
+        a.store.set('va', () => localStorage.setItem(a.resolveKey(), 'va'));
+        b.store.set('vb', () => localStorage.setItem(b.resolveKey(), 'vb'));
+
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.putBatch).toHaveBeenCalledTimes(1);
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+
+        // Reconnect replay only re-schedules the failed store (batch-j), not batch-i.
+        // (state is already 'online' — a 207 partial failure never flips the
+        // global banner — so force a transition for markOnline's listener to fire.)
+        vi.mocked(oneSaveClient.putBatch).mockResolvedValue({ saved: ['batch-j_account-a'], failed: [] });
+        backendStatusStore.markOffline('x');
+        backendStatusStore.markOnline();
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.putBatch).toHaveBeenCalledTimes(2);
+        const replayed = vi.mocked(oneSaveClient.putBatch).mock.calls[1][0];
+        expect(replayed).toHaveLength(1);
+        expect(replayed[0].id).toBe('batch-j_account-a');
     });
 });

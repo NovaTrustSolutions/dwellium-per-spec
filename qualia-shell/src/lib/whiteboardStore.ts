@@ -373,6 +373,29 @@ async function persistScene(boardId: string, scene: WhiteboardScene): Promise<vo
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSave: { boardId: string; scene: WhiteboardScene } | null = null;
 
+/**
+ * Cheap per-board content fingerprint (plan 060 phase 3): every element's
+ * id:version plus the file keys. Excalidraw bumps an element's `version` on
+ * every real edit and a new element gets a new id, so the key changes iff the
+ * scene actually changed — without hashing element geometry.
+ */
+function sceneContentKey(scene: WhiteboardScene): string {
+    // Per-element id:version (sorted) — Excalidraw versions are per element, so
+    // "delete the newest, draw another" must not collide with the old key.
+    const els = scene.elements
+        .map((el) => {
+            const e = el as { id?: unknown; version?: unknown } | null;
+            return `${String(e?.id ?? '')}:${typeof e?.version === 'number' ? e.version : 0}`;
+        })
+        .sort()
+        .join(',');
+    const files = Object.keys(scene.files).sort().join(',');
+    return `${els}|${files}`;
+}
+
+/** Last persisted content key per board (plan 060 phase 3 skip check). */
+const lastPersistedKey = new Map<string, string>();
+
 /** Debounced persist — trailing edge only (one write per idle period). */
 export function saveSceneDebounced(boardId: string, scene: WhiteboardScene): void {
     if (saveTimer !== null) clearTimeout(saveTimer);
@@ -381,7 +404,16 @@ export function saveSceneDebounced(boardId: string, scene: WhiteboardScene): voi
         saveTimer = null;
         const p = pendingSave;
         pendingSave = null;
-        if (p) void persistScene(p.boardId, p.scene);
+        if (!p) return;
+        const key = sceneContentKey(p.scene);
+        // No key yet this session (fresh mount) → compare against what is
+        // already stored, so Excalidraw's init-time onChange never re-PUTs an
+        // unchanged board.
+        const storedScene = getWhiteboardDoc().boards[p.boardId]?.scene;
+        const known = lastPersistedKey.get(p.boardId) ?? (storedScene ? sceneContentKey(storedScene) : undefined);
+        if (known === key) return;
+        lastPersistedKey.set(p.boardId, key);
+        void persistScene(p.boardId, p.scene);
     }, WHITEBOARD_SAVE_DEBOUNCE_MS);
 }
 
@@ -434,4 +466,5 @@ export function resetWhiteboard(): void {
     cancelPendingSave();
     whiteboardNoticeStore.reset();
     whiteboardStore.reset();
+    lastPersistedKey.clear();
 }

@@ -28,7 +28,7 @@ interface PhotoSubject { id: string; name: string; address?: string | null; meta
 // Session memory: one 503 means every property is unconfigured until reload.
 let unconfiguredForSession = false;
 // One in-flight/settled request per property, shared by card + row + hero.
-const streetCache = new Map<string, Promise<{ status: number; blob?: Blob; headers?: Headers }>>();
+const streetCache = new Map<string, Promise<{ status: number; blob?: Blob; headers?: Headers; body?: string }>>();
 
 /** Test hook — forget session state between tests. */
 export function __resetPropertyPhotoCache(): void { unconfiguredForSession = false; streetCache.clear(); }
@@ -71,7 +71,10 @@ export function PropertyPhoto({ property, variant }: { property: PhotoSubject; v
             if (r.status === 200 && r.blob) {
                 objectUrl = URL.createObjectURL(r.blob);
                 setLoaded({ state: 'image', url: objectUrl, source: 'street', copyright: headerText(r.headers, 'X-Photo-Copyright'), date: headerText(r.headers, 'X-Photo-Date') });
-            } else if (r.status === 503) {
+            } else if (r.status === 503 || (r.status === 404 && !/imagery/i.test(r.body ?? ''))) {
+                // 503 = backend has no key. A 404 WITHOUT the backend's "no imagery" wording is
+                // the route itself missing (backend not yet deployed) — also "not configured",
+                // never a "No street photo" claim about the address.
                 unconfiguredForSession = true;
                 setLoaded({ state: 'unconfigured' });
             } else if (r.status === 404) {

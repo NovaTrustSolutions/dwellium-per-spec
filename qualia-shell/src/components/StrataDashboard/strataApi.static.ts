@@ -1448,7 +1448,7 @@ export function strataGet<T>(path: string, params?: Record<string, string>): Pro
 }
 // Static mode has no photo proxy: answer like an unconfigured backend (503) so
 // PropertyPhoto renders nothing rather than a fake picture.
-export async function strataGetBlob(_path: string): Promise<{ status: number; blob?: Blob; headers?: Headers }> {
+export async function strataGetBlob(_path: string): Promise<{ status: number; blob?: Blob; headers?: Headers; body?: string }> {
     return { status: 503 };
 }
 export function strataPost<T>(path: string, body: unknown): Promise<T> {

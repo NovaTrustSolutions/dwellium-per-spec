@@ -83,6 +83,27 @@ describe('backendStatusStore', () => {
         expect(backendStatusStore.getSnapshot().state).toBe('online');
     });
 
+    it('markRateLimited sets rate-limited + retryAt, then auto-clears back to online once it passes', async () => {
+        const retryAt = Date.now() + 100;
+        backendStatusStore.markRateLimited(retryAt);
+        expect(backendStatusStore.getSnapshot()).toMatchObject({ state: 'rate-limited', retryAt });
+
+        await vi.waitFor(() => {
+            expect(backendStatusStore.getSnapshot().state).toBe('online');
+        }, { timeout: 2000 });
+    });
+
+    it('markRateLimited auto-clears back to offline (not online) if it was offline first', async () => {
+        backendStatusStore.markOffline('Failed to fetch');
+        const retryAt = Date.now() + 100;
+        backendStatusStore.markRateLimited(retryAt);
+        expect(backendStatusStore.getSnapshot().state).toBe('rate-limited');
+
+        await vi.waitFor(() => {
+            expect(backendStatusStore.getSnapshot().state).toBe('offline');
+        }, { timeout: 2000 });
+    });
+
     it('auto-connect reconnects on its own when the backend answers — no manual click', async () => {
         (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 401 });
         backendStatusStore.markOffline('Failed to fetch');
@@ -91,5 +112,13 @@ describe('backendStatusStore', () => {
             expect(backendStatusStore.getSnapshot().state).toBe('online');
         });
         expect(globalThis.fetch).toHaveBeenCalled();
+    });
+    it('clearRateLimited() restores the prior state before retryAt (a successful call reopened the bucket)', () => {
+        backendStatusStore.reset();
+        backendStatusStore.markRateLimited(Date.now() + 60_000);
+        expect(backendStatusStore.getSnapshot().state).toBe('rate-limited');
+        backendStatusStore.clearRateLimited();
+        expect(backendStatusStore.getSnapshot().state).toBe('online');
+        expect(backendStatusStore.getSnapshot().retryAt).toBeNull();
     });
 });

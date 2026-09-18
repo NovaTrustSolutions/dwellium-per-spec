@@ -56,7 +56,7 @@ const DEFAULT_SPLIT_RATIO = 0.5;
 const PINNED_COMPONENTS = new Set(PINNED_WIDGETS.map(p => p.component));
 
 /** Footer connectivity pill copy (plan 045 §A1) — keyed by backendStatusStore state. */
-const STATUS_LABEL = { online: 'Live', checking: 'Reconnecting…', offline: 'Offline' } as const;
+const STATUS_LABEL = { online: 'Live', checking: 'Reconnecting…', offline: 'Offline', 'rate-limited': 'Rate limited' } as const;
 
 // ============================================
 // SSR-SAFE EXTERNAL STORES (Phase-8+ Task 8.10 PROVIDER-SSR-REMEDIATION)

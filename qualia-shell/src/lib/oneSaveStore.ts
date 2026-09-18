@@ -138,9 +138,132 @@ export const syncStatusStore = {
         pending.clear();
         failed.clear();
         lastSavedAt = null;
+        flushQueue.clear();
+        batchUnsupported = false;
+        if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
         emitSync();
     },
 };
+
+/* ---------- module-level flush queue (plan 060 phase 4) ----------
+ * Every synced store's `scheduleWriteThrough` used to arm its OWN debounce
+ * timer and PUT its own object. A page load with N stores setting within the
+ * same debounce window fired N separate PUTs. Instead: every schedule enqueues
+ * `{objectType, ownerId, payload}` here (last write wins per id, via Map.set)
+ * and arms ONE shared timer; the flush tries `oneSaveClient.putBatch` once for
+ * every queued id, falling back to per-id `put()` the first time a backend
+ * answers 404 ("unsupported" — see oneSaveClient.putBatch doc). The 3-attempt
+ * backoff + "never retry a 429" rule (059/060 phase 1) now apply to the WHOLE
+ * flush, not per id. */
+interface FlushEntry {
+    objectType: string;
+    scheduledOwnerId: string;
+    payload: unknown;
+    /** Live owner getter — re-checked at flush time (account-switch guard). */
+    ownerId: () => string;
+    onSaved: () => void;
+    onFailed: () => void;
+}
+
+const flushQueue = new Map<string, FlushEntry>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+// Remembered for the session once a putBatch call reports 404 ("unsupported"):
+// an old backend without the batch route. Reset by syncStatusStore.reset() (tests only).
+let batchUnsupported = false;
+
+function armFlush(delay: number): void {
+    // ponytail: last-requested delay wins — every registered store shares the
+    // 800 ms default. A deadline-aware timer was tried and reverted: stale
+    // handles across clock swaps are worse than an occasional early flush.
+    if (flushTimer) clearTimeout(flushTimer);
+    flushTimer = setTimeout(() => { flushTimer = null; void runFlush(); }, delay);
+}
+
+/** Drop queued entries whose owner has switched since they were scheduled. */
+function dropSwitchedOwners(): void {
+    for (const [id, entry] of [...flushQueue.entries()]) {
+        if (entry.ownerId() !== entry.scheduledOwnerId) {
+            flushQueue.delete(id);
+            pending.delete(id);
+            emitSync();
+        }
+    }
+}
+
+async function runFlush(): Promise<void> {
+    // Entries enqueued while a flush is awaiting the network stay in
+    // flushQueue (settle() only resolves the exact entry that was sent) and
+    // are picked up by the re-arm below. Overlapping flushes can re-send an
+    // identical entry — an idempotent upsert, so harmless.
+    try {
+        await runFlushOnce();
+    } finally {
+        if (flushQueue.size > 0 && !flushTimer) armFlush(WRITE_THROUGH_BACKOFF_MS);
+    }
+}
+
+/** Resolve `id` only if the entry we SENT is still the one queued; a newer
+ *  set() for the same id during the await must stay queued for the next flush. */
+function settle(sent: Map<string, FlushEntry>, id: string, ok: boolean): void {
+    const cur = flushQueue.get(id);
+    const was = sent.get(id);
+    if (!was || cur !== was) return;
+    if (ok) was.onSaved(); else was.onFailed();
+    flushQueue.delete(id);
+}
+
+async function runFlushOnce(): Promise<void> {
+    dropSwitchedOwners();
+    if (flushQueue.size === 0) return;
+
+    for (let attempt = 0; attempt < WRITE_THROUGH_MAX_ATTEMPTS; attempt++) {
+        dropSwitchedOwners();
+        if (flushQueue.size === 0) return;
+
+        if (!batchUnsupported && typeof oneSaveClient.putBatch !== 'function') {
+            // A test double (or a hypothetically older client shape) without
+            // putBatch at all — same "no batch route" signal as a 404.
+            batchUnsupported = true;
+        }
+        if (!batchUnsupported) {
+            const sent = new Map(flushQueue);
+            const objects = [...sent.entries()].map(([id, e]) => ({ id, type: e.objectType, ownerId: e.scheduledOwnerId, payload: e.payload }));
+            const result = await oneSaveClient.putBatch(objects);
+            if (result === 'unsupported') {
+                batchUnsupported = true; // fall through to per-id puts below, same attempt
+            } else if (result && typeof result === 'object' && Array.isArray(result.saved) && Array.isArray(result.failed)) {
+                for (const id of result.saved) settle(sent, id, true);
+                for (const f of result.failed) settle(sent, f.id, false);
+                return; // backend answered definitively (200/207) — nothing to retry
+            }
+            // result === null: whole-batch failure (offline/429) — retry/backoff below
+        }
+
+        if (batchUnsupported) {
+            const sent = new Map(flushQueue);
+            await Promise.all([...sent.entries()].map(async ([id, e]) => {
+                const saved = await oneSaveClient.put({ id, type: e.objectType, ownerId: e.scheduledOwnerId, payload: e.payload });
+                if (saved) settle(sent, id, true);
+            }));
+            if (flushQueue.size === 0) return;
+        }
+
+        // A 429 means WE are the excess load — retrying only adds to the
+        // shared bucket. Stop after this attempt (059 rule, now batch-wide).
+        if (syncRateLimitStore.getSnapshot().limited) break;
+        if (attempt < WRITE_THROUGH_MAX_ATTEMPTS - 1) {
+            await new Promise((resolve) => setTimeout(resolve, WRITE_THROUGH_BACKOFF_MS * (attempt + 1)));
+        }
+    }
+
+    // Exhausted: whatever's left is a persistent failure this flush.
+    if (flushQueue.size > 0) {
+        const remaining = [...flushQueue.values()];
+        flushQueue.clear();
+        remaining.forEach((e) => e.onFailed());
+        backendStatusStore.markOffline('One Save write failed');
+    }
+}
 
 // Reconnect replay — makes "Offline — will retry" true. Each parked closure
 // checks its original owner before re-scheduling, so a switched account never
@@ -165,7 +288,6 @@ function makeSynced<T>(
     setOwner: (userId: string | null) => void,
 ): SyncedStore<T> {
     const objectId = (): string => `${objectType}_${ownerId()}`;
-    let timer: ReturnType<typeof setTimeout> | null = null;
     // Set by the most recent hydrate() this session; lets migrate() skip its
     // own existence-check GET when hydrate() (bulk-fed or its own GET) already
     // answered "does this object exist remotely?" — halves the request count
@@ -178,59 +300,39 @@ function makeSynced<T>(
 
     function scheduleWriteThrough(value: T): void {
         if (!ONE_SAVE_ENABLED) return;
-        if (timer) clearTimeout(timer);
         const scheduledOwnerId = ownerId();
         const scheduledObjectId = objectId();
         pending.add(scheduledObjectId);
         emitSync();
-        timer = setTimeout(async () => {
-            timer = null;
-            // Never let an account switch redirect a pending private write into
-            // the next user's namespace.
-            if (ownerId() !== scheduledOwnerId) { pending.delete(scheduledObjectId); emitSync(); return; }
-            // Retry on transient failure with bounded backoff. `put` resolves to
-            // the saved object on success, `null` on failure (no throw); a
-            // dropped write is no longer silently lost.
-            for (let attempt = 0; attempt < WRITE_THROUGH_MAX_ATTEMPTS; attempt++) {
-                // Guard before EVERY attempt: if the account switched during the
-                // prior backoff, drop the retry — never re-issue the prior user's
-                // write after a switch.
-                if (ownerId() !== scheduledOwnerId) { pending.delete(scheduledObjectId); emitSync(); return; }
-                const saved = await oneSaveClient.put({
-                    id: scheduledObjectId,
-                    type: objectType,
-                    ownerId: scheduledOwnerId,
-                    payload: value,
-                });
-                if (saved) { // persisted — done
-                    pending.delete(scheduledObjectId);
-                    failed.delete(scheduledObjectId);
-                    lastSavedAt = Date.now();
-                    emitSync();
-                    return;
-                }
-                // A 429 means WE are the excess load on the shared bucket —
-                // retrying only adds more requests to it. Stop after this one
-                // attempt and fall through to the parked-replay path below.
-                if (syncRateLimitStore.getSnapshot().limited) break;
-                // Last attempt failed → don't sleep, fall through to surface it.
-                if (attempt < WRITE_THROUGH_MAX_ATTEMPTS - 1) {
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, WRITE_THROUGH_BACKOFF_MS * (attempt + 1)),
-                    );
-                }
-            }
-            // All attempts failed: park a replay for reconnect and surface the
-            // persistent failure via the global banner instead of silently
-            // dropping the durable write.
-            pending.delete(scheduledObjectId);
-            // Replay only while the SAME owner is still active — scheduleWriteThrough
-            // re-captures ownerId() at call time, so without this guard a switched
-            // account would inherit the previous user's payload.
-            failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId) scheduleWriteThrough(value); });
-            emitSync();
-            backendStatusStore.markOffline('One Save write failed');
-        }, debounceMs);
+        // Plan 060 phase 1: while the backend's Retry-After window hasn't opened
+        // yet, arm the SHARED flush timer for the remaining pause instead of the
+        // normal debounce — writes issued during the pause just keep re-arming
+        // it (armFlush), so they coalesce into one flush right when it opens.
+        const { retryAt } = syncRateLimitStore.getSnapshot();
+        const delay = retryAt != null && retryAt > Date.now() ? retryAt - Date.now() : debounceMs;
+        // Last-write-wins per id via Map.set (a second set() before the flush
+        // just replaces this entry — same coalescing as the old per-store timer).
+        flushQueue.set(scheduledObjectId, {
+            objectType,
+            scheduledOwnerId,
+            payload: value,
+            ownerId,
+            onSaved: () => {
+                pending.delete(scheduledObjectId);
+                failed.delete(scheduledObjectId);
+                lastSavedAt = Date.now();
+                emitSync();
+            },
+            onFailed: () => {
+                pending.delete(scheduledObjectId);
+                // Replay only while the SAME owner is still active — scheduleWriteThrough
+                // re-captures ownerId() at call time, so without this guard a switched
+                // account would inherit the previous user's payload.
+                failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId) scheduleWriteThrough(value); });
+                emitSync();
+            },
+        });
+        armFlush(delay);
     }
 
     const store: SyncedStore<T> = {

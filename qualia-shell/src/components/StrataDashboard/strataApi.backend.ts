@@ -15,6 +15,7 @@
  */
 
 import { getAuthToken } from '../../context/UserContext';
+import { classifyBackendFailure, failureNote } from '../../lib/backendFailure';
 
 const API_BASE = '/api/dwellium';
 
@@ -45,7 +46,7 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || `API error ${res.status}`);
+        throw new Error(err.error || failureNote(classifyBackendFailure(res.status).reason));
     }
 
     return res.json();
@@ -82,7 +83,7 @@ export async function strataUpload<T>(path: string, formData: FormData): Promise
     const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || `API error ${res.status}`);
+        throw new Error(err.error || failureNote(classifyBackendFailure(res.status).reason));
     }
     return res.json();
 }

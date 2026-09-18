@@ -1,7 +1,8 @@
 /**
  * CalendarModule — Scheduling & events view with Apple/Google Calendar integration
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { backendStatusStore } from '../../../lib/backendStatusStore';
 import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
 import {
     CalendarDays, RefreshCw, ChevronLeft, ChevronRight, Clock,
@@ -76,6 +77,12 @@ export default function CalendarModule() {
     const [tab, setTab] = useState<Tab>('calendar');
     const [gcalStatus, setGcalStatus] = useState<CalendarStatus | null>(null);
     const [gcalLoading, setGcalLoading] = useState(false);
+    const backendStatus = useSyncExternalStore(
+        backendStatusStore.subscribe,
+        backendStatusStore.getSnapshot,
+        backendStatusStore.getServerSnapshot,
+    );
+    const isRateLimited = backendStatus.state === 'rate-limited';
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -363,8 +370,10 @@ export default function CalendarModule() {
                     </div>
                 </div>
 
-            ) : loading ? (
+            ) : loading || (error && isRateLimited) ? (
                 /* ═══════ CALENDAR TAB — LOADING ═══════ */
+                /* Plan 060 phase 2: a rate-limited failure looks like "still
+                 * loading", not "broken" — the banner already explains why. */
                 <LoadingState message="Loading calendar…" />
             ) : error ? (
                 <ErrorState message={error} onRetry={fetchEvents} />

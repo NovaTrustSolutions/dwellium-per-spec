@@ -396,3 +396,17 @@ Append at the TOP of the LOG (newest first), next ID up, same shape:
   points at. Never start/stop his services (launchd, tunnel) as a diagnostic step without
   a yes. If the same symptom survives two hypotheses, stop and ask what URL/flow works for
   him instead of a third investigation. 🧪 + ETA on every message — not optional.
+
+## 2026-09-17 — 40 minutes of e2e "regressions" that were another session's dev server (plan 058)
+
+- **What happened:** the Playwright suite on the plan-058 branch showed 57 failures vs the 41
+  baseline, and even `main` failed the same specs. Three hypotheses later (One Save, `.env`, the
+  HalocronOS intro) the cause was `playwright.config.ts` `reuseExistingServer: !CI`: since 16:21 a
+  dev server from the MAIN checkout (`…/Dwellium -Per Spec/qualia-shell`, another Claude session,
+  different branch, One Save on) held :5173, so every run tested THAT app, not the worktree.
+- **Root cause:** `reuseExistingServer` + a hardcoded port means "whatever is on :5173 wins", silently.
+- **Fix:** an untracked `playwright.port5199.config.ts` (imports the base config, swaps port +
+  `npm run dev -- --port 5199 --strictPort` + baseURL). 11/11 on the isolated port immediately.
+- **Prevention:** before ANY e2e run, `lsof -nP -iTCP:5173 -sTCP:LISTEN` and print the owner's cwd;
+  if it is not the worktree under test, use the port override. Never compare branch vs baseline
+  unless both ran against servers you started yourself.

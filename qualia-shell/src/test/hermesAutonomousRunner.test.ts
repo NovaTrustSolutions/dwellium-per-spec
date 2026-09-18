@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runNextHermesTask } from '../services/hermesAutonomousRunner';
 import { DEFAULT_PERSONAS } from '../lib/agents/personas';
+import { RECALL_HEADING } from '../lib/memoryGraphRag/recall';
 
 const labyrinth = DEFAULT_PERSONAS.find(p => p.id === 'hermes-labyrinth')!;
 
@@ -70,5 +71,76 @@ describe('runNextHermesTask', () => {
             claim: () => null,
             orchestratorDeps: { invoke: vi.fn(async () => null) },
         })).toBeNull();
+    });
+
+    it('appends the recall block to the persona system prompt when recall finds something', async () => {
+        const runPersonaFn = vi.fn(async ({ persona }: any) => ({
+            personaId: persona.id,
+            personaName: persona.name,
+            tasks: [],
+            output: 'ok',
+            verified: 'ok',
+            supported: true,
+        }));
+
+        await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({
+                personaId: labyrinth.id,
+                task: { id: 'task-3', title: 'Check the boiler', status: 'running', assignedBy: 'user', createdAt: 1 },
+            }),
+            orchestratorDeps: { invoke: vi.fn(async () => 'unused') },
+            wikiContext: () => '',
+            personaMemory: () => '',
+            recall: async () => `${RECALL_HEADING}\n[M1] Acme Heating serviced the boiler.`,
+            runPersonaFn: runPersonaFn as any,
+        });
+
+        const prompt = runPersonaFn.mock.calls[0][0].persona.systemPrompt;
+        expect(prompt).toContain(RECALL_HEADING);
+        expect(prompt).toContain('Acme Heating');
+    });
+
+    it('leaves the persona system prompt unchanged when recall is absent or empty', async () => {
+        const runPersonaFn = vi.fn(async ({ persona }: any) => ({
+            personaId: persona.id,
+            personaName: persona.name,
+            tasks: [],
+            output: 'ok',
+            verified: 'ok',
+            supported: true,
+        }));
+
+        await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({
+                personaId: labyrinth.id,
+                task: { id: 'task-4', title: 'No memory here', status: 'running', assignedBy: 'user', createdAt: 1 },
+            }),
+            orchestratorDeps: { invoke: vi.fn(async () => 'unused') },
+            wikiContext: () => '',
+            personaMemory: () => '',
+            runPersonaFn: runPersonaFn as any,
+        });
+
+        const promptWithoutDep = runPersonaFn.mock.calls[0][0].persona.systemPrompt;
+        expect(promptWithoutDep).not.toContain(RECALL_HEADING);
+
+        runPersonaFn.mockClear();
+        await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({
+                personaId: labyrinth.id,
+                task: { id: 'task-5', title: 'No memory here', status: 'running', assignedBy: 'user', createdAt: 1 },
+            }),
+            orchestratorDeps: { invoke: vi.fn(async () => 'unused') },
+            wikiContext: () => '',
+            personaMemory: () => '',
+            recall: async () => '',
+            runPersonaFn: runPersonaFn as any,
+        });
+
+        const promptWithEmptyRecall = runPersonaFn.mock.calls[0][0].persona.systemPrompt;
+        expect(promptWithEmptyRecall).toBe(promptWithoutDep);
     });
 });

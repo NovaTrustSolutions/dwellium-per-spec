@@ -13,7 +13,24 @@ vi.mock('../components/AvatarHarness/AvatarHarness', () => ({
     ),
 }));
 
+// Inactive by default so the pre-existing tests below keep exercising the
+// backend `/api/stella/chat` path unchanged; the CMN-recall tests flip this
+// to an active provider before rendering.
+let mockLlmBundle: any = { active: null };
+vi.mock('../hooks/useIntegrations', () => ({
+    useIntegrations: () => ({ integrations: { llm: mockLlmBundle } }),
+}));
+
+const callLlm = vi.fn(async (..._args: unknown[]) => ({ text: 'LLM reply' }));
+vi.mock('../lib/llmClient', async (orig) => ({
+    ...(await orig<object>()),
+    callLlm: (...args: unknown[]) => callLlm(...args),
+}));
+
 import StellaAgent from '../components/StellaAgent/StellaAgent';
+import { UserContext } from '../context/UserContext';
+import { getCmn, resetCmnForTests } from '../lib/memoryGraphRag/shared';
+import { RECALL_HEADING } from '../lib/memoryGraphRag/recall';
 
 const mockFetch = vi.fn();
 const origFetch = globalThis.fetch;
@@ -30,6 +47,9 @@ describe('StellaAgent', () => {
         globalThis.fetch = mockFetch;
         mockFetch.mockReset();
         localStorage.clear();
+        mockLlmBundle = { active: null };
+        callLlm.mockClear();
+        resetCmnForTests();
 
         // Auto-init on mount (POST /api/stella/init + GET /api/stella/status)
         mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
@@ -293,5 +313,56 @@ describe('StellaAgent', () => {
         // Toggling again unmounts it.
         await user.click(screen.getByLabelText('Hide avatar'));
         expect(screen.queryByTestId('mock-avatar-harness')).not.toBeInTheDocument();
+    });
+
+    it('injects Cognitive Memory Network recall into the LLM-first system prompt when memory exists (plan 058)', async () => {
+        const user = userEvent.setup();
+        await getCmn('andy').ingest(
+            [{ sourceId: 'note:1', sourceKind: 'upload', title: 'Boiler', text: 'Acme Heating serviced the boiler at Maple Street and recommends a new valve.' }],
+            'test',
+        );
+        mockLlmBundle = { active: 'anthropic', anthropic: { enabled: true, apiKey: 'test-key' } };
+
+        render(
+            <UserContext.Provider value={{ user: { id: 'andy' } } as never}>
+                <StellaAgent />
+            </UserContext.Provider>,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText(/Stella Online/)).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Ask Stella anything…');
+        await user.type(input, 'Who serviced the boiler?');
+        await user.click(screen.getByTitle('Send'));
+
+        await waitFor(() => expect(callLlm).toHaveBeenCalled());
+        const { systemPrompt } = callLlm.mock.calls[0][0] as { systemPrompt: string };
+        expect(systemPrompt).toContain(RECALL_HEADING);
+        expect(systemPrompt).toContain('Acme Heating');
+    });
+
+    it('leaves the LLM-first system prompt unchanged when the network has no memory (plan 058)', async () => {
+        const user = userEvent.setup();
+        mockLlmBundle = { active: 'anthropic', anthropic: { enabled: true, apiKey: 'test-key' } };
+
+        render(
+            <UserContext.Provider value={{ user: { id: 'lisa' } } as never}>
+                <StellaAgent />
+            </UserContext.Provider>,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText(/Stella Online/)).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Ask Stella anything…');
+        await user.type(input, 'Hello');
+        await user.click(screen.getByTitle('Send'));
+
+        await waitFor(() => expect(callLlm).toHaveBeenCalled());
+        const { systemPrompt } = callLlm.mock.calls[0][0] as { systemPrompt: string };
+        expect(systemPrompt).not.toContain(RECALL_HEADING);
     });
 });

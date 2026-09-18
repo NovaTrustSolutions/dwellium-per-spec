@@ -76,6 +76,7 @@ import { renderSafeMarkdown, sanitizeSvg } from '../../utils/safeMarkdown';
 import { getAuthToken, UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { recallContext, withRecall } from '../../lib/memoryGraphRag/recall';
 import { logActivity } from '../../lib/activityLogStore';
 import { TTS_VOICE_CATALOG, HUMANIZE_PREFIX, speakText } from '../../lib/ttsVoices';
 import { stellaPrefsStore } from '../../lib/stellaPrefsStore';
@@ -753,8 +754,9 @@ export default function StellaAgent() {
         // Stella backend is offline. Falls through to backend on LLM error.
         if (llmReady) {
             try {
+                const memory = await recallContext(userIdForDreams, text);
                 const llmRes = await callLlm({
-                    systemPrompt: `You are Stella, a helpful personal AI assistant inside the Dwellium property-management app. Be concise, direct, and useful. Help with tasks, research, file management, and general questions. Use Markdown for formatting when appropriate.`,
+                    systemPrompt: withRecall(`You are Stella, a helpful personal AI assistant inside the Dwellium property-management app. Be concise, direct, and useful. Help with tasks, research, file management, and general questions. Use Markdown for formatting when appropriate.`, memory),
                     prompt: humanizeEnabled ? HUMANIZE_PREFIX + text : text,
                     maxTokens: 1024,
                     temperature: 0.4,

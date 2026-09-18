@@ -38,6 +38,7 @@ import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPas
 import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
 import { classifyForEscalation, looksLikeActionRequest, runAraEscalation } from './araEscalation';
+import { recallContext, withRecall } from '../../lib/memoryGraphRag/recall';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -1273,8 +1274,9 @@ export default function ARAConsole() {
             if (hasActiveLlm(integrations.llm)) {
                 let streamedId: string | null = null;
                 try {
+                    const memory = await recallContext(user?.id ?? null, text);
                     const llmReq = {
-                        systemPrompt:
+                        systemPrompt: withRecall(
                             `You are ARA, the human-feeling chief-of-staff inside the Dwellium property-management app, ` +
                             `currently operating in "${modeToUse}" mode${jurisdictionToUse ? ` (jurisdiction: ${jurisdictionToUse})` : ''}. ` +
                             `Speak like a warm, sharp colleague: contractions, short sentences, no corporate jargon, ` +
@@ -1282,6 +1284,8 @@ export default function ARAConsole() {
                             `The ARA backend is offline, so deep context retrieval is unavailable — answer from general knowledge, ` +
                             `be concise and direct, and note when a question would need live property data. Use Markdown when helpful.` +
                             (hermesHints ? `\n\n${hermesHints}` : ''),
+                            memory
+                        ),
                         prompt: humanizeEnabled ? HUMANIZE_PREFIX + text : text,
                         maxTokens: 1024,
                         temperature: 0.4,

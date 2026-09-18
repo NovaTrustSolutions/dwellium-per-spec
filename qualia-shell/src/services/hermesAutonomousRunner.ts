@@ -10,6 +10,7 @@ import { useContext, useEffect, useRef } from 'react';
 import { UserContext } from '../context/UserContext';
 import { useIntegrations } from '../hooks/useIntegrations';
 import { callLlm, applyModelPreference, hasActiveLlm } from '../lib/llmClient';
+import { recallContext, withRecall } from '../lib/memoryGraphRag/recall';
 import {
     agentLabUserIdHolder,
     agentTeamsStore,
@@ -59,6 +60,7 @@ export interface RunNextHermesTaskDeps {
     remember?: (personaId: string, summary: string, durationMs: number, outcome: 'success' | 'fail') => void;
     wikiContext?: () => string;
     personaMemory?: (personaId: string) => string;
+    recall?: (query: string) => Promise<string>;
     runPersonaFn?: typeof runPersona;
     now?: () => number;
 }
@@ -92,13 +94,15 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
 
     const sharedMemory = deps.wikiContext?.() ?? buildWikiContext();
     const workingMemory = deps.personaMemory?.(persona.id) ?? formatMemory(persona.id);
+    const composedPrompt =
+        `${persona.systemPrompt}${workingMemory}\n\n` +
+        `## Shared Hermes memory\n${sharedMemory}\n\n` +
+        'You are running unattended. Finish the assigned task as far as the available tools and context allow. ' +
+        'End with a concise completion report: result, evidence, blockers, and next action.';
+    const memory = deps.recall ? await deps.recall(claim.task.title) : '';
     const augmented: Persona = {
         ...persona,
-        systemPrompt:
-            `${persona.systemPrompt}${workingMemory}\n\n` +
-            `## Shared Hermes memory\n${sharedMemory}\n\n` +
-            'You are running unattended. Finish the assigned task as far as the available tools and context allow. ' +
-            'End with a concise completion report: result, evidence, blockers, and next action.',
+        systemPrompt: withRecall(composedPrompt, memory),
     };
 
     try {
@@ -177,6 +181,7 @@ export function useHermesAutonomousRunner(): void {
                 await runNextHermesTask({
                     personas: agentTeamsStore.getSnapshot().personas,
                     orchestratorDeps,
+                    recall: q => recallContext(uid, q),
                 });
             } finally {
                 runningRef.current = false;

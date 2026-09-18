@@ -64,6 +64,8 @@ import { resetAraGlance } from '../lib/araDailyGlance';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 import { sessionRestoreStore, type SessionSnapshot } from '../lib/sessionRestoreStore';
 import { resetResumeChip } from '../components/ARAConsole/araResumeContext';
+import { getCmn, resetCmnForTests } from '../lib/memoryGraphRag/shared';
+import { RECALL_HEADING } from '../lib/memoryGraphRag/recall';
 
 async function* offlineStream() {
     yield { delta: 'Offline ', text: 'Offline ', done: false };
@@ -105,6 +107,7 @@ describe('ARAConsole', () => {
         resetAraGlance();
         resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
         localStorage.clear();
+        resetCmnForTests(); // plan 058 — Cognitive Memory Network per-user singleton
         araPrefsStore.set('ttsEnabled', false);
         Element.prototype.scrollIntoView = vi.fn();
         Object.defineProperty(window, 'speechSynthesis', {
@@ -470,6 +473,50 @@ describe('ARAConsole', () => {
         expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
         expect(callLlmMock).toHaveBeenCalledTimes(1);
         expect(streamLlmMock).not.toHaveBeenCalled();
+    });
+
+    // ── plan 058: Cognitive Memory Network recall folded into the offline
+    // LLM fallback's systemPrompt (recall.ts contract) ────────────────────
+    describe('Cognitive Memory Network recall (plan 058)', () => {
+        it('includes the recall block in the offline systemPrompt when the network has relevant memory', async () => {
+            await getCmn(null).ingest([
+                { sourceId: 'note:1', sourceKind: 'upload', title: 'Boiler', text: 'Acme Heating serviced the boiler at Maple Street and recommends a new valve.' },
+            ], 'test');
+            araPrefsStore.set('streamTokens', false);
+            chatShouldThrow = true;
+            llmActive = true;
+            callLlmMock.mockResolvedValue({ text: 'Offline LLM reply.', provider: 'anthropic', model: 'claude' });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+
+            const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            await user.type(textbox, 'Who serviced the boiler?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+            expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
+            expect(callLlmMock).toHaveBeenCalledTimes(1);
+            const [llmReq] = callLlmMock.mock.calls[0];
+            expect(llmReq.systemPrompt).toContain(RECALL_HEADING);
+            expect(llmReq.systemPrompt).toContain('Acme Heating');
+        });
+
+        it('leaves the offline systemPrompt without a recall block when no memory was seeded', async () => {
+            araPrefsStore.set('streamTokens', false);
+            chatShouldThrow = true;
+            llmActive = true;
+            callLlmMock.mockResolvedValue({ text: 'Offline LLM reply.', provider: 'anthropic', model: 'claude' });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+
+            const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+            await user.type(textbox, 'What should I do next?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+            expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
+            expect(callLlmMock).toHaveBeenCalledTimes(1);
+            const [llmReq] = callLlmMock.mock.calls[0];
+            expect(llmReq.systemPrompt).not.toContain(RECALL_HEADING);
+        });
     });
 
     // ── 046-A1: starter prompts ──────────────────────────────────────────

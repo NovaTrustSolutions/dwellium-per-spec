@@ -49,45 +49,31 @@ so anything that is user data and NOT snapshotted needs its own durable root.
   for Scribe/file roots; snapshot tests unchanged.
 - Gate: `npx tsc --noEmit -p . && npx jest --runInBand --forceExit` (full suite; 555 tests today).
 
-## Phase 2 — seed a snapshot from a COPY of the live DB — Ilya runs gcloud, agent runs the script
+## Phase 2 — seed snapshots — DONE 2026-09-19 (verified)
 
-**Why this changed (2026-09-19 00:32–01:35 UTC-4, verified in Cloud Logging):** the first attempt
-(deploy `00063`/`00064` with `ENABLE_SNAPSHOTS=true`) started the scheduler
-(`[Snapshot] Enabled → /mnt/snapshots every 5 min`) but produced nothing in an hour and logged no
-`Wrote`/`Failed`. The deploy script's deploy-then-update sequence ran two revisions against the same
-SQLite file on gcsfuse; the mount logged `stale file handle … dwellium.db was modified or deleted by
-another process`, `00063`'s final snapshot died with `SqliteError: disk I/O error`, and `00064`'s
-`db.backup()` appears stalled with the in-flight guard never clearing. **The online backup API cannot
-read a live DB off gcsfuse.** Fixes on the branch: a 2-minute watchdog on `snapshotNow` (loud
-`[Snapshot] Timed out …`, slot released) + a `[Snapshot] Starting` line, and
-`src/scripts/buildSnapshotFromCopy.ts`, which builds a normal `snapshot-<ts>.sqlite` from a plain copy.
-
-1. **Copy the runtime data off the bucket, read-only** (Ilya; only files the snapshot format covers —
-   NOT `scribe/`, `lancedb/`, `georgia-code/`):
-   ```bash
-   mkdir -p ~/dwellium-seed/data && cd ~/dwellium-seed/data && B=gs://my-project-57391aion-ethos-api-dwellium-runtime/data && gcloud storage cp "$B/dwellium.db" . && gcloud storage cp -r "$B/objects" "$B/events" "$B/security" . && (gcloud storage cp "$B/notebooklm-settings.json" "$B/automation-schedules.json" . 2>/dev/null; true) && ls -la
-   ```
-   Do it at a quiet moment: a copy taken mid-write can be torn; the script's `quick_check` catches that
-   and the answer is simply to copy again.
-2. **Build + verify the snapshot locally** (agent, no gcloud):
-   `cd ~/dwellium-backend/ai-dashboard369-file-manager && npx ts-node src/scripts/buildSnapshotFromCopy.ts ~/dwellium-seed/data ~/dwellium-seed/out`
-   — prints bytes, table count, state-file count, `google_oauth_accounts` rows, `quick_check`. Agent then
-   cross-checks with `sqlite3`: the Google account row(s) for `andy@dwellium.com`, the One Save object
-   count vs the bucket listing, and `data/security/domain-encryption-keys.json` present.
-3. **Upload the seed** (Ilya): `gcloud storage cp ~/dwellium-seed/out/snapshot-*.sqlite gs://my-project-57391aion-ethos-api-dwellium-snapshots/`
-4. **Redeploy the branch with the watchdog** (Ilya, `ENABLE_SNAPSHOTS=true`, data dir still on the
-   mount). Expected within 2 min of each tick: `[Snapshot] Starting …` then either `Wrote` (fine) or
-   `Timed out` (expected while the DB is on gcsfuse — harmless, the seed already exists, and Phase 3
-   moves the DB where backups work). Any periodic `Wrote` that appears is a bonus, newer seed.
-5. **Gate for Phase 3:** the seed object is in the bucket, `quick_check = ok`, real rows, state files
-   counted. The ≤1-minute cutover window in Phase 3 now becomes "changes since the seed copy" — so do
-   steps 1–3 and Phase 3 back-to-back at the quiet hour, with the copy taken last.
+- Snapshots bucket created + `roles/storage.objectAdmin` granted; deployed with `ENABLE_SNAPSHOTS=true`
+  (data dir still on the mount). Periodic snapshots have run every 5 min since 00:38 EDT:
+  `[Snapshot] Wrote snapshot-<ts>.sqlite (341,700,608 bytes, 147 state files)`; bucket keeps 3.
+- Watchdog revision `00068` verified: `Starting` 01:09:58 → `Wrote` 01:10:24 (26 s).
+- Two findings while verifying:
+  1. The deploy script's deploy-then-update sequence runs two revisions against the same SQLite file for
+     ~30 s; on gcsfuse the outgoing revision's SIGTERM snapshot then fails (`disk I/O error`, seen 3×).
+     Harmless once the DB is on local disk (each instance has its own). Until then the 5-minute periodic
+     snapshot is the seed, not the SIGTERM one.
+  2. `events/whiteboard_<uid>.ndjson` is **283 MB** — every whiteboard save appended the full board to
+     One Save history; that is 280 of the 341 MB. Fixed on the branch: `ONE_SAVE_EVENTS_DIR` keeps history
+     on the durable mount, snapshots leave it out, restore skips it. Restore payload → ~46 MB.
+     The seed copy procedure (buildSnapshotFromCopy) is kept as a tool but was NOT needed.
+- Phase 4 addition: cap the payload stored per history event (e.g. 256 KB; store size + `payloadOmitted`
+  for larger) after checking what the TimeTravel widget renders for an omitted payload.
 
 ## Phase 3 — cutover: data dir to local disk — Ilya runs gcloud, quiet hour
 
-1. Set `DWELLIUM_SNAPSHOT_INTERVAL_MIN=1` (services update) and wait 2 min so the newest snapshot is
-   ≤1 min old.
-2. Deploy with `SNAPSHOT_CUTOVER=1`: data dir → `/var/dwellium-local/data` (Cloud Run's in-memory
+0. Branch must carry the events-dir commit (`git log --oneline -1` shows `feat(persistence): ONE_SAVE_EVENTS_DIR …` or later).
+1. Tighten the seed window (the outgoing revision's SIGTERM snapshot fails on gcsfuse — see Phase 2 —
+   so the periodic one is the seed): `gcloud run services update dwellium-backend --project my-project-57391aion-ethos-api --region us-central1 --update-env-vars DWELLIUM_SNAPSHOT_INTERVAL_MIN=1`,
+   then wait until a `[Snapshot] Wrote` line ≤1 min old appears.
+2. Deploy with `ENABLE_SNAPSHOTS=true SNAPSHOT_CUTOVER=1 DWELLIUM_SNAPSHOT_INTERVAL_MIN=1 bash deploy/cloud-run.sh`: data dir → `/var/dwellium-local/data` (Cloud Run's in-memory
    writable layer; 45 MB DB + One Save files, well inside 2 GiB; `journal_mode` stays DELETE per
    `database.ts`, which is correct on local disk too — no gcsfuse in the write path any more).
 3. New revision boots: `[Snapshot] Restored snapshot-<ts>.sqlite (… bytes, N state files) into

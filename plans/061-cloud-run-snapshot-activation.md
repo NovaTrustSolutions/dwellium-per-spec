@@ -69,27 +69,41 @@ so anything that is user data and NOT snapshotted needs its own durable root.
 - Phase 4 addition: cap the payload stored per history event (e.g. 256 KB; store size + `payloadOmitted`
   for larger) after checking what the TimeTravel widget renders for an omitted payload.
 
-## Phase 3 — cutover: data dir to local disk — Ilya runs gcloud, quiet hour
+## Phase 3 — cutover — ATTEMPT 1 FAILED SAFELY 2026-09-19 02:25 EDT; retry procedure below
 
-0. Branch must carry the events-dir commit (`git log --oneline -1` shows `feat(persistence): ONE_SAVE_EVENTS_DIR …` or later).
-1. Tighten the seed window (the outgoing revision's SIGTERM snapshot fails on gcsfuse — see Phase 2 —
-   so the periodic one is the seed): `gcloud run services update dwellium-backend --project my-project-57391aion-ethos-api --region us-central1 --update-env-vars DWELLIUM_SNAPSHOT_INTERVAL_MIN=1`,
-   then wait until a `[Snapshot] Wrote` line ≤1 min old appears.
-2. Deploy with `ENABLE_SNAPSHOTS=true SNAPSHOT_CUTOVER=1 DWELLIUM_SNAPSHOT_INTERVAL_MIN=1 bash deploy/cloud-run.sh`: data dir → `/var/dwellium-local/data` (Cloud Run's in-memory
-   writable layer; 45 MB DB + One Save files, well inside 2 GiB; `journal_mode` stays DELETE per
-   `database.ts`, which is correct on local disk too — no gcsfuse in the write path any more).
-3. New revision boots: `[Snapshot] Restored snapshot-<ts>.sqlite (… bytes, N state files) into
-   /var/dwellium-local/data`. Old revision gets SIGTERM → final snapshot.
-   Known window (doc "Deploy ordering"): writes in the ≤1 min between the restored snapshot and the
-   traffic switch land only in the old revision's final snapshot, which is never restored (the new
-   revision's own later snapshots are newer). Accepted for one quiet-hour cutover; state it in the log.
-4. Verify (agent, no gcloud): Netlify `/api/auth/me` 200 for Andy; Google link still present
-   (`/api/google/accounts` 200 with the account); One Save hydrate returns the same object ids as before
-   (compare `/api/objects?owner=…&limit=500` count); Scribe file list unchanged; then a 5-minute watch of
-   the logs shows **zero** `OutOfOrderError` and `[Snapshot] Wrote …` lines every minute; set interval
-   back to 5.
-5. The old `data/dwellium.db` on the runtime bucket is left in place (never deleted — data-protection
-   rule); note in the runbook that it is now a frozen copy from the cutover time.
+**What happened:** revision `00072-8pm` (SNAPSHOT_CUTOVER=1) refused to boot — the newest snapshot
+failed `quick_check` (`*** in database main ***`); Cloud Run retried 3× (three different 1-minute
+snapshots, all failing) and kept 100% traffic on `00071`. No data moved, nothing lost.
+**Diagnosis (local, on a downloaded snapshot):** `integrity_check` = `database disk image is malformed`,
+pages 8193+ "never used"; every table reads fine EXCEPT `design_history` (Design-agent SVGs). `.recover`
+produces a DB with `integrity_check: ok`, all tables identical except `design_history` = 0 rows.
+So the corruption is orphaned pages + one broken b-tree — the signature of lost journal writes on gcsfuse
+(the OutOfOrderError storm), not a torn copy. Whether the LIVE file has it too: check `live.sqlite`
+(download step below) — expected yes, since `db.backup()` copies pages verbatim.
+**Shipped for the retry:** `ec7abd4` (quick_check before publish; restore falls back newest→oldest and
+only fails when none is usable) + `src/scripts/repairAndSeed.sh` (`.recover` → integrity ok → row-count
+diff → seed rebuilt with the input's 74 state files via buildSnapshotFromCopy).
+
+**Decision (Ilya):** accept that `design_history` (generated floor-plan/design SVGs) restores empty.
+
+**Retry sequence (quiet hour; Ilya runs gcloud, agent runs the local script):**
+0. `gcloud storage cp gs://…-dwellium-runtime/data/dwellium.db ~/dwellium-seed/live.sqlite` → agent runs
+   `integrity_check` on it (informational: confirms the source is damaged; if it is NOT, seed from it instead).
+1. **Stop the old writer + its rotation** (it publishes a malformed snapshot every minute and rotation
+   would delete the uploaded seed within 3 minutes — KEEP=3):
+   `gcloud run services update dwellium-backend --project my-project-57391aion-ethos-api --region us-central1 --remove-env-vars DWELLIUM_SNAPSHOT_DIR`
+   (new revision, data dir still on the mount, snapshots off; harmless).
+2. Download the newest snapshot again (freshest data) → agent: `bash src/scripts/repairAndSeed.sh ~/dwellium-seed/latest.sqlite ~/dwellium-seed/out`
+   → prints integrity ok, the `design_history` DIFF line only, `googleAccounts: 1`.
+3. Upload the seed: `gcloud storage cp ~/dwellium-seed/out/snapshot-*.sqlite gs://my-project-57391aion-ethos-api-dwellium-snapshots/`
+   (its timestamp name is newer than the auto ones, so restore picks it first; fallback covers the rest).
+4. Cutover deploy from `ec7abd4`+: `ENABLE_SNAPSHOTS=true SNAPSHOT_CUTOVER=1 DWELLIUM_SNAPSHOT_INTERVAL_MIN=5 bash deploy/cloud-run.sh`
+   (the env file re-adds DWELLIUM_SNAPSHOT_DIR). Expected boot log: `[Snapshot] Restored snapshot-<seed> (… bytes, 74 state files) into /var/dwellium-local/data`.
+5. Verify (agent): Andy's session, Google link, One Save object count (74 objects on the mount vs
+   `/api/objects?owner=…&limit=500`), Scribe files, Properties; five-minute watch: zero `OutOfOrderError`,
+   `[Snapshot] Wrote` lines with the new revision (now verified before publish).
+Accepted loss window: writes between the snapshot used in step 2 and the traffic switch in step 4
+(≈ build time, 8–12 min) — do it when nobody is working in the app. Events history is untouched (mount).
 
 ## Phase 4 — guardrails (backend, small)
 

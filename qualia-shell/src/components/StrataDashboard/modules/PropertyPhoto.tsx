@@ -31,7 +31,7 @@ let unconfiguredForSession = false;
 const streetCache = new Map<string, Promise<{ status: number; blob?: Blob; headers?: Headers }>>();
 
 /** Test hook — forget session state between tests. */
-export function __resetPropertyPhotoCache(): void { unconfiguredForSession = false; streetCache.clear(); }
+export function __resetPropertyPhotoCache(): void { unconfiguredForSession = false; probe = null; streetCache.clear(); }
 
 /** The backend URL-encodes these headers (they carry "©"); tolerate a plain value too. */
 function headerText(headers: Headers | undefined, name: string): string | null {
@@ -47,10 +47,24 @@ function uploadedPhoto(p: PhotoSubject): { dataUrl: string; name?: string } | nu
     return first ? { dataUrl: first.dataUrl, name: first.name } : null;
 }
 
+// The first request of the session is the probe: every later card waits for
+// it before asking, so 50 cards mounting at once cost one request — not 50 —
+// when the backend answers 503 (unconfigured).
+let probe: Promise<unknown> | null = null;
+
 function fetchStreet(id: string) {
     let p = streetCache.get(id);
     if (!p) {
-        p = strataGetBlob(`/properties/${encodeURIComponent(id)}/street-photo`).catch(() => ({ status: 0 }));
+        p = (async () => {
+            if (unconfiguredForSession) return { status: 503 };
+            if (probe) {
+                await probe;
+                if (unconfiguredForSession) return { status: 503 };
+            }
+            const req = strataGetBlob(`/properties/${encodeURIComponent(id)}/street-photo`).catch(() => ({ status: 0 }));
+            if (!probe) probe = req.then((r) => { if (r.status === 503) unconfiguredForSession = true; });
+            return req;
+        })();
         streetCache.set(id, p);
     }
     return p;

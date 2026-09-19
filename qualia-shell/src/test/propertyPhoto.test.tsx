@@ -56,6 +56,22 @@ describe('PropertyPhoto', () => {
         expect(blobMock).toHaveBeenCalledTimes(1);
     });
 
+    it('50 cards mounting at once against an unconfigured backend cost ONE request, not 50', async () => {
+        blobMock.mockResolvedValue({ status: 503 });
+        const cards = Array.from({ length: 50 }, (_, i) => prop({ id: `p${i}`, name: `Property ${i}` }));
+        const { container } = render(<>{cards.map((c) => <PropertyPhoto key={c.id} property={c} variant="card" />)}</>);
+        await waitFor(() => expect(container.innerHTML).toBe(''));
+        expect(blobMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a 200 probe does not block the other cards from fetching their own photo', async () => {
+        blobMock.mockResolvedValue({ status: 200, blob: new Blob(['x']), headers: new Headers() });
+        const cards = Array.from({ length: 3 }, (_, i) => prop({ id: `p${i}`, name: `Property ${i}` }));
+        render(<>{cards.map((c) => <PropertyPhoto key={c.id} property={c} variant="card" />)}</>);
+        await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(3));
+        expect(blobMock).toHaveBeenCalledTimes(3);
+    });
+
     it('one request per property is shared between the card, row and hero', async () => {
         blobMock.mockResolvedValue({ status: 200, blob: new Blob(['x'], { type: 'image/jpeg' }), headers: new Headers() });
         render(<><PropertyPhoto property={prop()} variant="card" /><PropertyPhoto property={prop()} variant="row" /><PropertyPhoto property={prop()} variant="hero" /></>);

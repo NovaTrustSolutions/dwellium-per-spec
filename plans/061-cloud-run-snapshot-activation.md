@@ -49,21 +49,39 @@ so anything that is user data and NOT snapshotted needs its own durable root.
   for Scribe/file roots; snapshot tests unchanged.
 - Gate: `npx tsc --noEmit -p . && npx jest --runInBand --forceExit` (full suite; 555 tests today).
 
-## Phase 2 — seed snapshots from the live DB (no data-dir move yet) — Ilya runs gcloud
+## Phase 2 — seed a snapshot from a COPY of the live DB — Ilya runs gcloud, agent runs the script
 
-Goal: a valid `snapshot-*.sqlite` of the CURRENT production data exists before anything moves.
+**Why this changed (2026-09-19 00:32–01:35 UTC-4, verified in Cloud Logging):** the first attempt
+(deploy `00063`/`00064` with `ENABLE_SNAPSHOTS=true`) started the scheduler
+(`[Snapshot] Enabled → /mnt/snapshots every 5 min`) but produced nothing in an hour and logged no
+`Wrote`/`Failed`. The deploy script's deploy-then-update sequence ran two revisions against the same
+SQLite file on gcsfuse; the mount logged `stale file handle … dwellium.db was modified or deleted by
+another process`, `00063`'s final snapshot died with `SqliteError: disk I/O error`, and `00064`'s
+`db.backup()` appears stalled with the in-flight guard never clearing. **The online backup API cannot
+read a live DB off gcsfuse.** Fixes on the branch: a 2-minute watchdog on `snapshotNow` (loud
+`[Snapshot] Timed out …`, slot released) + a `[Snapshot] Starting` line, and
+`src/scripts/buildSnapshotFromCopy.ts`, which builds a normal `snapshot-<ts>.sqlite` from a plain copy.
 
-1. Create the snapshots bucket + grant the runtime service account Storage Object Admin on it
-   (doc §1–2; `472241012306-compute@developer.gserviceaccount.com`).
-2. Deploy Phase-1 code with `SNAPSHOT_CUTOVER` unset: data dir stays `/var/dwellium/data`, but the
-   script now mounts the snapshots bucket at `/mnt/snapshots` and sets `DWELLIUM_SNAPSHOT_DIR` +
-   `DWELLIUM_SNAPSHOT_INTERVAL_MIN=5`. The running revision starts writing snapshots of the mounted DB
-   (`db.backup()` reads are fine on gcsfuse; it is the journal writes that fail).
-3. Verify: log line `[Snapshot] Enabled → /mnt/snapshots every 5 min`; after ≥5 min the bucket holds
-   `snapshot-<ts>.sqlite` (~45 MB); open one locally with `sqlite3` and check
-   `select count(*) from google_oauth_accounts; select count(*) from _snapshot_files;` — the state-file
-   count must include `onesave/objects/*.json` and `data/security/domain-encryption-keys.json`.
-   **Do not proceed until a snapshot with real rows exists.**
+1. **Copy the runtime data off the bucket, read-only** (Ilya; only files the snapshot format covers —
+   NOT `scribe/`, `lancedb/`, `georgia-code/`):
+   ```bash
+   mkdir -p ~/dwellium-seed/data && cd ~/dwellium-seed/data && B=gs://my-project-57391aion-ethos-api-dwellium-runtime/data && gcloud storage cp "$B/dwellium.db" . && gcloud storage cp -r "$B/objects" "$B/events" "$B/security" . && (gcloud storage cp "$B/notebooklm-settings.json" "$B/automation-schedules.json" . 2>/dev/null; true) && ls -la
+   ```
+   Do it at a quiet moment: a copy taken mid-write can be torn; the script's `quick_check` catches that
+   and the answer is simply to copy again.
+2. **Build + verify the snapshot locally** (agent, no gcloud):
+   `cd ~/dwellium-backend/ai-dashboard369-file-manager && npx ts-node src/scripts/buildSnapshotFromCopy.ts ~/dwellium-seed/data ~/dwellium-seed/out`
+   — prints bytes, table count, state-file count, `google_oauth_accounts` rows, `quick_check`. Agent then
+   cross-checks with `sqlite3`: the Google account row(s) for `andy@dwellium.com`, the One Save object
+   count vs the bucket listing, and `data/security/domain-encryption-keys.json` present.
+3. **Upload the seed** (Ilya): `gcloud storage cp ~/dwellium-seed/out/snapshot-*.sqlite gs://my-project-57391aion-ethos-api-dwellium-snapshots/`
+4. **Redeploy the branch with the watchdog** (Ilya, `ENABLE_SNAPSHOTS=true`, data dir still on the
+   mount). Expected within 2 min of each tick: `[Snapshot] Starting …` then either `Wrote` (fine) or
+   `Timed out` (expected while the DB is on gcsfuse — harmless, the seed already exists, and Phase 3
+   moves the DB where backups work). Any periodic `Wrote` that appears is a bonus, newer seed.
+5. **Gate for Phase 3:** the seed object is in the bucket, `quick_check = ok`, real rows, state files
+   counted. The ≤1-minute cutover window in Phase 3 now becomes "changes since the seed copy" — so do
+   steps 1–3 and Phase 3 back-to-back at the quiet hour, with the copy taken last.
 
 ## Phase 3 — cutover: data dir to local disk — Ilya runs gcloud, quiet hour
 

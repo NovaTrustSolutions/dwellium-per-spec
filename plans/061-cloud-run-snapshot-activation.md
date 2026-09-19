@@ -69,7 +69,13 @@ so anything that is user data and NOT snapshotted needs its own durable root.
 - Phase 4 addition: cap the payload stored per history event (e.g. 256 KB; store size + `payloadOmitted`
   for larger) after checking what the TimeTravel widget renders for an omitted payload.
 
-## Phase 3 — cutover — ATTEMPT 1 FAILED SAFELY 2026-09-19 02:25 EDT; retry procedure below
+## Phase 3 — cutover — DONE 2026-09-19 10:07 UTC (revision `00077-qlv`, verified)
+
+**Result:** boot log `[Snapshot] Restored snapshot-2026-09-19T09-56-55-370Z.sqlite (48431104 bytes, 74 state files) into /var/dwellium-local/data` → `[Database] SQLite initialized at /var/dwellium-local/data/dwellium.db (journal_mode=DELETE)` → `[Snapshot] Enabled → /mnt/snapshots every 5 min`. Traffic 100% on `00077-qlv`; `/health` 200; signed-in app: `/api/dwellium/properties` 200 (50 rows), `/api/objects` 200, 0×429; `OutOfOrderError` after the switch: 0 on 00077 (the 36 seen were all from the retired `00075`). `design_history` restored empty (accepted).
+**Incident during the retry (2026-09-19 ~09:30 UTC, ~10 min):** step 1 below was run as `--remove-env-vars` on top of the FAILED `00072` template, which produced `00073` serving an EMPTY local DB (every API call 401). Recovered with `update-traffic --to-revisions 00071`, then the template was repaired with `--update-env-vars DWELLIUM_DATA_DIR=/var/dwellium/data,QUALIA_DATA_DIR=/var/dwellium/data,ONE_SAVE_DATA_DIR=/var/dwellium/data,DWELLIUM_SNAPSHOT_INTERVAL_MIN=60` (`00075`). Rule: never `services update` a service whose latest revision failed to boot — it inherits that template; pin traffic first, then fix env explicitly.
+**Also:** `gcloud run deploy` reports the revision that has traffic, not the one it built — with traffic pinned it printed `00075` while `00076/00077` were Ready; `update-traffic --to-latest` finished the switch.
+
+### Attempt 1 — FAILED SAFELY 2026-09-19 02:25 EDT; retry procedure (as run)
 
 **What happened:** revision `00072-8pm` (SNAPSHOT_CUTOVER=1) refused to boot — the newest snapshot
 failed `quick_check` (`*** in database main ***`); Cloud Run retried 3× (three different 1-minute

@@ -13,8 +13,12 @@ export interface SyncRateLimitSnapshot {
     limited: boolean;
     /** Epoch ms of the most recent 429 (null = never this session). */
     lastLimitedAt: number | null;
+    /** Epoch ms when the backend's `Retry-After` window opens (null = never this session). */
+    retryAt: number | null;
 }
-const RATE_OK: SyncRateLimitSnapshot = { limited: false, lastLimitedAt: null };
+/** Default pause when a 429 arrives with no `Retry-After` header (plan 060 phase 1). */
+const DEFAULT_RETRY_AFTER_SEC = 60;
+const RATE_OK: SyncRateLimitSnapshot = { limited: false, lastLimitedAt: null, retryAt: null };
 let rateState: SyncRateLimitSnapshot = RATE_OK;
 const rateListeners = new Set<() => void>();
 function emitRate(): void {
@@ -31,9 +35,13 @@ export const syncRateLimitStore = {
     reset(): void { rateState = RATE_OK; },
 };
 
-/** Called by oneSaveClient on a 429. */
-export function markRateLimited(): void {
-    rateState = { limited: true, lastLimitedAt: Date.now() };
+/**
+ * Called by oneSaveClient on a 429. `retryAfterSec` is the backend's
+ * `Retry-After` header value (seconds); defaults to 60s when absent.
+ */
+export function markRateLimited(retryAfterSec?: number): void {
+    const sec = retryAfterSec ?? DEFAULT_RETRY_AFTER_SEC;
+    rateState = { limited: true, lastLimitedAt: Date.now(), retryAt: Date.now() + sec * 1000 };
     emitRate();
 }
 

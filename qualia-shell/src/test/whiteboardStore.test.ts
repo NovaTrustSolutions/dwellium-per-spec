@@ -194,6 +194,59 @@ describe('saveSceneDebounced', () => {
         expect(doc.boards[DEFAULT_BOARD_ID].scene.elements).toEqual([{ id: 'a' }]);
         expect(whiteboardNoticeStore.getSnapshot()).toMatchObject({ kind: 'dropped' });
     });
+    it('same scene saved twice ⇒ only the first put persists (plan 060 phase 3)', () => {
+        vi.useFakeTimers();
+        let persists = 0;
+        const unsub = whiteboardStore.subscribe(() => { persists += 1; });
+        const scene = sanitizeScene([{ id: 'a', version: 1 }], {}, {});
+        saveSceneDebounced(DEFAULT_BOARD_ID, scene);
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        expect(persists).toBe(1);
+        // OnChange fires again with the identical scene (no real edit).
+        saveSceneDebounced(DEFAULT_BOARD_ID, sanitizeScene([{ id: 'a', version: 1 }], {}, {}));
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        expect(persists).toBe(1); // skipped — no content-key change
+        unsub();
+    });
+    it('fresh mount: a scene identical to the stored board is never re-put', () => {
+        vi.useFakeTimers();
+        // Board already persisted (from a previous session).
+        saveSceneDebounced(DEFAULT_BOARD_ID, sanitizeScene([{ id: 'a', version: 3 }], {}, {}));
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        // New session: in-memory keys forgotten, localStorage/doc kept.
+        resetWhiteboard(); // clears in-memory caches; localStorage (the stored doc) survives
+        let persists = 0;
+        const unsub = whiteboardStore.subscribe(() => { persists += 1; });
+        // Excalidraw's init-time onChange fires with the unchanged board.
+        saveSceneDebounced(DEFAULT_BOARD_ID, sanitizeScene([{ id: 'a', version: 3 }], {}, {}));
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        expect(persists).toBe(0);
+        unsub();
+    });
+    it('deleting the newest element and drawing another (same count, same version) still persists', () => {
+        vi.useFakeTimers();
+        let persists = 0;
+        const unsub = whiteboardStore.subscribe(() => { persists += 1; });
+        saveSceneDebounced(DEFAULT_BOARD_ID, sanitizeScene([{ id: 'a', version: 1 }], {}, {}));
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        expect(persists).toBe(1);
+        saveSceneDebounced(DEFAULT_BOARD_ID, sanitizeScene([{ id: 'b', version: 1 }], {}, {}));
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        expect(persists).toBe(2);
+        unsub();
+    });
+    it('a bumped element version ⇒ the second put still persists', () => {
+        vi.useFakeTimers();
+        let persists = 0;
+        const unsub = whiteboardStore.subscribe(() => { persists += 1; });
+        saveSceneDebounced(DEFAULT_BOARD_ID, sanitizeScene([{ id: 'a', version: 1 }], {}, {}));
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        expect(persists).toBe(1);
+        saveSceneDebounced(DEFAULT_BOARD_ID, sanitizeScene([{ id: 'a', version: 2 }], {}, {}));
+        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS);
+        expect(persists).toBe(2); // real edit — version bumped
+        unsub();
+    });
 });
 
 describe('boards (plan 053 #5) + library (plan 053 #1)', () => {

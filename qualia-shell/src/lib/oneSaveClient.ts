@@ -20,6 +20,7 @@
 import { getAuthToken } from '../context/UserContext';
 import { API_BASE } from '../config';
 import { sessionHealthStore } from './sessionHealthStore';
+import { backendStatusStore } from './backendStatusStore';
 
 /** Master flag — the spine ships inert until this is `'true'` at build time. */
 export const ONE_SAVE_ENABLED =
@@ -101,12 +102,19 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T 
             // rather than collapsing into the same silent `null` as any other
             // failure — see syncRateLimitStore above.
             if (res.status === 429) {
-                markRateLimited();
+                // `Retry-After` (seconds) tells us when the shared bucket reopens;
+                // guard for a missing/unparsable header (markRateLimited defaults to 60s).
+                const retryAfterHeader = res.headers?.get?.('Retry-After');
+                const retryAfterSec = retryAfterHeader != null ? Number(retryAfterHeader) : undefined;
+                markRateLimited(Number.isFinite(retryAfterSec) ? retryAfterSec : undefined);
+                // Plan 060 phase 2: same 429 also drives the global banner/pill state.
+                const retryAt = syncRateLimitStore.getSnapshot().retryAt;
+                if (retryAt != null) backendStatusStore.markRateLimited(retryAt);
             }
             return null;
         }
         sessionHealthStore.markAuthOk();
-        clearRateLimited(); // recovered
+        clearRateLimited(); backendStatusStore.clearRateLimited(); // recovered
 
         const json: unknown = await res.json();
         if (isEnvelope<T>(json)) return json.data ?? null;
@@ -178,6 +186,69 @@ export const oneSaveClient = {
     },
 
     /**
+     * Bulk upsert (max 50) — one round trip for a page-load's worth of debounced
+     * write-throughs (plan 060 phase 4). Returns:
+     *  - `{ saved, failed }` on 200 (all saved) or 207 (mixed) — per-id outcome.
+     *  - `null` on network failure / disabled flag / non-OK, non-404 status
+     *    (same "not persisted, caller may retry" contract as `put`).
+     *  - the literal string `'unsupported'` when the backend answers 404 —
+     *    an OLD backend without the batch route. This is DISTINCT from `null`:
+     *    it means "never retry this shape", not "retry later". Callers
+     *    (`oneSaveStore`) treat it as a one-time signal to fall back to
+     *    individual `put()` calls for the rest of the session.
+     */
+    async putBatch(objects: DwelliumObjectInput[]): Promise<PutBatchResult | null | 'unsupported'> {
+        if (!ONE_SAVE_ENABLED) return null;
+        try {
+            const headers: Record<string, string> = { 'X-Qualia-API': 'v2', 'Content-Type': 'application/json' };
+            const token = getAuthToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const res = await fetch(`${OBJECTS_API}/batch`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                    objects: objects.map((o) => ({
+                        id: o.id,
+                        type: o.type,
+                        ownerId: o.ownerId,
+                        schema: o.schema ?? 1,
+                        payload: o.payload,
+                    })),
+                }),
+            });
+
+            if (res.status === 404) return 'unsupported';
+            if (!res.ok) {
+                if ((res.status === 401 || res.status === 403) && token && !token.startsWith('static-')) {
+                    sessionHealthStore.markAuthRejected();
+                }
+                if (res.status === 429) {
+                    const retryAfterHeader = res.headers?.get?.('Retry-After');
+                    const retryAfterSec = retryAfterHeader != null ? Number(retryAfterHeader) : undefined;
+                    markRateLimited(Number.isFinite(retryAfterSec) ? retryAfterSec : undefined);
+                    const retryAt = syncRateLimitStore.getSnapshot().retryAt;
+                    if (retryAt != null) backendStatusStore.markRateLimited(retryAt);
+                }
+                return null;
+            }
+            sessionHealthStore.markAuthOk();
+            clearRateLimited(); backendStatusStore.clearRateLimited();
+
+            const json: unknown = await res.json();
+            // The batch route answers `{ success, saved, failed }` at the top level
+            // (not the `{ data }` envelope). Anything else — e.g. a catch-all test
+            // fetch mock, or a proxy page — is not a batch answer: report failure
+            // so the caller retries per-id instead of iterating `undefined`.
+            const body = (isEnvelope<PutBatchResult>(json) ? json.data : json) as Partial<PutBatchResult> | null;
+            if (!body || !Array.isArray(body.saved) || !Array.isArray(body.failed)) return null;
+            return { saved: body.saved, failed: body.failed };
+        } catch {
+            return null;
+        }
+    },
+
+    /**
      * Time-travel (assessment sweep upgrade #7): read an object's append-only
      * event history (`events/*.ndjson` server-side). Returns [] when the
      * backend `/api/objects/:id/history` route isn't present yet — honest
@@ -189,6 +260,12 @@ export const oneSaveClient = {
         return r ?? [];
     },
 };
+
+/** Result of a `putBatch` call that the backend answered (200 or 207). */
+export interface PutBatchResult {
+    saved: string[];
+    failed: { id: string; error: string }[];
+}
 
 /** One append-only event for an object (a version snapshot). */
 export interface ObjectVersion<T = unknown> {

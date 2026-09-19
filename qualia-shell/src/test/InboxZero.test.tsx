@@ -133,6 +133,8 @@ describe('InboxZero', () => {
         // The false-empty guard must NOT fire when items loaded successfully.
         expect(screen.queryByText('Inbox Zero!')).not.toBeInTheDocument();
         expect(screen.queryByText('Couldn’t load inbox')).not.toBeInTheDocument();
+        // Plan 060 §8 — no backend /stream route exists; polling is the only mechanism.
+        expect(authFetch.mock.calls.some(([url]) => String(url).endsWith('/stream'))).toBe(false);
     });
 
     it('tags an email card with its source Gmail account (multi-account)', async () => {

@@ -64,6 +64,8 @@ so anything that is user data and NOT snapshotted needs its own durable root.
      One Save history; that is 280 of the 341 MB. Fixed on the branch: `ONE_SAVE_EVENTS_DIR` keeps history
      on the durable mount, snapshots leave it out, restore skips it. Restore payload → ~46 MB.
      The seed copy procedure (buildSnapshotFromCopy) is kept as a tool but was NOT needed.
+- `ae8f4a8` (events on the durable mount) deployed as `00070-qvp` 01:21 EDT with the data dir still on the
+  mount: first snapshot `45,621,248 bytes, 74 state files` (was 341 MB / 147). Bucket holds it as the seed.
 - Phase 4 addition: cap the payload stored per history event (e.g. 256 KB; store size + `payloadOmitted`
   for larger) after checking what the TimeTravel widget renders for an omitted payload.
 

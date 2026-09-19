@@ -111,7 +111,15 @@ diff → seed rebuilt with the input's 74 state files via buildSnapshotFromCopy)
 Accepted loss window: writes between the snapshot used in step 2 and the traffic switch in step 4
 (≈ build time, 8–12 min) — do it when nobody is working in the app. Events history is untouched (mount).
 
-## Phase 4 — guardrails (backend, small)
+## Phase 4 — guardrails — DONE 2026-09-19 10:36 UTC (revision `00079-7hn`, backend PR NovaTrustSolutions/Dwellium#5)
+
+- `GET /health` → `snapshot: { enabled, dir, lastWroteAt, lastSnapshot, lastError, lastErrorAt }` (live: `enabled: true, dir: /mnt/snapshots`).
+- Cloud Logging metric `dwellium_snapshot_failed` (`[Snapshot] Failed` / `Final snapshot failed` / `Timed out` / `failed quick_check`) → Monitoring policy "dwellium-backend snapshot failed" → email andy@dwellium.com (created with gcloud).
+- `docs/persistent-data-cloud-run.md` rewritten for the live layout + seeding/recovery procedure + gcloud gotchas; `docs/code.md` entry landed with Phase 3.
+- Deploy chain proven end-to-end on this deploy: `00077` wrote 5-min snapshots → SIGTERM final snapshot (10:36:32) → `00079` restored that exact file (10:36:39) → 0 `OutOfOrderError`; Properties/One Save 200 signed in. The "deploy ordering" loss window is now one snapshot interval at worst, in practice the final SIGTERM snapshot.
+- Not done: event payload cap (no evidence it is needed; whiteboard history is on the mount and out of snapshots).
+
+### Original scope
 
 - `/health` reports `snapshot: { enabled, lastWroteAt, lastError }` so the pill/banner path and a curl
   can tell if snapshots stop (a silent snapshot failure = silent data loss on the next deploy).

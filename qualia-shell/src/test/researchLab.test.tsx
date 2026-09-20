@@ -19,7 +19,7 @@ vi.mock('../lib/oneSaveClient', () => ({
 import ResearchLab from '../components/ResearchLab/ResearchLab';
 import { resetGuardSession } from '../lib/researchLlm/guard';
 import { researchKeysUserIdHolder, resetResearchKeys, setResearchKey } from '../lib/researchLlm/researchKeysStore';
-import { researchLogStore, researchLogUserIdHolder, resetResearchLog } from '../lib/researchLlm/researchLogStore';
+import { addLogEntry, researchLogStore, researchLogUserIdHolder, resetResearchLog } from '../lib/researchLlm/researchLogStore';
 import { patchWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 
 const okJson = (content: string, usage = { prompt_tokens: 5, completion_tokens: 7 }) =>
@@ -283,5 +283,34 @@ describe('ResearchLab — honest surfaces (plan 062 phase 2)', () => {
         for (const n of names.slice(0, 4)) fireEvent.click(screen.getByRole('button', { name: n }));
         fireEvent.click(screen.getByRole('button', { name: names[4] }));
         expect(screen.getByRole('alert').textContent).toMatch(/Pick at most 4 providers — deselect one first\./);
+    });
+});
+
+// Plan 062 phase 3 — History keeps the answers it already stores.
+describe('ResearchLab — History keeps its answers (plan 062 phase 3)', () => {
+    it('a logged entry expands via its chevron to show the stored answer text and latency', () => {
+        addLogEntry({
+            prompt: 'compare them',
+            systemPreset: 'blank',
+            responses: [{ providerId: 'groq', model: 'llama-3.3-70b-versatile', text: 'stored answer text', latencyMs: 842 }],
+        });
+        render(<ResearchLab />);
+        fireEvent.click(screen.getByRole('tab', { name: 'History' }));
+        expect(screen.queryByText('stored answer text')).not.toBeInTheDocument(); // collapsed by default
+
+        fireEvent.click(screen.getByRole('button', { name: /Expand log entry/ }));
+        expect(screen.getByText('stored answer text')).toBeInTheDocument();
+        expect(screen.getByText((_, el) => !!el && el.classList.contains('rl-result-head') && /842 ms/.test(el.textContent ?? ''))).toBeInTheDocument();
+    });
+
+    it('Re-run loads the entry\'s prompt + preset into the Playground and switches tabs', () => {
+        addLogEntry({ prompt: 'the old prompt', systemPreset: 'drafter', responses: [{ providerId: 'groq', model: 'm', text: 'x', latencyMs: 5 }] });
+        render(<ResearchLab />);
+        fireEvent.click(screen.getByRole('tab', { name: 'History' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Re-run this prompt' }));
+
+        expect(screen.getByRole('tab', { name: 'Playground' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByLabelText('Research prompt')).toHaveValue('the old prompt');
+        expect(screen.getByLabelText('System preset')).toHaveValue('drafter');
     });
 });

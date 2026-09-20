@@ -18,14 +18,14 @@
  * stream:false).
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ExternalLink, FlaskConical, KeyRound, Play, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, ExternalLink, FlaskConical, KeyRound, Play, Trash2, X } from 'lucide-react';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, useWidgetMemory } from '../../lib/widgetMemory';
 import { RESEARCH_PROVIDERS, RESEARCH_PROVIDERS_UPDATED, ResearchProvider } from '../../data/researchProviders';
 import { guardOutbound } from '../../lib/researchLlm/guard';
 import { RESEARCH_PRESETS, ResearchRunResult, runResearchChat } from '../../lib/researchLlm/client';
 import { getResearchKey, researchKeysStore, setResearchKey } from '../../lib/researchLlm/researchKeysStore';
-import { addLogEntry, removeLogEntry, researchLogStore } from '../../lib/researchLlm/researchLogStore';
+import { ResearchLogEntry, addLogEntry, removeLogEntry, researchLogStore } from '../../lib/researchLlm/researchLogStore';
 import './ResearchLab.css';
 
 type Tab = 'playground' | 'providers' | 'keys' | 'history';
@@ -85,6 +85,15 @@ export default function ResearchLab() {
     const [running, setRunning] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
     const [pendingWarn, setPendingWarn] = useState<string | null>(null);
+    /** Plan 062 phase 3 — History entries expand in place; view-only, not persisted. */
+    const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(new Set());
+    const toggleExpanded = (id: string) => setExpandedLogIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+    /** Re-run: load a past entry's prompt + preset back into the Playground and switch to it. */
+    const rerunEntry = (entry: ResearchLogEntry) => patchMem({ prompt: entry.prompt, presetId: entry.systemPreset, tab: 'playground' });
 
     const toggleProvider = (p: ResearchProvider) => {
         if (p.unusable || corsStatus(p.id) === 'blocked') return;
@@ -137,11 +146,16 @@ export default function ResearchLab() {
             });
             setRunning(false);
         }
-        addLogEntry({
-            prompt,
-            systemPreset: presetId,
-            responses: settled.map(({ providerId, model, text, latencyMs, error, usage }) => ({ providerId, model, text, latencyMs, error, usage })),
-        });
+        // Plan 062 phase 3 — an all-errors run (every response failed with no
+        // text) burns no slot in the 50-entry log cap; it wasn't an experiment.
+        const allFailed = settled.every(r => !!r.error && !r.text);
+        if (!allFailed) {
+            addLogEntry({
+                prompt,
+                systemPreset: presetId,
+                responses: settled.map(({ providerId, model, text, latencyMs, error, usage }) => ({ providerId, model, text, latencyMs, error, usage })),
+            });
+        }
     };
 
     const run = (confirmed = false) => {
@@ -254,22 +268,7 @@ export default function ResearchLab() {
 
                     {results && (
                         <div className="rl-results">
-                            {results.map((r, i) => (
-                                <div key={`${r.providerId}-${i}`} className="rl-result">
-                                    <div className="rl-result-head">
-                                        <strong>{providerName(r.providerId)}</strong> · {r.model || '(no model)'}
-                                        {!r.pending && ` · ${r.latencyMs} ms`}
-                                        {r.usage && ` · ${r.usage.promptTokens ?? '?'}→${r.usage.completionTokens ?? '?'} tok`}
-                                    </div>
-                                    {r.pending
-                                        ? <div className="rl-empty">waiting…</div>
-                                        : r.error
-                                            ? <pre className="rl-error">{r.error}</pre>
-                                            : r.text
-                                                ? <pre className="rl-text">{r.text}</pre>
-                                                : <div className="rl-empty">Empty response.</div>}
-                                </div>
-                            ))}
+                            {results.map((r, i) => <ResultCard key={`${r.providerId}-${i}`} result={r} />)}
                         </div>
                     )}
                     {!results && !running && <div className="rl-empty">No runs yet — pick providers, type a prompt, hit Run.</div>}
@@ -323,19 +322,68 @@ export default function ResearchLab() {
             {tab === 'history' && (
                 <div className="rl-pane">
                     {log.length === 0 && <div className="rl-empty">No experiments logged yet.</div>}
-                    {log.map(e => (
-                        <div key={e.id} className="rl-log-entry">
-                            <div className="rl-result-head">
-                                {new Date(e.createdAt).toLocaleString()} · {e.responses.map(r => providerName(r.providerId)).join(', ')}
-                                <button className="rl-icon-btn" aria-label={`Delete log entry from ${new Date(e.createdAt).toLocaleString()}`} onClick={() => removeLogEntry(e.id)}>
-                                    <Trash2 size={13} aria-hidden />
-                                </button>
+                    {log.map(e => {
+                        const isOpen = expandedLogIds.has(e.id);
+                        const when = new Date(e.createdAt).toLocaleString();
+                        return (
+                            <div key={e.id} className="rl-log-entry">
+                                <div className="rl-result-head">
+                                    <button className="rl-icon-btn" aria-label={isOpen ? `Collapse log entry from ${when}` : `Expand log entry from ${when}`} onClick={() => toggleExpanded(e.id)}>
+                                        {isOpen ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
+                                    </button>
+                                    {when} · {e.responses.map(r => providerName(r.providerId)).join(', ')}
+                                    <button className="rl-icon-btn" aria-label="Re-run this prompt" onClick={() => rerunEntry(e)}>Re-run</button>
+                                    <button className="rl-icon-btn" aria-label={`Delete log entry from ${when}`} onClick={() => removeLogEntry(e.id)}>
+                                        <Trash2 size={13} aria-hidden />
+                                    </button>
+                                </div>
+                                <pre className="rl-text">{e.prompt}</pre>
+                                {isOpen && (
+                                    <div className="rl-results">
+                                        {e.responses.map((r, i) => <ResultCard key={`${r.providerId}-${i}`} result={r} />)}
+                                    </div>
+                                )}
                             </div>
-                            <pre className="rl-text">{e.prompt}</pre>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
+        </div>
+    );
+}
+
+/** Plan 062 phase 3 — one result card, shared by Playground runs and expanded History entries. */
+function ResultCard({ result }: { result: ResearchRunResult }) {
+    const [copied, setCopied] = useState(false);
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(result.text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // Clipboard API throws in a non-secure context or without permission — not fatal.
+        }
+    };
+    return (
+        <div className="rl-result">
+            <div className="rl-result-head">
+                <strong>{providerName(result.providerId)}</strong> · {result.model || '(no model)'}
+                {!result.pending && ` · ${result.latencyMs} ms`}
+                {result.usage && ` · ${result.usage.promptTokens ?? '?'}→${result.usage.completionTokens ?? '?'} tok`}
+                {!result.pending && result.text && (
+                    <button className="rl-icon-btn" aria-label={`Copy ${providerName(result.providerId)} response`} onClick={() => void copy()}>
+                        <Copy size={13} aria-hidden />
+                    </button>
+                )}
+            </div>
+            {result.pending
+                ? <div className="rl-empty">waiting…</div>
+                : result.error
+                    ? <pre className="rl-error">{result.error}</pre>
+                    : result.text
+                        ? <pre className="rl-text">{result.text}</pre>
+                        : <div className="rl-empty">Empty response.</div>}
+            {copied && <span className="rl-hint">Copied.</span>}
         </div>
     );
 }

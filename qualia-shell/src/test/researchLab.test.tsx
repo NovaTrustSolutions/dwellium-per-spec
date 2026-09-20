@@ -4,7 +4,7 @@
  * CORS-blocked badge + disabled chip.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 vi.mock('../lib/oneSaveClient', () => ({
     ONE_SAVE_ENABLED: false,
@@ -145,5 +145,101 @@ describe('ResearchLab widget', () => {
         expect(await screen.findByText('anonymous hello')).toBeInTheDocument();
         // Never nagged for a key.
         expect(screen.queryByText(/No API key set/)).not.toBeInTheDocument();
+    });
+});
+
+// Plan 062 phase 1 — the widget can hang forever: timeout, independent
+// results, cancel.
+describe('ResearchLab — run loop hardening (plan 062 phase 1)', () => {
+    it('results land independently as each provider settles; a not-yet-settled slot shows "waiting…"', async () => {
+        setResearchKey('groq', 'gsk-1');
+        setResearchKey('mistral', 'msk-1');
+        let resolveSlow!: (r: Response) => void;
+        const slow = new Promise<Response>(res => { resolveSlow = res; });
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+            if (String(url).includes('groq')) return okJson('fast answer');
+            return slow;
+        });
+        render(<ResearchLab />);
+        typePrompt('race the providers');
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Mistral AI' }));
+        fireEvent.change(screen.getByLabelText('Groq model id'), { target: { value: 'm1' } });
+        fireEvent.change(screen.getByLabelText('Mistral AI model id'), { target: { value: 'm2' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+
+        expect(await screen.findByText('fast answer')).toBeInTheDocument();
+        expect(screen.getByText('waiting…')).toBeInTheDocument(); // mistral hasn't settled yet
+
+        await act(async () => {
+            resolveSlow(okJson('slow answer'));
+            await slow;
+        });
+        expect(await screen.findByText('slow answer')).toBeInTheDocument();
+        expect(screen.queryByText('waiting…')).not.toBeInTheDocument();
+    });
+
+    it('the Run button swaps to Cancel while running, and Cancel yields "Cancelled." for the pending run', async () => {
+        setResearchKey('groq', 'gsk-1');
+        vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+            const signal = (init as RequestInit).signal;
+            signal?.addEventListener('abort', () => reject(signal.reason ?? new DOMException('aborted', 'AbortError')));
+        }));
+        render(<ResearchLab />);
+        typePrompt('cancel me');
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        fireEvent.change(screen.getByLabelText('Groq model id'), { target: { value: 'm1' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+
+        const cancelBtn = await screen.findByRole('button', { name: /Cancel/ });
+        fireEvent.click(cancelBtn);
+
+        expect(await screen.findByText('Cancelled.')).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: /^Run$/ })).toBeInTheDocument();
+    });
+
+    it('a provider that never resolves shows "Timed out after 60s." on its own card while another provider\'s answer is already on screen', async () => {
+        setResearchKey('groq', 'gsk-1');
+        setResearchKey('mistral', 'msk-1');
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+            if (String(url).includes('groq')) return okJson('fast answer');
+            // Simulate the real AbortSignal.timeout() outcome directly rather
+            // than waiting 60 real seconds or using vi.useFakeTimers (unsafe
+            // with the React 19 scheduler per this repo's CLAUDE.md).
+            throw new DOMException('The operation timed out.', 'TimeoutError');
+        });
+        render(<ResearchLab />);
+        typePrompt('one hangs');
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Mistral AI' }));
+        fireEvent.change(screen.getByLabelText('Groq model id'), { target: { value: 'm1' } });
+        fireEvent.change(screen.getByLabelText('Mistral AI model id'), { target: { value: 'm2' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+
+        expect(await screen.findByText('fast answer')).toBeInTheDocument();
+        expect(await screen.findByText('Timed out after 60s.')).toBeInTheDocument();
+    });
+
+    it('unmounting mid-run aborts the controller and produces no console errors', async () => {
+        setResearchKey('groq', 'gsk-1');
+        let aborted = false;
+        vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+            const signal = (init as RequestInit).signal;
+            signal?.addEventListener('abort', () => { aborted = true; reject(signal.reason ?? new DOMException('aborted', 'AbortError')); });
+        }));
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { unmount } = render(<ResearchLab />);
+        typePrompt('leave mid-flight');
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        fireEvent.change(screen.getByLabelText('Groq model id'), { target: { value: 'm1' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+        await screen.findByRole('button', { name: /Cancel/ });
+
+        unmount();
+        await act(async () => { await Promise.resolve(); });
+
+        expect(aborted).toBe(true);
+        expect(errorSpy).not.toHaveBeenCalled();
+        errorSpy.mockRestore();
     });
 });

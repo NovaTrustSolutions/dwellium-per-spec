@@ -17,8 +17,8 @@
  * (backend deploys are blocked); streaming is also deliberately out (v1 is
  * stream:false).
  */
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { ExternalLink, FlaskConical, KeyRound, Play, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { ExternalLink, FlaskConical, KeyRound, Play, Trash2, X } from 'lucide-react';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, useWidgetMemory } from '../../lib/widgetMemory';
 import { RESEARCH_PROVIDERS, RESEARCH_PROVIDERS_UPDATED, ResearchProvider } from '../../data/researchProviders';
@@ -57,7 +57,14 @@ export default function ResearchLab() {
     const selected = mem.selected;
     const setSelected = (updater: (prev: Record<string, string>) => Record<string, string>): void =>
         patchMem({ selected: updater(mem.selected) });
-    useEffect(() => flushWidgetMemory, []); // flush the draft on unmount
+    /** Plan 062 phase 1 — one AbortController per run; aborted by Cancel and on unmount. */
+    const controllerRef = useRef<AbortController | null>(null);
+    const unmountedRef = useRef(false);
+    useEffect(() => () => {
+        unmountedRef.current = true;
+        flushWidgetMemory(); // flush the draft on unmount
+        controllerRef.current?.abort();
+    }, []);
     const [results, setResults] = useState<ResearchRunResult[] | null>(null);
     const [running, setRunning] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
@@ -83,20 +90,31 @@ export default function ResearchLab() {
         const entries = Object.entries(selected);
         setNotice(null);
         setRunning(true);
-        setResults(null);
-        const runs = await Promise.all(entries.map(([providerId, model]) =>
-            runResearchChat({ providerId, model: model.trim(), apiKey: getResearchKey(providerId), presetId, prompt })));
-        setCors(prev => {
-            const next = { ...prev };
-            for (const r of runs) next[r.providerId] = r.corsBlocked ? 'blocked' : (next[r.providerId] === 'blocked' ? 'blocked' : (r.error && !r.status ? next[r.providerId] ?? 'unknown' : 'ok'));
-            return next;
-        });
-        setResults(runs);
-        setRunning(false);
+        // Seed a pending placeholder per slot — cards fill in independently as
+        // each provider settles, instead of everything waiting on the slowest.
+        setResults(entries.map(([providerId, model]) => ({ providerId, model: model.trim(), text: '', latencyMs: 0, pending: true })));
+        const controller = new AbortController();
+        controllerRef.current = controller;
+        const settled: ResearchRunResult[] = new Array(entries.length);
+        await Promise.all(entries.map(([providerId, model], i) =>
+            runResearchChat({ providerId, model: model.trim(), apiKey: getResearchKey(providerId), presetId, prompt, signal: controller.signal })
+                .then(r => {
+                    settled[i] = r;
+                    if (!unmountedRef.current) setResults(prev => prev && prev.map((x, xi) => (xi === i ? r : x)));
+                })));
+        controllerRef.current = null;
+        if (!unmountedRef.current) {
+            setCors(prev => {
+                const next = { ...prev };
+                for (const r of settled) next[r.providerId] = r.corsBlocked ? 'blocked' : (next[r.providerId] === 'blocked' ? 'blocked' : (r.error && !r.status ? next[r.providerId] ?? 'unknown' : 'ok'));
+                return next;
+            });
+            setRunning(false);
+        }
         addLogEntry({
             prompt,
             systemPreset: presetId,
-            responses: runs.map(({ providerId, model, text, latencyMs, error, usage }) => ({ providerId, model, text, latencyMs, error, usage })),
+            responses: settled.map(({ providerId, model, text, latencyMs, error, usage }) => ({ providerId, model, text, latencyMs, error, usage })),
         });
     };
 
@@ -204,8 +222,8 @@ export default function ResearchLab() {
                             </div>
                         </div>
                     )}
-                    <button className="rl-run" disabled={running} onClick={() => run()}>
-                        <Play size={14} aria-hidden /> {running ? 'Running…' : 'Run'}
+                    <button className="rl-run" onClick={() => (running ? controllerRef.current?.abort() : run())}>
+                        {running ? <><X size={14} aria-hidden /> Cancel</> : <><Play size={14} aria-hidden /> Run</>}
                     </button>
 
                     {results && (
@@ -213,14 +231,17 @@ export default function ResearchLab() {
                             {results.map((r, i) => (
                                 <div key={`${r.providerId}-${i}`} className="rl-result">
                                     <div className="rl-result-head">
-                                        <strong>{providerName(r.providerId)}</strong> · {r.model || '(no model)'} · {r.latencyMs} ms
+                                        <strong>{providerName(r.providerId)}</strong> · {r.model || '(no model)'}
+                                        {!r.pending && ` · ${r.latencyMs} ms`}
                                         {r.usage && ` · ${r.usage.promptTokens ?? '?'}→${r.usage.completionTokens ?? '?'} tok`}
                                     </div>
-                                    {r.error
-                                        ? <pre className="rl-error">{r.error}</pre>
-                                        : r.text
-                                            ? <pre className="rl-text">{r.text}</pre>
-                                            : <div className="rl-empty">Empty response.</div>}
+                                    {r.pending
+                                        ? <div className="rl-empty">waiting…</div>
+                                        : r.error
+                                            ? <pre className="rl-error">{r.error}</pre>
+                                            : r.text
+                                                ? <pre className="rl-text">{r.text}</pre>
+                                                : <div className="rl-empty">Empty response.</div>}
                                 </div>
                             ))}
                         </div>

@@ -7,7 +7,7 @@
  * baseUrl + /chat/completions with a Bearer Authorization header.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runResearchChat } from '../lib/researchLlm/client';
+import { RESEARCH_TIMEOUT_MS, runResearchChat } from '../lib/researchLlm/client';
 
 const okJson = () =>
     new Response(JSON.stringify({ choices: [{ message: { content: 'hi' } }] }), { status: 200 });
@@ -32,5 +32,43 @@ describe('runResearchChat routing', () => {
         expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
         const headers = init.headers as Record<string, string>;
         expect(headers.Authorization).toBe('Bearer gsk-1');
+    });
+});
+
+// Plan 062 phase 1 — a per-run default timeout so one hanging free provider
+// can never hang the widget; Cancel and a real timeout must read differently.
+describe('runResearchChat timeout / cancel', () => {
+    it('RESEARCH_TIMEOUT_MS is 60s', () => {
+        expect(RESEARCH_TIMEOUT_MS).toBe(60_000);
+    });
+
+    it('fetch always receives a composed AbortSignal, even with no caller signal', async () => {
+        const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson());
+        await runResearchChat({ providerId: 'groq', model: 'm', apiKey: 'k', presetId: 'blank', prompt: 'hi' });
+        const [, init] = spy.mock.calls[0] as [string, RequestInit];
+        expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    // The real AbortSignal.timeout() firing rejects fetch with a DOMException
+    // named 'TimeoutError' — simulate that directly rather than waiting 60
+    // real seconds or reaching for vi.useFakeTimers (this repo's CLAUDE.md
+    // flags fake timers as unsafe with the React 19 scheduler; this client
+    // test has no React tree, but the assertion is deterministic either way).
+    it('a TimeoutError from fetch reads "Timed out after 60s." — distinct from Cancelled.', async () => {
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(new DOMException('The operation timed out.', 'TimeoutError'));
+        const r = await runResearchChat({ providerId: 'groq', model: 'm', apiKey: 'k', presetId: 'blank', prompt: 'hi' });
+        expect(r.error).toBe('Timed out after 60s.');
+    });
+
+    it('a caller AbortController firing reads "Cancelled." — not the timeout text', async () => {
+        vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+            const signal = (init as RequestInit).signal;
+            signal?.addEventListener('abort', () => reject(signal.reason ?? new DOMException('aborted', 'AbortError')));
+        }));
+        const controller = new AbortController();
+        const pending = runResearchChat({ providerId: 'groq', model: 'm', apiKey: 'k', presetId: 'blank', prompt: 'hi', signal: controller.signal });
+        controller.abort();
+        const r = await pending;
+        expect(r.error).toBe('Cancelled.');
     });
 });

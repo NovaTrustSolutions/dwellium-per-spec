@@ -52,7 +52,12 @@ export interface ResearchRunResult extends ResearchLogResponse {
     corsBlocked?: boolean;
     /** HTTP status when the provider answered at all. */
     status?: number;
+    /** UI-only: this slot hasn't settled yet (seeded placeholder, never persisted). */
+    pending?: boolean;
 }
+
+/** Default per-run timeout (plan 062 phase 1) — one hanging provider must not hang the widget. */
+export const RESEARCH_TIMEOUT_MS = 60_000;
 
 interface ChatCompletionBody {
     choices?: { message?: { content?: string } }[];
@@ -83,12 +88,15 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
     const url = provider.keyless ? provider.baseUrl : chatCompletionsUrl(provider.baseUrl);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (!provider.keyless) headers.Authorization = `Bearer ${req.apiKey}`;
+    // Compose the caller's signal (Cancel button) with a hard default timeout
+    // so one hanging free provider can never hang the widget forever.
+    const signal = AbortSignal.any([req.signal, AbortSignal.timeout(RESEARCH_TIMEOUT_MS)].filter(Boolean) as AbortSignal[]);
     try {
         const res = await fetch(url, {
             method: 'POST',
             headers,
             body: JSON.stringify({ model: req.model, messages, stream: false }),
-            signal: req.signal,
+            signal,
         });
         const latencyMs = Date.now() - started;
         const raw = await res.text();
@@ -114,6 +122,9 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
         if (err instanceof TypeError) {
             return { ...base, latencyMs, corsBlocked: true, error: 'This provider stopped allowing browser calls (it passed the 2026-08-29 CORS audit) — report it so it can be re-audited.' };
         }
+        // Check TimeoutError before AbortError — AbortSignal.timeout's own abort
+        // reason carries the more specific name; a caller Cancel is a plain AbortError.
+        if ((err as Error)?.name === 'TimeoutError') return { ...base, latencyMs, error: `Timed out after ${RESEARCH_TIMEOUT_MS / 1000}s.` };
         if ((err as Error)?.name === 'AbortError') return { ...base, latencyMs, error: 'Cancelled.' };
         return { ...base, latencyMs, error: String(err) };
     }

@@ -3,6 +3,7 @@
  * verbatim 429 rendering, guard block surfacing, and the honest
  * CORS-blocked badge + disabled chip.
  */
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
@@ -339,6 +340,35 @@ describe('ResearchLab — real model pickers (plan 062 phase 4)', () => {
         // unrelated System-preset <select> with its own <option>s.
         const optionTexts = within(select).getAllByRole('option').map(o => o.textContent);
         expect(optionTexts).toEqual(['a-model', 'b-model', 'c-model']);
+    });
+
+    // Regression (found live 2026-09-19): main.tsx renders under StrictMode,
+    // whose dev double-invoke ran the unmount cleanup once and left
+    // unmountedRef stuck at true — every post-await state update (model list
+    // AND run results) was silently skipped. RTL alone never double-mounts.
+    it('under StrictMode the model list still lands and a run still renders (unmountedRef resets on re-mount)', async () => {
+        setResearchKey('groq', 'gsk-1');
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+            if (String(url).includes('/models')) return new Response(JSON.stringify({ data: [{ id: 'llama-x' }] }), { status: 200 });
+            return okJson('strict answer');
+        });
+        render(<StrictMode><ResearchLab /></StrictMode>);
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        // findByRole('combobox') — the free-text INPUT carries the same label until the list lands.
+        const select = await screen.findByRole('combobox', { name: 'Groq model' });
+        fireEvent.change(select, { target: { value: 'llama-x' } });
+        typePrompt('strict?');
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+        expect(await screen.findByText('strict answer')).toBeInTheDocument();
+    });
+
+    it('a selection restored from widget memory fetches its model list on mount', async () => {
+        setResearchKey('groq', 'gsk-1');
+        patchWidgetMemory('research-lab', { selected: { groq: '' } });
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'restored-model' }] }), { status: 200 }));
+        render(<ResearchLab />);
+        const select = await screen.findByRole('combobox', { name: 'Groq model' });
+        expect(within(select).getAllByRole('option').map(o => o.textContent)).toEqual(['restored-model']);
     });
 
     it('a provider whose /models 404s still renders the free-text input', async () => {

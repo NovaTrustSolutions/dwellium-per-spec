@@ -79,10 +79,16 @@ export default function ResearchLab() {
     /** Plan 062 phase 1 — one AbortController per run; aborted by Cancel and on unmount. */
     const controllerRef = useRef<AbortController | null>(null);
     const unmountedRef = useRef(false);
-    useEffect(() => () => {
-        unmountedRef.current = true;
-        flushWidgetMemory(); // flush the draft on unmount
-        controllerRef.current?.abort();
+    useEffect(() => {
+        // StrictMode dev double-invokes this effect (mount → cleanup → mount);
+        // without this reset the cleanup's `true` would stick and every
+        // post-await state update below would be silently skipped.
+        unmountedRef.current = false;
+        return () => {
+            unmountedRef.current = true;
+            flushWidgetMemory(); // flush the draft on unmount
+            controllerRef.current?.abort();
+        };
     }, []);
     const [results, setResults] = useState<ResearchRunResult[] | null>(null);
     const [running, setRunning] = useState(false);
@@ -121,6 +127,14 @@ export default function ResearchLab() {
             if (!unmountedRef.current) bumpModelCacheTick(v => v + 1);
         });
     };
+
+    // Selections restored from widgetMemory never went through toggleProvider,
+    // so fetch their model lists on mount too (cache ref dedupes StrictMode's
+    // double-invoke).
+    useEffect(() => {
+        for (const id of Object.keys(selected)) if (!isKeyless(id)) fetchModels(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+    }, []);
 
     const setModelFor = (id: string, value: string): void => {
         setSelected(prev => ({ ...prev, [id]: value }));

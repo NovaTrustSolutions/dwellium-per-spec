@@ -6,8 +6,30 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — plain .mjs, no type declarations
-import { diffProviders, loadCatalogEntries, parseReadme } from '../../scripts/regen-research-providers.mjs';
+// @ts-expect-error — plain .mjs, no type declarations; typed below so the
+// callbacks in this file are not implicit-any under tsc -b.
+import { diffProviders as diffUntyped, loadCatalogEntries as loadUntyped, parseReadme as parseUntyped } from '../../scripts/regen-research-providers.mjs';
+
+/** name + baseUrl are what the diff keys on; the rest is optional so tests can pass minimal shapes. */
+interface UpstreamProvider {
+    name: string;
+    baseUrl: string;
+    getKeyUrl?: string;
+    creditCard?: string;
+    freeModels?: number;
+    maxContext?: string;
+    modalities?: string[];
+    tier?: 'permanent' | 'renewable';
+}
+interface CatalogEntry { id: string; name: string; baseUrl: string }
+interface ProviderDiff {
+    added: UpstreamProvider[];
+    removed: CatalogEntry[];
+    changed: { catalog: CatalogEntry; upstream: UpstreamProvider }[];
+}
+const parseReadme = parseUntyped as (md: string) => UpstreamProvider[];
+const loadCatalogEntries = loadUntyped as (source: string) => CatalogEntry[];
+const diffProviders = diffUntyped as (catalog: CatalogEntry[], upstream: UpstreamProvider[]) => ProviderDiff;
 
 const FIXTURE_PATH = resolve(__dirname, 'fixtures/awesome-freellm-readme.sample.md');
 const fixtureReadme = readFileSync(FIXTURE_PATH, 'utf8');

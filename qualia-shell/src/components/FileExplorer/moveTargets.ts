@@ -36,3 +36,13 @@ export function destFor(destPath: string, movingName: string): string {
 export function parentOf(p: string): string {
     return p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
 }
+
+/** Names already inside `folderPath` ('' = root). Used to refuse moves/uploads that would overwrite. */
+export function childNames(entries: FileEntry[], folderPath: string): string[] {
+    if (!folderPath) return entries.map((e) => e.name);
+    for (const e of entries) {
+        if (e.path === folderPath) return (e.children ?? []).map((c) => c.name);
+        if (e.children && folderPath.startsWith(e.path + '/')) return childNames(e.children, folderPath);
+    }
+    return [];
+}

@@ -95,11 +95,27 @@ Frontend:
 
 ## 6. Verification actually run
 
-- `npx vitest run src/test/fileExplorerAudit.test.tsx src/test/moveTargets.test.ts` → 11 passed, exit 0.
-- Same UI tests against the pre-fix `FileExplorer.tsx` → 2 failed (proves they test the bug).
-- `npx tsc --noEmit -p tsconfig.json` → exit 0.
+Full strict gate, run in the fix worktree, judged by exit codes:
+- `npx tsc -b` → exit 0.
+- `npx vitest run` (whole suite) → 350 files / 3066 tests passed, exit 0.
+- `npx react-router build` → exit 0; `VITE_APPFOLIO_SEEDS=false npx react-router build` → exit 0.
+- `node Scripts/verify_no_pii_leak.mjs` → exit 0.
+- `SMOKE_TEST_PORT=3210 SMOKE_TEST_SKIP_BUILD=true node Scripts/smoke_test_ssr_phase8.mjs` → PASS, 0 console warnings, 0 page errors.
+- The two new UI tests run against the pre-fix `FileExplorer.tsx` → 2 failed (proves they test the bug).
 - `npx eslint src/components/FileExplorer` → 7 errors / 12 warnings, identical to unmodified `main`.
 
-NOT verified: no live-browser pass (another session's dev server holds this folder's port; per
-FUCKUPS 2026-09-17 I did not test against a server I didn't start), full vitest suite and
-`react-router build` not run, nothing pushed, no CI.
+Real-browser pass — **standalone render (no shell, no login)**: the real component from this branch,
+mounted under `StrictMode` in a scratchpad Vite harness on :5189, against an in-memory FAKE of
+`/api/file-explorer` that copies the backend semantics on trial (`/touch` never overwrites, `/move` does):
+- Right-click `Home` → New File → input "filename.md in Home" appeared, typed `notes`, Enter →
+  `POST /touch {path: "Home/notes.md"}`, file listed.
+- Move root `quote.md` into `Home/Roof` (already has `quote.md`) via the Move-to picker → refused with
+  "already exists" message, zero `/move` calls, existing content unchanged.
+- Dropped 4 files on the root area → `Uploaded 1 of 4`; the PDF (binary), the duplicate name and the
+  950 KB file were each skipped with a reason; only `ok.txt` was written, content intact.
+- 0 console errors.
+The browser pass also caught two things the tests did not: a nonsense "0.9 MB, limit 0.9 MB" message
+(now KB), and a raw NUL byte in `dropUpload.ts` that made git treat the file as binary (now char codes).
+
+NOT verified: inside the real shell with a real login against the real backend (only Ilya can log in);
+real OS drag-and-drop from Finder (the drop was a synthetic `DragEvent`); nothing pushed, no CI run.

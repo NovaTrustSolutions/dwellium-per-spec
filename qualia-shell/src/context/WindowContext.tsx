@@ -145,6 +145,9 @@ export const COMPONENT_DEFAULT_SIZES: Record<string, { w: number; h: number }> =
     // Honcho's memory/wiki/persona dashboard needs room for its card grids and
     // durable task queue instead of opening as a narrow quadrant.
     'honcho': { w: 960, h: 720 },
+    // Template Generator's 3-panel layout (sidebar + editor + preview) collapses
+    // a fixed-width column to zero at quadrant-spawn width; open it roomy.
+    'template-generator': { w: 1100, h: 760 },
 };
 
 interface WindowContextValue {

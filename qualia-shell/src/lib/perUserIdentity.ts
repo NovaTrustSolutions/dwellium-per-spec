@@ -102,6 +102,9 @@ export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 058 — per-user Universal Shell nav persistence (universalShellStore). */
 export const universalShellUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 063 — per-user Template Generator templates (templateGeneratorStore). */
+export const templateGeneratorUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -135,6 +138,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     gridLockUserIdHolder,
     stellaPrefsUserIdHolder,
     universalShellUserIdHolder,
+    templateGeneratorUserIdHolder,
 ];
 
 /**

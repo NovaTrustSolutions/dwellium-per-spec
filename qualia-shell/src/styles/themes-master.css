@@ -6,6 +6,13 @@
    own design tokens, so selecting a theme re-skins the entire app at parity.
    Selector map: [data-theme="X"] -> .theme-X  (applied via ThemeContext on <html>).
    NOTE: source "dark" is exposed as .theme-deep-dark to preserve Dwellium's own .theme-dark.
+   CONTRAST (plan 064, 2026-09-20): --text and --muted must reach WCAG AA 4.5:1 against that theme's OWN
+   --bg, --surface and --surface2 (they become --text-primary / --text-secondary / --text-tertiary on
+   --bg-desktop / --bg-surface / --bg-surface-elevated). 14 tokens in 13 themes deviate from the source palette
+   for that reason: same hue and saturation, lightness moved the minimum needed (synthwave: alpha .55 -> .62).
+   src/test/themeContrast.test.ts enforces it for every block here, so a new theme cannot skip it.
+   --accent paints fills, tints and borders. It is NOT a text colour: it is mid-tone on several themes and the
+   user can override it at runtime. Text that wants the accent uses --accent-text.
    ============================================================ */
 .theme-cosmos{
   --bg:#08081a;--surface:#0f0f1e;--surface2:#13132a;--border:#1e1e3a;
@@ -34,7 +41,7 @@
 }
 .theme-deep-dark{
   --bg:#030305;--surface:#0d0d0f;--surface2:#151518;--border:rgba(255,255,255,.07);
-  --text:#fff;--muted:#6e6e88;--cyan:#00c8aa;--blue:#4d82ff;
+  --text:#fff;--muted:#7d7d95;--cyan:#00c8aa;--blue:#4d82ff;
   --gs:#00c8aa;--ge:#4d82ff;--ip:#7755ef;--il:#b055e8;--ig:#10d47a;
   --panel-bg:rgba(3,3,5,.99);--panel-border:rgba(255,255,255,.08);
   --panel-text:#fff;--panel-hover:rgba(255,255,255,.04);
@@ -83,7 +90,7 @@
 }
 .theme-cyberpunk{
   --bg:#060606;--surface:#111111;--surface2:#1a1a1a;--border:rgba(245,230,66,.15);
-  --text:#f5f5f5;--muted:#666655;--cyan:#00d4ff;--blue:#f5e642;
+  --text:#f5f5f5;--muted:#83836d;--cyan:#00d4ff;--blue:#f5e642;
   --gs:#f5e642;--ge:#e44d26;--ip:#f5e642;--il:#e44d26;--ig:#00d4ff;
   --panel-bg:rgba(6,6,6,.99);--panel-border:rgba(245,230,66,.2);
   --panel-text:#f5f5f5;--panel-hover:rgba(245,230,66,.05);
@@ -107,7 +114,7 @@
 }
 .theme-synthwave{
   --bg:#040d1a;--surface:#081428;--surface2:#0e1e38;--border:rgba(255,0,170,.2);
-  --text:#fff;--muted:rgba(200,190,255,.55);--cyan:#00f0ff;--blue:#ff00aa;
+  --text:#fff;--muted:rgba(200,190,255,.62);--cyan:#00f0ff;--blue:#ff00aa;
   --gs:#ff00aa;--ge:#00f0ff;--ip:#ff00aa;--il:#c800ff;--ig:#00f0ff;
   --panel-bg:rgba(4,13,26,.98);--panel-border:rgba(255,0,170,.28);
   --panel-text:#fff;--panel-hover:rgba(255,0,170,.08);
@@ -131,7 +138,7 @@
 }
 .theme-solarized{
   --bg:#002b36;--surface:#073642;--surface2:#0d3f4d;--border:#586e75;
-  --text:#839496;--muted:#7a9ba3;--cyan:#2aa198;--blue:#268bd2;
+  --text:#97a6a7;--muted:#8ba8af;--cyan:#2aa198;--blue:#268bd2;
   --gs:#268bd2;--ge:#2aa198;--ip:#6c71c4;--il:#d33682;--ig:#859900;
   --panel-bg:rgba(0,43,54,.98);--panel-border:rgba(88,110,117,.5);
   --panel-text:#839496;--panel-hover:rgba(38,139,210,.08);
@@ -155,7 +162,7 @@
 }
 .theme-rose-pine{
   --bg:#191724;--surface:#1f1d2e;--surface2:#26233a;--border:#403d52;
-  --text:#e0def4;--muted:#6e6a86;--cyan:#9ccfd8;--blue:#c4a7e7;
+  --text:#e0def4;--muted:#8d89a2;--cyan:#9ccfd8;--blue:#c4a7e7;
   --gs:#ebbcba;--ge:#c4a7e7;--ip:#ebbcba;--il:#eb6f92;--ig:#9ccfd8;
   --panel-bg:rgba(25,23,36,.97);--panel-border:rgba(235,188,186,.15);
   --panel-text:#e0def4;--panel-hover:rgba(235,188,186,.06);
@@ -179,7 +186,7 @@
 }
 .theme-mocha{
   --bg:#1e1e2e;--surface:#181825;--surface2:#313244;--border:#313244;
-  --text:#cdd6f4;--muted:#6c6f85;--cyan:#89dceb;--blue:#89b4fa;
+  --text:#cdd6f4;--muted:#979aab;--cyan:#89dceb;--blue:#89b4fa;
   --gs:#cba6f7;--ge:#89b4fa;--ip:#cba6f7;--il:#f38ba8;--ig:#a6e3a1;
   --panel-bg:rgba(30,30,46,.97);--panel-border:rgba(49,50,68,.7);
   --panel-text:#cdd6f4;--panel-hover:rgba(203,166,247,.06);
@@ -203,7 +210,7 @@
 }
 .theme-dracula{
   --bg:#1e1f29;--surface:#21222c;--surface2:#2d2f3f;--border:#44475a;
-  --text:#f8f8f2;--muted:#6272a4;--cyan:#8be9fd;--blue:#6272a4;
+  --text:#f8f8f2;--muted:#8a96bb;--cyan:#8be9fd;--blue:#6272a4;
   --gs:#ff5555;--ge:#ff79c6;--ip:#ff5555;--il:#ff79c6;--ig:#50fa7b;
   --panel-bg:rgba(22,22,32,.98);--panel-border:rgba(68,71,90,.8);
   --panel-text:#f8f8f2;--panel-hover:rgba(255,85,85,.06);
@@ -251,7 +258,7 @@
 }
 .theme-tokyo-night{
   --bg:#1a1b2e;--surface:#1f2335;--surface2:#292e42;--border:#3b4261;
-  --text:#c0caf5;--muted:#6b7599;--cyan:#7dcfff;--blue:#7aa2f7;
+  --text:#c0caf5;--muted:#8d95b0;--cyan:#7dcfff;--blue:#7aa2f7;
   --gs:#bb9af7;--ge:#7aa2f7;--ip:#bb9af7;--il:#f7768e;--ig:#9ece6a;
   --panel-bg:rgba(26,27,46,.97);--panel-border:rgba(59,66,97,.55);
   --panel-text:#c0caf5;--panel-hover:rgba(122,162,247,.07);
@@ -275,7 +282,7 @@
 }
 .theme-gruvbox{
   --bg:#282828;--surface:#3c3836;--surface2:#504945;--border:#504945;
-  --text:#ebdbb2;--muted:#928374;--cyan:#8ec07c;--blue:#83a598;
+  --text:#ebdbb2;--muted:#c0b8af;--cyan:#8ec07c;--blue:#83a598;
   --gs:#d65d0e;--ge:#fabd2f;--ip:#d65d0e;--il:#fb4934;--ig:#8ec07c;
   --panel-bg:rgba(40,40,40,.97);--panel-border:rgba(80,73,69,.7);
   --panel-text:#ebdbb2;--panel-hover:rgba(215,153,33,.06);
@@ -299,7 +306,7 @@
 }
 .theme-apple-dark{
   --bg:#1c1c1e;--surface:#2c2c2e;--surface2:#3a3a3c;--border:rgba(255,255,255,.1);
-  --text:#fff;--muted:#98989f;--cyan:#30d158;--blue:#0a84ff;
+  --text:#fff;--muted:#a3a3a9;--cyan:#30d158;--blue:#0a84ff;
   --gs:#0a84ff;--ge:#30d158;--ip:#bf5af2;--il:#ff9f0a;--ig:#30d158;
   --panel-bg:rgba(28,28,30,.97);--panel-border:rgba(255,255,255,.1);
   --panel-text:#fff;--panel-hover:rgba(255,255,255,.06);
@@ -323,7 +330,7 @@
 }
 .theme-nord{
   --bg:#2e3440;--surface:#3b4252;--surface2:#434c5e;--border:#4c566a;
-  --text:#eceff4;--muted:#8090a8;--cyan:#88c0d0;--blue:#81a1c1;
+  --text:#eceff4;--muted:#b3bccb;--cyan:#88c0d0;--blue:#81a1c1;
   --gs:#5e81ac;--ge:#88c0d0;--ip:#b48ead;--il:#bf616a;--ig:#a3be8c;
   --panel-bg:rgba(46,52,64,.97);--panel-border:rgba(76,86,106,.6);
   --panel-text:#eceff4;--panel-hover:rgba(129,161,193,.07);
@@ -347,7 +354,7 @@
 }
 .theme-latte{
   --bg:#ede8ff;--surface:#f8f5ff;--surface2:#e4dcff;--border:#c4b5fd;
-  --text:#2d1b69;--muted:#7c6aad;--cyan:#7c3aed;--blue:#6d28d9;
+  --text:#2d1b69;--muted:#6c58a1;--cyan:#7c3aed;--blue:#6d28d9;
   --gs:#9333ea;--ge:#6d28d9;--ip:#a78bfa;--il:#ec4899;--ig:#10b981;
   --panel-bg:rgba(248,245,255,.98);--panel-border:rgba(139,92,246,.2);
   --panel-text:#2d1b69;--panel-hover:rgba(147,51,234,.07);
@@ -371,7 +378,7 @@
 }
 .theme-corporate{
   --bg:#f4f5f7;--surface:#fff;--surface2:#f0f0f5;--border:#dde0e8;
-  --text:#0a0a18;--muted:#6b7280;--cyan:#0070c9;--blue:#0070c9;
+  --text:#0a0a18;--muted:#676e7c;--cyan:#0070c9;--blue:#0070c9;
   --gs:#0070c9;--ge:#5ac8fa;--ip:#5e5ce6;--il:#0070c9;--ig:#30d158;
   --panel-bg:rgba(255,255,255,.97);--panel-border:rgba(0,0,0,.1);
   --panel-text:#0a0a18;--panel-hover:rgba(0,0,0,.05);

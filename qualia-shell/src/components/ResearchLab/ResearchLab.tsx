@@ -23,7 +23,7 @@ import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, useWidgetMemory } from '../../lib/widgetMemory';
 import { RESEARCH_PROVIDERS, RESEARCH_PROVIDERS_UPDATED, ResearchProvider } from '../../data/researchProviders';
 import { guardOutbound } from '../../lib/researchLlm/guard';
-import { RESEARCH_PRESETS, ResearchRunResult, runResearchChat } from '../../lib/researchLlm/client';
+import { RESEARCH_PRESETS, ResearchRunResult, listModels, runResearchChat } from '../../lib/researchLlm/client';
 import { getResearchKey, researchKeysStore, setResearchKey } from '../../lib/researchLlm/researchKeysStore';
 import { ResearchLogEntry, addLogEntry, removeLogEntry, researchLogStore } from '../../lib/researchLlm/researchLogStore';
 import './ResearchLab.css';
@@ -59,6 +59,9 @@ export default function ResearchLab() {
         // allowing browser calls. A verdict older than CORS_STALE_MS reads as
         // 'unknown' (see effectiveCorsStatus) instead of blocking forever.
         cors: {} as Record<string, CorsEntry>,
+        // Plan 062 phase 4 — last model picked per provider (NOT the model
+        // catalog itself — that's session-only, see modelCacheRef below).
+        lastModel: {} as Record<string, string>,
     });
     const tab: Tab = (['playground', 'providers', 'keys', 'history'] as const).includes(mem.tab as Tab) ? (mem.tab as Tab) : 'playground';
     const setTab = (t: Tab): void => patchMem({ tab: t });
@@ -95,21 +98,56 @@ export default function ResearchLab() {
     /** Re-run: load a past entry's prompt + preset back into the Playground and switch to it. */
     const rerunEntry = (entry: ResearchLogEntry) => patchMem({ prompt: entry.prompt, presetId: entry.systemPreset, tab: 'playground' });
 
+    // Plan 062 phase 4 — model catalogs are session-only and deliberately NOT
+    // synced (they change server-side; a stale synced list would mislead).
+    // Cached in a ref, keyed by providerId, fetched once per provider for as
+    // long as this component instance stays mounted; a tick state forces the
+    // re-render the ref mutation itself can't trigger.
+    const modelCacheRef = useRef<Record<string, { status: 'loading' | 'ready' | 'error'; models: string[] }>>({});
+    const [, bumpModelCacheTick] = useState(0);
+    /** Per-provider "type a model id instead" override — view-only, not persisted. */
+    const [freeTextOverride, setFreeTextOverride] = useState<Set<string>>(new Set());
+    const toggleFreeText = (id: string) => setFreeTextOverride(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+
+    const fetchModels = (providerId: string) => {
+        if (modelCacheRef.current[providerId]) return; // already fetched (or in flight) this mount
+        modelCacheRef.current[providerId] = { status: 'loading', models: [] };
+        void listModels(providerId, getResearchKey(providerId)).then(r => {
+            modelCacheRef.current[providerId] = { status: r.models?.length ? 'ready' : 'error', models: r.models ?? [] };
+            if (!unmountedRef.current) bumpModelCacheTick(v => v + 1);
+        });
+    };
+
+    const setModelFor = (id: string, value: string): void => {
+        setSelected(prev => ({ ...prev, [id]: value }));
+        patchMem({ lastModel: { ...mem.lastModel, [id]: value } });
+    };
+
     const toggleProvider = (p: ResearchProvider) => {
         if (p.unusable || corsStatus(p.id) === 'blocked') return;
         if (!(p.id in selected) && Object.keys(selected).length >= MAX_SELECTED) {
             setNotice(`Pick at most ${MAX_SELECTED} providers — deselect one first.`);
             return;
         }
+        const wasSelected = p.id in selected;
         setSelected(prev => {
             if (p.id in prev) {
                 const next = { ...prev };
                 delete next[p.id];
                 return next;
             }
-            // Keyless providers ship a fixed model menu — default to the first.
-            return { ...prev, [p.id]: p.keyless && p.models?.length ? p.models[0].id : '' };
+            // Keyless providers ship a fixed model menu — default to the
+            // first; otherwise reopen on whatever model was used last time.
+            return { ...prev, [p.id]: p.keyless && p.models?.length ? p.models[0].id : (mem.lastModel[p.id] ?? '') };
         });
+        // Fetch the model list on select regardless of whether a key is set
+        // yet — most /models endpoints are public (see client.ts). Keyless
+        // providers keep their fixed menu untouched.
+        if (!wasSelected && !p.keyless) fetchModels(p.id);
     };
 
     const execute = async () => {
@@ -223,29 +261,46 @@ export default function ResearchLab() {
                         <div className="rl-models">
                             {Object.entries(selected).map(([id, model]) => {
                                 const p = RESEARCH_PROVIDERS.find(x => x.id === id);
+                                // Keyless providers keep their fixed menu untouched; otherwise
+                                // use the fetched catalog once it lands (≥1 id), unless the
+                                // user asked for free text instead.
+                                const fixedMenu = p?.keyless && p.models ? p.models : null;
+                                const cache = modelCacheRef.current[id];
+                                const fetchedIds = cache?.status === 'ready' && cache.models.length > 0 ? cache.models : null;
+                                const dropdownOptions: { id: string; label: string }[] | null =
+                                    fixedMenu ?? (!freeTextOverride.has(id) && fetchedIds ? fetchedIds.map(m => ({ id: m, label: m })) : null);
                                 return (
                                     <label key={id} className="rl-label">
                                         {providerName(id)} model
-                                        {p?.keyless && p.models
+                                        {dropdownOptions
                                             ? (
                                                 <>
                                                     <select
                                                         value={model}
-                                                        onChange={e => setSelected(prev => ({ ...prev, [id]: e.target.value }))}
+                                                        onChange={e => setModelFor(id, e.target.value)}
                                                         aria-label={`${providerName(id)} model`}
                                                     >
-                                                        {p.models.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                                                        {dropdownOptions.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
                                                     </select>
-                                                    {p.note && <span className="rl-hint rl-note">{p.note}</span>}
+                                                    {p?.note && <span className="rl-hint rl-note">{p.note}</span>}
+                                                    {!fixedMenu && (
+                                                        <button type="button" className="rl-icon-btn" onClick={() => toggleFreeText(id)}>type a model id instead</button>
+                                                    )}
                                                 </>
                                             )
                                             : (
-                                                <input
-                                                    value={model}
-                                                    placeholder="model id, e.g. llama-3.3-70b-versatile"
-                                                    onChange={e => setSelected(prev => ({ ...prev, [id]: e.target.value }))}
-                                                    aria-label={`${providerName(id)} model id`}
-                                                />
+                                                <>
+                                                    <input
+                                                        value={model}
+                                                        placeholder="model id, e.g. llama-3.3-70b-versatile"
+                                                        onChange={e => setModelFor(id, e.target.value)}
+                                                        aria-label={`${providerName(id)} model id`}
+                                                    />
+                                                    {cache?.status === 'loading' && <span className="rl-hint">Loading models…</span>}
+                                                    {fetchedIds && (
+                                                        <button type="button" className="rl-icon-btn" onClick={() => toggleFreeText(id)}>use the model list</button>
+                                                    )}
+                                                </>
                                             )}
                                     </label>
                                 );

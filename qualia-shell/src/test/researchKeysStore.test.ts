@@ -106,7 +106,11 @@ describe('ResearchLab run loop — skip-logging rule', () => {
 
     it('an all-error run (every response failed, no text) adds no log entry', async () => {
         setResearchKey('groq', 'gsk-1');
-        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{"error":{"message":"nope"}}', { status: 500 }));
+        // A fresh Response per call — mockResolvedValue would hand back the
+        // SAME instance to both the model-list probe (chip select, plan 062
+        // phase 4) and the chat-completion call, and a Response body can only
+        // be read once.
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{"error":{"message":"nope"}}', { status: 500 }));
         render(createElement(ResearchLab));
         typePrompt('will fail');
         fireEvent.click(screen.getByRole('button', { name: 'Groq' }));

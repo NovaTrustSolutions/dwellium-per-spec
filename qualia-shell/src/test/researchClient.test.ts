@@ -7,7 +7,7 @@
  * baseUrl + /chat/completions with a Bearer Authorization header.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RESEARCH_TIMEOUT_MS, runResearchChat } from '../lib/researchLlm/client';
+import { RESEARCH_TIMEOUT_MS, listModels, runResearchChat } from '../lib/researchLlm/client';
 
 const okJson = () =>
     new Response(JSON.stringify({ choices: [{ message: { content: 'hi' } }] }), { status: 200 });
@@ -70,5 +70,49 @@ describe('runResearchChat timeout / cancel', () => {
         controller.abort();
         const r = await pending;
         expect(r.error).toBe('Cancelled.');
+    });
+});
+
+// Plan 062 phase 4 — real model pickers: GET {base}/models.
+describe('listModels', () => {
+    const modelsBody = (ids: string[]) => new Response(JSON.stringify({ data: ids.map(id => ({ id })) }), { status: 200 });
+
+    it('hits {base}/models and sends the Bearer header for a keyed provider with a key', async () => {
+        const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(modelsBody(['b-model', 'a-model']));
+        const r = await listModels('groq', 'gsk-1');
+        const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe('https://api.groq.com/openai/v1/models');
+        expect((init.headers as Record<string, string>).Authorization).toBe('Bearer gsk-1');
+        // sorted, de-duplicated
+        expect(r.models).toEqual(['a-model', 'b-model']);
+    });
+
+    it('sends NO Authorization header for a keyless provider', async () => {
+        const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(modelsBody(['openai']));
+        await listModels('pollinations', 'irrelevant-key');
+        const [, init] = spy.mock.calls[0] as [string, RequestInit];
+        expect('Authorization' in (init.headers as Record<string, string>)).toBe(false);
+    });
+
+    it('sends NO Authorization header when apiKey is empty, even for a keyed provider (usability deviation, Ilya gate G1)', async () => {
+        const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(modelsBody(['x']));
+        await listModels('openrouter', '');
+        const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe('https://openrouter.ai/api/v1/models');
+        expect('Authorization' in (init.headers as Record<string, string>)).toBe(false);
+    });
+
+    it('returns corsBlocked on a fetch TypeError', async () => {
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+        const r = await listModels('groq', 'gsk-1');
+        expect(r.corsBlocked).toBe(true);
+        expect(r.models).toBeUndefined();
+    });
+
+    it('a non-2xx response is an error, not a model list', async () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('nope', { status: 404 }));
+        const r = await listModels('groq', 'gsk-1');
+        expect(r.error).toMatch(/HTTP 404/);
+        expect(r.models).toBeUndefined();
     });
 });

@@ -4,7 +4,7 @@
  * CORS-blocked badge + disabled chip.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 vi.mock('../lib/oneSaveClient', () => ({
     ONE_SAVE_ENABLED: false,
@@ -73,16 +73,19 @@ describe('ResearchLab widget', () => {
         expect(researchLogStore.getSnapshot()[0].prompt).toBe('capital of France?');
     });
 
-    it('the outbound guard BLOCKS card-shaped prompts before any fetch', () => {
+    it('the outbound guard BLOCKS card-shaped prompts before any chat-completion fetch', () => {
         setResearchKey('groq', 'gsk-1');
-        const spy = vi.spyOn(globalThis, 'fetch');
+        // Selecting a provider now fetches its model list (plan 062 phase 4) —
+        // that carries no prompt text, so it's expected here. What must never
+        // happen is a /chat/completions call while the guard is blocking.
+        const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [] }), { status: 200 }));
         render(<ResearchLab />);
         typePrompt('charge 4111 1111 1111 1111 for the deposit');
         fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
         fireEvent.change(screen.getByLabelText('Groq model id'), { target: { value: 'm' } });
         fireEvent.click(screen.getByRole('button', { name: /Run/ }));
         expect(screen.getByRole('alert').textContent).toMatch(/Blocked: .*card-number/);
-        expect(spy).not.toHaveBeenCalled();
+        expect(spy.mock.calls.some(([url]) => String(url).includes('/chat/completions'))).toBe(false);
     });
 
     it('a fetch TypeError badges the provider browser-blocked and disables its chip', async () => {
@@ -105,6 +108,7 @@ describe('ResearchLab widget', () => {
     });
 
     it('missing key / missing model produce honest notices instead of a doomed request', () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [] }), { status: 200 }));
         render(<ResearchLab />);
         typePrompt('anything');
         fireEvent.click(screen.getByRole('button', { name: /Groq \(no key\)/ }));
@@ -157,7 +161,12 @@ describe('ResearchLab — run loop hardening (plan 062 phase 1)', () => {
         let resolveSlow!: (r: Response) => void;
         const slow = new Promise<Response>(res => { resolveSlow = res; });
         vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-            if (String(url).includes('groq')) return okJson('fast answer');
+            const u = String(url);
+            // Route the model-list probe (fired on chip select, plan 062
+            // phase 4) away from the chat-completion fixtures below — it must
+            // not share (and double-consume) the `slow` Response body.
+            if (u.includes('/models')) return new Response(JSON.stringify({ data: [] }), { status: 200 });
+            if (u.includes('groq')) return okJson('fast answer');
             return slow;
         });
         render(<ResearchLab />);
@@ -278,6 +287,7 @@ describe('ResearchLab — honest surfaces (plan 062 phase 2)', () => {
     });
 
     it('the 5th provider chip raises a notice instead of silently doing nothing', () => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [] }), { status: 200 }));
         render(<ResearchLab />);
         const names = [/^Pollinations/, /^ModelScope/, /^Google Gemini/, /^LLM7\.io/, /^OVHcloud/];
         for (const n of names.slice(0, 4)) fireEvent.click(screen.getByRole('button', { name: n }));
@@ -312,5 +322,64 @@ describe('ResearchLab — History keeps its answers (plan 062 phase 3)', () => {
         expect(screen.getByRole('tab', { name: 'Playground' })).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByLabelText('Research prompt')).toHaveValue('the old prompt');
         expect(screen.getByLabelText('System preset')).toHaveValue('drafter');
+    });
+});
+
+// Plan 062 phase 4 — real model pickers instead of typing ids from memory.
+describe('ResearchLab — real model pickers (plan 062 phase 4)', () => {
+    it('a provider whose /models returns ids renders a select, sorted alphabetically', async () => {
+        setResearchKey('groq', 'gsk-1');
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'c-model' }, { id: 'a-model' }, { id: 'b-model' }] }), { status: 200 }));
+        render(<ResearchLab />);
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+
+        const select = await screen.findByLabelText('Groq model');
+        expect(select.tagName).toBe('SELECT');
+        // Scoped to this provider's own select — the page also has the
+        // unrelated System-preset <select> with its own <option>s.
+        const optionTexts = within(select).getAllByRole('option').map(o => o.textContent);
+        expect(optionTexts).toEqual(['a-model', 'b-model', 'c-model']);
+    });
+
+    it('a provider whose /models 404s still renders the free-text input', async () => {
+        setResearchKey('mistral', 'msk-1');
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not found', { status: 404 }));
+        render(<ResearchLab />);
+        fireEvent.click(screen.getByRole('button', { name: 'Mistral AI' }));
+
+        await waitFor(() => expect(screen.getByLabelText('Mistral AI model id').tagName).toBe('INPUT'));
+    });
+
+    it('"type a model id instead" swaps a populated dropdown for the free-text input', async () => {
+        setResearchKey('groq', 'gsk-1');
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'm1' }] }), { status: 200 }));
+        render(<ResearchLab />);
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        expect((await screen.findByLabelText('Groq model')).tagName).toBe('SELECT');
+
+        fireEvent.click(screen.getByRole('button', { name: 'type a model id instead' }));
+        expect(screen.getByLabelText('Groq model id').tagName).toBe('INPUT');
+    });
+
+    it('the keyless Pollinations fixed menu is untouched — selecting it fires no /models fetch', () => {
+        const spy = vi.spyOn(globalThis, 'fetch');
+        render(<ResearchLab />);
+        fireEvent.click(screen.getByRole('button', { name: /Pollinations/ }));
+        expect(spy).not.toHaveBeenCalled();
+        expect(screen.getByLabelText('Pollinations (free · no key) model').tagName).toBe('SELECT');
+    });
+
+    it('remembers the last-used model per provider: deselect + reselect prefills the remembered pick', async () => {
+        setResearchKey('groq', 'gsk-1');
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'model-a' }, { id: 'model-b' }] }), { status: 200 }));
+        render(<ResearchLab />);
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        const select = await screen.findByLabelText('Groq model');
+        fireEvent.change(select, { target: { value: 'model-b' } });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' })); // deselect
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' })); // reselect
+
+        expect(await screen.findByLabelText('Groq model')).toHaveValue('model-b');
     });
 });

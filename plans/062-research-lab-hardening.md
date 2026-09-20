@@ -8,8 +8,8 @@
 > to browser calls from this Mac while curl gets 200 — see `~/Desktop/Research-Lab-Report/REPORT.md` §4.
 > Follow-up `fbcf698` (Ilya: "the repo says dozens with no key"): the upstream per-model table lists anonymous tiers
 > for LLM7.io (30 RPM) and OVHcloud (2 RPM) — probed, `keyOptional` flag added, Run no longer gated for them;
-> first completed live run in-widget: `LLM7.io · GLM-5.3-Flash · 15196 ms`. Branch local, ready to push + draft PR;
-> `main` untouched.
+> first completed live run in-widget: `LLM7.io · GLM-5.3-Flash · 15196 ms`. Pushed 2026-09-19; draft PR
+> https://github.com/NovaTrustSolutions/dwellium-per-spec/pull/131 open; `main` untouched — merge on Ilya's say-so.
 
 Context: the 2026-09-19 read of the Research Lab widget found the security architecture
 sound — the structural import firewall (`researchLabImportGuard.test.ts`) and the

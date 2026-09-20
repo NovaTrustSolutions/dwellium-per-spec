@@ -8,7 +8,11 @@
  *     with a clear message — never a silent strip.
  *   - warn:  housing-record vocabulary (lease/tenant/resident/rent roll).
  *     Research about housing LAW is legitimate; pasting a rent roll is not.
- *     Warned once per session; the user may explicitly confirm and proceed.
+ *     Warned once per *distinct prompt* per session (tracked by a hash of the
+ *     trimmed, lowercased text) — seeing the exact same prompt again stays
+ *     quiet, but a different prompt with housing vocabulary warns again, so
+ *     the protection does not decay to silence over a long session. The user
+ *     may explicitly confirm and proceed.
  *   - ok:    everything else.
  *
  * Card regex is the repo PII-guard family /\b(?:\d[ -]*?){13,19}\b/ — known to
@@ -39,12 +43,28 @@ export type GuardVerdict =
     | { kind: 'block'; reason: string }
     | { kind: 'warn'; reason: string };
 
-/** Warn-once-per-session latch (in-memory — a reload re-arms it on purpose). */
-let warnShownThisSession = false;
+/**
+ * Cheap non-crypto hash (FNV-1a, 32-bit) of the trimmed, lowercased prompt —
+ * this is a UX latch to avoid re-warning on a prompt already confirmed this
+ * session, not a security boundary. Collisions just mean an unrelated prompt
+ * stays quiet a little too often; that failure mode is acceptable here.
+ */
+function hashPrompt(text: string): string {
+    const normalized = text.trim().toLowerCase();
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < normalized.length; i++) {
+        hash ^= normalized.charCodeAt(i);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    return (hash >>> 0).toString(16);
+}
+
+/** Prompts (by hash) already warned-on-or-confirmed this session (in-memory — a reload re-arms it on purpose). */
+const warnedPromptHashes = new Set<string>();
 
 /** Test escape hatch (v2.72.1 standing convention). */
 export function resetGuardSession(): void {
-    warnShownThisSession = false;
+    warnedPromptHashes.clear();
 }
 
 /**
@@ -66,9 +86,14 @@ export function guardOutbound(text: string, opts?: { confirmed?: boolean }): Gua
         }
     }
     const warnHit = WARN_RE.exec(text);
-    if (warnHit && !opts?.confirmed && !warnShownThisSession) {
-        warnShownThisSession = true;
-        return { kind: 'warn', reason: `Heads up: "${warnHit[0]}" — asking about housing law is fine, but never paste actual resident, lease, or rent-roll records here. Free providers may train on what you type. Confirm to send anyway.` };
+    if (warnHit) {
+        const hash = hashPrompt(text);
+        if (opts?.confirmed) {
+            warnedPromptHashes.add(hash);
+        } else if (!warnedPromptHashes.has(hash)) {
+            warnedPromptHashes.add(hash);
+            return { kind: 'warn', reason: `Heads up: "${warnHit[0]}" — asking about housing law is fine, but never paste actual resident, lease, or rent-roll records here. Free providers may train on what you type. Confirm to send anyway.` };
+        }
     }
     return { kind: 'ok' };
 }

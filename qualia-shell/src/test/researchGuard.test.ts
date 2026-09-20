@@ -40,16 +40,29 @@ describe('blocks (never overridable, never silently stripped)', () => {
     });
 });
 
-describe('housing-vocabulary warning (once per session, confirmable)', () => {
-    it('warns once on lease/tenant/resident/rent roll, then stays quiet for the session', () => {
-        const first = guardOutbound('what does Georgia law say about tenant rights?');
+describe('housing-vocabulary warning (once per distinct prompt per session, confirmable)', () => {
+    it('warns once on lease/tenant/resident/rent roll, then stays quiet for the SAME prompt', () => {
+        const prompt = 'what does Georgia law say about tenant rights?';
+        const first = guardOutbound(prompt);
         expect(first.kind).toBe('warn');
         expect(first.kind === 'warn' && first.reason).toMatch(/housing law is fine/);
-        // Second hit in the same session: already warned → allowed through.
-        expect(guardOutbound('and lease termination notice periods?').kind).toBe('ok');
+        // Same prompt again in the same session: already warned → allowed through.
+        expect(guardOutbound(prompt).kind).toBe('ok');
+        // Case/whitespace variation of the same prompt still counts as the same hash.
+        expect(guardOutbound(`  ${prompt.toUpperCase()}  `).kind).toBe('ok');
     });
-    it('an explicit confirm sends the first hit through', () => {
-        expect(guardOutbound('summarize resident screening rules', { confirmed: true }).kind).toBe('ok');
+    it('a DIFFERENT housing-vocabulary prompt warns again, even after another prompt was warned this session', () => {
+        expect(guardOutbound('what does Georgia law say about tenant rights?').kind).toBe('warn');
+        // Different prompt, still hits the vocabulary → protection has not decayed to silence.
+        const second = guardOutbound('and lease termination notice periods?');
+        expect(second.kind).toBe('warn');
+        expect(second.kind === 'warn' && second.reason).toMatch(/housing law is fine/);
+    });
+    it('an explicit confirm sends the first hit through, and the same prompt then stays quiet', () => {
+        const prompt = 'summarize resident screening rules';
+        expect(guardOutbound(prompt, { confirmed: true }).kind).toBe('ok');
+        // Confirming counts as "already handled this session" for that exact prompt.
+        expect(guardOutbound(prompt).kind).toBe('ok');
     });
     it('"rent roll" (with the space) is covered', () => {
         expect(guardOutbound('what is a rent roll?').kind).toBe('warn');

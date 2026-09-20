@@ -9,6 +9,15 @@
  * keyed off a perUserIdentity holder + One Save `withSync('researchKeys')`
  * (keys sync encrypted with the account like the app's other One Save
  * objects), incl. `.reset()`.
+ *
+ * AT-REST DECISION (plan 062 phase 7, gate G2 → option (a), 2026-09-19):
+ * locally these keys sit in PLAINTEXT under `researchKeys:<uid>` in
+ * localStorage. Only the One Save transport is encrypted. This is accepted on
+ * purpose: they are free-tier sandbox keys, and encrypting them at rest buys
+ * little against an attacker who already has script execution in the page.
+ * The Keys tab says so in plain words. Revisit (option (b): reuse the app's
+ * at-rest secret encryption) only if a paid or account-scoped key ever lands
+ * in this store.
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../oneSaveStore';

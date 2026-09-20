@@ -366,7 +366,7 @@ export default function ResearchLab() {
             {tab === 'keys' && (
                 <div className="rl-pane">
                     <div className="rl-hint">
-                        <KeyRound size={13} aria-hidden /> Keys are stored per-account like the app's other keys and sync encrypted with your account. The main app's AI never sees them.
+                        <KeyRound size={13} aria-hidden /> Keys are stored per-account and sync encrypted with your account; on this device they sit in plain browser storage. Use free-tier keys only. The main app's AI never sees them.
                     </div>
                     {RESEARCH_PROVIDERS.filter(p => !p.unusable && !p.keyless).map(p => (
                         <KeyRow key={p.id} provider={p} hasKey={!!keys[p.id]} />

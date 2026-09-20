@@ -47,6 +47,7 @@ fixing them. To add a variable, type `{{new_key}}` in the template.
 button calls `iframe.contentWindow.print()` and the user picks "Save as PDF". That gives CSS fidelity,
 wrapping, page breaks and Unicode for free and removes ~90 lines of `pdf-lib` drawing code (defects 1–4).
 The sandbox becomes `allow-same-origin allow-modals` — still no `allow-scripts`, so template scripts cannot run.
+The preview document gets a CSP (`default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:`) and `<meta refresh>` is stripped: the sandbox does not stop network loads, and the document holds autofilled tenant data (wave-3 review). Remote logos therefore do not load — embed them as `data:` URIs.
 Skipped: producing PDF bytes in-app (needed only for "save to Filing Cabinet"); add it through the
 backend `/api/docs/convert` route when that is asked for.
 
@@ -92,8 +93,8 @@ export async function docxToHtml(file: Blob): Promise<string>;      // sanitized
 ```
 - Lazy `await import('jszip')` (pattern: `Scribe/idocs/idocsPptxImport.ts:24`). For `docxToHtml`, **reuse** `Scribe/docxConvert.ts` if it already exposes docx→HTML; write new mammoth code only if it does not.
 - Parts: `word/document.xml`, every `word/header*.xml`, every `word/footer*.xml`.
-- Word splits `{{client_name}}` across runs. Per `<w:p>`: join the text of its `<w:t>` nodes; if the join contains a placeholder, put the substituted text in the first `<w:t>` (set `xml:space="preserve"`), empty the others. Assign through `textContent` so XML escaping is automatic. Paragraphs without placeholders are not touched.
-  `// ponytail: a paragraph containing a placeholder takes its first run's formatting; per-run merge if mixed bold/italic inside one placeholder paragraph matters.`
+- Word splits `{{client_name}}` across runs. Per `<w:p>`: join the `<w:t>` text only to FIND placeholders, then edit run by run — a placeholder inside one run is replaced in place; one split across runs puts its value in the run where it starts and trims its fragments from the runs it spans. Runs are never merged wholesale, so a `<w:tab/>` / `<w:br/>` run between two placeholders keeps its place (amended after the wave-3 review: the first version collapsed everything into the first run and moved the tab after both values). Assign through `textContent` so XML escaping is automatic; untouched runs are not rewritten.
+  `// ponytail: a value takes the formatting of the run its placeholder STARTS in.`
 - Same fill rule as HTML: empty value leaves `{{key}}` in place.
 - A file that is not a zip, or has no `word/document.xml`, throws `Error('Not a .docx file')`.
 

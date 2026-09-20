@@ -30,6 +30,7 @@ import {
     setTemplateGeneratorState,
     templateGeneratorStore,
     type TemplateGeneratorState,
+    normalizeState,
 } from '../utils/templateGeneratorStore';
 import { templateGeneratorUserIdHolder } from '../lib/perUserIdentity';
 
@@ -135,5 +136,30 @@ describe('templateGeneratorStore', () => {
         unsub();
         setTemplateGeneratorState({ ...createDefaultState(), activeId: 'default' });
         expect(calls).toBe(1); // no further notifications after unsubscribe
+    });
+});
+
+// One Save's hydrate() writes the remote payload into the store WITHOUT the deserializer,
+// so validation must also hold for values that never went through localStorage.
+describe('normalizeState (validate on read)', () => {
+    const good = { id: 'a', name: 'A', html: '<p>{{x}}</p>', values: { x: '1' }, types: {} };
+
+    it('returns the SAME object when it is already valid (stable identity for useSyncExternalStore)', () => {
+        const state = { templates: [good], activeId: 'a' };
+        expect(normalizeState(state)).toBe(state);
+    });
+
+    it('falls back to the default for templates: [], null, a string, or a missing list', () => {
+        for (const bad of [{ templates: [], activeId: 'x' }, null, 'nope', { activeId: 'a' }]) {
+            const out = normalizeState(bad);
+            expect(out.templates).toHaveLength(1);
+            expect(out.activeId).toBe(out.templates[0].id);
+        }
+    });
+
+    it('keeps the well-formed templates, drops only the malformed one, and repairs activeId', () => {
+        const out = normalizeState({ templates: [good, { id: 'b', name: 'B', html: '' /* no values/types */ }], activeId: 'b' });
+        expect(out.templates).toEqual([good]);
+        expect(out.activeId).toBe('a');
     });
 });

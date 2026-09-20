@@ -56,6 +56,31 @@ describe('docxFill', () => {
     });
 
     describe('fillDocx', () => {
+        it('keeps a <w:tab/> run BETWEEN two placeholders (tab-aligned lines), and fills two placeholders inside one run', async () => {
+            const { fillDocx } = await import('../components/DocViewer/docxFill');
+            const zip = new JSZip();
+            zip.file('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>');
+            zip.file(
+                'word/document.xml',
+                `<w:document xmlns:w="${WORDML_NS}"><w:body>` +
+                '<w:p><w:r><w:t>{{item_1}}</w:t></w:r><w:r><w:tab/></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>{{amount_1}}</w:t></w:r></w:p>' +
+                '<w:p><w:r><w:t>From {{a}} to {{b}}.</w:t></w:r></w:p>' +
+                '</w:body></w:document>',
+            );
+            const filled = await fillDocx(await zip.generateAsync({ type: 'blob' }), { item_1: 'Rent', amount_1: '500', a: 'X', b: 'Y' }, {});
+            const xml = await (await JSZip.loadAsync(await filled.arrayBuffer())).file('word/document.xml')!.async('string');
+            // order in the paragraph: value, THEN the tab run, THEN the bold amount — not "Rent$500.00" followed by the tab
+            const rent = xml.indexOf('>Rent<');
+            const tab = xml.indexOf('<w:tab/>');
+            const amount = xml.indexOf('>$500.00<');
+            expect(rent).toBeGreaterThan(-1);
+            expect(rent).toBeLessThan(tab);
+            expect(tab).toBeLessThan(amount);
+            // the amount stayed inside its own bold run
+            expect(xml).toMatch(/<w:b\/><\/w:rPr><w:t[^>]*>\$500\.00<\/w:t>/);
+            expect(xml).toContain('>From X to Y.<');
+        });
+
         it('fills the split placeholder, escapes a value containing <&>$& exactly once, leaves an unfilled header placeholder and an untouched paragraph byte-identical', async () => {
             const { fillDocx } = await import('../components/DocViewer/docxFill');
             const original = await buildFixtureDocx();

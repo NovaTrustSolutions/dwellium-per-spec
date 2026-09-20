@@ -19,7 +19,7 @@ import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type Cha
 import { Download, FileText, FileUp, Globe, Pencil, Plus, Printer, Trash2, X } from 'lucide-react';
 import FillFromRecord from './FillFromRecord';
 import { docxToHtml, extractDocxKeys, fillDocx } from './docxFill';
-import { extractKeys, inferType, labelFor, renderTemplate, type VarType } from './templateEngine';
+import { extractKeys, inferType, labelFor, renderTemplate, withPreviewCsp, type VarType } from './templateEngine';
 import {
     DEFAULT_HTML_TEMPLATE,
     setTemplateGeneratorState,
@@ -220,7 +220,8 @@ export default function TemplateGenerator() {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Deferred: revoking right after click() truncates the download in Safari (same as PDFGear.downloadBlob).
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
         } catch (err) {
             showStatus({ kind: 'error', text: err instanceof Error ? err.message : 'Could not fill that file.' });
         }
@@ -461,7 +462,7 @@ export default function TemplateGenerator() {
                     <iframe
                         ref={iframeRef}
                         className="tg-preview__iframe"
-                        srcDoc={sourceMode === 'html' ? deferredHtmlPreview : docxPreviewHtml}
+                        srcDoc={withPreviewCsp(sourceMode === 'html' ? deferredHtmlPreview : docxPreviewHtml)}
                         title={sourceMode === 'html' ? 'HTML template preview' : 'DOCX template preview'}
                         sandbox="allow-same-origin allow-modals"
                     />

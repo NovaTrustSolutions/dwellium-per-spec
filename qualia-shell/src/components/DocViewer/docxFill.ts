@@ -10,14 +10,13 @@
  *
  * Word frequently splits one `{{key}}` across multiple `<w:t>` runs (its
  * autocorrect/spellcheck boundary tracking). Per paragraph, this module joins
- * all `<w:t>` text, matches placeholders against the joined string, and — only
- * when a substitution actually changes the text — writes the filled text into
- * the paragraph's first `<w:t>` (marked `xml:space="preserve"`) and empties
- * the rest. A paragraph with no placeholder, or one whose only placeholders
- * have no value yet, is never touched, so it round-trips unchanged.
- * // ponytail: a placeholder paragraph takes its first run's formatting; a
- * // per-run merge would be needed if bold/italic differs across one
- * // placeholder's split runs.
+ * the `<w:t>` text only to FIND placeholders, then edits run by run: a
+ * placeholder inside one run is replaced in place; one split across runs puts
+ * its value in the run where it starts and trims its fragments from the runs
+ * it spans. Runs without a filled placeholder are never touched, so tabs,
+ * breaks and formatting between two placeholders keep their place.
+ * // ponytail: a value takes the formatting of the run its placeholder STARTS
+ * // in; splitting the value across the original runs is not attempted.
  */
 import type JSZipType from 'jszip';
 import { formatValue, inferType, PLACEHOLDER_SOURCE, type VarType } from './templateEngine';
@@ -95,23 +94,45 @@ export async function fillDocx(
         const doc = new DOMParser().parseFromString(xml, 'application/xml');
         let changed = false;
         for (const p of paragraphs(doc)) {
-            const runTexts = runTextNodes(p);
-            if (runTexts.length === 0) continue;
-            const joined = runTexts.map((t) => t.textContent ?? '').join('');
-            // Function replacer (never a replacement *string*) so values
-            // containing `$&`, `$'`, `$$` are inserted literally.
-            const filled = joined.replace(new RegExp(PLACEHOLDER_SOURCE, 'g'), (match, key: string) => {
-                const raw = values[key];
-                if (!raw) return match; // missing/empty → leave {{key}} in place
-                return formatValue(raw, types[key] ?? inferType(key));
+            const runs = runTextNodes(p);
+            if (runs.length === 0) continue;
+            const texts = runs.map((t) => t.textContent ?? '');
+            const joined = texts.join('');
+            // Where each run's text starts inside the joined paragraph text.
+            const starts: number[] = [];
+            let offset = 0;
+            for (const t of texts) { starts.push(offset); offset += t.length; }
+            // Last run starting at or before `pos` — skips empty runs that share a start.
+            const runAt = (pos: number): number => { let i = starts.length - 1; while (starts[i] > pos) i--; return i; };
+
+            // Replace run by run, last match first so earlier offsets stay valid. A
+            // placeholder inside one run is edited in place; one SPLIT across runs puts
+            // its value where it starts and trims its fragments from the runs it spans.
+            // Runs are never merged wholesale: a <w:tab/> or <w:br/> run sitting between
+            // two placeholders (tab-aligned invoice lines) keeps its place between them.
+            const next = [...texts];
+            for (const m of [...joined.matchAll(new RegExp(PLACEHOLDER_SOURCE, 'g'))].reverse()) {
+                const raw = values[m[1]];
+                if (!raw) continue; // missing/empty → leave {{key}} in place
+                const value = formatValue(raw, types[m[1]] ?? inferType(m[1]));
+                const s = m.index;
+                const e = s + m[0].length;
+                const i = runAt(s);
+                const j = runAt(e - 1);
+                if (i === j) {
+                    next[i] = next[i].slice(0, s - starts[i]) + value + next[i].slice(e - starts[i]);
+                } else {
+                    next[j] = next[j].slice(e - starts[j]);
+                    for (let k = i + 1; k < j; k++) next[k] = '';
+                    next[i] = next[i].slice(0, s - starts[i]) + value;
+                }
+            }
+            next.forEach((text, idx) => {
+                if (text === texts[idx]) return; // untouched runs round-trip unchanged
+                runs[idx].textContent = text; // textContent → the serializer escapes it
+                runs[idx].setAttributeNS(XML_NS, 'xml:space', 'preserve');
+                changed = true;
             });
-            if (filled === joined) continue; // no placeholder, or nothing to fill — leave untouched
-            const [first, ...rest] = runTexts;
-            // Assigned via textContent, so the XML serializer escapes it.
-            first.textContent = filled;
-            first.setAttributeNS(XML_NS, 'xml:space', 'preserve');
-            for (const t of rest) t.textContent = '';
-            changed = true;
         }
         if (changed) {
             // jsdom's XMLSerializer drops the XML declaration, a browser's keeps it:

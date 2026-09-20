@@ -11,7 +11,7 @@
  * pattern (see universalShellStore.ts / docs/code.md 2026-09-17). Read via
  * the useTemplateGeneratorState() hook; write via setTemplateGeneratorState().
  */
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from './createLocalStorageStore';
 import { withSync } from '../lib/oneSaveStore';
 import { templateGeneratorUserIdHolder, usePerUserIdentity } from '../lib/perUserIdentity';
@@ -106,17 +106,25 @@ function isStoredTemplate(v: unknown): v is StoredTemplate {
         && isVarTypeRecord(t.types);
 }
 
+/**
+ * Repairs ANY value into a valid state. Returns the SAME object when it is already
+ * valid, so useSyncExternalStore consumers keep a stable identity. Keeps every
+ * well-formed template; only malformed entries are dropped.
+ */
+export function normalizeState(value: unknown): TemplateGeneratorState {
+    const v = value as { templates?: unknown; activeId?: unknown } | null;
+    if (v == null || typeof v !== 'object' || !Array.isArray(v.templates)) return createDefaultState();
+    const templates = v.templates.filter(isStoredTemplate);
+    if (templates.length === 0) return createDefaultState();
+    const activeOk = typeof v.activeId === 'string' && templates.some((t) => t.id === v.activeId);
+    if (activeOk && templates.length === v.templates.length) return value as TemplateGeneratorState;
+    return { templates, activeId: activeOk ? (v.activeId as string) : templates[0].id };
+}
+
 function deserialize(raw: string | null): TemplateGeneratorState {
     if (raw == null) return createDefaultState();
     try {
-        const parsed = JSON.parse(raw) as { templates?: unknown; activeId?: unknown } | null;
-        if (parsed == null || typeof parsed !== 'object' || !Array.isArray(parsed.templates)) return createDefaultState();
-        const templates = parsed.templates.filter(isStoredTemplate);
-        if (templates.length === 0) return createDefaultState();
-        const activeId = typeof parsed.activeId === 'string' && templates.some((t) => t.id === parsed.activeId)
-            ? parsed.activeId
-            : templates[0].id;
-        return { templates, activeId };
+        return normalizeState(JSON.parse(raw));
     } catch {
         return createDefaultState();
     }
@@ -137,9 +145,13 @@ export function setTemplateGeneratorState(next: TemplateGeneratorState): void {
 /** Read the current + subscribe to changes. SSR-safe. */
 export function useTemplateGeneratorState(): TemplateGeneratorState {
     usePerUserIdentity(); // single writer — resolve this render's user.id into every holder first
-    return useSyncExternalStore(
+    const raw = useSyncExternalStore(
         templateGeneratorStore.subscribe,
         templateGeneratorStore.getSnapshot,
         templateGeneratorStore.getServerSnapshot,
     );
+    // One Save's hydrate() applies the remote payload straight into the store WITHOUT the
+    // deserializer (oneSaveStore.ts), so a foreign/older/hand-edited payload — `templates: []`,
+    // a template missing `values` — would reach the widget and crash its render. Validate on read.
+    return useMemo(() => normalizeState(raw), [raw]);
 }

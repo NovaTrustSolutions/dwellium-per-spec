@@ -1982,6 +1982,19 @@ export default function ARAConsole() {
             const session = startDictation(SRCtor, inputRef.current?.value ?? '', {
                 onText: (text) => setInput(text),
                 onEnd: () => { dictationRef.current = null; setMicActive(false); inputRef.current?.focus(); },
+                // Voice commands: saying "open research lab" must DO it, not
+                // park the words in the composer waiting for Enter. Only a
+                // whole-input utterance that the Conductor's direct-command
+                // parser accepts runs (same tiers Enter would run); questions
+                // and drafts still dictate. The mic closes after a command so
+                // ARA's spoken ack is never transcribed back into the box —
+                // one tap per command; go continuous if echo gets handled.
+                onFinal: (utterance, isWholeInput) => {
+                    if (!isWholeInput || !parseCommand(utterance)) return false;
+                    dictationRef.current?.stop();
+                    void dispatchTiers(utterance, utterance);
+                    return true;
+                },
             });
             if (session) {
                 dictationRef.current = session;
@@ -2038,7 +2051,7 @@ export default function ARAConsole() {
         } catch (err) {
             console.error('Microphone access denied:', err);
         }
-    }, [micActive, authFetch]);
+    }, [micActive, authFetch, dispatchTiers]);
 
     // Cleanup mic + TTS on unmount
     useEffect(() => {

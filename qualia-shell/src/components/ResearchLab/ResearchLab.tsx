@@ -1,5 +1,5 @@
 /**
- * ResearchLab — sandboxed playground over the 31 free LLM API providers from
+ * ResearchLab — sandboxed playground over the 22 free LLM API providers from
  * github.com/NovaTrustSolutions/awesome-freellm-apis (labs tier, ⌘K "labs:").
  *
  * THE DATA FIREWALL: this widget and src/lib/researchLlm/** import NOTHING
@@ -30,8 +30,16 @@ import './ResearchLab.css';
 
 type Tab = 'playground' | 'providers' | 'keys' | 'history';
 type CorsStatus = 'unknown' | 'ok' | 'blocked';
+interface CorsEntry { status: CorsStatus; checkedAt: number; }
 
 const MAX_SELECTED = 4;
+/** Plan 062 phase 2 — a verdict this old is stale: retry it instead of blocklisting forever. */
+const CORS_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function effectiveCorsStatus(entry: CorsEntry | undefined): CorsStatus {
+    if (!entry || Date.now() - entry.checkedAt > CORS_STALE_MS) return 'unknown';
+    return entry.status;
+}
 
 export default function ResearchLab() {
     usePerUserIdentity();
@@ -46,6 +54,11 @@ export default function ResearchLab() {
         prompt: '',
         presetId: RESEARCH_PRESETS[0].id,
         selected: {} as Record<string, string>,
+        // Plan 062 phase 2 — CORS verdicts ride One Save like the rest of the
+        // slice, so a reload doesn't re-enable a provider that stopped
+        // allowing browser calls. A verdict older than CORS_STALE_MS reads as
+        // 'unknown' (see effectiveCorsStatus) instead of blocking forever.
+        cors: {} as Record<string, CorsEntry>,
     });
     const tab: Tab = (['playground', 'providers', 'keys', 'history'] as const).includes(mem.tab as Tab) ? (mem.tab as Tab) : 'playground';
     const setTab = (t: Tab): void => patchMem({ tab: t });
@@ -57,6 +70,9 @@ export default function ResearchLab() {
     const selected = mem.selected;
     const setSelected = (updater: (prev: Record<string, string>) => Record<string, string>): void =>
         patchMem({ selected: updater(mem.selected) });
+    const setCors = (updater: (prev: Record<string, CorsEntry>) => Record<string, CorsEntry>): void =>
+        patchMem({ cors: updater(mem.cors) });
+    const corsStatus = (id: string): CorsStatus => effectiveCorsStatus(mem.cors[id]);
     /** Plan 062 phase 1 — one AbortController per run; aborted by Cancel and on unmount. */
     const controllerRef = useRef<AbortController | null>(null);
     const unmountedRef = useRef(false);
@@ -69,18 +85,19 @@ export default function ResearchLab() {
     const [running, setRunning] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
     const [pendingWarn, setPendingWarn] = useState<string | null>(null);
-    /** Session-only CORS probe results (first real call per provider decides). */
-    const [cors, setCors] = useState<Record<string, CorsStatus>>({});
 
     const toggleProvider = (p: ResearchProvider) => {
-        if (p.unusable || cors[p.id] === 'blocked') return;
+        if (p.unusable || corsStatus(p.id) === 'blocked') return;
+        if (!(p.id in selected) && Object.keys(selected).length >= MAX_SELECTED) {
+            setNotice(`Pick at most ${MAX_SELECTED} providers — deselect one first.`);
+            return;
+        }
         setSelected(prev => {
             if (p.id in prev) {
                 const next = { ...prev };
                 delete next[p.id];
                 return next;
             }
-            if (Object.keys(prev).length >= MAX_SELECTED) return prev;
             // Keyless providers ship a fixed model menu — default to the first.
             return { ...prev, [p.id]: p.keyless && p.models?.length ? p.models[0].id : '' };
         });
@@ -105,8 +122,17 @@ export default function ResearchLab() {
         controllerRef.current = null;
         if (!unmountedRef.current) {
             setCors(prev => {
+                const now = Date.now();
                 const next = { ...prev };
-                for (const r of settled) next[r.providerId] = r.corsBlocked ? 'blocked' : (next[r.providerId] === 'blocked' ? 'blocked' : (r.error && !r.status ? next[r.providerId] ?? 'unknown' : 'ok'));
+                for (const r of settled) {
+                    const priorStatus = effectiveCorsStatus(next[r.providerId]);
+                    const status: CorsStatus = r.corsBlocked
+                        ? 'blocked'
+                        : priorStatus === 'blocked'
+                            ? 'blocked'
+                            : (r.error && !r.status ? priorStatus : 'ok');
+                    next[r.providerId] = { status, checkedAt: now };
+                }
                 return next;
             });
             setRunning(false);
@@ -170,8 +196,8 @@ export default function ResearchLab() {
                             <button
                                 key={p.id}
                                 className={p.id in selected ? 'rl-chip active' : 'rl-chip'}
-                                disabled={cors[p.id] === 'blocked'}
-                                title={cors[p.id] === 'blocked' ? (p.keyless ? 'temporarily unreachable — try again later' : 'provider stopped allowing browser calls — re-audit needed') : p.name}
+                                disabled={corsStatus(p.id) === 'blocked'}
+                                title={corsStatus(p.id) === 'blocked' ? (p.keyless ? 'temporarily unreachable — try again later' : 'provider stopped allowing browser calls — re-audit needed') : p.name}
                                 onClick={() => toggleProvider(p)}
                             >
                                 {p.name}{p.keyless ? '' : keys[p.id] ? '' : ' (no key)'}
@@ -264,9 +290,9 @@ export default function ResearchLab() {
                             <div className="rl-provider-side">
                                 {p.unusable
                                     ? <span className="rl-badge rl-badge-bad">unusable</span>
-                                    : cors[p.id] === 'blocked'
+                                    : corsStatus(p.id) === 'blocked'
                                         ? <span className="rl-badge rl-badge-bad">{p.keyless ? 'temporarily unreachable' : 'stopped allowing browser calls'}</span>
-                                        : cors[p.id] === 'ok'
+                                        : corsStatus(p.id) === 'ok'
                                             ? <span className="rl-badge rl-badge-ok">browser-direct ok</span>
                                             : <span className="rl-badge">CORS untested</span>}
                                 {p.keyless

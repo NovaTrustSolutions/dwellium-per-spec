@@ -78,4 +78,13 @@ describe('research-lab labs-tier wiring', () => {
         expect(defaultDockItems.some(d => d.component === 'research-lab')).toBe(false);
         expect(w.restrictedToEmails).toBeUndefined();
     });
+    // Plan 062 phase 2 — the description's provider count must never go
+    // stale again: parse the number out of the description text itself and
+    // compare it against the live registry length, instead of pinning a
+    // literal like 22.
+    it('the description states the SAME provider count as RESEARCH_PROVIDERS.length (computed, never hand-pinned)', () => {
+        const match = /Try (\d+) free LLM APIs/.exec(w.description);
+        expect(match).not.toBeNull();
+        expect(Number(match![1])).toBe(RESEARCH_PROVIDERS.length);
+    });
 });

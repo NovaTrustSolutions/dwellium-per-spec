@@ -1,5 +1,5 @@
 /**
- * researchProviders — the 31 free LLM API providers for the Research Lab.
+ * researchProviders — the 22 free LLM API providers for the Research Lab.
  *
  * GENERATED-BUT-COMMITTED data file. Source of truth:
  *   https://github.com/NovaTrustSolutions/awesome-freellm-apis (README.md)

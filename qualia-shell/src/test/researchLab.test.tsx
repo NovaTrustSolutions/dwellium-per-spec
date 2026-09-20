@@ -20,7 +20,7 @@ import ResearchLab from '../components/ResearchLab/ResearchLab';
 import { resetGuardSession } from '../lib/researchLlm/guard';
 import { researchKeysUserIdHolder, resetResearchKeys, setResearchKey } from '../lib/researchLlm/researchKeysStore';
 import { researchLogStore, researchLogUserIdHolder, resetResearchLog } from '../lib/researchLlm/researchLogStore';
-import { resetWidgetMemory } from '../lib/widgetMemory';
+import { patchWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 
 const okJson = (content: string, usage = { prompt_tokens: 5, completion_tokens: 7 }) =>
     new Response(JSON.stringify({ choices: [{ message: { content } }], usage }), { status: 200 });
@@ -241,5 +241,47 @@ describe('ResearchLab — run loop hardening (plan 062 phase 1)', () => {
         expect(aborted).toBe(true);
         expect(errorSpy).not.toHaveBeenCalled();
         errorSpy.mockRestore();
+    });
+});
+
+// Plan 062 phase 2 — stop lying on three surfaces: CORS verdicts persist in
+// widgetMemory (not component state), a stale verdict expires, and the 5th
+// chip no longer does nothing silently.
+describe('ResearchLab — honest surfaces (plan 062 phase 2)', () => {
+    it('a blocked CORS verdict persists across unmount + remount (widgetMemory-backed, not component state)', async () => {
+        setResearchKey('cohere', 'ck-1');
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+        const { unmount } = render(<ResearchLab />);
+        typePrompt('hello there');
+        fireEvent.click(screen.getByRole('button', { name: 'Cohere' }));
+        fireEvent.change(screen.getByLabelText('Cohere model id'), { target: { value: 'command-r' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+        await screen.findByText(/stopped allowing browser calls/);
+        unmount();
+
+        render(<ResearchLab />);
+        expect(screen.getByRole('button', { name: 'Cohere' })).toBeDisabled();
+    });
+
+    it('a CORS verdict older than 7 days is re-offered instead of blocklisted forever', () => {
+        const eightDaysAgo = Date.now() - 8 * 24 * 60 * 60 * 1000;
+        patchWidgetMemory('research-lab', { cors: { mistral: { status: 'blocked', checkedAt: eightDaysAgo } } });
+        render(<ResearchLab />);
+        expect(screen.getByRole('button', { name: /^Mistral AI/ })).not.toBeDisabled();
+    });
+
+    it('a CORS verdict inside the 7-day window still blocks the chip', () => {
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        patchWidgetMemory('research-lab', { cors: { mistral: { status: 'blocked', checkedAt: oneDayAgo } } });
+        render(<ResearchLab />);
+        expect(screen.getByRole('button', { name: /^Mistral AI/ })).toBeDisabled();
+    });
+
+    it('the 5th provider chip raises a notice instead of silently doing nothing', () => {
+        render(<ResearchLab />);
+        const names = [/^Pollinations/, /^ModelScope/, /^Google Gemini/, /^LLM7\.io/, /^OVHcloud/];
+        for (const n of names.slice(0, 4)) fireEvent.click(screen.getByRole('button', { name: n }));
+        fireEvent.click(screen.getByRole('button', { name: names[4] }));
+        expect(screen.getByRole('alert').textContent).toMatch(/Pick at most 4 providers — deselect one first\./);
     });
 });

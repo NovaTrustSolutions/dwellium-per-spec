@@ -214,7 +214,7 @@ export default function ResearchLab() {
         const entries = Object.entries(selected);
         if (!prompt.trim()) { setNotice('Type a prompt first.'); return; }
         if (entries.length === 0) { setNotice('Pick 1–4 providers below.'); return; }
-        const missingKey = entries.find(([id]) => !isKeyless(id) && !getResearchKey(id));
+        const missingKey = entries.find(([id]) => !isKeyless(id) && !isKeyOptional(id) && !getResearchKey(id));
         if (missingKey) { setNotice(`No API key set for ${providerName(missingKey[0])} — add it in the Keys tab.`); return; }
         const missingModel = entries.find(([, m]) => !m.trim());
         if (missingModel) { setNotice(`Enter a model id for ${providerName(missingModel[0])}.`); return; }
@@ -266,8 +266,9 @@ export default function ResearchLab() {
                                 title={corsStatus(p.id) === 'blocked' ? (p.keyless ? 'temporarily unreachable — try again later' : 'provider stopped allowing browser calls — re-audit needed') : p.name}
                                 onClick={() => toggleProvider(p)}
                             >
-                                {p.name}{p.keyless ? '' : keys[p.id] ? '' : ' (no key)'}
+                                {p.name}{p.keyless || keys[p.id] ? '' : p.keyOptional ? ' (key optional)' : ' (no key)'}
                                 {p.keyless && <span className="rl-chip-badge">no key needed</span>}
+                                {p.keyOptional && !keys[p.id] && <span className="rl-chip-badge">works without a key</span>}
                             </button>
                         ))}
                     </div>
@@ -365,7 +366,7 @@ export default function ResearchLab() {
                                             : <span className="rl-badge">CORS untested</span>}
                                 {p.keyless
                                     ? <span className="rl-badge rl-badge-ok">no key needed</span>
-                                    : <span className={keys[p.id] ? 'rl-badge rl-badge-ok' : 'rl-badge'}>{keys[p.id] ? 'key set' : 'no key'}</span>}
+                                    : <span className={keys[p.id] || p.keyOptional ? 'rl-badge rl-badge-ok' : 'rl-badge'}>{keys[p.id] ? 'key set' : p.keyOptional ? 'key optional' : 'no key'}</span>}
                                 {p.getKeyUrl && (
                                     <a href={p.getKeyUrl} target="_blank" rel="noopener noreferrer">
                                         Get key <ExternalLink size={12} aria-hidden />
@@ -459,6 +460,10 @@ function ResultCard({ result }: { result: ResearchRunResult }) {
 
 function providerName(id: string): string {
     return RESEARCH_PROVIDERS.find(p => p.id === id)?.name ?? id;
+}
+
+function isKeyOptional(id: string): boolean {
+    return !!RESEARCH_PROVIDERS.find(p => p.id === id)?.keyOptional;
 }
 
 function isKeyless(id: string): boolean {

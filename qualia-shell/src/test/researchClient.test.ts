@@ -25,6 +25,15 @@ describe('runResearchChat routing', () => {
         expect('Authorization' in headers).toBe(false);
     });
 
+    it('keyOptional with an EMPTY key: POSTs to /chat/completions with NO Authorization header (LLM7 anonymous tier, probed 2026-09-19)', async () => {
+        const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson());
+        const r = await runResearchChat({ providerId: 'llm7-io', model: 'GLM-5.3-Flash', apiKey: '', presetId: 'blank', prompt: 'hello' });
+        expect(r.text).toBe('hi');
+        const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe('https://api.llm7.io/v1/chat/completions');
+        expect('Authorization' in (init.headers as Record<string, string>)).toBe(false);
+    });
+
     it('keyed: POSTs to baseUrl + /chat/completions with a Bearer Authorization header', async () => {
         const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson());
         await runResearchChat({ providerId: 'groq', model: 'llama-3.3-70b-versatile', apiKey: 'gsk-1', presetId: 'blank', prompt: 'hello' });

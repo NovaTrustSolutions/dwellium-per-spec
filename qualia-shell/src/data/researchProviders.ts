@@ -64,6 +64,14 @@ export interface ResearchProvider {
     keyless?: boolean;
     /** Fixed model menu (keyless providers have no free-text model field). */
     models?: { id: string; label: string }[];
+    /**
+     * Anonymous tier exists: Run works with NO key (no Authorization header is
+     * sent), and a key — if set — raises the rate limit. Source: the upstream
+     * README's per-model rate-limit table ("30 RPM (120 with token)",
+     * "2 RPM (anonymous)"), probed live 2026-09-19. Distinct from `keyless`:
+     * these are ordinary /chat/completions providers with a dynamic model list.
+     */
+    keyOptional?: boolean;
 }
 
 export const RESEARCH_PROVIDERS_SOURCE = 'https://github.com/NovaTrustSolutions/awesome-freellm-apis';
@@ -95,8 +103,13 @@ export const RESEARCH_PROVIDERS: readonly ResearchProvider[] = [
         modalities: ['audio', 'image', 'pdf', 'reasoning', 'text', 'video', 'vision'], tier: 'permanent',
         note: 'README base is the native v1beta API; this entry uses the OpenAI-compat endpoint instead.',
     },
-    { id: 'llm7-io', name: 'LLM7.io', baseUrl: 'https://api.llm7.io/v1', getKeyUrl: 'https://token.llm7.io', creditCard: 'No', freeModels: 16, maxContext: '1M', modalities: ['audio', 'code', 'image', 'pdf', 'reasoning', 'text', 'video', 'vision'], tier: 'permanent' },
-    { id: 'ovhcloud', name: 'OVHcloud AI Endpoints', baseUrl: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', getKeyUrl: 'https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/', creditCard: 'Registration', freeModels: 14, maxContext: '262K', modalities: ['audio', 'code', 'image', 'reasoning', 'text', 'video'], tier: 'permanent' },
+    // keyOptional (probed 2026-09-19, no Authorization header, Origin argyleholocron):
+    // LLM7 GLM-5.3-Flash → 200 "pong"; its DeepSeek-V4 models → 401 missing_api_key
+    // (token tier) — the 401 renders verbatim, so no per-model filtering.
+    { id: 'llm7-io', name: 'LLM7.io', baseUrl: 'https://api.llm7.io/v1', getKeyUrl: 'https://token.llm7.io', creditCard: 'No', freeModels: 16, maxContext: '1M', modalities: ['audio', 'code', 'image', 'pdf', 'reasoning', 'text', 'video', 'vision'], tier: 'permanent', keyOptional: true, note: 'Anonymous tier: 30 requests/min with no key; a free token raises it to 120. Some models answer 401 without a token.' },
+    // OVH anonymous: /models → 200 (24 models); chat → 429 "API rate limit exceeded"
+    // during the probe (2 RPM anonymous per the README) — auth was not the refusal.
+    { id: 'ovhcloud', name: 'OVHcloud AI Endpoints', baseUrl: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1', getKeyUrl: 'https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/', creditCard: 'Registration', freeModels: 14, maxContext: '262K', modalities: ['audio', 'code', 'image', 'reasoning', 'text', 'video'], tier: 'permanent', keyOptional: true, note: 'Anonymous tier: 2 requests/min with no key — expect 429s if you run it often; a registration key lifts the limit.' },
     { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', getKeyUrl: 'https://console.groq.com/keys', creditCard: 'No', freeModels: 12, maxContext: '262K', modalities: ['image', 'reasoning', 'text'], tier: 'permanent' },
     { id: 'mistral', name: 'Mistral AI', baseUrl: 'https://api.mistral.ai/v1', getKeyUrl: 'https://console.mistral.ai/api-keys', creditCard: 'No', freeModels: 12, maxContext: '256K', modalities: ['code', 'image', 'text'], tier: 'permanent' },
     { id: 'cohere', name: 'Cohere', baseUrl: 'https://api.cohere.com/v2', getKeyUrl: 'https://dashboard.cohere.com/api-keys', creditCard: 'No', freeModels: 12, maxContext: '436K', modalities: ['image', 'text'], tier: 'permanent' },

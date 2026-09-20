@@ -127,6 +127,24 @@ describe('ResearchLab widget', () => {
         expect(screen.getAllByText(/Get key/)).not.toHaveLength(0);
     });
 
+    it('a keyOptional provider (LLM7.io) runs with NO key: chip says "works without a key", model list loads, Run is not gated', async () => {
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+            if (String(url).includes('/models')) return new Response(JSON.stringify({ data: [{ id: 'GLM-5.3-Flash' }] }), { status: 200 });
+            return okJson('anonymous pong');
+        });
+        render(<ResearchLab />);
+        const chip = screen.getByRole('button', { name: /LLM7\.io/ });
+        expect(chip.textContent).toMatch(/key optional/);
+        expect(chip.textContent).toMatch(/works without a key/);
+        typePrompt('ping');
+        fireEvent.click(chip);
+        const select = await screen.findByRole('combobox', { name: 'LLM7.io model' });
+        fireEvent.change(select, { target: { value: 'GLM-5.3-Flash' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+        expect(await screen.findByText('anonymous pong')).toBeInTheDocument();
+        expect(screen.queryByText(/No API key set/)).not.toBeInTheDocument();
+    });
+
     it('the keyless Pollinations provider is always-ready: no key input, a model dropdown of both labels, and Run works with zero setup', async () => {
         vi.spyOn(globalThis, 'fetch').mockResolvedValue(okJson('anonymous hello'));
         render(<ResearchLab />);

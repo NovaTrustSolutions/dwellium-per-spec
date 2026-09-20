@@ -87,7 +87,9 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
     // already ends in /openai — and send NO Authorization header.
     const url = provider.keyless ? provider.baseUrl : chatCompletionsUrl(provider.baseUrl);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (!provider.keyless) headers.Authorization = `Bearer ${req.apiKey}`;
+    // Empty key ⇒ no header (keyOptional providers' anonymous tier); keyed
+    // providers never reach here without a key — the widget gates them.
+    if (!provider.keyless && req.apiKey) headers.Authorization = `Bearer ${req.apiKey}`;
     // Compose the caller's signal (Cancel button) with a hard default timeout
     // so one hanging free provider can never hang the widget forever.
     const signal = AbortSignal.any([req.signal, AbortSignal.timeout(RESEARCH_TIMEOUT_MS)].filter(Boolean) as AbortSignal[]);

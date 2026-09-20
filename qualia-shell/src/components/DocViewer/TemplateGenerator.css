@@ -27,6 +27,16 @@
        paints tints and borders only, never text. */
 }
 
+/* flex-wrap makes .tg a multi-line flex container, and a multi-line container does
+   NOT clamp its line to the container's height: a long variables list stretched the
+   whole row and pushed the sidebar's Print button out of view. Cap each region at the
+   window height so lists scroll inside their own column; the narrow query lifts it. */
+.tg-sidebar,
+.tg-main,
+.tg-preview {
+    max-height: 100%;
+}
+
 /* ===== SIDEBAR ===== */
 .tg-sidebar {
     width: 220px;
@@ -603,6 +613,7 @@
     .tg-preview {
         flex: 1 1 100%;
         width: 100%;
+        max-height: none;
     }
 
     .tg-main {

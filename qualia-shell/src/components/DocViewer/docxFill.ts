@@ -114,9 +114,12 @@ export async function fillDocx(
             changed = true;
         }
         if (changed) {
-            // XMLSerializer drops the XML declaration; put the original back.
+            // jsdom's XMLSerializer drops the XML declaration, a browser's keeps it:
+            // restore the original only when it is missing (two declarations are
+            // malformed XML — Word and macOS textutil reject the whole file).
+            const out = new XMLSerializer().serializeToString(doc);
             const declaration = /^<\?xml[^>]*\?>\s*/.exec(xml)?.[0] ?? '';
-            zip.file(path, declaration + new XMLSerializer().serializeToString(doc));
+            zip.file(path, out.startsWith('<?xml') ? out : declaration + out);
         }
     }
     return zip.generateAsync({

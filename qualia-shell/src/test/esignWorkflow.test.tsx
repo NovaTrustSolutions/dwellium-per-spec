@@ -239,6 +239,9 @@ describe('ESign widget — send flow', () => {
             if (u.includes('/api/files')) {
                 return jsonResponse({ success: true, data: [{ id: 'file-1', name: 'lease.pdf', type: 'pdf' }, { id: 'file-2', name: 'notes.txt', type: 'text' }] });
             }
+            if (u.includes('/api/esign/consent')) {
+                return jsonResponse({ success: true, data: { version: '2026-09-1', text: 'Signing electronically is voluntary. You may request a paper copy at no charge.' } });
+            }
             if (u.includes('/api/esign/send')) return jsonResponse({ success: true, data: { envelopeId: 'envl_new', recipients: [{ email: 'a@example.com', token: 'tok_new' }] } });
             return undefined;
         });
@@ -281,6 +284,20 @@ describe('ESign widget — send flow', () => {
         const prompt = String(confirmSpy.mock.calls[0][0]);
         expect(prompt).toContain('a@example.com');
         expect(prompt).toContain('b@example.com');
+    });
+
+    it('shows the ESIGN consent disclosure before sending, and the confirmation says it goes out', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        await openSend();
+        // the sender sees the exact wording the backend appends to every recipient's message
+        await waitFor(() => expect(screen.getByText(/You may request a paper copy at no charge/)).toBeInTheDocument());
+
+        fireEvent.change(screen.getByLabelText('Recipient 1 email'), { target: { value: 'a@example.com' } });
+        fireEvent.click(screen.getByRole('button', { name: /Send for signature/ }));
+        await waitFor(() => expect(screen.getByText('Sent for signature.')).toBeInTheDocument());
+        // one confirmation only, and it states the disclosure travels with the request
+        expect(confirmSpy).toHaveBeenCalledTimes(1);
+        expect(String(confirmSpy.mock.calls[0][0])).toMatch(/consent disclosure/i);
     });
 
     it('fileId flow: the picker lists only PDFs from the Dwellium files store and POSTs fileId', async () => {

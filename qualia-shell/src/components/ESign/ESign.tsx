@@ -24,6 +24,7 @@ import {
     documensoConfiguredUrl,
     documensoDocumentUrl,
     downloadAuditLog,
+    getEsignConsent,
     isCloudDocumensoHost,
     downloadSignedPdf,
     listDocumensoEnvelopes,
@@ -207,6 +208,10 @@ export default function ESign({
     const [message, setMessage] = useState(ANDY_MESSAGE);
     const [recipients, setRecipients] = useState<DraftRecipient[]>([{ name: '', email: '', role: 'SIGNER' }]);
     const [sentRecipients, setSentRecipients] = useState<EsignRecipient[] | null>(null);
+    // ESIGN Act §101(c) disclosure — wording lives in the backend (esignRoutes.ts
+    // ESIGN_CONSENT) and is pending legal review; shown here so the sender sees
+    // exactly what the recipient will receive.
+    const [consent, setConsent] = useState<{ version: string; text: string } | null>(null);
 
     const refresh = useCallback(async () => {
         setState({ kind: 'loading' });
@@ -230,7 +235,8 @@ export default function ESign({
     }, [view, state.kind]);
 
     const loadSendData = useCallback(async () => {
-        const [tpl, pdfs] = await Promise.all([listEsignTemplates(), listPdfFiles()]);
+        const [tpl, pdfs, disclosure] = await Promise.all([listEsignTemplates(), listPdfFiles(), getEsignConsent()]);
+        setConsent(disclosure.kind === 'ok' ? disclosure.data : null);
         if (tpl.kind === 'ok') {
             setTemplates(tpl.data.templates);
             setLeaseTemplateId(tpl.data.leaseTemplateId);
@@ -290,7 +296,7 @@ export default function ESign({
         // Sending emails real people — name the document and every recipient before it goes out
         // (same confirm gate Cancel uses).
         const ok = window.confirm(
-            `Send “${docTitle}” for signature to:\n\n${wanted.map(r => r.email).join('\n')}\n\nEach recipient gets a signing email now.`,
+            `Send “${docTitle}” for signature to:\n\n${wanted.map(r => r.email).join('\n')}\n\nEach recipient gets a signing email now, including the e-sign consent disclosure (paper copy on request, consent withdrawable before signing).`,
         );
         if (!ok) return;
 
@@ -462,6 +468,14 @@ export default function ESign({
                         <label className="esign__label" htmlFor="esign-message">Message</label>
                         <input id="esign-message" className="esign__input" value={message} onChange={e => setMessage(e.target.value)} />
                     </div>
+                    {/* Consent disclosure shown to the SENDER (staff) — it travels to the consumer in the
+                        message the backend sends. Wording comes from esignRoutes.ts ESIGN_CONSENT and is
+                        engineering placeholder copy: it must be reviewed by counsel before production use. */}
+                    {consent && (
+                        <p className="esign__muted" data-state="consent">
+                            Included in every recipient’s message: {consent.text}
+                        </p>
+                    )}
 
                     <fieldset className="esign__recipients" disabled={sentRecipients !== null}>
                         <legend className="esign__subtitle">Recipients (signing order = row order)</legend>

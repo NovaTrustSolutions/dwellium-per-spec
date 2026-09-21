@@ -119,6 +119,16 @@ export function listEsignTemplates(): Promise<EsignResult<{ templates: EsignTemp
     }));
 }
 
+/**
+ * The ESIGN Act consent disclosure the backend appends to every recipient's
+ * message — fetched so the send view shows the SAME wording (one source of truth
+ * in esignRoutes.ts, never a second copy here). Null when the backend can't say.
+ */
+export function getEsignConsent(): Promise<EsignResult<{ version: string; text: string } | null>> {
+    return callJson('/api/esign/consent', undefined, b =>
+        (typeof b?.data?.text === 'string' ? { version: String(b.data.version || ''), text: b.data.text } : null));
+}
+
 /** PDFs in the Dwellium files store — the fileId picker for the send flow. */
 export function listPdfFiles(): Promise<EsignResult<EsignFileRow[]>> {
     return callJson('/api/files?limit=200', undefined, b => {

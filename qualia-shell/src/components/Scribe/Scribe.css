@@ -23,7 +23,7 @@
 
 .scribe__toolbar-toast {
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     margin-left: 8px;
     animation: scribe-toast-fade 2.5s ease-out forwards;
 }
@@ -174,7 +174,7 @@
 
 .scribe__file-item:hover {
     background: #111;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .scribe__file-name {
@@ -242,7 +242,7 @@
 
 .scribe__toc-item:hover {
     background: color-mix(in srgb, var(--accent) 6%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* ── Minimap ──────────────────────────────────────── */
@@ -357,7 +357,7 @@
     font-size: 12px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .scribe-ara-panel__dot {
@@ -556,7 +556,7 @@
 
 .scribe-ingest__pick:hover:not(:disabled) {
     border-color: var(--accent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .scribe-ingest__pick:disabled {
@@ -570,7 +570,7 @@
     border-radius: 6px;
     border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
     background: color-mix(in srgb, var(--accent) 14%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
@@ -606,7 +606,7 @@
     border-radius: 6px;
     border: 1px solid var(--accent);
     background: transparent;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -714,7 +714,7 @@
 
 .scribe__file-item--active {
     background: var(--accent-subtle, color-mix(in srgb, var(--accent) 14%, transparent)) !important;
-    color: var(--accent) !important;
+    color: var(--accent-text) !important;
     box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -774,7 +774,7 @@
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .scribe-ara-dock__sub {
@@ -990,7 +990,7 @@
 
 .scribe__open-row--active {
     background: var(--accent-subtle, color-mix(in srgb, var(--accent) 14%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -1003,7 +1003,7 @@
 }
 
 .scribe__open-dirty {
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 9px;
     flex-shrink: 0;
 }
@@ -1048,7 +1048,7 @@
 }
 
 .scribe__branch-icon {
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 13px;
 }
 
@@ -1076,7 +1076,7 @@
 }
 
 .scribe__branch-version:hover:not(:disabled) {
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: var(--accent);
 }
 
@@ -1113,7 +1113,7 @@
 }
 
 .scribe__ws-icon {
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     flex-shrink: 0;
 }
@@ -1173,7 +1173,7 @@
 }
 
 .scribe__ws-item--active {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .scribe__ws-sep {
@@ -1183,7 +1183,7 @@
 }
 
 .scribe__ws-new {
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 600;
 }
 
@@ -1268,7 +1268,7 @@ body:not(.animations-off) .scribe__open-row:hover {
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     border-radius: 999px;

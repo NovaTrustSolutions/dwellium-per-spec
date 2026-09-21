@@ -75,7 +75,7 @@
 
 /* [D4] Active tab with gradient underline + tint */
 .th-tabs__btn--active {
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom-color: transparent;
     background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent) 0%, transparent 100%);
 }
@@ -97,7 +97,7 @@
 .th-tabs__badge {
     font-size: 10px;
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent), color-mix(in srgb, var(--accent) 20%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     padding: 1px 8px;
     border-radius: 12px;
     font-weight: 800;
@@ -295,7 +295,7 @@
 /* [D14] Sending badge with shimmer animation */
 .th-controls__sending-badge {
     font-size: 10px;
-    color: var(--accent);
+    color: var(--accent-text);
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
     padding: 3px 12px;
     border-radius: 20px;
@@ -772,7 +772,7 @@
     border-radius: 8px;
     border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     outline: none;
     font-family: inherit;
     box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 15%, transparent);
@@ -1125,7 +1125,7 @@
 
 .th-segment__legal-match-id {
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
     white-space: nowrap;
 }
 
@@ -1368,7 +1368,7 @@
 /* [D44] Spinner with gradient color */
 .th-factpanel__spinner {
     animation: spin 0.8s linear infinite;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 15px;
     margin-left: auto;
 }
@@ -1683,7 +1683,7 @@
 .th-log__action-btn--load:hover {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
@@ -1770,7 +1770,7 @@
 }
 
 .th-upload-dragover h3 {
-    color: var(--accent) !important;
+    color: var(--accent-text) !important;
 }
 
 /* Upload icon */
@@ -1786,7 +1786,7 @@
     border-radius: 10px;
     border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -1800,7 +1800,7 @@
     border-color: color-mix(in srgb, var(--accent) 50%, transparent);
     transform: translateY(-1px);
     box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 15%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 .th-upload__browse-btn:active {
@@ -2075,7 +2075,7 @@
     border-radius: 10px;
     border: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, transparent), color-mix(in srgb, var(--accent) 3%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -2150,7 +2150,7 @@
     margin-left: auto;
     font-size: 11px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
     padding: 2px 8px;
     border-radius: 8px;
@@ -2460,14 +2460,14 @@
 
 .th-upload__result-src {
     font-size: 10px;
-    color: var(--accent);
+    color: var(--accent-text);
     text-decoration: none;
     word-break: break-all;
     transition: color 0.2s;
 }
 
 .th-upload__result-src:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     text-decoration: underline;
 }
 
@@ -2504,7 +2504,7 @@
 .th-live-toggle--on {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 10%, transparent), inset 0 0 8px color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
@@ -2517,7 +2517,7 @@
 .th-moonshine-toggle.th-live-toggle--on {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), rgba(245, 158, 11, 0.08));
     border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 12%, transparent), 0 0 6px rgba(245, 158, 11, 0.06);
     animation: moonshine-glow 3s ease-in-out infinite;
 }
@@ -2600,7 +2600,7 @@
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: var(--accent);
+    color: var(--accent-text);
     flex-shrink: 0;
     padding-top: 2px;
 }
@@ -2647,7 +2647,7 @@
 
 /* Interim text (lighter, still being processed) */
 .th-live-caption__interim {
-    color: var(--accent);
+    color: var(--accent-text);
     font-style: italic;
     animation: live-text-fade 0.3s ease;
 }
@@ -2664,7 +2664,7 @@
 
 /* Blinking cursor */
 .th-live-caption__cursor {
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 300;
     font-style: normal;
     animation: live-cursor-blink 0.8s step-start infinite;
@@ -3004,7 +3004,7 @@
 .th-speaker-library__count {
     font-size: 11px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
     padding: 2px 8px;
     border-radius: 8px;
@@ -3089,7 +3089,7 @@
 }
 
 .th-speaker-card__name:hover {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .th-speaker-card__badge {
@@ -3097,7 +3097,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 15%, transparent);
     padding: 2px 6px;
     border-radius: 4px;
@@ -3180,7 +3180,7 @@
 }
 
 .th-speaker-library__add-btn:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
     background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
@@ -3214,7 +3214,7 @@
     border-radius: 6px;
     border: none;
     background: color-mix(in srgb, var(--accent) 20%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -3267,7 +3267,7 @@
     margin: 0;
     font-size: 13px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .mm-script-editor__hint {
@@ -3343,7 +3343,7 @@
     border-radius: 10px;
     border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), color-mix(in srgb, var(--accent) 4%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
@@ -3385,7 +3385,7 @@
 .mm-intel-result h4 {
     margin: 0 0 12px 0;
     font-size: 13px;
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 700;
 }
 
@@ -3481,8 +3481,8 @@
     border-radius: 6px;
 }
 
-.mm-rb-badge--strong { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
-.mm-rb-badge--moderate { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-hover); }
+.mm-rb-badge--strong { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-text); }
+.mm-rb-badge--moderate { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-text-hover); }
 .mm-rb-badge--soft { background: rgba(232, 255, 122, 0.15); color: #ddd6fe; }
 
 /* On-Demand Summary */
@@ -3503,7 +3503,7 @@
 
 .mm-summary-section strong {
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     display: block;
     margin-bottom: 6px;
 }
@@ -3544,7 +3544,7 @@
 .th-post-meeting__header h3 {
     margin: 0;
     font-size: 14px;
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 700;
 }
 
@@ -3597,7 +3597,7 @@
 .th-pm-btn:hover:not(:disabled) {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
     border-color: color-mix(in srgb, var(--accent) 20%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     transform: translateY(-1px);
 }
 
@@ -3627,7 +3627,7 @@
     padding: 10px 14px;
     font-size: 12px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     background: rgba(255, 255, 255, 0.02);
 }
@@ -3635,7 +3635,7 @@
 .th-pm-result__subheader {
     padding: 6px 14px;
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 4%, transparent);
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -3670,7 +3670,7 @@
 
 .th-pm-copy:hover {
     background: color-mix(in srgb, var(--accent) 8%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* Action Items */
@@ -3707,7 +3707,7 @@
 
 .th-pm-assignee {
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     flex-shrink: 0;
     font-weight: 600;
 }
@@ -3735,7 +3735,7 @@
 /* AI Actions Button in Log */
 .th-log__action-btn--ai {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 

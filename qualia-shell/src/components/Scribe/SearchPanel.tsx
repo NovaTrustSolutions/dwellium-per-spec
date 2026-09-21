@@ -63,7 +63,7 @@ export function SearchPanel({ files }: { files: Array<{ filepath: string }> }) {
                             onMouseEnter={(e) => { e.currentTarget.style.background = '#1e1e1e'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
-                            <span style={{ display: 'block', color: 'var(--accent)', fontSize: 11 }}>{(m.filepath.split('/').pop() ?? m.filepath)}:{m.line}</span>
+                            <span style={{ display: 'block', color: 'var(--accent-text)', fontSize: 11 }}>{(m.filepath.split('/').pop() ?? m.filepath)}:{m.line}</span>
                             <span style={{ display: 'block', color: '#bbb', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.lineText}</span>
                         </button>
                     ))}

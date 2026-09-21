@@ -38,7 +38,7 @@
 }
 
 .stella__tab--active {
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -207,7 +207,7 @@
 
 .stella__msg-html em {
     font-style: italic;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .stella__msg-html h4,
@@ -215,7 +215,7 @@
 .stella__msg-html h6 {
     margin: 10px 0 4px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .stella__msg-html h4 {
@@ -255,7 +255,7 @@
     border-radius: 4px;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 12px;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .stella__msg-html pre {
@@ -284,13 +284,13 @@
 }
 
 .stella__msg-html a {
-    color: var(--accent);
+    color: var(--accent-text);
     text-decoration: underline;
     text-underline-offset: 2px;
 }
 
 .stella__msg-html a:hover {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .stella__msg-html hr {
@@ -498,7 +498,7 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
     margin: 6px 0 6px;
     opacity: 0.85;
 }
@@ -562,7 +562,7 @@
 }
 
 .stella__tool-go {
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 14px;
     flex-shrink: 0;
     opacity: 0.6;
@@ -822,7 +822,7 @@
     border-radius: 8px;
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 500;
     font-family: inherit;
@@ -929,7 +929,7 @@
     border-radius: 6px;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     word-break: break-all;
 }
 
@@ -950,7 +950,7 @@
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 6px;
     background: color-mix(in srgb, var(--accent) 8%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
@@ -1330,7 +1330,7 @@
     border-radius: 8px;
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 11px;
     font-weight: 700;
     font-family: inherit;
@@ -1638,7 +1638,7 @@
     background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 .stella__honcho-nav-item--active {
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border-left-color: var(--accent);
     font-weight: 600;
@@ -1844,7 +1844,7 @@
     display: block;
     font-size: 12px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     margin-bottom: 2px;
 }
 
@@ -2082,7 +2082,7 @@
     background: rgba(255,255,255,0.06);
     padding: 1px 5px;
     border-radius: 3px;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* ── Honcho Dream + Interactions sections ── */
@@ -2104,7 +2104,7 @@
 .stella__honcho-dream-btn,
 .stella__honcho-interactions-btn {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
     padding: 6px 14px;
     border-radius: 6px;
@@ -2335,7 +2335,7 @@
     padding: 5px 10px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 6px;

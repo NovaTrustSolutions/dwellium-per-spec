@@ -65,7 +65,7 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
             <span style={{ width: 96 }}>{label}</span>
             <input type="range" min={min} max={max} step={step} value={settings[key]}
                 onChange={e => updateSpeakerSettings({ [key]: Number(e.target.value) })} style={{ flex: 1 }} />
-            <span style={{ width: 38, textAlign: 'right', color: 'var(--accent)' }}>{settings[key].toFixed(2)}</span>
+            <span style={{ width: 38, textAlign: 'right', color: 'var(--accent-text)' }}>{settings[key].toFixed(2)}</span>
         </label>
     );
 
@@ -91,12 +91,12 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {speakers.map(s => (
                         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                            <span style={{ color: 'var(--accent)' }}><Mic size={14} /></span>
+                            <span style={{ color: 'var(--accent-text)' }}><Mic size={14} /></span>
                             <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{s.label}</span>
                             <span style={{ fontSize: 10.5, color: '#808080' }}>{s.sampleCount} sample{s.sampleCount === 1 ? '' : 's'}</span>
                             <span style={{ flex: 1 }} />
                             <button onClick={() => addSample(s.id, s.label)} title="Fold the most recent voice sample into this voiceprint"
-                                style={{ fontSize: 11, color: 'var(--accent)', background: 'transparent', border: '1px solid #333', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
+                                style={{ fontSize: 11, color: 'var(--accent-text)', background: 'transparent', border: '1px solid #333', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
                                 ＋ Sample
                             </button>
                             <button onClick={() => { const n = window.prompt('Rename voice:', s.label); if (n && n.trim()) renameSpeaker(s.id, n.trim()); }}

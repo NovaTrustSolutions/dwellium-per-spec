@@ -100,7 +100,7 @@ export default function FolderPickerModal({ initialPath, onSelect, onClose }: {
                                     onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
                                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                 >
-                                    <Folder size={13} style={{ color: 'var(--accent, #D6FE51)' }} />
+                                    <Folder size={13} style={{ color: 'var(--accent-text, #D6FE51)' }} />
                                     <span>{sub}</span>
                                 </button>
                             ))

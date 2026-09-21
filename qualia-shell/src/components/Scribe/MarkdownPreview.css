@@ -21,4 +21,4 @@
 .scribe__preview-wrap { display: flex; flex-direction: column; min-height: 0; background: var(--bg-surface, #0e0e0e); border-left: 1px solid var(--border-subtle, rgba(255,255,255,.08)); }
 .scribe-preview__bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.07)); flex: none; font-size: 12px; color: var(--text-secondary, #9a9a9a); letter-spacing: .04em; }
 .scribe-preview__bar button { padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-family: inherit; background: var(--bg-desktop, rgba(255,255,255,.05)); border: 1px solid var(--border-default, rgba(255,255,255,.15)); color: var(--text-secondary, #9a9a9a); }
-.scribe-preview__bar button:hover { border-color: var(--accent); color: var(--accent); }
+.scribe-preview__bar button:hover { border-color: var(--accent); color: var(--accent-text); }

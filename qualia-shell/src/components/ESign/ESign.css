@@ -7,6 +7,7 @@
     height: 100%;
     padding: 16px;
     overflow: auto;
+    container-type: inline-size;
 }
 
 .esign__head {
@@ -43,19 +44,24 @@
 .esign__link:hover { text-decoration: underline; }
 
 .esign__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 32px;
     padding: 6px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--border-default);
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface-elevated);
     color: var(--accent);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
 }
 
-.esign__btn:hover { background: rgba(255, 255, 255, 0.09); }
+.esign__btn:hover { background: var(--bg-surface-hover); }
 
-.esign__btn--ghost { padding: 6px; color: var(--text-secondary); }
+.esign__btn--ghost { min-width: 32px; padding: 6px; color: var(--text-secondary); }
 
 .esign__empty {
     display: flex;
@@ -83,22 +89,25 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--text-tertiary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border-default);
 }
 .esign__table td {
     padding: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-subtle);
     vertical-align: top;
 }
 
 .esign__doc-title { font-weight: 600; }
 
 .esign__chip {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
     margin: 0 4px 4px 0;
-    padding: 1px 8px;
+    padding: 2px 8px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--bg-surface-elevated);
     font-size: 11px;
 }
 
@@ -108,13 +117,15 @@
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-secondary);
+    background: var(--bg-surface-elevated);
+    /* 10px pill text needs AA 4.5:1; several themes' semantic colours are too
+       light on their own tint, so pull each 50% toward --text-primary. */
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
 }
 
-.esign__status--sent { color: #0ea5e9; background: rgba(14, 165, 233, 0.12); }
+.esign__status--sent { color: color-mix(in srgb, var(--accent-text) 50%, var(--text-primary)); background: var(--accent-subtle); }
 .esign__status--signed,
-.esign__status--countersigned { color: #d6fe51; background: rgba(214, 254, 81, 0.10); }
+.esign__status--countersigned { color: color-mix(in srgb, var(--success) 50%, var(--text-primary)); background: color-mix(in srgb, var(--success) 12%, transparent); }
 
 /* ── plan 053: full workflow additions ─────────────────────────────────── */
 
@@ -122,10 +133,31 @@
     margin: 0;
     padding: 6px 10px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface-elevated);
     color: var(--text-secondary);
     font-size: 12px;
     word-break: break-all;
+}
+
+.esign__notice--error { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+
+/* Recipient group: strip the UA fieldset chrome so it lays out like the old div. */
+.esign__recipients { min-width: 0; margin: 0; padding: 0; border: 0; }
+.esign__recipients > legend { padding: 0; font-size: 11px; font-weight: 600; color: var(--text-tertiary); }
+.esign__recipients[disabled] { opacity: 0.6; }
+
+/* Per-recipient signing state — was a title tooltip, now readable text. */
+.esign__chip-status { color: var(--text-tertiary); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* The table caption is for assistive tech; the widget header already names the view. */
+.esign__table caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
 .esign__subtitle { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--text-primary); }
@@ -139,10 +171,11 @@
 .esign__input {
     flex: 1;
     min-width: 0;
+    min-height: 32px;
     padding: 6px 8px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--border-default);
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg-surface);
     color: var(--text-primary);
     font-size: 12px;
 }
@@ -158,26 +191,27 @@
     flex-direction: column;
     gap: 6px;
     padding: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    border: 1px solid var(--border-default);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-surface-elevated);
 }
 
 .esign__sent-row { display: flex; align-items: center; gap: 8px; }
 
-.esign__chip--copy { border: none; cursor: pointer; color: var(--accent); }
-.esign__chip--copy:hover { background: rgba(255, 255, 255, 0.10); }
+.esign__chip--copy { border: none; cursor: pointer; color: var(--accent-text); }
+.esign__chip--copy:hover { background: var(--bg-surface-hover); }
 
-.esign__actions { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.esign__actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 
-.esign__btn--danger { color: #f87171; }
+.esign__btn--danger { color: var(--danger); }
 
-/* Upstream Documenso status pills (DRAFT/PENDING/COMPLETED/REJECTED/CANCELLED) */
-.esign__status--draft { color: var(--text-tertiary); }
-.esign__status--pending { color: #0ea5e9; background: rgba(14, 165, 233, 0.12); }
-.esign__status--completed { color: #d6fe51; background: rgba(214, 254, 81, 0.10); }
+/* Upstream Documenso status pills (DRAFT/PENDING/COMPLETED/REJECTED/CANCELLED/UNKNOWN) */
+.esign__status--draft,
+.esign__status--unknown { background: var(--bg-surface-elevated); }
+.esign__status--pending { color: color-mix(in srgb, var(--accent-text) 50%, var(--text-primary)); background: var(--accent-subtle); }
+.esign__status--completed { color: color-mix(in srgb, var(--success) 50%, var(--text-primary)); background: color-mix(in srgb, var(--success) 12%, transparent); }
 .esign__status--rejected,
-.esign__status--cancelled { color: #f87171; background: rgba(248, 113, 113, 0.10); }
+.esign__status--cancelled { color: color-mix(in srgb, var(--danger) 50%, var(--text-primary)); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
 /* Tenant portal "Review & sign" prompt (TenantSignPrompt.tsx) */
 .esign-tenant-prompt__row {
@@ -208,7 +242,12 @@
 
 .esign__panel-actions { display: flex; align-items: center; gap: 8px; }
 
-.esign__link--tab { padding: 4px; }
+.esign__link--tab {
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px;
+}
 
 .esign__linkbtn {
     border: 0;
@@ -218,4 +257,33 @@
     cursor: pointer;
     font: inherit;
     text-decoration: underline;
+}
+
+/* ── Narrow widget window: stack the 5-col table into cards, wrap the
+      recipient row. Container query (the widget is resized independently of
+      the viewport, so @media would read the wrong width). WCAG 1.4.10. ─── */
+@container (max-width: 520px) {
+    .esign__table,
+    .esign__table tbody,
+    .esign__table tr,
+    .esign__table td { display: block; width: 100%; }
+
+    .esign__table thead { display: none; }
+
+    .esign__table tr {
+        margin-bottom: 8px;
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        padding: 4px;
+    }
+
+    .esign__table td { border-bottom: 0; padding: 4px; }
+
+    .esign__actions { flex-wrap: wrap; white-space: normal; }
+
+    .esign__recipient-row,
+    .esign__field-row,
+    .esign__send-actions { flex-wrap: wrap; }
+
+    .esign__input { flex-basis: 100%; }
 }

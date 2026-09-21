@@ -70,13 +70,21 @@ Fixed on branch `fix/file-explorer-audit` (frontend only, not pushed):
    (`fs.rename` / `fs.cp` overwrite). The UI now refuses in all four move paths (drop on folder, drop on
    root, multi-drop, Move-to picker).
 
-## 5. Recommended next (NOT done — each needs your go)
+## 5. Recommended next (A and B done on a backend branch; the rest need your go)
 
 Backend (I did not edit it: the checkout is served live by launchd with hot reload):
-- **A. `/move` and `/rename` should return 409 when the destination exists.** The UI guard in fix 5 works
-  off the last loaded tree; only the server can make overwrite impossible. ~6 lines.
-- **B. Soft delete:** move to `<userRoot>/.trash/<timestamp>-<name>` instead of `fs.rm`. `walkTree` already
-  hides dot entries, so no UI work is needed to hide it, and a wrong delete becomes recoverable. ~5 lines.
+- **A. DONE 2026-09-21 (backend branch `fix/file-explorer-no-overwrite-soft-delete`, `ba7edc5`, not pushed, not deployed):**
+  `/move` and `/rename` answer 409 `{code: "DEST_EXISTS"}` when the destination exists and move nothing;
+  copy uses `errorOnExist`; a missing source is 404. Same-inode (case-only) renames still work.
+- **B. DONE, same commit:** `DELETE /entry` moves the entry to
+  `<userRoot>/.trash/<timestamp>-<rand>/<original path>` instead of `fs.rm`. `/tree` never lists it.
+  Found while testing: `DELETE {path: "."}` passed the traversal guard and wiped the user's whole file root —
+  now 400. Rename falls back to copy-then-remove (the source is kept if the copy fails); that fallback is
+  there for the Cloud Run bucket mount, where I have NOT verified how directory renames behave.
+  Verified: `tests/fileExplorerRoutes.test.ts` 15/15 (10 of the first 14 fail on the old code), full backend
+  `npm test` 62 suites / 580 tests exit 0, `tsc --noEmit` exit 0 — all against a temp dir, never real user files.
+  Open: nothing empties `.trash` and there is no restore UI; the frontend confirm still says "This cannot be
+  undone" (left as is until the backend is deployed, so the UI never promises a trash that is not there).
 - **C. Multipart `/upload` route** so binary and large files work (there is a comment promising a `/bytes`
   endpoint that was never built).
 - **D. `validateRelPath` rejects any name containing `..`** (e.g. `notes..md`); compare path segments instead.

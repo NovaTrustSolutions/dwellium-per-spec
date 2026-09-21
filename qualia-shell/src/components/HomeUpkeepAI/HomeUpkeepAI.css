@@ -687,7 +687,7 @@
 .huai-inspect__analysis h4 {
     margin: 0 0 6px;
     font-size: 0.78rem;
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 .huai-inspect__analysis p {
@@ -747,7 +747,7 @@
 
 .huai-inspection-card__ai {
     font-size: 0.68rem;
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     margin-top: 4px;
     padding: 6px 8px;
     background: rgba(59, 130, 246, 0.06);
@@ -833,7 +833,7 @@
 
 .huai-btn--analyze {
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), color-mix(in srgb, var(--accent) 15%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
 }
 

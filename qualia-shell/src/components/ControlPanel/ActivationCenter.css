@@ -90,6 +90,6 @@
 }
 
 .ac-chip--configured {
-    color: var(--accent, #6ea8fe);
+    color: var(--accent-text, #6ea8fe);
     border-color: var(--accent, #6ea8fe);
 }

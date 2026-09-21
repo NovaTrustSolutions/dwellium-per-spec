@@ -76,7 +76,7 @@
 
 .cloud-browser__button--primary {
     border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .cloud-browser__button:disabled,
@@ -101,7 +101,7 @@
     border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 

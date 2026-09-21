@@ -843,7 +843,7 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.85em;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* [D36] Bullets with accent */
@@ -1956,7 +1956,7 @@
 .ara-avatar-btn--active {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 15%, transparent);
     animation: araAvatarPulse 2.5s ease infinite;
 }
@@ -2030,7 +2030,7 @@
     font-weight: 800;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 6px;
@@ -2147,7 +2147,7 @@
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 11px;
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 .ara-avatar-error-hint {
@@ -2166,7 +2166,7 @@
     gap: 14px;
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: none;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 13px;
     font-weight: 600;
 }

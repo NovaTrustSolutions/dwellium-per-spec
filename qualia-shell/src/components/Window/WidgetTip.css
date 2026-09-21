@@ -39,7 +39,7 @@
     border-radius: 999px;
     border: 1px solid color-mix(in srgb, var(--accent, #D6FE51) 45%, transparent);
     background: transparent;
-    color: var(--accent, #D6FE51);
+    color: var(--accent-text, #D6FE51);
     font-size: 11px;
     cursor: pointer;
 }

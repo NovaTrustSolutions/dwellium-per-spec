@@ -33,7 +33,7 @@
     border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
     border-radius: 12px;
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 100%);
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -59,7 +59,7 @@
 
 .ai-organize-btn:hover {
     border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     transform: translateY(-1px);
     box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 40px color-mix(in srgb, var(--accent) 5%, transparent);
 }
@@ -370,7 +370,7 @@
     border-radius: 6px;
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 10%, transparent) 100%);
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     font-size: 11px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -402,7 +402,7 @@
 
 .ai-reason {
     font-size: 10px;
-    color: var(--accent);
+    color: var(--accent-text);
     margin-top: 4px;
     padding: 3px 8px;
     background: color-mix(in srgb, var(--accent) 6%, transparent);
@@ -478,7 +478,7 @@
 
 .task-project {
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     cursor: pointer;
     padding: 3px 10px;
     border-radius: 20px;
@@ -580,7 +580,7 @@
 
 .picker-item:hover {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
     transform: translateX(2px);
 }

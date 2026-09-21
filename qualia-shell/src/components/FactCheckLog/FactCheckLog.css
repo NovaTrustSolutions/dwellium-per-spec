@@ -41,7 +41,7 @@
 
 .fcl-header__loading {
     font-size: 8px;
-    color: var(--accent);
+    color: var(--accent-text);
     animation: fcl-blink 1s ease infinite;
     margin-left: 4px;
 }
@@ -139,7 +139,7 @@
     border-radius: 10px;
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -203,7 +203,7 @@
 
 .fcl-pill--active {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
     box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -462,7 +462,7 @@
 }
 
 .fcl-entry__sources a {
-    color: var(--accent);
+    color: var(--accent-text);
     text-decoration: none;
     font-size: 11px;
     word-break: break-all;
@@ -470,7 +470,7 @@
 }
 
 .fcl-entry__sources a:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     text-decoration: underline;
 }
 
@@ -520,7 +520,7 @@
 /* [P3] Source citation link style */
 .fc-source-link,
 .fc-citation {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     text-decoration: none;
     border-bottom: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
     transition: border-color 0.2s ease, color 0.2s ease;
@@ -569,7 +569,7 @@
     border-radius: 8px;
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;

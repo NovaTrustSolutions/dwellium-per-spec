@@ -40,7 +40,7 @@
 
 .us-header__glyph {
     font-size: 18px;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .us-header__title {
@@ -54,7 +54,7 @@
     padding: 2px 6px;
     border-radius: 4px;
     background: color-mix(in srgb, var(--accent) 8%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     letter-spacing: 0.08em;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
@@ -125,7 +125,7 @@
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
@@ -210,7 +210,7 @@
 
 .us-column-empty__label {
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     font-style: normal;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 11px;
@@ -307,7 +307,7 @@
 }
 .ush-launch:hover { border-color: var(--accent, #6366f1); background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent); }
 .ush-launch--full { justify-content: center; margin-top: auto; }
-.ush-launch svg { color: var(--accent, #818cf8); flex-shrink: 0; }
+.ush-launch svg { color: var(--accent-text, #818cf8); flex-shrink: 0; }
 
 .ush-scratch {
     flex: 1; min-height: 140px; resize: none;
@@ -370,4 +370,4 @@
     background: transparent; color: var(--text-secondary, #aaa);
     font-size: 11px; cursor: pointer; transition: all .12s ease;
 }
-.ush-chip:hover { border-color: var(--accent, #6366f1); color: var(--accent, #818cf8); }
+.ush-chip:hover { border-color: var(--accent, #6366f1); color: var(--accent-text, #818cf8); }

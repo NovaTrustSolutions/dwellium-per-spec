@@ -57,7 +57,7 @@
 }
 
 .desktop__region--active .desktop__region-label {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     opacity: 0.7;
 }
 
@@ -349,7 +349,7 @@ body.animations-off .desktop::before { animation: none; }
 .desktop__empty-logo {
     font-size: 72px;
     /* [5] larger */
-    color: var(--accent);
+    color: var(--accent-text);
     margin-bottom: var(--sp-4);
     opacity: 0.25;
     filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 25%, transparent));
@@ -637,7 +637,7 @@ body.animations-off .desktop::before { animation: none; }
 }
 
 .terminal-prompt {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .terminal-cursor {

@@ -152,7 +152,7 @@
 
 .trello-btn--ai {
     border-color: rgba(var(--accent-rgb, 0, 136, 204), 0.38);
-    color: var(--accent);
+    color: var(--accent-text);
     background: rgba(var(--accent-rgb, 0, 136, 204), 0.1);
 }
 
@@ -789,7 +789,7 @@
     border-radius: 8px;
     background: rgba(0, 136, 204, 0.08);
     border: 1px solid rgba(0, 136, 204, 0.2);
-    color: var(--accent);
+    color: var(--accent-text);
     transition: all 0.25s;
 }
 

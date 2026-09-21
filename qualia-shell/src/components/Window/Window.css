@@ -431,7 +431,7 @@
 
 .window__tearoff-handle:hover {
     opacity: 1;
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: color-mix(in srgb, var(--accent, var(--accent)) 8%, transparent);
 }
 
@@ -439,7 +439,7 @@
 .window__tearoff-handle--active {
     cursor: grabbing;
     opacity: 1;
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: color-mix(in srgb, var(--accent, var(--accent)) 14%, transparent);
 }
 
@@ -481,7 +481,7 @@
 }
 
 .window__drag-grip:hover {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: color-mix(in srgb, var(--accent, var(--accent)) 8%, transparent);
 }
 
@@ -502,7 +502,7 @@
     transition: background .15s, color .15s;
 }
 .window__tag-btn:hover { background: var(--surface-hover, rgba(255,255,255,0.08)); color: var(--text, #eee); }
-.window__tag-btn.is-open { color: var(--accent, var(--accent)); background: var(--surface-hover, rgba(255,255,255,0.08)); }
+.window__tag-btn.is-open { color: var(--accent-text, var(--accent)); background: var(--surface-hover, rgba(255,255,255,0.08)); }
 .window__tag-pop {
     position: absolute; top: 26px; left: 0; z-index: 40;
     min-width: 240px; max-width: 320px; padding: 8px;

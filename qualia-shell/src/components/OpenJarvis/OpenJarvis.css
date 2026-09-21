@@ -205,7 +205,7 @@
   padding: 2px 8px;
   border-radius: 6px;
   background: var(--accent-subtle, color-mix(in srgb, var(--accent) 10%, transparent));
-  color: var(--accent, var(--accent));
+  color: var(--accent-text, var(--accent));
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -249,7 +249,7 @@
   font-size: 26px;
   margin-bottom: 16px;
   background: linear-gradient(135deg, var(--accent-subtle, color-mix(in srgb, var(--accent) 10%, transparent)), color-mix(in srgb, var(--accent) 10%, transparent));
-  color: var(--accent, var(--accent));
+  color: var(--accent-text, var(--accent));
 }
 
 .oj-empty-title {
@@ -370,14 +370,14 @@
 .oj-prose ul, .oj-prose ol { margin: 4px 0 8px; padding-left: 20px; }
 .oj-prose li { margin: 2px 0; }
 .oj-prose strong { font-weight: 600; color: var(--text-primary, #f1f5f9); }
-.oj-prose a { color: var(--accent, var(--accent)); text-decoration: none; }
+.oj-prose a { color: var(--accent-text, var(--accent)); text-decoration: none; }
 .oj-prose a:hover { text-decoration: underline; }
 .oj-prose code {
   font-size: 12px;
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--bg-surface-elevated, rgba(255, 255, 255, 0.06));
-  color: var(--accent, var(--accent));
+  color: var(--accent-text, var(--accent));
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 .oj-prose table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
@@ -765,7 +765,7 @@
   border-radius: 8px;
   border: 1px dashed var(--border-default, rgba(255, 255, 255, 0.1));
   background: transparent;
-  color: var(--accent, var(--accent));
+  color: var(--accent-text, var(--accent));
   font-size: 12px;
   font-weight: 600;
   font-family: inherit;

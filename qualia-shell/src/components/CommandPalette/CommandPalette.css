@@ -251,7 +251,7 @@
 }
 
 .command-palette__kind--window {
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     border-color: color-mix(in srgb, var(--accent) 22%, transparent);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
 }

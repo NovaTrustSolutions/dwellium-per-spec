@@ -18,7 +18,7 @@
     background: var(--surface-2, rgba(255, 255, 255, 0.03));
 }
 .cadv__kpi-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-secondary); }
-.cadv__kpi-label svg { color: var(--accent, #D6FE51); }
+.cadv__kpi-label svg { color: var(--accent-text, #D6FE51); }
 .cadv__kpi-value { margin-left: auto; font-size: 18px; color: var(--text-primary); }
 
 .cadv__slider { width: 100%; accent-color: var(--accent, #D6FE51); cursor: pointer; }
@@ -26,10 +26,10 @@
 
 .cadv__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .cadv__title { display: flex; align-items: center; gap: 7px; font-weight: 700; color: var(--text-primary); }
-.cadv__title svg { color: var(--accent, #D6FE51); }
+.cadv__title svg { color: var(--accent-text, #D6FE51); }
 .cadv__total {
     font-size: 11px; font-weight: 600;
-    color: var(--accent, #D6FE51);
+    color: var(--accent-text, #D6FE51);
     background: color-mix(in srgb, var(--accent, #D6FE51) 14%, transparent);
     padding: 2px 8px; border-radius: 999px;
 }
@@ -45,7 +45,7 @@
 }
 .cadv__item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .cadv__item-title { color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cadv__save { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--accent, #D6FE51); }
+.cadv__save { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--accent-text, #D6FE51); }
 
 .cadv__item-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11px; }
 .cadv__badge {
@@ -54,7 +54,7 @@
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
     color: var(--text-secondary); text-transform: capitalize;
 }
-.cadv__badge svg { color: var(--accent, #D6FE51); }
+.cadv__badge svg { color: var(--accent-text, #D6FE51); }
 .cadv__cost { color: var(--text-tertiary, #808080); }
 
 .cadv__foot { font-size: 10px; color: var(--text-tertiary, #808080); line-height: 1.5; }

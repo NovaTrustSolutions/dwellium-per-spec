@@ -73,7 +73,7 @@
 
 .fm-tree-item--active {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     border-left-color: var(--accent);
 }
 
@@ -169,13 +169,13 @@
 
 .fm-toolbar__btn--active {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .fm-toolbar__btn--upload {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 15%, transparent) 100%);
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
     font-size: 12px;
     font-weight: 600;
@@ -187,7 +187,7 @@
 
 .fm-toolbar__btn--upload:hover {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent) 0%, color-mix(in srgb, var(--accent) 25%, transparent) 100%);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     border-color: color-mix(in srgb, var(--accent) 40%, transparent);
     box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
@@ -419,7 +419,7 @@
 .fm-dropzone__text {
     font-size: 16px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* ===== SYNC STATUS ===== */
@@ -520,7 +520,7 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.04);
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;

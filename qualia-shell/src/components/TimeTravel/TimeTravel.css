@@ -83,7 +83,7 @@
 }
 
 .tt-version { font-weight: 600; color: var(--text-primary, #e8ecef); }
-.tt-op { color: var(--accent, #6ea8fe); }
+.tt-op { color: var(--accent-text, #6ea8fe); }
 .tt-at { color: var(--text-secondary, #b9c0c8); }
 
 .tt-payload {

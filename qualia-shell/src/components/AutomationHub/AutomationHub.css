@@ -41,7 +41,7 @@
 }
 
 .ahub__tab--active {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     border-bottom-color: var(--accent, var(--accent));
 }
 
@@ -125,7 +125,7 @@
 
 .ahub__owner-tab--active .ahub__owner-count {
     background: rgba(59, 130, 246, 0.2);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 .ahub__summary-bar {
@@ -295,7 +295,7 @@
 /* Schedule Badge */
 .ahub__card-schedule-badge {
     font-size: 11px;
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: rgba(0, 136, 204, 0.08);
     border: 1px solid rgba(0, 136, 204, 0.15);
     border-radius: 4px;
@@ -561,7 +561,7 @@
 }
 
 .ahub__stab--active {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     border-bottom-color: var(--accent, var(--accent));
     background: rgba(0, 136, 204, 0.06);
 }
@@ -702,7 +702,7 @@
     background: rgba(0, 136, 204, 0.12);
     border: 1px solid rgba(0, 136, 204, 0.2);
     border-radius: 12px;
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     font-size: 11px;
     font-weight: 500;
 }
@@ -710,7 +710,7 @@
 .ahub__chip--integration {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .ahub__chip-remove {
@@ -893,7 +893,7 @@
 /* ── Help Button ── */
 .ahub__btn--help {
     background: transparent;
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: rgba(232, 255, 122, 0.2);
     font-size: 11px;
 }
@@ -901,7 +901,7 @@
 .ahub__btn--help:hover {
     background: rgba(232, 255, 122, 0.1);
     border-color: rgba(232, 255, 122, 0.35);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 /* ── Help / Setup Guide Panel ── */
@@ -920,7 +920,7 @@
     gap: 8px;
     font-size: 14px;
     font-weight: 700;
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     margin-bottom: 14px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(232, 255, 122, 0.12);
@@ -964,7 +964,7 @@
     justify-content: center;
     font-size: 11px;
     font-weight: 700;
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 .ahub__help-step:last-child {
@@ -980,7 +980,7 @@
 }
 
 .ahub__help-footer strong {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
 }
 /* ============================================
    PREMIUM UI POLISH — 5 Enhancements

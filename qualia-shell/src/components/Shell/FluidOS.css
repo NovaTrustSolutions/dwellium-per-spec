@@ -161,7 +161,7 @@
 }
 
 .fos-nav__row-dot {
-    color: var(--accent, #D6FE51);
+    color: var(--accent-text, #D6FE51);
     font-weight: var(--fw-bold, 700);
     flex: none;
 }
@@ -422,7 +422,7 @@
 }
 
 .fos-tasks__status--running {
-    color: var(--accent, #D6FE51);
+    color: var(--accent-text, #D6FE51);
     border-color: color-mix(in srgb, var(--accent, #D6FE51) 40%, transparent);
 }
 

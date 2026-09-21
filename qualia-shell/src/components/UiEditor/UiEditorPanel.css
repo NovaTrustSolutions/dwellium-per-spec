@@ -19,7 +19,7 @@
     line-height: 1.5;
 }
 
-.ui-editor__intro svg { flex-shrink: 0; margin-top: 2px; color: var(--accent); }
+.ui-editor__intro svg { flex-shrink: 0; margin-top: 2px; color: var(--accent-text); }
 .ui-editor__intro p { margin: 0; }
 .ui-editor__intro em { color: var(--text-primary); font-style: normal; opacity: 0.9; }
 
@@ -56,7 +56,7 @@
 
 .ui-editor__btn:hover:not(:disabled) { border-color: var(--accent); }
 .ui-editor__btn:disabled { opacity: 0.45; cursor: default; }
-.ui-editor__btn--pick.is-active { border-color: var(--accent); color: var(--accent); }
+.ui-editor__btn--pick.is-active { border-color: var(--accent); color: var(--accent-text); }
 .ui-editor__btn--danger:hover:not(:disabled) { border-color: #ef4444; color: #ef4444; }
 
 .ui-editor__picked {

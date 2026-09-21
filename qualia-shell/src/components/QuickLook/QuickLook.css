@@ -132,13 +132,13 @@
 
 .ql-btn--open {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 100%);
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .ql-btn--open:hover {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent) 0%, color-mix(in srgb, var(--accent) 15%, transparent) 100%);
-    color: var(--accent);
+    color: var(--accent-text);
     box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 

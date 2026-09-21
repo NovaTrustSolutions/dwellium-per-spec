@@ -2097,7 +2097,7 @@
 .astra-dashboard .a-panel-filter--on {
     background: color-mix(in srgb, var(--accent) 14%, transparent);
     border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 .astra-dashboard .a-panel-filter:focus-visible {
     outline: 2px solid var(--a-accent);
@@ -2128,7 +2128,7 @@
 .astra-dashboard .a-panel-seg:hover { color: var(--text-primary, #e2e8f0); }
 .astra-dashboard .a-panel-seg--on {
     background: color-mix(in srgb, var(--accent) 16%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 .astra-dashboard .a-panel-seg:focus-visible {
     outline: 2px solid var(--a-accent);

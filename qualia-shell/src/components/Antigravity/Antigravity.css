@@ -16,7 +16,7 @@
     background: linear-gradient(135deg, var(--bg-surface-elevated) 0%, var(--bg-surface) 100%);
     border: 1.5px solid color-mix(in srgb, var(--accent) 40%, transparent);
     border-radius: 50px;
-    color: var(--accent);
+    color: var(--accent-text);
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
@@ -30,7 +30,7 @@
     border-color: rgba(232, 255, 122, 0.6);
     box-shadow: 0 12px 40px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
     transform: translateY(-2px);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 .ag-fab-icon {
@@ -117,7 +117,7 @@
 
 .ag-logo {
     font-size: 22px;
-    color: var(--accent);
+    color: var(--accent-text);
     animation: ag-pulse 4s ease infinite;
     flex-shrink: 0;
 }
@@ -205,7 +205,7 @@
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 15%, transparent));
     border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     border-radius: 8px;
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     font-size: 11px;
     font-weight: 600;
     font-family: inherit;
@@ -293,13 +293,13 @@
 }
 
 .ag-model-opt:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .ag-model-opt--active {
     background: color-mix(in srgb, var(--accent) 15%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -341,7 +341,7 @@
 
 .ag-avatar {
     font-size: 16px;
-    color: var(--accent);
+    color: var(--accent-text);
     flex-shrink: 0;
     margin-top: 4px;
 }
@@ -374,7 +374,7 @@
 }
 
 .ag-content strong { color: var(--text-primary); }
-.ag-content em { color: var(--accent); }
+.ag-content em { color: var(--accent-text); }
 
 .ag-content .ag-inline-code {
     background: rgba(255, 255, 255, 0.08);
@@ -434,7 +434,7 @@
 
 .ag-copy-btn:hover {
     background: color-mix(in srgb, var(--accent) 15%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -477,7 +477,7 @@
 
 h2.ag-h { font-size: 15px; }
 h3.ag-h { font-size: 14px; }
-h4.ag-h { font-size: 13px; color: var(--accent); }
+h4.ag-h { font-size: 13px; color: var(--accent-text); }
 
 /* ── Message Model Badge ──────────────────────────────── */
 .ag-msg-model {
@@ -528,7 +528,7 @@ h4.ag-h { font-size: 13px; color: var(--accent); }
     background: color-mix(in srgb, var(--accent) 6%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 50px;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 11px;
     cursor: pointer;
     transition: all 0.15s;
@@ -539,7 +539,7 @@ h4.ag-h { font-size: 13px; color: var(--accent); }
 .ag-chip:hover {
     background: color-mix(in srgb, var(--accent) 14%, transparent);
     border-color: rgba(232, 255, 122, 0.35);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 /* ── Input bar ────────────────────────────────────────── */
@@ -631,7 +631,7 @@ h4.ag-h { font-size: 13px; color: var(--accent); }
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 50px;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.04em;

@@ -40,7 +40,7 @@
     word-break: break-word;
 }
 .cr-note { font-size: 12px; color: var(--text-tertiary); line-height: 1.55; margin: 12px 0 10px; }
-.cr-note a { color: var(--accent); }
+.cr-note a { color: var(--accent-text); }
 
 .cr-btn {
     padding: 5px 11px;

@@ -94,7 +94,7 @@ body:not(.animations-off) .spaces-switcher__btn:hover {
     align-items: center;
     justify-content: center;
     width: 20px;
-    color: var(--accent);
+    color: var(--accent-text);
     flex-shrink: 0;
 }
 

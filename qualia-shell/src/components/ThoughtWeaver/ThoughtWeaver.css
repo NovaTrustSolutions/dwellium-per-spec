@@ -123,7 +123,7 @@
 }
 
 .tw-tab--active {
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom-color: var(--accent);
     background: linear-gradient(180deg, rgba(232, 255, 122, 0.06) 0%, transparent 100%);
 }
@@ -363,7 +363,7 @@
 
 .tw-local-badge {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     padding: 2px 7px;
     border-radius: 4px;
     font-size: 10px;
@@ -388,7 +388,7 @@
 .tw-today__clear-btn {
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     padding: 5px 12px;
     border-radius: 6px;
     font-size: 12px;
@@ -612,7 +612,7 @@
 .tw-recent__item-btn:hover {
     background: rgba(232, 255, 122, 0.12);
     border-color: rgba(232, 255, 122, 0.25);
-    color: var(--accent);
+    color: var(--accent-text);
     transform: translateY(-1px);
 }
 
@@ -648,7 +648,7 @@
 .tw-seed-btn:hover {
     background: rgba(232, 255, 122, 0.08);
     border-color: rgba(232, 255, 122, 0.3);
-    color: var(--accent);
+    color: var(--accent-text);
     transform: translateY(-2px);
     box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 10%, transparent);
 }
@@ -766,7 +766,7 @@
 
 .tw-bucket-pill--active {
     background: linear-gradient(135deg, rgba(232, 255, 122, 0.15), color-mix(in srgb, var(--accent) 10%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: rgba(232, 255, 122, 0.3);
     box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 10%, transparent);
 }
@@ -782,7 +782,7 @@
 
 .tw-bucket-pill--active .tw-bucket-pill__count {
     background: rgba(232, 255, 122, 0.2);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 /* Bucket items */
@@ -934,7 +934,7 @@
 
 .tw-timeline__filter--active {
     background: linear-gradient(135deg, rgba(232, 255, 122, 0.15), color-mix(in srgb, var(--accent) 10%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: rgba(232, 255, 122, 0.3);
 }
 
@@ -1142,7 +1142,7 @@
 .tw-reports__clear-btn {
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     padding: 5px 12px;
     border-radius: 6px;
     font-size: 12px;
@@ -1162,7 +1162,7 @@
 }
 .tw-reports__msg {
     font-size: 12px;
-    color: var(--accent);
+    color: var(--accent-text);
     margin: 0 0 10px;
 }
 .tw-reports__hint {
@@ -1198,7 +1198,7 @@
 .tw-report-card__date {
     font-size: 12px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     font-variant-numeric: tabular-nums;
 }
 .tw-report-card__count {

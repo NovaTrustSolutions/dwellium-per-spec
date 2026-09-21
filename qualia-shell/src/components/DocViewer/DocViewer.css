@@ -75,7 +75,7 @@
 .dv-nav__thumb--active {
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
@@ -86,7 +86,7 @@
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border: 2px dashed color-mix(in srgb, var(--accent) 25%, transparent);
     cursor: pointer;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 18px;
     font-weight: 700;
     transition: all 0.25s;
@@ -171,13 +171,13 @@
 
 .dv-toolbar__btn--active {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .dv-toolbar__btn--download {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 20%, transparent);
     font-weight: 600;
 }
@@ -265,7 +265,7 @@
 
 .dv-edit-btn--active {
     background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
-    color: var(--accent) !important;
+    color: var(--accent-text) !important;
     border-color: color-mix(in srgb, var(--accent) 25%, transparent) !important;
     box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 10%, transparent);
 }

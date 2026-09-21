@@ -24,7 +24,7 @@
 .fub-trigger:hover:not(:disabled) {
     border-color: var(--accent, var(--accent));
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     transform: translateY(-1px);
     box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 20%, transparent);
 }
@@ -38,7 +38,7 @@
 .fub-trigger--drag {
     border-color: var(--accent, var(--accent));
     background: color-mix(in srgb, var(--accent) 15%, transparent);
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
 }
 
 .fub-trigger--uploading {
@@ -182,7 +182,7 @@
 }
 .fub-file-change:hover {
     border-color: var(--accent, var(--accent));
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
 }
 
 /* ── Fields ──────────────────────────────────────────── */

@@ -174,7 +174,7 @@
 }
 
 .sidebar__logo-icon {
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: var(--fs-xl);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -509,7 +509,7 @@
 
 .sidebar-widget__drag-handle:hover {
     opacity: 1 !important;
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
 }
 
 /* --- Widget Drag States (16) --- */
@@ -611,14 +611,14 @@
 }
 
 .sidebar__domain-toggle-btn:hover {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: rgba(0, 136, 204, 0.1);
     text-shadow: 0 0 6px var(--accent, var(--accent));
 }
 
 /* Active/pressed state — used by the grid-lock button when the grid is locked. */
 .sidebar__domain-toggle-btn--active {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: rgba(0, 136, 204, 0.14);
     text-shadow: 0 0 6px var(--accent, var(--accent));
 }
@@ -867,7 +867,7 @@
 }
 
 .sidebar__options-btn--active {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: rgba(0, 136, 204, 0.1);
     border-color: rgba(0, 136, 204, 0.3);
 }
@@ -1026,7 +1026,7 @@
 }
 
 .sidebar__collapse-toggle:hover {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: rgba(0, 136, 204, 0.1);
     border-color: rgba(0, 136, 204, 0.3);
     box-shadow: 0 0 8px rgba(0, 136, 204, 0.15);
@@ -1116,7 +1116,7 @@
 
 .sidebar__icon-rail-btn--open {
     background: color-mix(in srgb, var(--accent) 16%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* Phase B: active vertical-nav accent stripe (Agenteryx VerticalNav). */
@@ -1215,7 +1215,7 @@
 
 .tree-node__action-btn:hover {
     background: var(--accent-subtle, rgba(0, 136, 204, 0.15));
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     transform: scale(1.1);
     /* [39] scale effect */
 }
@@ -1278,7 +1278,7 @@
     border: 1px dashed var(--accent, var(--accent));
     border-radius: var(--radius-md, 8px);
     background: rgba(0, 136, 204, 0.06);
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     font-size: var(--fs-sm, 13px);
     font-weight: var(--fw-medium, 500);
     font-family: var(--font-primary, inherit);
@@ -1312,7 +1312,7 @@
 }
 
 .sidebar__add-domain-trigger:hover {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: rgba(0, 136, 204, 0.04);
     border-top-color: var(--border-subtle, rgba(255, 255, 255, 0.06));
 }
@@ -1376,7 +1376,7 @@
 .sidebar__action-btn--primary:hover {
     background: rgba(0, 136, 204, 0.12);
     border-color: var(--accent, var(--accent));
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     box-shadow: 0 0 8px rgba(0, 136, 204, 0.15);
 }
 
@@ -1604,7 +1604,7 @@
 }
 
 .sidebar__widget-group-header:hover .sidebar__widget-group-icon {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
 }
 
 /* Toggle — match .sidebar__domain-toggle-btn dimensions + hover treatment */
@@ -1625,7 +1625,7 @@
 }
 
 .sidebar__widget-group-header:hover .sidebar__widget-group-toggle {
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
     background: rgba(0, 136, 204, 0.1);
     text-shadow: 0 0 6px var(--accent, var(--accent));
 }
@@ -1688,7 +1688,7 @@
     cursor: pointer;
     transition: all .15s ease;
 }
-.sidebar__add-widget:hover { border-color: var(--accent, #6366f1); color: var(--accent, #818cf8); }
+.sidebar__add-widget:hover { border-color: var(--accent, #6366f1); color: var(--accent-text, #818cf8); }
 .sidebar__add-widget-plus { font-size: 15px; line-height: 1; }
 
 .widget-gallery-overlay {
@@ -1731,7 +1731,7 @@
     background: rgba(255, 255, 255, 0.02);
 }
 .widget-gallery__card--hidden { opacity: 0.55; }
-.widget-gallery__icon { color: var(--accent, #818cf8); }
+.widget-gallery__icon { color: var(--accent-text, #818cf8); }
 .widget-gallery__label {
     font-size: 12.5px; font-weight: 600; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
@@ -1745,7 +1745,7 @@
 }
 .widget-gallery__btn:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
 .widget-gallery__btn--add {
-    border-color: var(--accent, #6366f1); color: var(--accent, #818cf8);
+    border-color: var(--accent, #6366f1); color: var(--accent-text, #818cf8);
     background: color-mix(in srgb, var(--accent, #6366f1) 14%, transparent);
 }
 .widget-gallery__btn--add:hover { background: color-mix(in srgb, var(--accent, #6366f1) 26%, transparent); }

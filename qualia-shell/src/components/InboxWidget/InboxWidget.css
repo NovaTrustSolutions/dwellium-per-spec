@@ -304,7 +304,7 @@
 /* Routing */
 .card-routing {
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -456,7 +456,7 @@
 
 .picker-option:hover {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
     transform: translateX(2px);
 }

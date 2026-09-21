@@ -13,7 +13,7 @@
 
 .spend__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .spend__title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text-primary); }
-.spend__title svg { color: var(--accent); }
+.spend__title svg { color: var(--accent-text); }
 .spend__est { font-size: 10px; font-weight: 400; color: var(--text-tertiary, #808080); text-transform: uppercase; letter-spacing: 0.06em; }
 
 .spend__clear {

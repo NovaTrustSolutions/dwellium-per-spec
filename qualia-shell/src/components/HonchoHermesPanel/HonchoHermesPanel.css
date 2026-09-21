@@ -94,7 +94,7 @@
 }
 
 .hhp__tab.active {
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom-color: var(--accent);
     font-weight: 600;
 }
@@ -142,7 +142,7 @@
 .hhp__stat-value {
     font-size: 22px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
     line-height: 1;
 }
 
@@ -296,7 +296,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--accent, var(--accent));
+    color: var(--accent-text, var(--accent));
 }
 
 .hhp__memory-badges {
@@ -315,7 +315,7 @@
 }
 
 .imp-low { background: rgba(100, 116, 139, 0.2); color: var(--text-secondary); }
-.imp-medium { background: rgba(59, 130, 246, 0.2); color: var(--accent-hover); }
+.imp-medium { background: rgba(59, 130, 246, 0.2); color: var(--accent-text-hover); }
 .imp-high { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
 .imp-critical { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
 
@@ -441,7 +441,7 @@
 .hhp__tool-name {
     font-size: 12px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
@@ -636,7 +636,7 @@
 
 .hhp__rate-thanks {
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* ── Hermes autonomous persona workspace ── */
@@ -663,7 +663,7 @@
 .haw__eyebrow {
     display: block;
     margin-bottom: 5px;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.14em;
@@ -957,7 +957,7 @@
 }
 
 .haw__card-head strong {
-    color: var(--accent);
+    color: var(--accent-text);
     font-family: 'SF Mono', 'Fira Code', monospace;
     font-size: 11px;
 }
@@ -1040,7 +1040,7 @@
 
 .haw button:not(.haw__persona):not(.haw__card):hover:not(:disabled) {
     border-color: var(--accent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .haw button:disabled {
@@ -1062,7 +1062,7 @@
 
 .haw__task-state {
     width: 58px;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 8px;
     font-weight: 800;
     letter-spacing: 0.04em;
@@ -1131,7 +1131,7 @@
 }
 
 .haw__prompt-card > span {
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 8px;
     font-weight: 800;
     letter-spacing: 0.08em;
@@ -1441,18 +1441,18 @@
     padding: 1px 6px;
     border-radius: 4px;
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 10px;
 }
 
 /* ─── AgentWiki (bidirectional LLM Wiki) ─── */
 .aw { display: flex; flex-direction: column; gap: 12px; padding: 4px 2px; }
 .aw__sectlabel { font-size: 12px; font-weight: 700; color: var(--text-primary, #fff); letter-spacing: 0.02em; margin-top: 4px; }
-.aw__sectlabel em { color: var(--accent); font-style: normal; }
+.aw__sectlabel em { color: var(--accent-text); font-style: normal; }
 .aw__identity { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .aw__idcard { border: 1px solid var(--border-strong, rgba(255,255,255,0.12)); border-radius: 12px; padding: 10px; background: color-mix(in srgb, var(--accent) 4%, transparent); }
 .aw__idhead { display: flex; align-items: center; justify-content: space-between; }
-.aw__idname { font-family: monospace; font-weight: 700; color: var(--accent); font-size: 12px; }
+.aw__idname { font-family: monospace; font-weight: 700; color: var(--accent-text); font-size: 12px; }
 .aw__idblurb { font-size: 10px; color: var(--text-tertiary); margin: 2px 0 6px; }
 .aw__idbody { font-size: 11px; color: var(--text-secondary); white-space: pre-wrap; max-height: 140px; overflow: auto; margin: 0; font-family: monospace; line-height: 1.4; }
 .aw__btn { font-size: 11px; padding: 3px 10px; border-radius: 8px; border: 1px solid var(--border-strong, rgba(255,255,255,0.15)); background: transparent; color: var(--text-secondary); cursor: pointer; }

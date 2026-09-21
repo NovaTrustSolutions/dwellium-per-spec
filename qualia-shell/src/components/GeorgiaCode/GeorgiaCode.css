@@ -192,7 +192,7 @@
 }
 
 .gc-search-box:focus-within .gc-search-icon {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .gc-search-input {
@@ -292,7 +292,7 @@
 .gc-topic-chip:hover {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 /* --- RESULTS --- */
@@ -393,7 +393,7 @@
 .gc-result-volume {
     font-size: 11px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--accent-text);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     display: flex;
@@ -464,13 +464,13 @@
     gap: 4px;
     margin-top: 8px;
     font-size: 11px;
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 500;
     cursor: pointer;
 }
 
 .gc-result-expand:hover {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* --- EMPTY STATE --- */
@@ -576,7 +576,7 @@
 .gc-footer-btn:hover {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 /* --- INDEXING PROGRESS OVERLAY --- */
@@ -596,13 +596,13 @@
 .gc-progress-label {
     font-size: 12px;
     font-weight: 600;
-    color: var(--accent-hover);
+    color: var(--accent-text-hover);
 }
 
 .gc-progress-pct {
     font-size: 12px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--accent-text);
     font-variant-numeric: tabular-nums;
 }
 

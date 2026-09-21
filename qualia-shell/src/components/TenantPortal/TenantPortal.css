@@ -238,7 +238,7 @@
 
 .tp-stat-icon.indigo {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .tp-stat-value {
@@ -596,7 +596,7 @@
 
 .tp-message-direction.outbound {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 /* ── Empty States ────────────────────────── */

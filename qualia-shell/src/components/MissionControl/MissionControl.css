@@ -4,7 +4,7 @@
 
 .mc__head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .mc__title { display: flex; align-items: center; gap: 7px; font-weight: 700; color: var(--text-primary); }
-.mc__title svg { color: var(--accent); }
+.mc__title svg { color: var(--accent-text); }
 
 .mc__new { flex: 1; min-width: 260px; display: flex; gap: 8px; }
 .mc__new input { flex: 1; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--border-color, #333); background: var(--surface-2, rgba(255,255,255,0.04)); color: var(--text-primary); font: inherit; }
@@ -41,7 +41,7 @@
 .mc__action label.is-done span { text-decoration: line-through; color: var(--text-tertiary, #808080); }
 .mc__action input[type='checkbox'] { margin-top: 3px; accent-color: var(--accent); }
 .mc__action > button { border: 1px solid var(--border-color, #333); background: transparent; color: var(--text-tertiary, #808080); cursor: pointer; border-radius: 5px; padding: 3px 6px; }
-.mc__action > button:hover { border-color: var(--accent); color: var(--accent); }
+.mc__action > button:hover { border-color: var(--accent); color: var(--accent-text); }
 
 .mc__questions ul { margin: 0; padding-left: 18px; line-height: 1.5; color: var(--text-secondary); }
 

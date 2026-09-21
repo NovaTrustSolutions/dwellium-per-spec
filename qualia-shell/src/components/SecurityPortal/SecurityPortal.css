@@ -204,7 +204,7 @@
 .sp-category-btn--active {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 600;
 }
 

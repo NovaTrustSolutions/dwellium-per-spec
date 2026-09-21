@@ -511,7 +511,7 @@
 
 .cp-region-option--active {
     border-color: var(--accent);
-    color: var(--accent);
+    color: var(--accent-text);
     background: rgba(0, 136, 204, 0.06);
 }
 

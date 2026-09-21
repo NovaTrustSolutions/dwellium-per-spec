@@ -61,7 +61,7 @@
     border-radius: 8px;
     border: 1px solid var(--accent, #6366f1);
     background: color-mix(in srgb, var(--accent, #6366f1) 16%, transparent);
-    color: var(--accent, #818cf8);
+    color: var(--accent-text, #818cf8);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;

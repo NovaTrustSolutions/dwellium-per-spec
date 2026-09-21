@@ -51,9 +51,14 @@ describe('master themes — text contrast on their own surfaces', () => {
 
 const accentThemes = themes.filter((t) => t.tokens['accent-text'] && t.tokens.blue);
 
-describe('master themes — --accent-text contrast on their own surfaces + accent tint', () => {
-    it.each(accentThemes.map((t) => [t.name, t] as const))('%s: --accent-text is ≥ 4.5:1 on --bg, --surface, --surface2 and a 14%% --blue tint over --surface/--surface2', (_name, theme) => {
-        const accentText = resolveToken(theme.tokens, 'accent-text');
+describe('master themes — --accent-text / --accent-text-hover contrast on their own surfaces + accent tint', () => {
+    it('every theme with an accent defines --accent-text-hover (the text colour for hover states)', () => {
+        expect(accentThemes.filter((t) => !t.tokens['accent-text-hover']).map((t) => t.name)).toEqual([]);
+    });
+
+    const cases = accentThemes.flatMap((t) => (['accent-text', 'accent-text-hover'] as const).map((token) => [t.name, token, t] as const));
+    it.each(cases)('%s: --%s is ≥ 4.5:1 on --bg, --surface, --surface2 and a 14%% --blue tint over --surface/--surface2', (_name, token, theme) => {
+        const accentText = resolveToken(theme.tokens, token);
         const surfaceTint = tint(theme.tokens.blue, theme.tokens.surface, 0.14);
         const surface2Tint = tint(theme.tokens.blue, theme.tokens.surface2, 0.14);
         const backgrounds: Array<[string, string]> = [
@@ -66,7 +71,7 @@ describe('master themes — --accent-text contrast on their own surfaces + accen
         const failures: string[] = [];
         for (const [label, bg] of backgrounds) {
             const ratio = contrast(parseColor(accentText), parseColor(bg).rgb);
-            if (ratio < 4.5) failures.push(`--accent-text ${accentText} on ${label} ${bg} = ${ratio.toFixed(2)}:1`);
+            if (ratio < 4.5) failures.push(`--${token} ${accentText} on ${label} ${bg} = ${ratio.toFixed(2)}:1`);
         }
         expect(failures).toEqual([]);
     });

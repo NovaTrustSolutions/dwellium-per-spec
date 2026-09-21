@@ -3,6 +3,10 @@
    ============================================ */
 
 :root {
+  /* Plan 065: hover colour for accent TEXT. The master themes set a contrast-checked value; any
+     theme block that does not (halocron, the legacy blocks below) falls back to its own --accent-text.
+     Resolved on <html>, where the theme class also lives, so it picks up that theme's value. */
+  --accent-text-hover: var(--accent-text);
   /* --- Typography (fey.com parity) --- */
   --font-primary: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-heading: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

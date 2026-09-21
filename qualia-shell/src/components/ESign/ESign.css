@@ -162,6 +162,11 @@
 
 .esign__subtitle { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--text-primary); }
 
+/* View headings take focus on view change (for screen readers). They are block
+   elements, so without this the focus ring stretches the full width and reads
+   as a highlighted input rather than a heading. */
+[data-view-heading] { width: fit-content; }
+
 .esign__send { display: flex; flex-direction: column; gap: 8px; }
 
 .esign__field-row { display: flex; align-items: center; gap: 8px; }

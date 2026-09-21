@@ -66,6 +66,59 @@ Files: `src/styles/themes-master.css`, `src/test/themeContrast.test.ts`, new `sr
   16 picker themes, so first prove whether those blocks are reachable (`terminal-bl4`, `halocron`, tenant/security portals).
   Reachable → same treatment + same test; unreachable → leave, and note it.
 
+### Phase 1 result (2026-09-20)
+
+**The plan's own table undercounted.** It only checked `--blue`'s worst ratio on `--bg`/`--surface`/`--surface2` and on
+its 14% tint over `--surface`. Per this plan's own spec ("Compute against these five backgrounds: … a 14% tint of
+`--blue` composited over `--surface` **and over `--surface2`**"), the tint-over-`--surface2` background is also in
+scope — and it fails 5 *additional* themes that pass on the other four backgrounds. Measured with
+`nudgeToContrast`/`contrast` from `src/utils/contrast.ts` against all five backgrounds: **11 of 16** themes fail, not 6.
+`cosmos` (the default) passes at 4.59 — no HARD STOP.
+
+| Theme | `--blue` (before) | worst ratio before | `--accent-text` (after) | worst ratio after |
+|---|---|---|---|---|
+| deep-dark | `#4d82ff` | 4.37 | `#5185ff` | 4.52 |
+| simple-black | `#3b82f6` | 4.09 | `#498bf7` | 4.52 |
+| synthwave | `#ff00aa` | 4.27 | `#ff23b6` | 4.51 |
+| solarized | `#268bd2` | 2.63 | `#77b8e6` | 4.50 |
+| dracula | `#6272a4` | 2.45 | `#97a2c3` | 4.55 |
+| tokyo-night | `#7aa2f7` | 4.20 | `#84a9f8` | 4.54 |
+| gruvbox | `#83a598` | 2.73 | `#bccfc8` | 4.52 |
+| apple-dark | `#0a84ff` | 2.73 | `#68b3ff` | 4.50 |
+| nord | `#81a1c1` | 2.67 | `#bfcfdf` | 4.52 |
+| latte | `#6d28d9` | 4.38 | `#6b26d6` | 4.51 |
+| corporate | `#0070c9` | 3.68 | `#0062b1` | 4.53 |
+
+**Not changed (pass on all five backgrounds, `--accent-text:var(--blue)` untouched):** cosmos (4.59, the default —
+byte-identical, no baseline recapture needed), cyberpunk (9.35), rose-pine (5.50), mocha (4.57), obsidian (5.04).
+
+`git diff --stat src/styles/themes-master.css`: `1 file changed, 18 insertions(+), 11 deletions(-)` — 7 new header-comment
+lines (pure insertions) plus exactly 11 `--accent-text` value lines swapped (11 old lines removed, 11 new lines added).
+`cosmos`'s block (and every other non-failing theme's block) is byte-for-byte untouched — the diff's only in-block hunks
+are the 11 failing themes' `--accent-text` lines.
+
+Mutation-check: temporarily restored `--accent-text:var(--blue)` in `.theme-solarized`, ran
+`npx vitest run src/test/themeContrast.test.ts` — the `solarized` case failed (1 failed / 35 passed), all others stayed
+green. Restored the file, reran — 36/36 green.
+
+**Legacy-theme reachability (`variables.css`, 8 blocks: `.theme-dark`, `.theme-light`, `.theme-trust`, `.theme-vibrant`,
+`.theme-luxury`, `.theme-healthcare`, `.theme-creative`, `.theme-dark-excellence`): UNREACHABLE at runtime.** Every
+site that ever sets the `theme-*` class on `<html>` coerces to the 16-theme allowlist first:
+- `src/context/ThemeContext.tsx:148-152` — `VALID_PICKER_THEMES` is exactly the 16 master-design themes.
+  `readInitialTheme()` (`:153-158`) falls back to `DEFAULT_THEME` ('cosmos') for anything not in that set.
+- `src/context/ThemeContext.tsx:294-296` — the apply-effect re-coerces on every render: `const safeTheme: Theme =
+  VALID_PICKER_THEMES.has(theme) ? theme : DEFAULT_THEME; … root.className = \`theme-${safeTheme}\`;` — this is the
+  *only* site that sets `root.className` for the main shell (App.tsx's single `ThemeProvider` wraps `TenantPortal`,
+  `AdminShell` and `SecurityPortal` alike — `src/App.tsx:104,109,135,156-180` — so tenant/security portals share this
+  same coercion, no separate theme-application path).
+- `src/components/PopupShell/PopupShell.tsx:22-26` — the one other site that sets
+  `document.documentElement.className` directly (detached popup windows) carries its own duplicate `VALID` set with
+  the same 16 names and the same `'cosmos'` fallback.
+
+No code path can apply `.theme-dark` / `.theme-light` / `.theme-trust` / `.theme-vibrant` / `.theme-luxury` /
+`.theme-healthcare` / `.theme-creative` / `.theme-dark-excellence` to `<html>` — `variables.css` is left alone, per the
+plan's "unreachable → leave, and note it" instruction.
+
 ## Phase 2 — runtime accent picker (S)
 
 Files: `src/context/ThemeContext.tsx` (the effect at ~`:296-304`), `src/test/` new `accentText.test.ts`.

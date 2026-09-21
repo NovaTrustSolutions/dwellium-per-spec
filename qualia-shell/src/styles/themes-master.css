@@ -13,6 +13,13 @@
    src/test/themeContrast.test.ts enforces it for every block here, so a new theme cannot skip it.
    --accent paints fills, tints and borders. It is NOT a text colour: it is mid-tone on several themes and the
    user can override it at runtime. Text that wants the accent uses --accent-text.
+   CONTRAST (plan 065, 2026-09-20): --accent-text must reach WCAG AA 4.5:1 against --bg, --surface, --surface2
+   and a 14% --blue tint over --surface AND over --surface2 (the usual "accent chip"). Measured, 11 of 16
+   themes' --blue failed that (the plan's own table only checked the tint-over-surface case and missed 5):
+   deep-dark, simple-black, synthwave, solarized, dracula, tokyo-night, gruvbox, apple-dark, nord, latte,
+   corporate get a literal nudged hex (same hue/saturation, lightness moved the minimum needed,
+   src/utils/contrast.ts::nudgeToContrast). The other 5 (incl. cosmos, the default, at 4.59) keep
+   --accent-text:var(--blue) unchanged. src/test/themeContrast.test.ts enforces it on all five backgrounds.
    ============================================================ */
 .theme-cosmos{
   --bg:#08081a;--surface:#0f0f1e;--surface2:#13132a;--border:#1e1e3a;
@@ -57,7 +64,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#5185ff;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -82,7 +89,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#498bf7;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -130,7 +137,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#ff23b6;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -154,7 +161,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#77b8e6;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -226,7 +233,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#97a2c3;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -274,7 +281,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#84a9f8;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -298,7 +305,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#bccfc8;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -322,7 +329,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#68b3ff;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -346,7 +353,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#bfcfdf;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -370,7 +377,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#6b26d6;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
@@ -394,7 +401,7 @@
   --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
   --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
   --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
-  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:#0062b1;
   --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
   --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
   --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);

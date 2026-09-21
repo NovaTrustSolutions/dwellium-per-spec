@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useEffect, useSyncExternalStore
 import { Theme, FontPairing } from '../data/types';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSyncStatic } from '../lib/oneSaveStore';
+import { nudgeToContrast, tint } from '../utils/contrast';
 
 // ============================================
 // FONT PAIRING DEFINITIONS
@@ -299,8 +300,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         root.setAttribute('data-theme', safeTheme);
         // P11-11: '' = theme default — remove the inline override so the
         // theme's CSS --accent applies; any value = explicit user accent.
-        if (accentColor) root.style.setProperty('--accent', accentColor);
-        else root.style.removeProperty('--accent');
+        if (accentColor) {
+            root.style.setProperty('--accent', accentColor);
+            // A custom accent can land anywhere on the wheel, so --accent-text (plan 065) is derived
+            // fresh from it here rather than trusting the theme's own (possibly now-mismatched) value.
+            // ponytail: surfaces are read once per theme/accent change; a widget's own translucent
+            // overlay on top of --surface/--surface2 is not modelled — that overlay's contrast is the
+            // widget's own composite, same ceiling plan 064 documented for --text/--muted.
+            try {
+                const computed = getComputedStyle(root);
+                const bg = computed.getPropertyValue('--bg').trim();
+                const surface = computed.getPropertyValue('--surface').trim();
+                const surface2 = computed.getPropertyValue('--surface2').trim();
+                const backgrounds = [bg, surface, surface2, tint(accentColor, surface, 0.14), tint(accentColor, surface2, 0.14)];
+                root.style.setProperty('--accent-text', nudgeToContrast(accentColor, backgrounds));
+            } catch {
+                // Unparsable colour (surfaces not resolved yet, malformed accentColor, …): drop any inline
+                // value — one left over from the PREVIOUS theme could be unreadable on this one — so the
+                // theme's own contrast-safe --accent-text applies.
+                root.style.removeProperty('--accent-text');
+            }
+        } else {
+            root.style.removeProperty('--accent');
+            root.style.removeProperty('--accent-text');
+        }
     }, [theme, accentColor]);
 
     // Apply font pairing CSS variables (+ fetch the pairing's Google Fonts once, on demand)

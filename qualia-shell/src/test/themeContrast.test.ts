@@ -1,5 +1,7 @@
 /**
- * Master themes — `--text` and `--muted` reach WCAG AA (4.5:1) on their own surfaces (plan 064).
+ * Master themes — `--text` and `--muted` reach WCAG AA (4.5:1) on their own surfaces (plan 064),
+ * and `--accent-text` reaches it too, on `--bg`/`--surface`/`--surface2` and on a 14% `--blue`
+ * tint over `--surface`/`--surface2` (plan 065 — the usual "accent chip").
  *
  * `themes-master.css` bridges `--text` → `--text-primary` and `--muted` → `--text-secondary` /
  * `--text-tertiary`, and `--bg` / `--surface` / `--surface2` → the desktop, surface and elevated
@@ -9,42 +11,21 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseColor, contrast, tint } from '../utils/contrast';
 
 const CSS = readFileSync(resolve(__dirname, '../styles/themes-master.css'), 'utf8');
 const THEME_CONTEXT = readFileSync(resolve(__dirname, '../context/ThemeContext.tsx'), 'utf8');
 
-type Rgb = [number, number, number];
-
-function hexToRgb(hex: string): Rgb {
-    let h = hex.replace('#', '');
-    if (h.length === 3) h = [...h].map((c) => c + c).join('');
-    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as Rgb;
-}
-
-/** `#rgb`, `#rrggbb` or `rgba(r,g,b,a)` → colour + alpha. Anything else is a test failure, not a skip. */
-function parseColor(value: string): { rgb: Rgb; alpha: number } {
-    const rgba = /^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(value);
-    if (rgba) return { rgb: [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])], alpha: Number(rgba[4]) };
-    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return { rgb: hexToRgb(value), alpha: 1 };
-    throw new Error(`cannot parse colour "${value}"`);
-}
-
-function luminance(rgb: Rgb): number {
-    const [r, g, b] = rgb.map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** WCAG contrast of a (possibly translucent) foreground composited over an opaque background. */
-function contrast(fg: { rgb: Rgb; alpha: number }, bg: Rgb): number {
-    const painted = fg.rgb.map((v, i) => v * fg.alpha + bg[i] * (1 - fg.alpha)) as Rgb;
-    const a = luminance(painted);
-    const b = luminance(bg);
-    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-}
-
 const themes = [...CSS.matchAll(/\.theme-([\w-]+)\{([^}]*)\}/g)]
     .map((m) => ({ name: m[1], tokens: Object.fromEntries([...m[2].matchAll(/--([\w-]+):([^;]+);/g)].map((t) => [t[1], t[2].trim()])) }))
     .filter((t) => t.tokens.text && t.tokens.muted);
+
+/** Resolves a token value, following one `var(--x)` hop into the same block's own tokens. */
+function resolveToken(tokens: Record<string, string>, key: string): string {
+    const value = tokens[key];
+    const ref = /^var\(--([\w-]+)\)$/.exec(value);
+    return ref ? tokens[ref[1]] : value;
+}
 
 describe('master themes — text contrast on their own surfaces', () => {
     it('every theme the picker offers has a palette block (a new theme cannot skip this file)', () => {
@@ -63,6 +44,29 @@ describe('master themes — text contrast on their own surfaces', () => {
                 const ratio = contrast(parseColor(theme.tokens[token]), parseColor(theme.tokens[surface]).rgb);
                 if (ratio < 4.5) failures.push(`--${token} ${theme.tokens[token]} on --${surface} ${theme.tokens[surface]} = ${ratio.toFixed(2)}:1`);
             }
+        }
+        expect(failures).toEqual([]);
+    });
+});
+
+const accentThemes = themes.filter((t) => t.tokens['accent-text'] && t.tokens.blue);
+
+describe('master themes — --accent-text contrast on their own surfaces + accent tint', () => {
+    it.each(accentThemes.map((t) => [t.name, t] as const))('%s: --accent-text is ≥ 4.5:1 on --bg, --surface, --surface2 and a 14%% --blue tint over --surface/--surface2', (_name, theme) => {
+        const accentText = resolveToken(theme.tokens, 'accent-text');
+        const surfaceTint = tint(theme.tokens.blue, theme.tokens.surface, 0.14);
+        const surface2Tint = tint(theme.tokens.blue, theme.tokens.surface2, 0.14);
+        const backgrounds: Array<[string, string]> = [
+            ['bg', theme.tokens.bg],
+            ['surface', theme.tokens.surface],
+            ['surface2', theme.tokens.surface2],
+            ['14% --blue tint over --surface', surfaceTint],
+            ['14% --blue tint over --surface2', surface2Tint],
+        ];
+        const failures: string[] = [];
+        for (const [label, bg] of backgrounds) {
+            const ratio = contrast(parseColor(accentText), parseColor(bg).rgb);
+            if (ratio < 4.5) failures.push(`--accent-text ${accentText} on ${label} ${bg} = ${ratio.toFixed(2)}:1`);
         }
         expect(failures).toEqual([]);
     });

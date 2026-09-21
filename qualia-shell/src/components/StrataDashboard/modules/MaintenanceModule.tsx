@@ -122,7 +122,7 @@ function Section({ title, icon, children, defaultOpen = true, onToggle }: {
             <button onClick={() => setOpen(o => { const next = !o; onToggle?.(next); return next; })} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 14px', border: 'none', background: 'none',
-                color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                color: 'var(--accent-text)', cursor: 'pointer', fontSize: 12, fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: 0.5,
             }}>
                 {icon} {title}
@@ -565,13 +565,13 @@ export default function MaintenanceModule() {
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slaMetrics ? 7 : 4}, 1fr)`, gap: 10, marginBottom: 16 }}>
                     {[
                         { label: 'Open', value: summary.open, color: '#f59e0b', icon: <AlertTriangle size={16} /> },
-                        { label: 'In Progress', value: summary.inProgress, color: 'var(--accent)', icon: <Clock size={16} /> },
+                        { label: 'In Progress', value: summary.inProgress, color: 'var(--accent-text)', icon: <Clock size={16} /> },
                         { label: 'Completed', value: summary.completed, color: '#22c55e', icon: <CheckCircle size={16} /> },
                         { label: 'Total', value: summary.total, color: 'var(--text-secondary)', icon: <Wrench size={16} /> },
                         ...(slaMetrics ? [
                             { label: 'Overdue', value: slaMetrics.overdueCount, color: '#ef4444', icon: <AlertTriangle size={16} /> },
                             { label: 'SLA %', value: `${slaMetrics.slaCompliance}%`, color: slaMetrics.slaCompliance >= 80 ? '#22c55e' : '#ef4444', icon: <Shield size={16} /> },
-                            { label: 'Avg Resolve', value: `${slaMetrics.avgResolutionHours}h`, color: 'var(--accent)', icon: <Clock size={16} /> },
+                            { label: 'Avg Resolve', value: `${slaMetrics.avgResolutionHours}h`, color: 'var(--accent-text)', icon: <Clock size={16} /> },
                         ] : []),
                     ].map(k => (
                         <div key={k.label} style={{
@@ -662,7 +662,7 @@ export default function MaintenanceModule() {
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(h.status)}15`, color: statusColor(h.status), fontWeight: 700 }}>{statusLabel(h.status)}</span>
                                         <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{h.title}</span>
                                         {h.technicianName && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}><User size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{h.technicianName}</span>}
-                                        {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: 'var(--accent)' }}>{h.resolutionHours}h</span>}
+                                        {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: 'var(--accent-text)' }}>{h.resolutionHours}h</span>}
                                         <span data-dynamic="timestamp" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 ))}
@@ -777,7 +777,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         {item.propertyId ? (
                             <button className="s-property-link" style={{ fontSize: 12, fontWeight: 600 }} onClick={() => navigateToProperty(item.propertyId!)}>{propName}</button>
                         ) : (
-                            <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>{propName}</span>
+                            <span style={{ fontSize: 12, color: 'var(--accent-text)', fontWeight: 600 }}>{propName}</span>
                         )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -924,7 +924,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {attachments.map((a: any) => (
                             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
+                                <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
                                 <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{a.description || a.metadata?.fileName || 'Unnamed'}</span>
                                 <span data-dynamic="timestamp" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{a.metadata?.uploadedAt ? new Date(a.metadata.uploadedAt).toLocaleDateString() : ''}</span>
                             </div>
@@ -935,7 +935,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     {['before_photo', 'after_photo', 'vendor_quote', 'receipt'].map(type => (
                         <button key={type} onClick={() => onAddAttachment(type, '')} style={{
                             padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4,
-                            background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                            background: 'rgba(255,255,255,0.04)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 10, fontWeight: 600,
                         }}>
                             <Upload size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{type.replace(/_/g, ' ')}
                         </button>
@@ -1016,7 +1016,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     <Camera size={12} /> Photos
                 </button>
                 {(item.status === 'open' || item.status === 'pending') && (
-                    <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Send size={12} /> Dispatch
                     </button>
                 )}
@@ -1025,7 +1025,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     const link = bookingLinkFor('maintenance-window-2h', { name: item.title, notes: `${propName} · WO ${meta.appfolioWorkOrderId ?? item.id}` });
                     if (!link) { window.alert('Set VITE_CALCOM_URL to enable maintenance-window booking links.'); return; }
                     window.open(link, '_blank', 'noopener');
-                }} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                }} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                     <CalendarDays size={12} /> Book maintenance window
                 </button>
                 {/* ── end plan 053 bridge ── */}
@@ -1048,7 +1048,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         {item.tags.map(tag => (
                             <span key={tag} style={{
                                 fontSize: 11, padding: '3px 10px', borderRadius: 6,
-                                background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 500,
+                                background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontWeight: 500,
                             }}>{tag}</span>
                         ))}
                     </div>
@@ -1069,7 +1069,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                                 rel="noopener noreferrer"
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 5,
-                                    fontSize: 12, color: 'var(--accent)', textDecoration: 'none',
+                                    fontSize: 12, color: 'var(--accent-text)', textDecoration: 'none',
                                     padding: '4px 10px', borderRadius: 6,
                                     background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
                                     border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
@@ -1084,7 +1084,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         style={{
                             width: '100%', marginTop: 8, padding: '8px 12px',
                             borderRadius: 6, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                            background: 'color-mix(in srgb, var(--accent) 8%, transparent)', color: 'var(--accent)',
+                            background: 'color-mix(in srgb, var(--accent) 8%, transparent)', color: 'var(--accent-text)',
                             cursor: 'pointer', fontSize: 12, fontWeight: 600,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         }}
@@ -1110,7 +1110,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 <Section title="Checklists" icon={<ClipboardCheck size={13} />} defaultOpen={false}>
                     {meta.checklists.map((cl: any, i: number) => (
                         <div key={i} style={{ marginBottom: 10 }}>
-                            <div style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{cl.name}</div>
+                            <div style={{ color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{cl.name}</div>
                             {cl.checkItems?.map((ci: any, j: number) => (
                                 <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
                                     <span style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${ci.state === 'complete' ? '#22c55e' : '#475569'}`, background: ci.state === 'complete' ? '#10b98120' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

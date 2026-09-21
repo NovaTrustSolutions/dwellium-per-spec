@@ -236,7 +236,7 @@ export default function AccountingModule() {
                         { label: 'Overdue AR', value: `${overdueAR.length} ($${overdueAR.reduce((s, i) => s + i.amount, 0).toLocaleString()})`, color: '#f59e0b', icon: <Clock size={18} /> },
                         { label: 'Overdue AP', value: `${overdueAP.length} ($${overdueAP.reduce((s, i) => s + i.amount, 0).toLocaleString()})`, color: '#ef4444', icon: <AlertTriangle size={18} /> },
                         // No bank-balance source exists yet — say so instead of inventing one.
-                        { label: 'Bank Balance', value: null, color: 'var(--accent)', icon: <Landmark size={18} /> },
+                        { label: 'Bank Balance', value: null, color: 'var(--accent-text)', icon: <Landmark size={18} /> },
                     ].map(m => (
                         <div key={m.label} className="s-glass-card" style={{ padding: '16px 20px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -347,7 +347,7 @@ export default function AccountingModule() {
                                 {journal.map(je => (
                                     <tr key={je.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                         <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{je.dueDate}</td>
-                                        <td style={{ padding: '8px 12px', color: 'var(--accent)', fontFamily: 'monospace', fontWeight: 600 }}>{je.vendorOrTenant || '—'}</td>
+                                        <td style={{ padding: '8px 12px', color: 'var(--accent-text)', fontFamily: 'monospace', fontWeight: 600 }}>{je.vendorOrTenant || '—'}</td>
                                         <td style={{ padding: '8px 12px', color: 'var(--text-primary)' }}>{je.description}</td>
                                         <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{money(je.amount)}</td>
                                         <td style={{ padding: '8px 12px' }}>

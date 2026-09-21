@@ -246,7 +246,7 @@ export default function CalendarModule() {
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Calendar</div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>{gcalStatus.defaultCalendarId}</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-text)' }}>{gcalStatus.defaultCalendarId}</div>
                                     </div>
                                 </div>
 

@@ -42,7 +42,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder, inputId
                     <span key={tag} style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)',
+                        background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)',
                     }}>
                         {tag}
                         <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-label={`Remove ${tag}`} onClick={() => onRemove(tag)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>×</span>
@@ -430,7 +430,7 @@ export default function LegalModule() {
                                                     <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#f59e0b', cursor: 'pointer' }}>
                                                         <input type="checkbox" checked={isPrivileged} onChange={e => setIsPrivileged(e.target.checked)} style={{ width: 12, height: 12 }} /> Privileged
                                                     </label>
-                                                    <button onClick={() => handleAddComment(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Send size={10} /> Send</button>
+                                                    <button onClick={() => handleAddComment(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Send size={10} /> Send</button>
                                                 </div>
                                             </div>
                                         )}
@@ -440,7 +440,7 @@ export default function LegalModule() {
                                             <div>
                                                 {(matterLinks?.evidence || []).length === 0 ? <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No evidence attached</p> : (matterLinks.evidence as any[]).map((ev: any) => (
                                                     <div key={ev.id} style={{ padding: '6px 10px', borderRadius: 6, marginBottom: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
-                                                        <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', textTransform: 'uppercase' }}>{ev.type}</span>
+                                                        <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', textTransform: 'uppercase' }}>{ev.type}</span>
                                                         <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{ev.description}</span>
                                                         <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>{new Date(ev.created_at).toLocaleDateString()}</span>
                                                     </div>
@@ -463,7 +463,7 @@ export default function LegalModule() {
                                                 <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', margin: '8px 0 6px' }}>Audit Trail</h5>
                                                 {(matterLinks?.auditTrail || []).length === 0 ? <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No audit entries</p> : (matterLinks.auditTrail as any[]).map((a: any, i: number) => (
                                                     <div key={i} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
-                                                        <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{a.action}</span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--accent-text)' }}>{a.action}</span>
                                                         <span style={{ flex: 1 }}>{a.userId}</span>
                                                         <span style={{ color: 'var(--text-tertiary)' }}>{new Date(a.createdAt).toLocaleString()}</span>
                                                     </div>

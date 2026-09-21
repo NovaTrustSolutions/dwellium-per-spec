@@ -211,7 +211,7 @@ export default function AuditModule() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Shield size={22} style={{ color: 'var(--accent)' }} />
+                        <Shield size={22} style={{ color: 'var(--accent-text)' }} />
                         Audit &amp; Archive
                     </h2>
                     <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -225,7 +225,7 @@ export default function AuditModule() {
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '8px 14px', borderRadius: 8,
                             background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-                            color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            color: 'var(--accent-text)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
                         }}
                     >
                         <Plus size={14} /> Log Historical Event
@@ -416,7 +416,7 @@ export default function AuditModule() {
                                                         <span style={{ fontWeight: 600, color: 'var(--text-tertiary)', fontSize: 11 }}>Details</span>
                                                         <pre style={{
                                                             margin: '4px 0 0', padding: 10, borderRadius: 6,
-                                                            background: 'rgba(0,0,0,0.3)', color: 'var(--accent)',
+                                                            background: 'rgba(0,0,0,0.3)', color: 'var(--accent-text)',
                                                             fontSize: 11, overflow: 'auto', maxHeight: 200,
                                                             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                                                         }}>
@@ -501,7 +501,7 @@ export default function AuditModule() {
                                     <span style={{
                                         fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                                         padding: '2px 6px', borderRadius: 10,
-                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)',
                                         flexShrink: 0, marginTop: 2,
                                     }}>{r.type}</span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -652,7 +652,7 @@ export default function AuditModule() {
                                 {Object.entries(complianceSummary.byCategory as Record<string, number>).map(([cat, count]) => (
                                     <span key={cat} style={{
                                         padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 600,
-                                        background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)',
+                                        background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)',
                                     }}>
                                         {cat.replace(/_/g, ' ')}: {count}
                                     </span>
@@ -722,7 +722,7 @@ export default function AuditModule() {
                                     <span key={src} style={{
                                         fontSize: 11, fontWeight: 600,
                                         padding: '2px 8px', borderRadius: 5,
-                                        background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)',
+                                        background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent-text)',
                                     }}>
                                         {src.replace('_', ' ')}: {unifiedBreakdown[src] ?? 0}
                                     </span>

@@ -557,7 +557,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                 <tbody>
                                     {applications.map(app => (
                                         <tr key={app.id} className="s-clickable" onClick={() => setSelectedLease(app)} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                            <td style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600 }}>{app.metadata?.applicantName || app.title}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--accent-text)', fontWeight: 600 }}>{app.metadata?.applicantName || app.title}</td>
                                             <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{[propertyName(app.propertyId) || app.metadata?.property, app.metadata?.requestedUnit].filter(Boolean).join(' — ') || '—'}</td>
                                             <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{app.metadata?.monthlyRent ? `$${Number(app.metadata.monthlyRent).toLocaleString()}` : '—'}</td>
                                             <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{app.metadata?.moveInDate || '—'}</td>
@@ -701,7 +701,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                                     fetchLeases();
                                                 } catch { showToast('Failed to countersign lease', 'error'); }
                                             }}
-                                                style={{ padding: '3px 10px', border: 'none', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                                                style={{ padding: '3px 10px', border: 'none', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
                                                 <PenTool size={10} style={{ verticalAlign: -1, marginRight: 3 }} />Countersign
                                             </button>
                                         </td>
@@ -809,11 +809,11 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             {/* value: null = no live source yet → "Not available", never a plausible-looking number */}
                             {[
                                 { label: 'Occupancy Rate', value: units.length > 0 ? `${Math.round((1 - vacantUnits.length / units.length) * 100)}%` : null, color: '#22c55e', icon: <Building2 size={18} /> },
-                                { label: 'Avg. Days to Lease', value: null, color: 'var(--accent)', icon: <Clock size={18} /> },
+                                { label: 'Avg. Days to Lease', value: null, color: 'var(--accent-text)', icon: <Clock size={18} /> },
                                 { label: 'Active Applications', value: `${applications.length}`, color: '#f59e0b', icon: <FileText size={18} /> },
                                 { label: 'Leases Signed', value: `${leases.filter(l => getStage(l) === 'lease_signed').length}`, color: '#0ea5e9', icon: <FileKey2 size={18} /> },
-                                { label: 'Pending Renewals', value: `${eligibleRenewalCount}`, color: 'var(--accent)', icon: <RotateCw size={18} /> },
-                                { label: 'Avg. Rent', value: leases.length > 0 ? `$${Math.round(leases.reduce((s, l) => s + (l.metadata?.monthlyRent || 0), 0) / leases.length).toLocaleString()}` : null, color: 'var(--accent)', icon: <TrendingUp size={18} /> },
+                                { label: 'Pending Renewals', value: `${eligibleRenewalCount}`, color: 'var(--accent-text)', icon: <RotateCw size={18} /> },
+                                { label: 'Avg. Rent', value: leases.length > 0 ? `$${Math.round(leases.reduce((s, l) => s + (l.metadata?.monthlyRent || 0), 0) / leases.length).toLocaleString()}` : null, color: 'var(--accent-text)', icon: <TrendingUp size={18} /> },
                                 { label: 'Online Payments', value: null, color: '#22c55e', icon: <Percent size={18} /> },
                                 { label: 'Portal Adoption', value: null, color: '#0ea5e9', icon: <Globe size={18} /> },
                             ].map(m => (
@@ -837,7 +837,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             {[
                                 { stage: 'Applications', count: applications.length, color: '#f59e0b', width: 100 },
                                 { stage: 'Approved', count: applications.filter(a => getStage(a) === 'approved').length, color: '#22c55e', width: 66 },
-                                { stage: 'Leases Signed', count: leases.filter(l => getStage(l) === 'lease_signed').length, color: 'var(--accent)', width: 33 },
+                                { stage: 'Leases Signed', count: leases.filter(l => getStage(l) === 'lease_signed').length, color: 'var(--accent-text)', width: 33 },
                             ].map((f, i, arr) => (
                                 <div key={f.stage} style={{ marginBottom: 12 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -942,7 +942,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                     else if (a.type.includes('stalled')) setTab('applications');
                                     else if (a.type.includes('expir') || a.type.includes('notice')) setTab('renewals');
                                     else setTab('leases');
-                                }} style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
+                                }} style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
                                     <ArrowRight size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{a.action}
                                 </button>
                             </div>
@@ -978,14 +978,14 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             </span>
                             {(DOC_NEXT_STATUS[selectedLease.metadata.docStatus as string] || []).map((next: { label: string; target: DocStatus }) => (
                                 <button key={next.target} onClick={() => updateDocStatus(selectedLease, next.target)}
-                                    style={{ padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                                    style={{ padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
                                     {next.label}
                                 </button>
                             ))}
                             {/* Plan 047: real send via Documenso (only from `approved`, mirrors backend gate) */}
                             {selectedLease.metadata.docStatus === 'approved' && (
                                 <button onClick={() => sendForSignature(selectedLease)}
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
                                     <PenTool size={10} /> Send for e-signature
                                 </button>
                             )}
@@ -1043,7 +1043,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
 
                     {/* Utility Transfer Checklist */}
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', marginTop: '8px' }}>
-                        <h4 style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <h4 style={{ color: 'var(--accent-text)', fontSize: '13px', fontWeight: 600, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Zap size={14} /> Utility Transfers
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

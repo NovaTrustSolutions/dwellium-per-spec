@@ -361,7 +361,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                         display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
                                         borderRadius: 6, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', marginBottom: 4,
                                     }}>
-                                        <ClipboardList size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                                        <ClipboardList size={11} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
                                         <span style={{ fontSize: 11, color: 'var(--text-secondary)', flex: 1, fontFamily: 'monospace' }}>{wi.itemId?.slice(0, 16)}…</span>
                                         <button onClick={() => handleDeleteItem(wi.id)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 2 }}><Trash2 size={10} /></button>
                                     </div>
@@ -502,7 +502,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                         style={{
                             background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                             borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-                            color: 'var(--accent)', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                            color: 'var(--accent-text)', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                         }}
                     >
                         <Plus size={11} /> Link Entity
@@ -559,7 +559,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                     <span style={{
                                         fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                                         padding: '1px 6px', borderRadius: 10,
-                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)',
                                     }}>{otherType}</span>
                                     <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{otherId.slice(0, 12)}…</span>
                                     <Tag size={10} style={{ color: 'var(--text-tertiary)' }} />

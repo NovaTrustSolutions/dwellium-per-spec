@@ -150,7 +150,7 @@ function SentimentModuleInner() {
             {/* Stats bar */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                 {[
-                    { label: 'Total Tracked', value: trends.length, color: 'var(--accent)' },
+                    { label: 'Total Tracked', value: trends.length, color: 'var(--accent-text)' },
                     { label: 'At Risk', value: atRisk.length, color: '#ef4444' },
                     { label: 'Improving', value: trends.filter(t => t.trend === 'improving').length, color: '#22c55e' },
                     { label: 'Avg Score', value: trends.length ? (trends.reduce((s, t) => s + t.avgScore, 0) / trends.length).toFixed(1) + '/5' : 'N/A', color: '#eab308' },
@@ -261,7 +261,7 @@ function SentimentModuleInner() {
                                             <td style={{ padding: '10px 14px' }}><ScoreBadge score={t.latestScore} /></td>
                                             <td style={{ padding: '10px 14px' }}><TrendIcon trend={t.trend} /></td>
                                             <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{t.avgScore}</td>
-                                            <td style={{ padding: '10px 14px', color: 'var(--accent)', fontSize: 12 }}>View ›</td>
+                                            <td style={{ padding: '10px 14px', color: 'var(--accent-text)', fontSize: 12 }}>View ›</td>
                                         </tr>
                                     ))}
                                 </tbody>

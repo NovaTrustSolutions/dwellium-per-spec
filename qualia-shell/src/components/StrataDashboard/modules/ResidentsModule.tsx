@@ -320,7 +320,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
                     {onEdit && (
                         <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.15s' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
                         >
                             <Settings2 size={11} />
@@ -518,7 +518,7 @@ function OtherOccupantsSection({ tenant, allTenants }: { tenant: Tenant; allTena
                 }}
             >
                 <Users size={12} /> Other Occupants
-                <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', fontSize: 10, fontWeight: 700 }}>
+                <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)', fontSize: 10, fontWeight: 700 }}>
                     {loading ? '…' : others.length}
                 </span>
                 <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -782,8 +782,8 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {/* Bulk action bar */}
             {bulkSelected.size > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 8, borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>{bulkSelected.size} selected</span>
-                    <button onClick={() => setShowBulkStatus(true)} style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Change Status</button>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-text)' }}>{bulkSelected.size} selected</span>
+                    <button onClick={() => setShowBulkStatus(true)} style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent-text)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Change Status</button>
                     <button onClick={() => setBulkSelected(new Set())} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
                 </div>
             )}
@@ -873,7 +873,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                     <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>{selected.name}</h3>
                                     <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                                         <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: sc(selected.status).bg, color: sc(selected.status).color, textTransform: 'uppercase' }}>{selected.status}</span>
-                                        {md.tenantType && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>{md.tenantType}</span>}
+                                        {md.tenantType && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)' }}>{md.tenantType}</span>}
                                         {md.primaryTenant === 'Yes' && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>PRIMARY</span>}
                                         <LinkageIndicator tenantId={selected.id} />
                                     </div>
@@ -902,7 +902,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                             </div>
 
                             <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                                <button onClick={() => openEditForm(selected)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <button onClick={() => openEditForm(selected)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     <Settings2 size={12} /> Edit Tenant
                                 </button>
                                 <button onClick={() => setConfirmDelete(selected.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -1051,7 +1051,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>Update tenant details, lease info, and entity tags.</div>
                             </div>
 
-                            <h4 style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
+                            <h4 style={{ fontSize: 11, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                                 <div style={{ gridColumn: '1 / -1' }}><label htmlFor="residents-full-name-2" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Full Name</label><input id="residents-full-name-2" className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
                                 <div><label htmlFor="residents-email-2" style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input id="residents-email-2" className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>

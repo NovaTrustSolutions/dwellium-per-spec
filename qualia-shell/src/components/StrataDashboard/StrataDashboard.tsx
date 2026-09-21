@@ -138,7 +138,7 @@ function OccupancyTooltip({ active, payload }: OccupancyTooltipProps) {
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>{data.payload.name}</p>
-            <p style={{ color: 'var(--accent)', fontSize: '0.8125rem', fontWeight: 600 }}>{data.value}% occupied</p>
+            <p style={{ color: 'var(--accent-text)', fontSize: '0.8125rem', fontWeight: 600 }}>{data.value}% occupied</p>
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>{data.payload.units} total units</p>
         </div>
     );
@@ -208,7 +208,7 @@ interface CommEntry {
 }
 
 const channelIconMap: Record<string, { icon: typeof DollarSign; color: string; bg: string }> = {
-    email: { icon: Mail, color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
+    email: { icon: Mail, color: 'var(--accent-text)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
     phone: { icon: Phone, color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
     sms: { icon: MessageSquare, color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
     internal: { icon: Bell, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
@@ -309,12 +309,12 @@ function UpcomingEvents({ events }: { events: CalEvent[] }) {
    ======================================== */
 
 const quickActions = [
-    { id: 1, label: 'New Lease', sublabel: 'Start application', icon: FileKey2, color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
+    { id: 1, label: 'New Lease', sublabel: 'Start application', icon: FileKey2, color: 'var(--accent-text)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
     { id: 2, label: 'Work Order', sublabel: 'Create request', icon: Wrench, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
     { id: 3, label: 'Record Payment', sublabel: 'Manual entry', icon: DollarSign, color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
     { id: 4, label: 'Send Notice', sublabel: 'Broadcast', icon: Bell, color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
     { id: 5, label: 'Run Report', sublabel: 'Financials', icon: BarChart3, color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
-    { id: 6, label: 'Ask Aria', sublabel: 'AI assistant', icon: Sparkles, color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
+    { id: 6, label: 'Ask Aria', sublabel: 'AI assistant', icon: Sparkles, color: 'var(--accent-text)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
 ];
 
 function QuickActions() {
@@ -736,7 +736,7 @@ const INTEGRATION_CARDS: IntegrationCard[] = [
         id: 'dayflow',
         name: 'DayFlow',
         icon: <Clock size={24} />,
-        color: 'var(--accent)',
+        color: 'var(--accent-text)',
         description: 'Productivity logs — track daily activities, summaries, and batch imports.',
         features: ['Activity Logging', 'Daily Summaries', 'Batch Import', 'User Analytics'],
         endpoint: '/api/integrations/dayflow',
@@ -746,7 +746,7 @@ const INTEGRATION_CARDS: IntegrationCard[] = [
         id: 'messaging',
         name: 'Messaging Hub',
         icon: <MessageSquare size={24} />,
-        color: 'var(--accent)',
+        color: 'var(--accent-text)',
         description: 'Telegram Bot API and iMessage bridge for property communications.',
         features: ['Telegram Bot', 'iMessage Bridge', 'Message Logging', 'Webhook Integration'],
         endpoint: '/api/integrations/messaging',
@@ -1232,7 +1232,7 @@ function IntegrationsModule() {
                                 {card.features.map(f => (
                                     <span key={f} style={{
                                         background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                                        color: 'var(--accent)',
+                                        color: 'var(--accent-text)',
                                         padding: '3px 8px',
                                         borderRadius: '6px',
                                         fontSize: '11px',
@@ -1257,7 +1257,7 @@ function IntegrationsModule() {
                                         flex: 1, padding: '8px 12px', borderRadius: '8px',
                                         border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                                         background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                                        color: 'var(--accent)', cursor: 'pointer',
+                                        color: 'var(--accent-text)', cursor: 'pointer',
                                         fontSize: '12px', fontWeight: 600,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                                     }}
@@ -1627,7 +1627,7 @@ function IntegrationsModule() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
                             width: 44, height: 44, borderRadius: '10px',
-                            background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)',
+                            background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <RefreshCw size={20} />
@@ -1667,7 +1667,7 @@ function IntegrationsModule() {
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
                                 {[
-                                    { label: 'Boards Synced', value: trelloSync.result.boardsSynced, color: 'var(--accent)' },
+                                    { label: 'Boards Synced', value: trelloSync.result.boardsSynced, color: 'var(--accent-text)' },
                                     { label: 'Workitems Created', value: trelloSync.result.workitemsCreated, color: '#22c55e' },
                                     { label: 'Workitems Updated', value: trelloSync.result.workitemsUpdated, color: '#3b82f6' },
                                     { label: 'Vendors Created', value: trelloSync.result.vendorsCreated, color: '#f59e0b' },

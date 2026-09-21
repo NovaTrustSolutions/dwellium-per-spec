@@ -2058,7 +2058,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
 
 /* [P2] Column header sort indicator glow */
 .strata-th--sorted {
-    color: var(--accent, var(--accent)) !important;
+    color: var(--accent-text, var(--accent)) !important;
     text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -2185,7 +2185,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 .strata-dashboard .s-property-link:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom-color: var(--accent);
 }
 
@@ -2202,7 +2202,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 .strata-dashboard .s-resident-link:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom-color: var(--accent);
 }
 
@@ -2219,7 +2219,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 .strata-dashboard .s-unit-link:hover {
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom-color: var(--accent);
 }
 
@@ -2420,7 +2420,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
         border-color: var(--border-subtle);
     }
     & .tp-detail-item:hover { border-color: var(--border-default); }
-    & .tp-detail-item svg { color: var(--accent); }
+    & .tp-detail-item svg { color: var(--accent-text); }
     & .tp-detail-item-label { color: var(--text-tertiary); }
     & .tp-detail-item-value { color: var(--text-primary); }
 
@@ -2483,7 +2483,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
         border-bottom-color: color-mix(in srgb, var(--accent) 30%, transparent);
     }
     & .s-property-link:hover {
-        color: var(--accent);
+        color: var(--accent-text);
         border-bottom-color: var(--accent);
     }
 
@@ -2493,7 +2493,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
         border-bottom-color: color-mix(in srgb, var(--accent) 30%, transparent);
     }
     & .s-resident-link:hover {
-        color: var(--accent);
+        color: var(--accent-text);
         border-bottom-color: var(--accent);
     }
 
@@ -2503,7 +2503,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
         border-bottom-color: color-mix(in srgb, var(--accent) 30%, transparent);
     }
     & .s-unit-link:hover {
-        color: var(--accent);
+        color: var(--accent-text);
         border-bottom-color: var(--accent);
     }
 }
@@ -2526,7 +2526,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
 .strata-dashboard .s-module-info > svg {
     flex: 0 0 auto;
     margin-top: 1px;
-    color: var(--accent, #6366f1);
+    color: var(--accent-text, #6366f1);
 }
 
 .strata-dashboard .s-module-info__text {
@@ -2583,7 +2583,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
 
 .strata-dashboard .s-entity-link:hover,
 .strata-dashboard .s-entity-link:focus-visible {
-    color: var(--accent, #6366f1);
+    color: var(--accent-text, #6366f1);
     text-decoration-color: currentColor;
 }
 

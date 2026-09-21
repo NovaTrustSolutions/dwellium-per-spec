@@ -230,7 +230,7 @@ function ProjectsModuleInner() {
                                 {wi.tags.slice(0, 3).map((tag, i) => (
                                     <span key={i} style={{
                                         fontSize: 9, padding: '1px 5px', borderRadius: 4,
-                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600,
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontWeight: 600,
                                     }}>{tag}</span>
                                 ))}
                                 {wi.tags.length > 3 && <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>+{wi.tags.length - 3}</span>}
@@ -307,7 +307,7 @@ function ProjectsModuleInner() {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
                 >
-                    <span style={{ color: 'var(--accent)' }}>{group.icon}</span>
+                    <span style={{ color: 'var(--accent-text)' }}>{group.icon}</span>
                     <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', flex: 1 }}>{group.label}</span>
                     <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
@@ -345,7 +345,7 @@ function ProjectsModuleInner() {
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
-                        <FolderKanban size={22} style={{ verticalAlign: -4, marginRight: 8, color: 'var(--accent)' }} />
+                        <FolderKanban size={22} style={{ verticalAlign: -4, marginRight: 8, color: 'var(--accent-text)' }} />
                         Projects — Universal Node
                     </h2>
                     <p className="s-module-subtitle">
@@ -474,7 +474,7 @@ function ProjectsModuleInner() {
                 /* ── All / List View ── */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <h3 style={{ margin: '8px 0', fontSize: 14, color: 'var(--text-primary)' }}>
-                        <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 6, color: 'var(--accent)' }} />
+                        <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 6, color: 'var(--accent-text)' }} />
                         Active ({activeItems.length})
                     </h3>
                     {activeItems.map(wi => <ProjectCard key={wi.id} wi={wi} />)}

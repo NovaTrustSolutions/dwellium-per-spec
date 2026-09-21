@@ -618,7 +618,7 @@ export default function ComplianceEngine() {
                                         <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                                             <AlertTriangle size={14} style={{ verticalAlign: -2, marginRight: 4, color: '#ef4444' }} />
                                             No {ITEM_TYPE_LABELS[selectedCell.itemType]} on file for {selectedCell.entityName}.
-                                            <button className="s-btn s-btn-ghost" style={{ marginLeft: 8, fontSize: 10, color: 'var(--accent)' }}
+                                            <button className="s-btn s-btn-ghost" style={{ marginLeft: 8, fontSize: 10, color: 'var(--accent-text)' }}
                                                 onClick={() => setShowAddItem(true)}>
                                                 <Plus size={10} /> Add Now
                                             </button>
@@ -769,7 +769,7 @@ export default function ComplianceEngine() {
                                                         e.preventDefault();
                                                         window.open(`/api/files/${(relatedItem as any).documentId}`, '_blank');
                                                     }} style={{
-                                                        marginTop: 4, color: 'var(--accent)', fontSize: 10, fontWeight: 600,
+                                                        marginTop: 4, color: 'var(--accent-text)', fontSize: 10, fontWeight: 600,
                                                         textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                                                     }}>
                                                         <FileText size={10} aria-hidden /> View Source Document →
@@ -785,7 +785,7 @@ export default function ComplianceEngine() {
                                                     }
                                                 }} style={{
                                                     marginTop: 2, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                                                    borderRadius: 4, padding: '3px 8px', color: 'var(--accent)', fontSize: 10,
+                                                    borderRadius: 4, padding: '3px 8px', color: 'var(--accent-text)', fontSize: 10,
                                                     fontWeight: 600, cursor: 'pointer',
                                                 }}>
                                                     View Entity Profile →

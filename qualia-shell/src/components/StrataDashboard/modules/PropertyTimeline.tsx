@@ -137,7 +137,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                 Activity Timeline
                 <span style={{
                     fontSize: 10, padding: '2px 8px', borderRadius: 10,
-                    background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', fontWeight: 600, marginLeft: 4,
+                    background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)', fontWeight: 600, marginLeft: 4,
                 }}>{events.length} events</span>
             </h3>
 
@@ -238,7 +238,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                             onClick={() => setShowAll(true)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 4, margin: '4px auto 0',
-                                background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11,
+                                background: 'none', border: 'none', color: 'var(--accent-text)', fontSize: 11,
                                 fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                             }}
                         >

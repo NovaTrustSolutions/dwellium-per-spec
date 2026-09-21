@@ -141,7 +141,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit, onTo
                     {onEdit && (
                         <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.15s' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
                         >
                             <Settings2 size={11} />
@@ -794,7 +794,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     </div>
                                 </div>
                                 
-                                <h4 style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
+                                <h4 style={{ fontSize: 12, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
                                 <div className="s-form-row">
                                     <div className="s-form-group">
                                         <label htmlFor="properties-rent-ready-yes-no">Rent Ready (Yes/No)</label>
@@ -926,7 +926,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                 borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)', marginBottom: 6,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 10, color: 'var(--text-tertiary)' }}>
-                    {note.isEdited ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>EDITED</span> : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>POSTED</span>}
+                    {note.isEdited ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>EDITED</span> : <span style={{ color: 'var(--accent-text)', fontWeight: 600 }}>POSTED</span>}
                     <span>Last edited – {note.author} on {note.editedAt || note.postedAt}</span>
                 </div>
                 <div style={{
@@ -939,7 +939,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                     <button
                         onClick={() => setExpanded(!expanded)}
                         style={{
-                            background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11,
+                            background: 'none', border: 'none', color: 'var(--accent-text)', fontSize: 11,
                             cursor: 'pointer', padding: '4px 0', fontWeight: 600, fontFamily: 'inherit',
                         }}
                     >
@@ -1070,7 +1070,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             {pm.propertyType && (
                                                 <span style={{
                                                     fontSize: 10, padding: '2px 8px', borderRadius: 4,
-                                                    background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600,
+                                                    background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontWeight: 600,
                                                 }}>{pm.propertyType}</span>
                                             )}
                                             <div style={{ display: 'flex', gap: 6 }}>
@@ -1083,7 +1083,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                         display: 'flex', alignItems: 'center', gap: 4, marginTop: 4,
                                                         padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
                                                         background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                                                        color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit',
+                                                        color: 'var(--accent-text)', cursor: 'pointer', fontFamily: 'inherit',
                                                     }}
                                                 >
                                                     <Settings2 size={10} /> Edit
@@ -1344,7 +1344,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             onClick={() => setShowInspectionForm(true)}
                                             style={{
                                                 background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                                                color: 'var(--accent)', padding: '4px 10px', borderRadius: 6, fontSize: 10,
+                                                color: 'var(--accent-text)', padding: '4px 10px', borderRadius: 6, fontSize: 10,
                                                 fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
                                             }}
                                         ><Plus size={10} /> Add Inspection</button>
@@ -1378,7 +1378,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         onClick={() => { setBudgetFormData(pm.budgets || {}); setShowBudgetForm(true); }}
                                         style={{
                                             background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                                            color: 'var(--accent)', padding: '4px 10px', borderRadius: 6, fontSize: 10,
+                                            color: 'var(--accent-text)', padding: '4px 10px', borderRadius: 6, fontSize: 10,
                                             fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
                                         }}
                                     ><Settings2 size={10} /> Update Budgets</button>
@@ -1648,7 +1648,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                         padding: '16px 20px', border: '2px dashed color-mix(in srgb, var(--accent) 25%, transparent)',
                                         borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s',
-                                        color: 'var(--accent)', fontSize: 12, fontWeight: 600,
+                                        color: 'var(--accent-text)', fontSize: 12, fontWeight: 600,
                                         background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
                                     }}
                                         onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#D6FE51'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'; }}
@@ -1811,7 +1811,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Work Items</h3>
                                             <span style={{
                                                 fontSize: 11, padding: '2px 8px', borderRadius: 10,
-                                                background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', fontWeight: 600,
+                                                background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)', fontWeight: 600,
                                             }}>{activeItems.length} active / {inactiveItems.length} inactive</span>
                                         </div>
 
@@ -1973,7 +1973,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                             }}>{item.priority}</span>
                                                             <span style={{
                                                                 fontSize: 9, padding: '2px 7px', borderRadius: 6, fontWeight: 600,
-                                                                background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)',
+                                                                background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent-text)',
                                                             }}>{item.domain}</span>
                                                         </div>
                                                         {/* Description snippet */}
@@ -2033,7 +2033,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     {entry.date} {entry.time}
                                                 </div>
                                                 <div style={{ color: 'var(--text-secondary)', flex: 1 }}>{entry.action}</div>
-                                                <div style={{ color: 'var(--accent)', fontSize: 11, whiteSpace: 'nowrap', fontWeight: 500 }}>
+                                                <div style={{ color: 'var(--accent-text)', fontSize: 11, whiteSpace: 'nowrap', fontWeight: 500 }}>
                                                     {entry.user}
                                                 </div>
                                             </div>
@@ -2085,7 +2085,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     {/* ── WorkItems Section ── */}
                                     {(() => {
                                         const sections: { key: string; label: string; icon: React.ReactNode; items: any[]; color: string; emptyMsg: string }[] = [
-                                            { key: 'workitems', label: 'Workitems', icon: <Wrench size={14} />, items: linkedData.workitems, color: 'var(--accent)', emptyMsg: 'No workitems linked' },
+                                            { key: 'workitems', label: 'Workitems', icon: <Wrench size={14} />, items: linkedData.workitems, color: 'var(--accent-text)', emptyMsg: 'No workitems linked' },
                                             { key: 'legal', label: 'Legal Issues', icon: <Scale size={14} />, items: linkedData.legal, color: '#f59e0b', emptyMsg: 'No legal issues' },
                                             { key: 'compliance', label: 'Compliance', icon: <ClipboardCheck size={14} />, items: linkedData.compliance, color: '#22c55e', emptyMsg: 'No compliance items' },
                                             { key: 'incidents', label: 'Incidents', icon: <AlertTriangle size={14} />, items: linkedData.incidents, color: '#ef4444', emptyMsg: 'No incidents reported' },
@@ -2197,7 +2197,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                                             )}
                                                                             <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                                                 <span>{item.domain} • {item.type}{(item.metadata as any)?.trelloCardId && ' • via Trello'}</span>
-                                                                                <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Click to expand →</span>
+                                                                                <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>Click to expand →</span>
                                                                             </div>
                                                                         </div>
                                                                     );
@@ -2286,7 +2286,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         }}>
                                             <div style={{
                                                 width: 36, height: 36, borderRadius: '50%',
-                                                background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)',
+                                                background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent-text)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 fontWeight: 700, fontSize: 14,
                                             }}>
@@ -2304,7 +2304,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     {md.tenantType && (
                                                         <span style={{
                                                             padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,
-                                                            background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
+                                                            background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)',
                                                         }}>{md.tenantType}</span>
                                                     )}
                                                 </div>
@@ -2530,7 +2530,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Update the extended property details tracked in Dwellium.</div>
                                 </div>
                             </div>
-                            <h4 style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
+                            <h4 style={{ fontSize: 12, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
                             <div className="s-form-row">
                                 <div className="s-form-group">
                                     <label htmlFor="properties-rent-ready-yes-no-2">Rent Ready (Yes/No)</label>

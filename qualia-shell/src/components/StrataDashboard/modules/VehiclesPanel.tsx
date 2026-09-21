@@ -122,7 +122,7 @@ export default function VehiclesPanel({ tenantId, propertyId }: Props) {
                             display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                             borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
                         }}>
-                            <Car size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                            <Car size={16} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                                     {v.year ? v.year + ' ' : ''}{v.make} {v.model}

@@ -265,10 +265,10 @@ function TenantPortalModuleInner() {
     function KpiRow() {
         if (!stats) return null;
         const cards = [
-            { label: 'Total Tenants', value: String(stats.totalTenants), icon: Users, color: 'var(--accent)' },
+            { label: 'Total Tenants', value: String(stats.totalTenants), icon: Users, color: 'var(--accent-text)' },
             { label: 'Open Requests', value: String(stats.openMaintenanceRequests), icon: Wrench, color: '#f59e0b' },
             { label: 'Expiring Leases', value: String(stats.expiringLeases), icon: AlertTriangle, color: '#ef4444' },
-            { label: 'Vacant Units', value: String(stats.vacantUnits), icon: Building2, color: 'var(--accent)' },
+            { label: 'Vacant Units', value: String(stats.vacantUnits), icon: Building2, color: 'var(--accent-text)' },
         ];
         return (
             <div className="tp-kpi-grid">
@@ -333,7 +333,7 @@ function TenantPortalModuleInner() {
         return (
             <div className="tp-card">
                 <div className="tp-card-header">
-                    <div className="tp-card-header-icon" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>
+                    <div className="tp-card-header-icon" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)' }}>
                         <Users size={15} />
                     </div>
                     <h3>Tenant Directory</h3>
@@ -634,7 +634,7 @@ function TenantPortalModuleInner() {
                 {replyTo && (
                     <div className="tp-reply-form">
                         <h4 className="tp-reply-title">
-                            <Send size={14} style={{ color: 'var(--accent)' }} />
+                            <Send size={14} style={{ color: 'var(--accent-text)' }} />
                             Reply to {replyTo.tenantName}
                         </h4>
                         <div className="tp-reply-fields">
@@ -667,7 +667,7 @@ function TenantPortalModuleInner() {
 
                 <div className="tp-card">
                     <div className="tp-card-header">
-                        <div className="tp-card-header-icon" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>
+                        <div className="tp-card-header-icon" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)' }}>
                             <MessageSquare size={15} />
                         </div>
                         <h3>Tenant Messages</h3>

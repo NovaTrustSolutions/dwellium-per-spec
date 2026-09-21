@@ -55,14 +55,14 @@ const STATUS_BADGE = (status: string) => {
 
 const REPORT_TEMPLATES = [
     { id: 'delinquency', name: 'Delinquency', icon: <DollarSign size={16} />, color: '#ef4444', description: 'Outstanding tenant balances and aging' },
-    { id: 'tenant-ledger', name: 'Tenant Ledger', icon: <Users size={16} />, color: 'var(--accent)', description: 'Individual tenant transaction history' },
+    { id: 'tenant-ledger', name: 'Tenant Ledger', icon: <Users size={16} />, color: 'var(--accent-text)', description: 'Individual tenant transaction history' },
     { id: 'income-statement', name: 'Income Statement', icon: <TrendingUp size={16} />, color: '#22c55e', description: 'Revenue and expense summary by period' },
     { id: 'vacancy-detail', name: 'Unit Vacancy Detail', icon: <Building2 size={16} />, color: '#f59e0b', description: 'Vacant units with days vacant and market rent' },
     { id: 'rent-roll', name: 'Rent Roll', icon: <FileText size={16} />, color: '#0ea5e9', description: 'Current rent amounts for all occupied units' },
-    { id: 'cash-flow', name: 'Cash Flow', icon: <DollarSign size={16} />, color: 'var(--accent)', description: 'Cash inflows and outflows by period' },
-    { id: 'lease-expiration', name: 'Lease Expiration Detail By Month', icon: <Calendar size={16} />, color: 'var(--accent)', description: 'Leases expiring grouped by month' },
+    { id: 'cash-flow', name: 'Cash Flow', icon: <DollarSign size={16} />, color: 'var(--accent-text)', description: 'Cash inflows and outflows by period' },
+    { id: 'lease-expiration', name: 'Lease Expiration Detail By Month', icon: <Calendar size={16} />, color: 'var(--accent-text)', description: 'Leases expiring grouped by month' },
     { id: 'balance-sheet', name: 'Balance Sheet', icon: <BarChart3 size={16} />, color: '#22c55e', description: 'Assets, liabilities, and equity summary' },
-    { id: 't12', name: 'T12 (Trailing Twelve Months)', icon: <TrendingUp size={16} />, color: 'var(--accent)', description: 'Rolling 12-month income & expense breakdown by property' },
+    { id: 't12', name: 'T12 (Trailing Twelve Months)', icon: <TrendingUp size={16} />, color: 'var(--accent-text)', description: 'Rolling 12-month income & expense breakdown by property' },
     { id: 'bill-detail', name: 'Bill Detail', icon: <FileText size={16} />, color: '#ec4899', description: 'Detailed vendor bills, payment status, and aging' },
     { id: 'business-metrics', name: 'Business Metrics', icon: <PieChart size={16} />, color: '#f59e0b', description: 'KPIs and operational performance metrics' },
 ];
@@ -280,14 +280,14 @@ export default function ReportingModule() {
                                         background: 'rgba(255,255,255,0.02)', borderRadius: 6,
                                         border: '1px solid rgba(255,255,255,0.04)',
                                     }}>
-                                        <FileText size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                                        <FileText size={14} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
                                         <div style={{ flex: 1, overflow: 'hidden' }}>
                                             <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{r.reportType} Report</div>
                                             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{r.period} · Generated {new Date(r.createdAt).toLocaleDateString()}</div>
                                         </div>
                                         <button style={{
                                             padding: '4px 8px', border: 'none', borderRadius: 4,
-                                            background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer',
+                                            background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent-text)', cursor: 'pointer',
                                             fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3,
                                         }}>
                                             <Download size={11} /> Export
@@ -407,13 +407,13 @@ export default function ReportingModule() {
                                         <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <td style={{ padding: '8px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>{r.entityName}</td>
                                             <td style={{ padding: '8px 10px' }}>
-                                                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase' }}>{r.gapType}</span>
+                                                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontWeight: 600, textTransform: 'uppercase' }}>{r.gapType}</span>
                                             </td>
                                             <td style={{ padding: '8px 10px' }}>
                                                 <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 700, background: r.severity === 'critical' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)', color: r.severity === 'critical' ? '#ef4444' : '#f59e0b' }}>{r.severity}</span>
                                             </td>
                                             <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>{r.message}</td>
-                                            <td style={{ padding: '8px 10px', color: 'var(--accent)', fontSize: 11 }}>{r.recommendation}</td>
+                                            <td style={{ padding: '8px 10px', color: 'var(--accent-text)', fontSize: 11 }}>{r.recommendation}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -470,7 +470,7 @@ export default function ReportingModule() {
                                     'insurance-rollup.csv'
                                 )} style={{
                                     padding: '5px 12px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                                    color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                                    color: 'var(--accent-text)', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                                 }}>
                                     <Download size={12} /> Export CSV
                                 </button>
@@ -526,7 +526,7 @@ export default function ReportingModule() {
                                     'vendor-compliance-rollup.csv'
                                 )} style={{
                                     padding: '5px 12px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                                    color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                                    color: 'var(--accent-text)', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                                 }}>
                                     <Download size={12} /> Export CSV
                                 </button>
@@ -599,7 +599,7 @@ export default function ReportingModule() {
                                                 </div>
                                                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{prop.propertyAddress}</div>
                                             </div>
-                                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontWeight: 600 }}>
                                                 {prop.vendors.length} vendor{prop.vendors.length !== 1 ? 's' : ''}
                                             </span>
                                         </div>
@@ -631,7 +631,7 @@ export default function ReportingModule() {
                                 'vendor-by-property.csv'
                             )} style={{
                                 padding: '8px 16px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                                color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-end',
+                                color: 'var(--accent-text)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-end',
                             }}>
                                 <Download size={13} /> Export All Associations CSV
                             </button>
@@ -645,12 +645,12 @@ export default function ReportingModule() {
                 <div className="s-glass-card" style={{ padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                         <h3 style={{ margin: 0, fontSize: 15, color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <FileSearch size={16} style={{ color: 'var(--accent)' }} />
+                            <FileSearch size={16} style={{ color: 'var(--accent-text)' }} />
                             AI Document Intake — Pending Review
                         </h3>
                         <button onClick={fetchIntake} style={{
                             padding: '6px 12px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                            color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                            color: 'var(--accent-text)', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                         }}>
                             <RefreshCw size={12} /> Refresh
                         </button>
@@ -689,20 +689,20 @@ export default function ReportingModule() {
                                             width: 38, height: 38, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             background: 'color-mix(in srgb, var(--accent) 12%, transparent)', flexShrink: 0,
                                         }}>
-                                            <FileText size={18} style={{ color: 'var(--accent)' }} />
+                                            <FileText size={18} style={{ color: 'var(--accent-text)' }} />
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {item.filename}
                                             </div>
                                             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                                Detected: <strong style={{ color: 'var(--accent-hover)' }}>{item.doc_label}</strong>
+                                                Detected: <strong style={{ color: 'var(--accent-text-hover)' }}>{item.doc_label}</strong>
                                                 <span style={{ margin: '0 6px', opacity: 0.3 }}>|</span>
                                                 Confidence: <span style={{ color: confColor, fontWeight: 600 }}>{confPct}%</span>
                                             </div>
                                             {item.suggested_entity_name && (
                                                 <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                                                    → Suggested: <strong style={{ color: 'var(--accent)' }}>{item.suggested_entity_name}</strong>
+                                                    → Suggested: <strong style={{ color: 'var(--accent-text)' }}>{item.suggested_entity_name}</strong>
                                                     <span style={{ opacity: 0.5 }}> ({item.suggested_entity_type})</span>
                                                 </div>
                                             )}

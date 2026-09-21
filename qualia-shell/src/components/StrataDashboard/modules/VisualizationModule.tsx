@@ -189,7 +189,7 @@ export default function VisualizationModule() {
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
-                        <Network size={22} style={{ verticalAlign: -4, marginRight: 8, color: 'var(--accent)' }} />
+                        <Network size={22} style={{ verticalAlign: -4, marginRight: 8, color: 'var(--accent-text)' }} />
                         Visualization
                     </h2>
                     <p className="s-module-subtitle">
@@ -328,7 +328,7 @@ export default function VisualizationModule() {
                                                 {wi.domain && <span>• {wi.domain}</span>}
                                                 {wi.type && <span>• {wi.type}</span>}
                                                 {wi.propertyId && (
-                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
+                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: 'var(--accent-text)', display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
                                                         <Home size={12} aria-hidden /> {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
                                                     </button>
                                                 )}
@@ -411,7 +411,7 @@ export default function VisualizationModule() {
                 /* ═══ FLOWCHART ═══ */
                 <div className="s-glass-card">
                     <h3 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <GitBranch size={16} style={{ color: 'var(--accent)' }} />
+                        <GitBranch size={16} style={{ color: 'var(--accent-text)' }} />
                         Workitem Status Flow
                     </h3>
 

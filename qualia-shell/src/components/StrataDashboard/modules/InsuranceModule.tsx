@@ -12,10 +12,10 @@ import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
 
 const POLICY_TYPES = [
-    { key: 'liability', label: 'General Liability', color: 'var(--accent)' },
+    { key: 'liability', label: 'General Liability', color: 'var(--accent-text)' },
     { key: 'property', label: 'Property', color: '#3b82f6' },
     { key: 'flood', label: 'Flood', color: '#06b6d4' },
-    { key: 'umbrella', label: 'Umbrella', color: 'var(--accent)' },
+    { key: 'umbrella', label: 'Umbrella', color: 'var(--accent-text)' },
     { key: 'workers_comp', label: "Workers' Comp", color: '#f59e0b' },
     { key: 'auto', label: 'Auto', color: '#22c55e' },
     { key: 'other', label: 'Other', color: 'var(--text-tertiary)' },
@@ -348,7 +348,7 @@ export default function InsuranceModule({ propertyId }: Props) {
 
                                 {/* Expand/Collapse for docs & workitems */}
                                 <button onClick={() => setExpandedPolicy(expandedPolicy === p.id ? null : p.id)}
-                                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    style={{ background: 'none', border: 'none', color: 'var(--accent-text)', fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                                     {expandedPolicy === p.id ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                                     {expandedPolicy === p.id ? 'Collapse' : 'Documents & Links'}
                                 </button>
@@ -368,7 +368,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                                                     background: 'rgba(255,255,255,0.02)', fontSize: 10, color: 'var(--text-secondary)',
                                                     display: 'flex', alignItems: 'center', gap: 6,
                                                 }}>
-                                                    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', textTransform: 'uppercase' }}>{doc.type}</span>
+                                                    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', textTransform: 'uppercase' }}>{doc.type}</span>
                                                     <span style={{ flex: 1 }}>{doc.description}</span>
                                                     <span style={{ color: 'var(--text-tertiary)' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>
                                                 </div>
@@ -383,7 +383,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                                                     <option value="other">Other</option>
                                                 </select>
                                                 <input name="description" placeholder="Description" style={{ flex: 1, padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)' }} />
-                                                <button type="submit" style={{ padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                <button type="submit" style={{ padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
                                                     <Upload size={9} /> Add
                                                 </button>
                                             </form>

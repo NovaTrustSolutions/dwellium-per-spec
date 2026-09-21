@@ -134,7 +134,7 @@
 
 .tp-search:focus+.tp-search-icon,
 .tp-search-wrap:focus-within .tp-search-icon {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .tp-search::placeholder {
@@ -158,7 +158,7 @@
 
 .tp-refresh-btn:hover {
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
@@ -295,7 +295,7 @@
 /* 17. Active tab with accent glow */
 .tp-tab.active {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 600;
     box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -481,7 +481,7 @@
 .tp-badge-pending,
 .tp-badge-in_progress {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .tp-badge-closed,
@@ -617,7 +617,7 @@
 
 .tp-page-btn:hover:not(:disabled) {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
@@ -703,7 +703,7 @@
 }
 
 .tp-detail-item svg {
-    color: var(--accent);
+    color: var(--accent-text);
     flex-shrink: 0;
 }
 
@@ -780,7 +780,7 @@
 
 .tp-msg-direction-out {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .tp-msg-sender {
@@ -925,7 +925,7 @@
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     cursor: pointer;
     background: color-mix(in srgb, var(--accent) 8%, transparent);
-    color: var(--accent);
+    color: var(--accent-text);
     transition: all 0.2s;
 }
 

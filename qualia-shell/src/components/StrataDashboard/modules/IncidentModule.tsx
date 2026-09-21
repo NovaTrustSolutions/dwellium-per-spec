@@ -406,7 +406,7 @@ Generated: ${new Date().toLocaleString()}
                                     </button>
                                 )}
                                 <button className="s-btn s-btn-ghost" onClick={() => generateReport(selected)}
-                                    style={{ borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)', color: 'var(--accent)' }}>
+                                    style={{ borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)', color: 'var(--accent-text)' }}>
                                     <ClipboardCopy size={11} /> Copy Formal Report
                                 </button>
                             </div>

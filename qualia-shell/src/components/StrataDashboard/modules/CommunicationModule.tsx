@@ -24,11 +24,11 @@ const TABS: { id: CommTab; label: string; icon: typeof Mail }[] = [
 const LETTER_TEMPLATES = [
     { id: '3-day-notice', name: '3-Day Notice to Pay or Quit', category: 'Legal', color: '#ef4444' },
     { id: '30-day-notice', name: '30-Day Notice to Vacate', category: 'Legal', color: '#f59e0b' },
-    { id: 'lease-renewal', name: 'Lease Renewal Offer', category: 'Leasing', color: 'var(--accent)' },
+    { id: 'lease-renewal', name: 'Lease Renewal Offer', category: 'Leasing', color: 'var(--accent-text)' },
     { id: 'rent-increase', name: 'Rent Increase Notice', category: 'Leasing', color: '#0ea5e9' },
     { id: 'welcome', name: 'Welcome Letter', category: 'Onboarding', color: '#22c55e' },
-    { id: 'move-out', name: 'Move-Out Instructions', category: 'Move-Out', color: 'var(--accent)' },
-    { id: 'maintenance-notice', name: 'Maintenance Entry Notice', category: 'Maintenance', color: 'var(--accent)' },
+    { id: 'move-out', name: 'Move-Out Instructions', category: 'Move-Out', color: 'var(--accent-text)' },
+    { id: 'maintenance-notice', name: 'Maintenance Entry Notice', category: 'Maintenance', color: 'var(--accent-text)' },
     { id: 'late-rent', name: 'Late Rent Reminder', category: 'Collections', color: '#ef4444' },
 ];
 
@@ -284,7 +284,7 @@ export default function CommunicationModule() {
                                 background: 'rgba(255,255,255,0.02)', borderRadius: 6,
                                 border: '1px solid rgba(255,255,255,0.04)',
                             }}>
-                                <FileText size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                                <FileText size={14} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{ft.name}</div>
                                 </div>

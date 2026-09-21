@@ -127,7 +127,7 @@ export default function ComplianceTab({ vendor, now }: ComplianceTabProps) {
                         fontWeight: 600,
                         background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
                         border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
-                        color: 'var(--accent)',
+                        color: 'var(--accent-text)',
                         cursor: 'pointer',
                         fontFamily: 'inherit',
                     }}

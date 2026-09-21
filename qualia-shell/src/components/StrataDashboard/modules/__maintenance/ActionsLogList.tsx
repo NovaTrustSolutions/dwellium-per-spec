@@ -42,7 +42,7 @@ export default function ActionsLogList({ entries }: Props) {
                             display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 10, rowGap: 2, fontSize: 11.5,
                         }}
                     >
-                        <span style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ color: 'var(--accent-text)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             {e.actor === 'System' ? <Cpu size={11} /> : <User size={11} />}
                             <span style={{ fontWeight: 600 }}>{e.actor}</span>
                         </span>

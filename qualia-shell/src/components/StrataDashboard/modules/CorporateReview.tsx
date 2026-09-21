@@ -291,7 +291,7 @@ function CorporateReviewInner() {
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <FileText size={16} style={{ color: 'var(--accent)' }} />
+                            <FileText size={16} style={{ color: 'var(--accent-text)' }} />
                             <span role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-expanded={selected?.id === doc.id} style={{ flex: 1, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{doc.filename}</span>
                             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: STATUS_COLORS[doc.status] + '22', color: STATUS_COLORS[doc.status], fontWeight: 600 }}>
                                 {doc.status.toUpperCase()}

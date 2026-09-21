@@ -46,7 +46,7 @@ function groupByModule(keys: string[]): PermGroup[] {
     const sortedModules = [...subMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
     for (const [mod, modKeys] of sortedModules) {
         const label = mod.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        groups.push({ label: `${label}`, keys: modKeys.sort(), icon: <Circle size={9} aria-hidden style={{ flexShrink: 0, fill: 'currentColor', color: 'var(--accent)' }} /> });
+        groups.push({ label: `${label}`, keys: modKeys.sort(), icon: <Circle size={9} aria-hidden style={{ flexShrink: 0, fill: 'currentColor', color: 'var(--accent-text)' }} /> });
     }
 
     // Widgets
@@ -93,7 +93,7 @@ const toggleStyle: React.CSSProperties = {
     borderRadius: '6px',
     border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
     background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
-    color: 'var(--accent)',
+    color: 'var(--accent-text)',
     cursor: 'pointer',
     fontSize: '11px',
     fontWeight: 600,
@@ -423,7 +423,7 @@ export default function StrataAdminSettings() {
                                             }}
                                         >
                                             {isExpanded
-                                                ? <ChevronDown size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                                                ? <ChevronDown size={16} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
                                                 : <ChevronRight size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                                             }
                                             {group.icon}

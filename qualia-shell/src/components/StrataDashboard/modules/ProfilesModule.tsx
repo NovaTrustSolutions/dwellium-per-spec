@@ -315,7 +315,7 @@ export default function ProfilesModule() {
                                 </h3>
                                 <span style={{
                                     fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                                    letterSpacing: 1, color: 'var(--accent)',
+                                    letterSpacing: 1, color: 'var(--accent-text)',
                                 }}>
                                     {selectedEntity.entityType}
                                 </span>

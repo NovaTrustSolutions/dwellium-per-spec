@@ -160,7 +160,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 4,
                                         padding: '6px 12px', borderRadius: 6,
-                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)',
                                         fontSize: 11, fontWeight: 600, textDecoration: 'none',
                                     }}
                                 >
@@ -280,7 +280,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                         display: 'flex', alignItems: 'center', gap: 8,
                                                         padding: '8px 12px', borderRadius: 8,
                                                         background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                                        color: 'var(--accent)', fontSize: 12, textDecoration: 'none',
+                                                        color: 'var(--accent-text)', fontSize: 12, textDecoration: 'none',
                                                     }}
                                                 >
                                                     <Paperclip size={12} />
@@ -339,7 +339,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                             {workitem.tags.map((tag, i) => (
                                                 <span key={i} style={{
                                                     padding: '3px 10px', borderRadius: 6, fontSize: 11,
-                                                    background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 500,
+                                                    background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontWeight: 500,
                                                 }}>{tag}</span>
                                             ))}
                                         </div>

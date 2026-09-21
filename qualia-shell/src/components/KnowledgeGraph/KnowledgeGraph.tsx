@@ -132,7 +132,7 @@ export default function KnowledgeGraph() {
     const [tab, setTab] = useState<'knowledge' | 'files'>('knowledge');
     const tabBtn = (active: boolean): CSSProperties => ({
         background: 'transparent', border: 'none', cursor: 'pointer', font: 'inherit',
-        fontSize: 12, padding: '8px 12px', color: active ? 'var(--accent)' : 'var(--text-tertiary)',
+        fontSize: 12, padding: '8px 12px', color: active ? 'var(--accent-text)' : 'var(--text-tertiary)',
         borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
     });
     return (

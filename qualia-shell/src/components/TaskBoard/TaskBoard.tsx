@@ -1207,7 +1207,7 @@ function MetricsDashboard({ board, onClose }: { board: BoardState; onClose: () =
                                             <span className="tb-metrics-age-name">{col.title}</span>
                                             <span>{min} / {max}</span>
                                             <span className="tb-metrics-age-value" style={{ 
-                                                color: col.maxWip && count > col.maxWip ? '#ef4444' : col.minWip && count < col.minWip ? '#3b82f6' : 'var(--accent)'
+                                                color: col.maxWip && count > col.maxWip ? '#ef4444' : col.minWip && count < col.minWip ? '#3b82f6' : 'var(--accent-text)'
                                             }}>{count}</span>
                                         </div>
                                     );

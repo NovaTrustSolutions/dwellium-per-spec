@@ -166,7 +166,7 @@ function GoogleConnectCard() {
         <div className="cp-integration-card" style={{ marginBottom: 12 }}>
             <div className="cp-integration-card__header">
                 <span className="cp-integration-card__title">Google Account</span>
-                <span style={{ fontSize: 11, color: status?.connected ? 'var(--accent)' : 'var(--text-tertiary)' }}>
+                <span style={{ fontSize: 11, color: status?.connected ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>
                     {statusLabel}
                 </span>
             </div>

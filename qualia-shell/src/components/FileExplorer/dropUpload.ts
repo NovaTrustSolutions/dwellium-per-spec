@@ -1,0 +1,40 @@
+/**
+ * Finder-drop upload for the File Explorer. The backend's /touch takes the file
+ * as JSON text under a 1 MB body limit and never overwrites, so binary, oversize
+ * and same-name files are refused here (and the user is told) instead of being
+ * corrupted by a text decode or silently dropped.
+ */
+import { touch } from './fileExplorerApi';
+
+// ponytail: backend express.json limit is 1mb; 900 KB leaves room for JSON escaping.
+// A file that is mostly quotes/newlines can still 413 — that surfaces as a refusal too.
+// Real fix is a multipart /upload route on the backend (also unlocks binary files).
+export const MAX_UPLOAD_BYTES = 900 * 1024;
+
+/** Why a dropped file can't be uploaded, or null when it can. `text` is null before the file is read. */
+export function refusalFor(file: { name: string; size: number }, text: string | null, existingNames: string[]): string | null {
+    if (existingNames.includes(file.name)) return 'a file with that name already exists here';
+    if (file.size > MAX_UPLOAD_BYTES) return `too large (${Math.ceil(file.size / 1024).toLocaleString()} KB, limit ${MAX_UPLOAD_BYTES / 1024} KB)`;
+    if (text !== null && (text.includes(String.fromCharCode(0)) || text.includes(String.fromCharCode(0xfffd)))) return 'not a text file (images, PDFs and other binary files are not supported yet)';
+    return null;
+}
+
+/** Upload dropped files into `destFolder` ('' = root). Returns a user-facing summary, or null if nothing to say. */
+export async function uploadDroppedFiles(files: File[], destFolder: string, existingNames: string[]): Promise<string | null> {
+    let uploaded = 0;
+    const refused: string[] = [];
+    for (const f of files) {
+        try {
+            // Size/name check first so a huge file is never read into memory.
+            const text = refusalFor(f, null, existingNames) ? null : await f.text();
+            const why = refusalFor(f, text, existingNames);
+            if (why || text === null) { refused.push(`"${f.name}": ${why}`); continue; }
+            await touch(destFolder ? `${destFolder}/${f.name}` : f.name, text);
+            uploaded++;
+        } catch (err: any) {
+            refused.push(`"${f.name}": ${err?.message ?? err}`);
+        }
+    }
+    if (refused.length === 0) return null;
+    return `Uploaded ${uploaded} of ${files.length}. Skipped:\n${refused.join('\n')}`;
+}

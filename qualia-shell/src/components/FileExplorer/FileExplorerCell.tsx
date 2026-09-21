@@ -11,9 +11,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFileExplorer } from './useFileExplorer';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, Globe, FolderTree, MessageSquare } from 'lucide-react';
-import { rename as apiRename, deleteEntry as apiDelete, move as apiMove, touch as apiTouch } from './fileExplorerApi';
-
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB cap on dropped file content
+import { rename as apiRename, deleteEntry as apiDelete, move as apiMove } from './fileExplorerApi';
+import { uploadDroppedFiles } from './dropUpload';
 
 /**
  * 3-tier Holocron hierarchy model (per Ilya 2026-05-28 lock):
@@ -64,6 +63,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
     const isSelected = selectedPaths.includes(entry.path) || selectedPath === entry.path;
     pushVisiblePath(entry.path);
     const isFolder = entry.tier !== 'file';
+    const childNames = (entry.children ?? []).map((c) => c.name);
 
     // Show-in-Finder (spec §4.3) — only available in the Electron desktop build,
     // where window.electronAPI bridges shell.showItemInFolder. Resolves the
@@ -206,6 +206,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                 for (const p of payloads) {
                     if (!p.path || p.path === entry.path) continue;
                     if (entry.path === p.path || entry.path.startsWith(p.path + '/')) continue; // loop guard
+                    if (childNames.includes(p.name)) continue; // would overwrite
                     try {
                         await apiMove(p.path, `${entry.path}/${p.name}`, copy);
                         moved++;
@@ -231,6 +232,11 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                     alert("Can't move a folder into itself or one of its descendants.");
                     return;
                 }
+                // The backend's rename() replaces an existing destination — refuse instead of overwriting.
+                if (childNames.includes(payload.name)) {
+                    alert(`"${payload.name}" already exists in ${entry.name}. Rename one of them first.`);
+                    return;
+                }
                 const destPath = `${entry.path}/${payload.name}`;
                 await apiMove(sourcePath, destPath, e.altKey);
                 onChange?.();
@@ -243,24 +249,8 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
 
         // 2) External files (Finder drop) — upload via /touch
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files);
-            for (const f of files) {
-                if (f.size > MAX_UPLOAD_BYTES) {
-                    const ok = confirm(`"${f.name}" is ${(f.size / 1024 / 1024).toFixed(1)} MB. Upload anyway?`);
-                    if (!ok) continue;
-                }
-                try {
-                    const text = await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-                        reader.onerror = () => reject(reader.error);
-                        reader.readAsText(f);
-                    });
-                    await apiTouch(`${entry.path}/${f.name}`, text);
-                } catch (err: any) {
-                    alert(`Upload "${f.name}" failed: ${err?.message ?? err}`);
-                }
-            }
+            const summary = await uploadDroppedFiles(Array.from(e.dataTransfer.files), entry.path, childNames);
+            if (summary) alert(summary);
             onChange?.();
             return;
         }

@@ -161,6 +161,18 @@ everywhere, leave them. Default if no answer: measure, and only add the token if
 `TemplateGenerator.css`: replace `var(--tg-text-soft)` with `var(--text-secondary)` and delete the `--tg-text-soft` definition and
 its comment — 064 made `--muted` safe, which was the workaround's only reason.
 
+## Result (2026-09-20)
+
+Executed with the defaults. Differences from the plan as written, all measured: **11** themes needed a literal `--accent-text`
+(the plan's table tested the tint over `--surface` only; `--surface2` is stricter); `--accent-hover` as text failed on 9 themes once
+tints were included, so `--accent-text-hover` was added and its 33 sites converted (608 sites in total + 3 ternaries by hand);
+generated colours aim at 4.6 because the browser measured a computed 4.50 as 4.49. **The plan's premise that the default look stays
+pixel-identical was wrong:** the accent store defaults to `#0088cc`, so default users have a custom accent and their accent text
+becomes `#0091d9`. The static cosmos block is untouched; no baseline was recaptured. Live probe (real Chromium, real `ThemeProvider`):
+35 runs — 16 themes × default accent, 16 × accent reset, 3 hostile custom accents — 0 failures for `--accent-text` /
+`--accent-text-hover`; raw `--accent` as text fails somewhere in 30. Evidence: `~/Desktop/Accent-Text-065/`.
+`TemplateGenerator.css` is NOT converted here (PR #134 rewrites it; allowlisted in the guard — delete that entry once #134 lands).
+
 ## Verify
 1. `npx vitest run src/test/themeContrast.test.ts src/test/accentText.test.ts src/test/accentAsText.test.ts` — green, each mutation-checked.
 2. Strict gate from `CLAUDE.md`. Cluster A additionally: the Playwright screenshot-baseline + axe-baseline specs locally.

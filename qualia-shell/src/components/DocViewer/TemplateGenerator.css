@@ -76,7 +76,7 @@
 
 .tg-sidebar__tab--active {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent-text);
+    color: var(--accent);
     border-color: color-mix(in srgb, var(--accent) 20%, transparent);
     font-weight: 600;
 }
@@ -122,7 +122,7 @@
 
 .tg-action-btn--primary {
     background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent), color-mix(in srgb, var(--accent) 12%, transparent));
-    color: var(--accent-text);
+    color: var(--accent);
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -181,7 +181,7 @@
 
 .tg-editor__hint code {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent-text);
+    color: var(--accent);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 11px;
@@ -234,7 +234,7 @@
     border-radius: 8px;
     border: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
     background: color-mix(in srgb, var(--accent) 6%, transparent);
-    color: var(--accent-text);
+    color: var(--accent);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -292,7 +292,7 @@
 .tg-var-row__key {
     font-family: 'SFMono-Regular', Consolas, monospace;
     font-size: 11px;
-    color: var(--accent-text);
+    color: var(--accent);
     font-weight: 600;
 }
 
@@ -378,7 +378,7 @@
 
 .tg-block-row__count {
     font-size: 11px;
-    color: var(--accent-text);
+    color: var(--accent);
     font-weight: 700;
     background: color-mix(in srgb, var(--accent) 10%, transparent);
     padding: 2px 8px;
@@ -545,7 +545,7 @@
     padding: 3px 10px;
     border-radius: 99px;
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent-text);
+    color: var(--accent);
     border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
 }
 

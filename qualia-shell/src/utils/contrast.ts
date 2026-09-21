@@ -117,8 +117,10 @@ export function nudgeToContrast(color: string, backgrounds: string[], target = 4
 
     if (worstRatio(parsed.rgb) >= target) return color;
 
-    const avgBgLuminance = bgRgbs.reduce((sum, bg) => sum + luminance(bg), 0) / bgRgbs.length;
-    const lighter = avgBgLuminance < 0.5;
+    // Direction comes from the BINDING background (the one with the worst ratio), not the mean:
+    // with backgrounds straddling mid-luminance the mean can point away from the one that fails.
+    const binding = bgRgbs.reduce((worst, bg) => (contrast({ rgb: parsed.rgb, alpha: 1 }, bg) < contrast({ rgb: parsed.rgb, alpha: 1 }, worst) ? bg : worst));
+    const lighter = luminance(binding) < 0.5;
 
     const [h, s, startL] = rgbToHsl(parsed.rgb);
     let l = startL;

@@ -542,7 +542,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                 const MemIcon = TYPE_ICONS[m.memoryType] || ClipboardList;
                                 return (
                                 <div key={m.id} className="hhp__memory-card"
-                                    style={{ '--accent': TYPE_COLORS[m.memoryType] || '#D6FE51' } as React.CSSProperties}>
+                                    style={(() => { const c = TYPE_COLORS[m.memoryType] || '#D6FE51'; return { '--accent': c, '--accent-text': c, '--accent-text-hover': c } as React.CSSProperties; })()}>
                                     <div className="hhp__memory-top">
                                         <span className="hhp__memory-type">
                                             <MemIcon size={14} aria-hidden /> {m.memoryType}
@@ -644,7 +644,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                         ) : (
                             dreams.map(d => (
                                 <div key={d.id} className="hhp__memory-card"
-                                    style={{ '--accent': '#8b5cf6' } as React.CSSProperties}>
+                                    style={{ '--accent': '#8b5cf6', '--accent-text': '#8b5cf6', '--accent-text-hover': '#8b5cf6' } as React.CSSProperties}>
                                     <div className="hhp__memory-top">
                                         <span className="hhp__memory-type"><Moon size={14} aria-hidden /> {d.title}</span>
                                         {d.sources.length > 0 && (

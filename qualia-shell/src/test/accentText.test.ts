@@ -84,3 +84,11 @@ describe('nudgeToContrast — --accent-text runtime derivation', () => {
         expect(nudgeToContrast('not-a-color', ['#08081a', '#0f0f1e'])).toBe('not-a-color');
     });
 });
+
+describe('nudgeToContrast — direction', () => {
+    it('follows the binding (worst) background, not the mean, when backgrounds straddle mid-luminance', () => {
+        // #888888 is 5.9:1 on #101010 but only 3.1:1 on #f0f0f0: the light one binds, so it must go DARKER.
+        const out = nudgeToContrast('#888888', ['#101010', '#f0f0f0']);
+        expect(contrast(parseColor(out), parseColor('#f0f0f0').rgb)).toBeGreaterThan(contrast(parseColor('#888888'), parseColor('#f0f0f0').rgb));
+    });
+});

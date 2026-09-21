@@ -2,7 +2,7 @@ import { createContext, useContext, useCallback, useEffect, useSyncExternalStore
 import { Theme, FontPairing } from '../data/types';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSyncStatic } from '../lib/oneSaveStore';
-import { nudgeToContrast, tint } from '../utils/contrast';
+import { CONTRAST_AIM, nudgeToContrast, tint } from '../utils/contrast';
 
 // ============================================
 // FONT PAIRING DEFINITIONS
@@ -313,7 +313,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                 const surface = computed.getPropertyValue('--surface').trim();
                 const surface2 = computed.getPropertyValue('--surface2').trim();
                 const backgrounds = [bg, surface, surface2, tint(accentColor, surface, 0.14), tint(accentColor, surface2, 0.14)];
-                root.style.setProperty('--accent-text', nudgeToContrast(accentColor, backgrounds));
+                root.style.setProperty('--accent-text', nudgeToContrast(accentColor, backgrounds, CONTRAST_AIM));
             } catch {
                 // Unparsable colour (surfaces not resolved yet, malformed accentColor, …): drop any inline
                 // value — one left over from the PREVIOUS theme could be unreadable on this one — so the

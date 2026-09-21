@@ -89,6 +89,13 @@ function hslToRgb(h: number, s: number, l: number): Rgb {
  * treated as its rgb at alpha 1. Never throws: an unreachable target returns the
  * best candidate found (the white/black end of the lightness range).
  */
+/**
+ * Target to AIM for when producing a colour. The requirement is 4.5:1; a browser's own `color-mix()`
+ * rounds a tint one step differently from our arithmetic, which turned a computed 4.50 into a measured
+ * 4.49 (axe, cyberpunk, plan 065). Tests still assert the real 4.5.
+ */
+export const CONTRAST_AIM = 4.6;
+
 export function nudgeToContrast(color: string, backgrounds: string[], target = 4.5): string {
     let parsed: { rgb: Rgb; alpha: number };
     try {

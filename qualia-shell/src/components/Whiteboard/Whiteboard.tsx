@@ -127,7 +127,7 @@ const toolbarBtn: CSSProperties = {
     borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
     background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
     border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-    color: 'var(--accent)',
+    color: 'var(--accent-text)',
 };
 
 export default function Whiteboard() {

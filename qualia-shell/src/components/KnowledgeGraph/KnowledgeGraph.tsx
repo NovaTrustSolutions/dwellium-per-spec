@@ -65,7 +65,7 @@ function FilesGraphView() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid #222', flexShrink: 0 }}>
-                <Share2 size={15} style={{ color: 'var(--accent)' }} />
+                <Share2 size={15} style={{ color: 'var(--accent-text)' }} />
                 <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Knowledge Graph</span>
                 <div style={{ flex: 1 }} />
                 <span style={{ fontSize: 11, color: '#666' }}>{nodes.length} nodes · {links.length} edges</span>

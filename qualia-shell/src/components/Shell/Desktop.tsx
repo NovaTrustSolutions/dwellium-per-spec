@@ -96,7 +96,7 @@ class WidgetErrorBoundary extends React.Component<
                         onClick={() => this.setState({ hasError: false, error: null })}
                         style={{
                             marginTop: 8, padding: '6px 18px', fontSize: 12, fontWeight: 500,
-                            background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                            background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                             borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s',
                         }}
                     >

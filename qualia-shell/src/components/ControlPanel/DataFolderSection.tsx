@@ -53,7 +53,7 @@ export default function DataFolderSection() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0' }}>
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Current</span>
-                <code style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--accent)', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border, #333)', borderRadius: 6, padding: '6px 10px', fontFamily: "'JetBrains Mono','Fira Code',monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <code style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--accent-text)', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border, #333)', borderRadius: 6, padding: '6px 10px', fontFamily: "'JetBrains Mono','Fira Code',monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {root || '~/.dwellium'}
                 </code>
             </div>
@@ -62,7 +62,7 @@ export default function DataFolderSection() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <button
                         onClick={() => void choose()}
-                        style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                        style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                         Change data folder…
                     </button>

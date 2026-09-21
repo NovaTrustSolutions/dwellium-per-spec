@@ -131,7 +131,7 @@ export default function AuditLogSection() {
                             <span style={{ color: 'var(--text-tertiary)', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono','Fira Code',monospace", fontSize: 11 }}>
                                 {fmtTime(e.createdAt)}
                             </span>
-                            <span style={{ color: 'var(--accent)', whiteSpace: 'nowrap' }}>{e.action}</span>
+                            <span style={{ color: 'var(--accent-text)', whiteSpace: 'nowrap' }}>{e.action}</span>
                             <span style={{ color: 'var(--text-secondary, #b9c0cc)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {e.entityType ?? ''}{e.entityId ? ` · ${e.entityId}` : ''}
                             </span>

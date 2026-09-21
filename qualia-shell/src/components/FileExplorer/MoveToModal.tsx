@@ -60,7 +60,7 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
                 style={{ width: 360, maxWidth: '100%', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', border: '1px solid #333', borderRadius: 10, boxShadow: '0 16px 48px rgba(0,0,0,0.7)', overflow: 'hidden' }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid #222' }}>
-                    <CornerDownRight size={14} style={{ color: 'var(--accent)' }} />
+                    <CornerDownRight size={14} style={{ color: 'var(--accent-text)' }} />
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         Move "{entry.name}" to…
                     </span>

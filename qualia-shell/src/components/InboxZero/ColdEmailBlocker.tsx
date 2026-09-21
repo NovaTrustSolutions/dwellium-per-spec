@@ -150,7 +150,7 @@ export default function ColdEmailBlocker() {
                 <>
                     <div style={s.statGrid}>
                         <div style={s.statCard}>
-                            <div style={{ ...s.statValue, color: 'var(--accent)' }}>{stats.totalScanned}</div>
+                            <div style={{ ...s.statValue, color: 'var(--accent-text)' }}>{stats.totalScanned}</div>
                             <div style={s.statLabel}>EMAILS SCANNED</div>
                         </div>
                         <div style={s.statCard}>
@@ -254,7 +254,7 @@ export default function ColdEmailBlocker() {
                                             <td style={s.td}>
                                                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                                     {signals.slice(0, 3).map((sig: any, si: number) => (
-                                                        <span key={si} style={{ padding: '1px 6px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', fontSize: '10px' }}>
+                                                        <span key={si} style={{ padding: '1px 6px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent-text)', fontSize: '10px' }}>
                                                             {sig.signal}
                                                         </span>
                                                     ))}
@@ -320,7 +320,7 @@ export default function ColdEmailBlocker() {
                                 <div style={{ fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 6 }}><Target size={14} aria-hidden /> Detection Threshold</div>
                                 <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Higher = fewer false positives, lower = catch more cold emails</div>
                             </div>
-                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent)' }}>{config.threshold.toFixed(2)}</div>
+                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-text)' }}>{config.threshold.toFixed(2)}</div>
                         </div>
                         <input
                             type="range"

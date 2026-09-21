@@ -22,7 +22,7 @@ import {
 import { getSpeechRecognitionCtor } from '../../lib/globalDictation';
 
 const CODE_STYLE: CSSProperties = {
-    display: 'block', fontSize: 12, color: 'var(--accent)', background: 'rgba(0,0,0,0.35)',
+    display: 'block', fontSize: 12, color: 'var(--accent-text)', background: 'rgba(0,0,0,0.35)',
     border: '1px solid var(--border, #333)', borderRadius: 6, padding: '6px 10px',
     fontFamily: "'JetBrains Mono','Fira Code',monospace", overflowX: 'auto', whiteSpace: 'pre',
     margin: '6px 0 0',
@@ -31,7 +31,7 @@ const PROMPT_STYLE: CSSProperties = { ...CODE_STYLE, whiteSpace: 'pre-wrap', col
 const BTN_STYLE: CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7,
     border: '1px solid var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-    color: 'var(--accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+    color: 'var(--accent-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
 };
 const GHOST_BTN_STYLE: CSSProperties = { ...BTN_STYLE, border: '1px solid var(--border, #333)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600 };
 const MUTED: CSSProperties = { color: 'var(--text-tertiary)', fontSize: 13, lineHeight: 1.6 };

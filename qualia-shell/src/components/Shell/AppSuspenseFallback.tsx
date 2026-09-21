@@ -26,7 +26,7 @@ export default function AppSuspenseFallback({ variant, label }: Props) {
         return (
             <div style={{
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--accent)', fontSize: 13,
+                color: 'var(--accent-text)', fontSize: 13,
             }}>
                 {label ?? 'Loading widget…'}
             </div>

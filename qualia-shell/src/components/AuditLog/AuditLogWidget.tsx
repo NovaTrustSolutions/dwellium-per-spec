@@ -264,7 +264,7 @@ export default function AuditLogWidget() {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 16, gap: 12, fontFamily: 'Inter, -apple-system, sans-serif', boxSizing: 'border-box' }}>
                 <header style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <ScrollText size={17} aria-hidden style={{ color: 'var(--accent)' }} />
+                    <ScrollText size={17} aria-hidden style={{ color: 'var(--accent-text)' }} />
                     <h2 style={{ margin: 0, fontSize: 16, color: 'var(--text-primary, #e5e9f0)' }}>Audit Log</h2>
                     {tabsHeader}
                 </header>
@@ -284,7 +284,7 @@ export default function AuditLogWidget() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 16, gap: 12, fontFamily: 'Inter, -apple-system, sans-serif', boxSizing: 'border-box' }}>
             <header style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <ScrollText size={17} aria-hidden style={{ color: 'var(--accent)' }} />
+                <ScrollText size={17} aria-hidden style={{ color: 'var(--accent-text)' }} />
                 <h2 style={{ margin: 0, fontSize: 16, color: 'var(--text-primary, #e5e9f0)' }}>Audit Log</h2>
                 {tabsHeader}
                 {view !== 'my-activity' && (
@@ -340,7 +340,7 @@ export default function AuditLogWidget() {
                                                     {fmtTs(e.ts)}
                                                 </td>
                                                 <td style={{ padding: '7px 8px', color: 'var(--text-secondary, #b9c0cc)' }}>{e.widgetLabel}</td>
-                                                <td style={{ padding: '7px 8px', whiteSpace: 'nowrap', color: 'var(--accent)' }}>{e.action}</td>
+                                                <td style={{ padding: '7px 8px', whiteSpace: 'nowrap', color: 'var(--accent-text)' }}>{e.action}</td>
                                             </tr>
                                             {expanded && (
                                                 <tr>

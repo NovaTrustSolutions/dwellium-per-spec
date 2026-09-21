@@ -394,7 +394,7 @@ export default function NotebookLMContext() {
                                     title={googleEmail ? `Open "${nb.title}" in NotebookLM as ${googleEmail}` : `Open "${nb.title}" in NotebookLM`}
                                     style={{
                                         padding: '4px 8px', fontSize: 11,
-                                        background: 'transparent', color: 'var(--accent)',
+                                        background: 'transparent', color: 'var(--accent-text)',
                                         border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 4,
                                         cursor: 'pointer',
                                     }}

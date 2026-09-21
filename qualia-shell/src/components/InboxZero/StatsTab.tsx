@@ -66,7 +66,7 @@ export default function StatsTab({ stats, metrics, zeroProgress }: Props) {
 
                 <div className="iz-legend">
                     {[
-                        { name: 'Pending', value: stats?.pending || 0, color: 'var(--accent)' },
+                        { name: 'Pending', value: stats?.pending || 0, color: 'var(--accent-text)' },
                         { name: 'Signal', value: stats?.signal || 0, color: '#22c55e' },
                         { name: 'Noise', value: stats?.noise || 0, color: 'var(--text-tertiary)' },
                         { name: 'Approved', value: stats?.approved || 0, color: '#60a5fa' },
@@ -91,7 +91,7 @@ export default function StatsTab({ stats, metrics, zeroProgress }: Props) {
                     </div>
                 </div>
                 <div className="iz-metric">
-                    <div className="iz-metric__value" style={{ color: 'var(--accent)' }}>{stats?.pending || 0}</div>
+                    <div className="iz-metric__value" style={{ color: 'var(--accent-text)' }}>{stats?.pending || 0}</div>
                     <div className="iz-metric__label">Remaining</div>
                 </div>
                 <div className="iz-metric">

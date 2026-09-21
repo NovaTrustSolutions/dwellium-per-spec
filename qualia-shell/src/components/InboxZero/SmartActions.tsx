@@ -366,7 +366,7 @@ export default function SmartActions() {
                         <TabIcon size={14} aria-hidden />
                         {tab.label}
                         {tab.count !== undefined && tab.count > 0 && (
-                            <span style={{ ...styles.badge, background: 'rgba(0,136,204,0.2)', color: 'var(--accent)' }}>
+                            <span style={{ ...styles.badge, background: 'rgba(0,136,204,0.2)', color: 'var(--accent-text)' }}>
                                 {tab.count}
                             </span>
                         )}
@@ -426,7 +426,7 @@ export default function SmartActions() {
                                 <div key={t.id} style={styles.card}>
                                     <div style={styles.cardTitle}>
                                         {t.name}
-                                        <span style={{ ...styles.badge, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>
+                                        <span style={{ ...styles.badge, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent-text)' }}>
                                             used {t.useCount}x
                                         </span>
                                     </div>

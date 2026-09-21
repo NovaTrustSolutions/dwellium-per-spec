@@ -254,7 +254,7 @@ export default function ReplyTracker() {
                     {/* Secondary stats */}
                     <div style={{ ...s.statGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
                         <div style={s.statCard}>
-                            <div style={{ ...s.statValue, fontSize: '22px', color: 'var(--accent)' }}>{stats.totalTracked}</div>
+                            <div style={{ ...s.statValue, fontSize: '22px', color: 'var(--accent-text)' }}>{stats.totalTracked}</div>
                             <div style={s.statLabel}>TOTAL TRACKED</div>
                         </div>
                         <div style={s.statCard}>

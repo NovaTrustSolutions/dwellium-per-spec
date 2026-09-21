@@ -46,7 +46,7 @@ export function WhiteboardAction({ kind, id, title }: { kind: StrataBoardKind; i
                 borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
                 border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
-                color: 'var(--accent)',
+                color: 'var(--accent-text)',
             }}
         >
             <PenTool size={10} /> Whiteboard

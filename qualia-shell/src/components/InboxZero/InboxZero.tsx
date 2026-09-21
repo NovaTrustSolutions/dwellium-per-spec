@@ -899,7 +899,7 @@ export default function InboxZero() {
                             {/* Batch Route */}
                             <button
                                 className="iz-batch__btn"
-                                style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
+                                style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
                                 onClick={() => {
                                     const ids = Array.from(selectedIds).join(', ');
                                     navigator.clipboard?.writeText(ids).catch(() => {});
@@ -988,7 +988,7 @@ export default function InboxZero() {
                             }}>
                                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Primary</span>
                                 <span style={{
-                                    fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+                                    fontSize: 11, fontWeight: 700, color: 'var(--accent-text)',
                                     background: 'rgba(129,140,248,0.15)', padding: '1px 8px',
                                     borderRadius: 10,
                                 }}>{pendingItems.length}</span>
@@ -1042,7 +1042,7 @@ export default function InboxZero() {
                                                         <span title={`Received in your ${item.sourceAccount} mailbox`} style={{
                                                             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
                                                             background: 'color-mix(in srgb, var(--accent, #6366f1) 14%, transparent)',
-                                                            color: 'var(--accent, #818cf8)',
+                                                            color: 'var(--accent-text, #818cf8)',
                                                             border: '1px solid color-mix(in srgb, var(--accent, #6366f1) 35%, transparent)',
                                                             display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200,
                                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -1251,7 +1251,7 @@ export default function InboxZero() {
                                                 {/* Link to Strata (Phase 0.1.4) */}
                                                 <button
                                                     className="iz-action iz-action--link"
-                                                    style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}
+                                                    style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)' }}
                                                     onClick={() => {
                                                         setLinkModalFor(linkModalFor === item.id ? null : item.id);
                                                         setLinkForm({ linkType: 'workitem', targetId: '', targetName: '' });
@@ -1267,7 +1267,7 @@ export default function InboxZero() {
                                                     marginTop: 10, padding: 16, borderRadius: 10,
                                                     background: 'color-mix(in srgb, var(--accent) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                                                 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Link size={14} aria-hidden /> Link to Strata</div>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-text)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Link size={14} aria-hidden /> Link to Strata</div>
 
                                                     {/* Row 1: Category selector */}
                                                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -1363,7 +1363,7 @@ export default function InboxZero() {
                                                             onClick={() => setLinkModalFor(null)}
                                                         >Cancel</button>
                                                         <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flex: 1, textAlign: 'right' }}>
-                                                            Linking as: <strong style={{ color: 'var(--accent)' }}>{linkForm.linkType}</strong>
+                                                            Linking as: <strong style={{ color: 'var(--accent-text)' }}>{linkForm.linkType}</strong>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1413,7 +1413,7 @@ export default function InboxZero() {
                                                     <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={12} aria-hidden /> LINKED ITEMS</p>
                                                     {linksCache[item.id].map((link: any, idx: number) => (
                                                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '3px 0' }}>
-                                                            <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
+                                                            <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)' }}>
                                                                 {link.link_type || link.type || 'related'}
                                                             </span>
                                                             <span style={{ fontSize: '11px', opacity: 0.7, flex: 1 }}>
@@ -1435,7 +1435,7 @@ export default function InboxZero() {
                         <div style={{ textAlign: 'center', padding: '16px 0' }}>
                             <button
                                 className="iz-action"
-                                style={{ padding: '8px 24px', fontSize: '13px', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: '8px', cursor: 'pointer' }}
+                                style={{ padding: '8px 24px', fontSize: '13px', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: '8px', cursor: 'pointer' }}
                                 onClick={() => { setCurrentOffset(prev => prev + ITEMS_PER_PAGE); invalidateInbox(); }}
                             >
                                 Load More
@@ -1484,7 +1484,7 @@ export default function InboxZero() {
                                             </span>
                                         )}
                                         {viewerEmail.routedToProject && (
-                                            <span className="iz-viewer__badge" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                                            <span className="iz-viewer__badge" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
                                                 {PROJECT_NAMES[viewerEmail.routedToProject] || viewerEmail.routedToProject}
                                                 {viewerEmail.routingConfidence ? ` (${Math.round(viewerEmail.routingConfidence * 100)}%)` : ''}
                                             </span>

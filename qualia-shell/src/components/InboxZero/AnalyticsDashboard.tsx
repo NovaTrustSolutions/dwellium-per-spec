@@ -72,10 +72,10 @@ const styles: Record<string, React.CSSProperties> = {
     container: { padding: '20px', fontFamily: 'Inter, system-ui, sans-serif', color: '#e1e1e6', maxHeight: '100%', overflowY: 'auto' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
     title: { fontSize: '20px', fontWeight: 700, color: '#f0f0f5' },
-    refreshBtn: { padding: '6px 14px', borderRadius: '8px', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' },
+    refreshBtn: { padding: '6px 14px', borderRadius: '8px', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent-text)', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' },
     tabs: { display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' as const },
     tab: { padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#8b8b9e', cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' },
-    tabActive: { background: 'color-mix(in srgb, var(--accent) 20%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color: 'var(--accent)' },
+    tabActive: { background: 'color-mix(in srgb, var(--accent) 20%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color: 'var(--accent-text)' },
     gridRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' },
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px' },
     cardTitle: { fontSize: '11px', fontWeight: 600, color: '#6b6b80', textTransform: 'uppercase' as const, letterSpacing: '0.5px', marginBottom: '6px' },
@@ -269,7 +269,7 @@ const OverviewView: React.FC<{ data: OverviewData }> = ({ data }) => {
                 </div>
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Actions Taken</div>
-                    <div style={{ ...styles.cardValue, color: 'var(--accent)' }}>{actions.totalActions}</div>
+                    <div style={{ ...styles.cardValue, color: 'var(--accent-text)' }}>{actions.totalActions}</div>
                     <div style={styles.cardSub}>{actions.last24h} today</div>
                 </div>
             </div>
@@ -575,7 +575,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                     <thead>
                         <tr>
                             <th style={styles.th}>Metric</th>
-                            <th style={{ ...styles.th, textAlign: 'right', color: 'var(--accent)' }}>Rule</th>
+                            <th style={{ ...styles.th, textAlign: 'right', color: 'var(--accent-text)' }}>Rule</th>
                             <th style={{ ...styles.th, textAlign: 'right', color: '#06b6d4' }}>LLM</th>
                             <th style={styles.th}>Winner</th>
                         </tr>
@@ -667,7 +667,7 @@ const FallbackView: React.FC<{ data: FallbackData }> = ({ data }) => {
                             })}
                         </div>
                         <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '11px' }}>
-                            <span style={{ color: 'var(--accent)' }}>● Rule</span>
+                            <span style={{ color: 'var(--accent-text)' }}>● Rule</span>
                             <span style={{ color: '#06b6d4' }}>● LLM/AI Fallback</span>
                         </div>
                     </div>

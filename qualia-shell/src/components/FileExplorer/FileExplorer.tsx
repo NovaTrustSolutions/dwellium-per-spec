@@ -409,7 +409,7 @@ export default function FileExplorer() {
                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                 }}
             >
-                <FolderRoot size={11} strokeWidth={1.75} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <FolderRoot size={11} strokeWidth={1.75} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {workspaceRoot}
                 </span>
@@ -468,7 +468,7 @@ export default function FileExplorer() {
                             onClick={() => void refresh()}
                             style={{
                                 marginTop: 8, padding: '4px 10px', fontSize: 11,
-                                background: 'transparent', color: 'var(--accent)',
+                                background: 'transparent', color: 'var(--accent-text)',
                                 border: '1px solid var(--accent)', borderRadius: 4,
                                 cursor: 'pointer',
                             }}
@@ -502,7 +502,7 @@ export default function FileExplorer() {
                                 borderLeft: '2px solid var(--accent)',
                             }}>
                                 <span style={{ width: 12 }} />
-                                <span style={{ fontSize: 11, color: 'var(--accent)', opacity: 0.6, display: 'inline-flex' }}>{newEntry.type === 'folder' ? <Folder size={14} aria-hidden /> : <FileText size={14} aria-hidden />}</span>
+                                <span style={{ fontSize: 11, color: 'var(--accent-text)', opacity: 0.6, display: 'inline-flex' }}>{newEntry.type === 'folder' ? <Folder size={14} aria-hidden /> : <FileText size={14} aria-hidden />}</span>
                                 <input
                                     ref={newInputRef}
                                     value={newName}
@@ -555,7 +555,7 @@ export default function FileExplorer() {
                 <div style={{
                     position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
                     padding: '6px 14px', background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--accent) 50%, transparent)', color: 'var(--accent)',
+                    border: '1px solid color-mix(in srgb, var(--accent) 50%, transparent)', color: 'var(--accent-text)',
                     fontSize: 11, borderRadius: 6, zIndex: 50,
                     pointerEvents: 'none',
                     animation: 'feToastFade 3s ease-out forwards',

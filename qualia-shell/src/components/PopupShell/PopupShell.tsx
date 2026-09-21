@@ -106,7 +106,7 @@ export function PopupShell({ component }: { component: string }) {
                         background: docking ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'color-mix(in srgb, var(--accent) 10%, transparent)',
                         border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                         borderRadius: 4,
-                        color: 'var(--accent)',
+                        color: 'var(--accent-text)',
                         fontSize: 12,
                         fontWeight: 500,
                         cursor: docking ? 'not-allowed' : 'pointer',
@@ -144,7 +144,7 @@ export function PopupShell({ component }: { component: string }) {
                 <Suspense fallback={
                     <div style={{
                         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'var(--accent)', fontSize: 13,
+                        color: 'var(--accent-text)', fontSize: 13,
                     }}>
                         Loading widget…
                     </div>

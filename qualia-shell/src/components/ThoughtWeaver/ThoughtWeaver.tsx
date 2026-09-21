@@ -169,7 +169,7 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
 ];
 
 const BUCKETS: { id: BucketId; label: string; icon: LucideIcon; color: string }[] = [
-    { id: 'people', label: 'People', icon: User, color: 'var(--accent)' },
+    { id: 'people', label: 'People', icon: User, color: 'var(--accent-text)' },
     { id: 'projects', label: 'Projects', icon: Folder, color: '#60a5fa' },
     { id: 'ideas', label: 'Ideas', icon: Lightbulb, color: '#f59e0b' },
     { id: 'admin', label: 'Tasks', icon: ClipboardList, color: '#22c55e' },
@@ -695,7 +695,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     <h2 className="tw-title"><Brain size={16} aria-hidden /> Thought Weaver</h2>
                     {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}><User size={13} aria-hidden /> {effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent-text)' }}><User size={13} aria-hidden /> {effectiveStats.activePeople}</span>
                             <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}><Folder size={13} aria-hidden /> {effectiveStats.activeProjects}</span>
                             <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}><Lightbulb size={13} aria-hidden /> {effectiveStats.totalIdeas}</span>
                             <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}><ClipboardList size={13} aria-hidden /> {effectiveStats.tasksDue}</span>
@@ -1105,9 +1105,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {effectiveStats && (
                         <div className="tw-stats-bar">
                             {([
-                                { icon: Brain, label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
+                                { icon: Brain, label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent-text)' },
                                 { icon: Download, label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
-                                { icon: User, label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
+                                { icon: User, label: 'People', value: effectiveStats.activePeople, color: 'var(--accent-text)' },
                                 { icon: Folder, label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
                                 { icon: Lightbulb, label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
                                 { icon: ClipboardList, label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },

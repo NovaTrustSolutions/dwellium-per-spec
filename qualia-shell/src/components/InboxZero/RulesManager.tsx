@@ -578,7 +578,7 @@ export default function RulesManager() {
                                 }}>
                                     <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.ruleName || s.ruleId}</div>
                                     <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>{s.hitCount}</div>
+                                        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent-text)' }}>{s.hitCount}</div>
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>hits</div>
                                     </div>
                                     <div style={{ textAlign: 'center' }}>
@@ -653,7 +653,7 @@ export default function RulesManager() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                         <div style={{ padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Active Provider</div>
-                            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'capitalize' }}>{activeProvider || '—'}</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent-text)', textTransform: 'capitalize' }}>{activeProvider || '—'}</div>
                         </div>
                         <div style={{ padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Fallback Chain</div>

@@ -945,7 +945,7 @@ function ActiveWorkitems({ items, loading, error }: PanelProps & { items: Active
         <div className="a-card">
             <div className="a-card-header">
                 <ClipboardList size={16} /> Active Workitems
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{items.length}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent-text)', fontWeight: 700 }}>{items.length}</span>
             </div>
             <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No open workitems" />
             {ready && (
@@ -964,7 +964,7 @@ function ActiveWorkitems({ items, loading, error }: PanelProps & { items: Active
                         </span>
                         <span style={{
                             fontSize: 10, padding: '1px 5px', borderRadius: 3,
-                            background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
+                            background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)',
                         }}>{wi.domain}</span>
                         <span style={{ color: 'var(--text-tertiary)', fontSize: 11, minWidth: 22 }}>{wi.age}</span>
                         <button

@@ -84,7 +84,7 @@ export default function DictationHotkey() {
 
     return (
         <div role="status" style={pillStyle} data-testid="dictation-hotkey-pill">
-            <Mic size={13} aria-hidden style={listening ? { color: 'var(--accent, #d6fe51)' } : undefined} />
+            <Mic size={13} aria-hidden style={listening ? { color: 'var(--accent-text, #d6fe51)' } : undefined} />
             {listening
                 ? <span>Listening — press {formatHotkey(hotkey)} to stop.</span>
                 : <span>{notice}</span>}

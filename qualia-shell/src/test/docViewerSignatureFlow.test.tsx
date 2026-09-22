@@ -18,6 +18,7 @@ function fakeCanvasContext() {
         beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(),
         save: vi.fn(), restore: vi.fn(), translate: vi.fn(), rotate: vi.fn(), ellipse: vi.fn(),
         measureText: vi.fn(() => ({ width: 10 })),
+        setTransform: vi.fn(),
         fillStyle: '', strokeStyle: '', lineWidth: 0, lineCap: '', lineJoin: '', font: '', globalAlpha: 1,
     };
 }
@@ -29,7 +30,14 @@ vi.mock('pdfjs-dist', () => ({
         promise: Promise.resolve({
             numPages: 1,
             getPage: async () => ({
-                getViewport: () => ({ width: 450, height: 450, scale: 1.5, convertToViewportPoint: (x: number, y: number) => [x, y] }),
+                getViewport: () => ({
+                    width: 450, height: 450, scale: 1.5,
+                    convertToViewportPoint: (x: number, y: number) => [x, y],
+                    // P1 item 6: the overlay converts viewport-space pointer
+                    // coords to PDF space at commit — the live component now
+                    // needs BOTH conversion directions from the viewport.
+                    convertToPdfPoint: (x: number, y: number) => [x, y],
+                }),
                 render: () => ({ promise: Promise.resolve() }),
                 getTextContent: async () => ({ items: [] }),
             }),
@@ -90,15 +98,16 @@ describe('DocViewer signature: draw on the pad, place, Save Back', () => {
             if (!el) throw new Error('pad not open');
             return el;
         });
-        fireEvent.mouseDown(pad, { clientX: 20, clientY: 80 });
-        fireEvent.mouseMove(pad, { clientX: 80, clientY: 30 });
-        fireEvent.mouseMove(pad, { clientX: 160, clientY: 90 });
-        fireEvent.mouseUp(pad);
+        // P1 item 10: the pad/overlay only bind pointer events now.
+        fireEvent.pointerDown(pad, { clientX: 20, clientY: 80, pointerId: 1 });
+        fireEvent.pointerMove(pad, { clientX: 80, clientY: 30, pointerId: 1 });
+        fireEvent.pointerMove(pad, { clientX: 160, clientY: 90, pointerId: 1 });
+        fireEvent.pointerUp(pad, { pointerId: 1 });
         fireEvent.click(screen.getByRole('button', { name: /use signature/i }));
 
         const overlay = container.querySelector('.dv-overlay-canvas')!;
-        fireEvent.mouseDown(overlay, { clientX: 60, clientY: 60 });
-        fireEvent.mouseUp(overlay, { clientX: 60, clientY: 60 });
+        fireEvent.pointerDown(overlay, { clientX: 60, clientY: 60, pointerId: 2 });
+        fireEvent.pointerUp(overlay, { clientX: 60, clientY: 60, pointerId: 2 });
 
         const save = screen.getByRole('button', { name: /save back/i });
         await waitFor(() => expect(save).not.toBeDisabled());

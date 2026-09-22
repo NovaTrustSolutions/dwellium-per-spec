@@ -25,9 +25,14 @@ function fakeCanvasContext() {
         beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(),
         save: vi.fn(), restore: vi.fn(), translate: vi.fn(), rotate: vi.fn(), ellipse: vi.fn(),
         measureText: vi.fn(() => ({ width: 10 })),
+        setTransform: vi.fn(),
         fillStyle: '', strokeStyle: '', lineWidth: 0, lineCap: '', lineJoin: '', font: '', globalAlpha: 1,
     };
 }
+
+// R7's render-count check needs to know how many times page.render() actually
+// ran on the mocked pdf.js doc — reset per test.
+let pageRenderCalls = 0;
 
 vi.mock('pdfjs-dist', () => ({
     GlobalWorkerOptions: {},
@@ -42,8 +47,12 @@ vi.mock('pdfjs-dist', () => ({
         promise: Promise.resolve({
             numPages: 1,
             getPage: async () => ({
-                getViewport: () => ({ width: 300, height: 300, scale: 1, convertToViewportPoint: (x: number, y: number) => [x, y] }),
-                render: () => ({ promise: Promise.resolve() }),
+                getViewport: () => ({
+                    width: 300, height: 300, scale: 1, rotation: 0,
+                    convertToViewportPoint: (x: number, y: number) => [x, y],
+                    convertToPdfPoint: (x: number, y: number) => [x, y],
+                }),
+                render: () => { pageRenderCalls += 1; return { promise: Promise.resolve() }; },
                 getTextContent: async () => ({ items: [] }),
             }),
         }),
@@ -61,12 +70,27 @@ function jsonResponse(body: unknown) {
     return { ok: true, status: 200, json: async () => body, headers: { get: () => null } } as unknown as Response;
 }
 
+/** pdf.js's own Util.transform(m1, m2): composes m1 THEN m2 (row-vector
+ * convention) — same helper as docViewerPdfCoords.test.ts's upright-angle
+ * check, duplicated locally (it isn't exported from pdfCoords.ts). */
+function composeTransforms(m1: number[], m2: number[]): number[] {
+    return [
+        m1[0] * m2[0] + m1[1] * m2[2],
+        m1[0] * m2[1] + m1[1] * m2[3],
+        m1[2] * m2[0] + m1[3] * m2[2],
+        m1[2] * m2[1] + m1[3] * m2[3],
+        m1[4] * m2[0] + m1[5] * m2[2] + m2[4],
+        m1[4] * m2[1] + m1[5] * m2[3] + m2[5],
+    ];
+}
+
 describe('DocViewer page ops + undo — real byte round-trip through the live component', () => {
     let fetchMock: ReturnType<typeof vi.fn>;
     let putBodies: FormData[];
 
     beforeEach(() => {
         putBodies = [];
+        pageRenderCalls = 0;
         vi.stubGlobal('HTMLCanvasElement', HTMLCanvasElement);
         HTMLCanvasElement.prototype.getContext = vi.fn(() => fakeCanvasContext()) as never;
         vi.stubGlobal('confirm', vi.fn(() => true));
@@ -139,5 +163,66 @@ describe('DocViewer page ops + undo — real byte round-trip through the live co
         fireEvent.click(saveBtn);
         await waitFor(() => expect(putBodies.length).toBe(3));
         expect(await pageCountOfLastPut()).toBe(2);
+    });
+
+    it('R1: rotating a page AFTER placing a text annotation re-syncs its baked rotation (adversarial review of item6-coordinates)', async () => {
+        vi.stubGlobal('prompt', vi.fn(() => 'HELLO'));
+        const { container } = render(<DocViewer />);
+        const select = await screen.findByRole('combobox');
+        fireEvent.change(select, { target: { value: FILE.id } });
+
+        fireEvent.click(await screen.findByTitle('Add Text'));
+        const overlay = container.querySelector('.dv-overlay-canvas')!;
+        fireEvent.pointerDown(overlay, { clientX: 50, clientY: 50, pointerId: 1 });
+        fireEvent.pointerUp(overlay, { clientX: 50, clientY: 50, pointerId: 1 });
+
+        const saveBtn = await screen.findByRole('button', { name: /save back/i });
+        await waitFor(() => expect(saveBtn).not.toBeDisabled());
+
+        // Rotate the page AFTER placing the text — mirrors the exact
+        // sequence the adversarial review reproduced live. Without the R1
+        // fix, the annotation's stored `rotation` stays at the STALE value
+        // (0, from placement time) while the page's real /Rotate is now 90,
+        // so pdfBake.ts's counter-rotation no longer cancels the page
+        // rotation and the baked text reads sideways.
+        fireEvent.click(await screen.findByTitle('Rotate CW'));
+        await waitFor(() => expect(saveBtn).not.toBeDisabled());
+
+        fireEvent.click(saveBtn);
+        await waitFor(() => expect(putBodies.length).toBe(1));
+
+        const filePart = putBodies[0].get('file') as Blob;
+        const bakedBytes = new Uint8Array(await filePart.arrayBuffer());
+
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const doc = await pdfjs.getDocument({ data: bakedBytes.slice(), disableWorker: true } as never).promise;
+        const page = await doc.getPage(1);
+        expect(page.rotate).toBe(90);
+        const viewport = page.getViewport({ scale: 1 }); // uses page.rotate (90) by default
+        const textContent = await page.getTextContent();
+        const item = textContent.items.find((i: any) => 'str' in i && i.str === 'HELLO') as { transform: number[] } | undefined;
+        expect(item).toBeDefined();
+
+        const combined = composeTransforms(item!.transform, viewport.transform);
+        const angleDeg = (Math.atan2(combined[1], combined[0]) * 180) / Math.PI;
+        const normalized = ((angleDeg % 360) + 360) % 360;
+        const distanceFromUpright = Math.min(normalized, 360 - normalized);
+        expect(distanceFromUpright).toBeLessThan(1);
+    });
+
+    it('R7: rotating a page renders it exactly once, not twice (adversarial review of item7-load-lifecycle — concurrent canvas render race)', async () => {
+        render(<DocViewer />);
+        const select = await screen.findByRole('combobox');
+        fireEvent.change(select, { target: { value: FILE.id } });
+
+        const rotateBtn = await screen.findByTitle('Rotate CW');
+        await waitFor(() => expect(pageRenderCalls).toBeGreaterThan(0));
+        const before = pageRenderCalls;
+
+        fireEvent.click(rotateBtn);
+        await waitFor(() => expect(pageRenderCalls).toBeGreaterThan(before));
+        // Give any extra (incorrect) concurrent render a chance to fire too.
+        await new Promise(r => setTimeout(r, 0));
+        expect(pageRenderCalls - before).toBe(1);
     });
 });

@@ -23,6 +23,7 @@ function fakeCanvasContext() {
         beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(),
         save: vi.fn(), restore: vi.fn(), translate: vi.fn(), rotate: vi.fn(), ellipse: vi.fn(),
         measureText: vi.fn(() => ({ width: 10 })),
+        setTransform: vi.fn(),
         fillStyle: '', strokeStyle: '', lineWidth: 0, lineCap: '', lineJoin: '', font: '', globalAlpha: 1,
     };
 }

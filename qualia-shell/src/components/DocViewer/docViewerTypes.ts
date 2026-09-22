@@ -43,6 +43,13 @@ export interface Annotation {
     // Signature — normalized (annotation-space, absolute) strokes; see
     // annotationModel.normalizeSignatureStrokes. NOT raw modal-pixel coords.
     signatureData?: Point[][];
+    // P1 item 6: the page's /Rotate value (degrees, clockwise-on-display) at
+    // the moment this annotation was created. 'text'/'stamp' bake counter-
+    // rotated by this so they read upright in the page's displayed
+    // orientation regardless of later rotate operations. Geometry-only types
+    // (highlight/shape/draw/signature) don't need it — their PDF-space
+    // coordinates already encode the rotation they were placed under.
+    rotation?: number;
 }
 
 /** Page-keyed annotations. Page numbers are 1-based. */
@@ -58,6 +65,12 @@ export interface TextItem {
     fontFamily: string;
     transform: number[];
     itemIndex: number;
+    // P1 audit #14: the pdf.js text item's own width in PDF (unscaled) units
+    // — `width` above is scaled to viewport/CSS pixels for on-screen
+    // positioning. The text-edit white-out must size itself from THIS, not
+    // from Helvetica glyph metrics for whatever font the document actually
+    // used (the old bug: wide-font text left visible tails).
+    pdfWidth: number;
 }
 
 export interface TextEdit {

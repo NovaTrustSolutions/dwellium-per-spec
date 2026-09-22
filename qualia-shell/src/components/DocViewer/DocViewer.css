@@ -432,6 +432,7 @@
 
 /* ===== PDF CANVAS ===== */
 .dv-canvas-container {
+    position: relative;
     flex: 1;
     overflow: auto;
     display: flex;
@@ -471,6 +472,20 @@
     top: 0;
     left: 0;
     border-radius: 4px;
+    /* P1 item 10: without this, a touch/pen drag on the overlay also scrolls
+       the page (or triggers the browser's pinch/pan gestures) instead of
+       drawing — the pointerdown/move/up handlers never see a clean stroke. */
+    touch-action: none;
+}
+
+/* N1: the loading spinner sits ON TOP of the (still-mounted) canvas instead
+   of replacing it, so page 1 renders the instant loading finishes. */
+.dv-loading--overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: rgba(10, 10, 14, 0.55);
+    backdrop-filter: blur(1px);
 }
 
 /* Honest render-failure message — replaces the old fabricated demo page. */
@@ -660,6 +675,9 @@
     border-radius: 10px;
     cursor: crosshair;
     border: 2px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    /* P1 item 10: same reasoning as .dv-overlay-canvas — a touch/pen drag
+       across the pad must draw a stroke, not scroll the signature modal. */
+    touch-action: none;
 }
 
 .dv-sig-hint {

@@ -82,15 +82,17 @@ describe('bakeAnnotations — signature (P0 item 1)', () => {
         expect(opsWith).toBeGreaterThan(opsWithout);
     });
 
-    it('places the signature at the expected PDF-space coordinates (y flipped from page height)', async () => {
+    it('places the signature at the expected PDF-space coordinates (no flip — geometry is already PDF user space, P1 item 6)', async () => {
         const height = 300;
         const pdf = await makeBlankPdf(300, height);
         const withSig = await bakeAnnotations(pdf, signatureAnnotations());
         const nums = await getAllOperatorArgNumbers(withSig);
 
-        // Stroke point {x:20, y:40} bakes to PDF coords (20, height-40) = (20, 260).
+        // Stroke point {x:20, y:40} bakes to PDF coords (20, 40) directly — no
+        // more `height - y` flip now that Annotation geometry is stored in
+        // PDF user space to begin with (pdfCoords.ts / P1 item 6).
         expect(nums.some(n => Math.abs(n - 20) < 0.5)).toBe(true);
-        expect(nums.some(n => Math.abs(n - (height - 40)) < 0.5)).toBe(true);
+        expect(nums.some(n => Math.abs(n - 40) < 0.5)).toBe(true);
     });
 });
 

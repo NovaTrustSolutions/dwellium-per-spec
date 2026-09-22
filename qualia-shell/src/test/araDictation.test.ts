@@ -66,3 +66,50 @@ describe('startDictation', () => {
         }
     });
 });
+
+// Voice commands (2026-09-19): saying "open research lab" must RUN, not sit in
+// the composer waiting for Enter. onFinal lets the caller consume an utterance.
+describe('startDictation — onFinal (voice commands)', () => {
+    const make = () => {
+        let last: FakeSR | null = null;
+        const Ctor = class extends FakeSR { constructor() { super(); last = this; } };
+        return { Ctor, rec: () => last! as FakeSR };
+    };
+
+    it('a consumed utterance is NOT appended to the text, and is flagged whole-input on an empty composer', () => {
+        const { Ctor, rec } = make();
+        const texts: string[] = [];
+        const finals: Array<[string, boolean]> = [];
+        startDictation(Ctor, '', { onText: t => texts.push(t), onEnd: () => { }, onFinal: (u, whole) => { finals.push([u, whole]); return true; } });
+        emit(rec(), [{ final: true, text: ' Open research lab. ' }]);
+        expect(finals).toEqual([['Open research lab.', true]]);
+        expect(texts[texts.length - 1]).toBe('');
+    });
+
+    it('an utterance the caller declines dictates normally; later ones are no longer whole-input', () => {
+        const { Ctor, rec } = make();
+        const texts: string[] = [];
+        const wholes: boolean[] = [];
+        startDictation(Ctor, '', { onText: t => texts.push(t), onEnd: () => { }, onFinal: (_u, whole) => { wholes.push(whole); return false; } });
+        emit(rec(), [{ final: true, text: 'tell the vendor' }]);
+        emit(rec(), [{ final: true, text: 'open research lab' }], 0);
+        expect(wholes).toEqual([true, false]);
+        expect(texts[texts.length - 1]).toBe('tell the vendor open research lab');
+    });
+
+    it('typed text already in the composer means a spoken command is never whole-input', () => {
+        const { Ctor, rec } = make();
+        const wholes: boolean[] = [];
+        startDictation(Ctor, 'dear tenant,', { onText: () => { }, onEnd: () => { }, onFinal: (_u, whole) => { wholes.push(whole); return false; } });
+        emit(rec(), [{ final: true, text: 'open research lab' }]);
+        expect(wholes).toEqual([false]);
+    });
+
+    it('without onFinal the session behaves exactly as before', () => {
+        const { Ctor, rec } = make();
+        const texts: string[] = [];
+        startDictation(Ctor, '', { onText: t => texts.push(t), onEnd: () => { } });
+        emit(rec(), [{ final: true, text: 'open research lab' }]);
+        expect(texts[texts.length - 1]).toBe('open research lab');
+    });
+});

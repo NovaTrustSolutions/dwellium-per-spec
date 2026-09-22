@@ -38,6 +38,14 @@ export interface DictationCallbacks {
     onText: (text: string) => void;
     /** Session over (user stop, error, or browser end). */
     onEnd: () => void;
+    /**
+     * A complete spoken utterance arrived. Return true to CONSUME it (it is
+     * not appended to the text) — how ARA runs a voice command instead of
+     * leaving it in the composer waiting for Enter. `isWholeInput` is true
+     * only when nothing was typed or dictated before it, so a command phrase
+     * in the middle of a longer dictated message is never hijacked.
+     */
+    onFinal?: (utterance: string, isWholeInput: boolean) => boolean;
 }
 
 /**
@@ -65,8 +73,11 @@ export function startDictation(
         let interim = '';
         for (let i = ev.resultIndex; i < ev.results.length; i++) {
             const r = ev.results[i];
-            if (r.isFinal) finals += `${r[0].transcript.trim()} `;
-            else interim += r[0].transcript;
+            if (r.isFinal) {
+                const utterance = r[0].transcript.trim();
+                if (utterance && cb.onFinal?.(utterance, base === '' && finals === '')) continue;
+                finals += `${utterance} `;
+            } else interim += r[0].transcript;
         }
         cb.onText((base + finals + interim).trimEnd());
     };

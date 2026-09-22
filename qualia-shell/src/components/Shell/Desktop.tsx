@@ -20,6 +20,7 @@ import { fireWelcomeBackToast } from '../../lib/welcomeBack';
 import { onboardingStore, deriveOnboardingRole } from '../../lib/onboardingStore';
 import { UserContext } from '../../context/UserContext';
 import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
+import { requestDocViewerOpen } from '../../lib/docViewerLauncher';
 import HalocronBoot from './HalocronBoot';
 import { lazyWithReload } from '../../utils/lazyWithReload';
 import AppSuspenseFallback from './AppSuspenseFallback';
@@ -181,15 +182,10 @@ function HierarchyBrowser() {
     const fileListRef = useRef<HTMLDivElement>(null);
 
     const openFileInWindow = useCallback((file: ExplorerFile) => {
-        const detail = { fileId: file.id, name: file.name };
-        (window as any).__qualiaDocViewerPendingFile = detail;
         openWindow('doc-viewer', file.name, 'file-text');
-        const dispatch = (attempt: number) => {
-            if (attempt > 5) return;
-            window.dispatchEvent(new CustomEvent('qualia-docviewer-open-file', { detail }));
-            setTimeout(() => dispatch(attempt + 1), 300 * Math.pow(2, attempt));
-        };
-        setTimeout(() => dispatch(0), 250);
+        // P2 item 15: pending-slot write + retry-dispatch schedule now lives
+        // in docViewerLauncher.ts (was duplicated here and in CommandPalette).
+        requestDocViewerOpen({ fileId: file.id, name: file.name });
     }, [openWindow]);
 
     const materializeFile = useCallback(async (file: ExplorerFile) => {

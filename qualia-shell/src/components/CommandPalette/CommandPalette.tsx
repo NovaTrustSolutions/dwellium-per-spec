@@ -16,6 +16,7 @@ import { recentActivityStore, type RecentActivityEntry } from '../../lib/recentA
 import { readWidgetMemory, patchWidgetMemory } from '../../lib/widgetMemory';
 import { SCRIBE_MEM_DEFAULTS } from '../Scribe/scribeMemory';
 import { useScribeStore } from '../Scribe/scribeStore';
+import { requestDocViewerOpen } from '../../lib/docViewerLauncher';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -1039,7 +1040,10 @@ export default function CommandPalette() {
         if (result.kind === 'file') {
             const file = result.payload as FileItem;
             openWindow('doc-viewer', 'Docs', 'file-text');
-            dispatchDeferred('qualia-docviewer-open-file', { fileId: file.id, name: file.name });
+            // P2 item 15: shared launcher (pending slot + retry dispatch) —
+            // was a bare single dispatchDeferred with no retry/pending-slot
+            // fallback, so a slow-mounting DocViewer could miss it entirely.
+            requestDocViewerOpen({ fileId: file.id, name: file.name });
             closePalette();
             return;
         }

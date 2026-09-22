@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, ArrowUp, Bookmark, ChevronLeft, ChevronRight, Circle, Download, Eraser, ExternalLink, FileText, Highlighter, Image, Minus, Paperclip, PenTool, Pencil, Plus, Redo2, RotateCw, Save, Square, Trash2, Undo2, X } from 'lucide-react';
+import { FileText, Image, Paperclip } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import './DocViewer.css';
 import { API_BASE } from '../../config';
@@ -7,22 +7,29 @@ import type {
     DocFile, ToolMode, ShapeType, StampType, PreviewMode, Point,
     Annotation, AnnotationMap, TextItem, TextEdit,
 } from './docViewerTypes';
-import { STAMP_COLORS } from './docViewerTypes';
 import {
     shiftAnnotationsForInsert, shiftAnnotationsForDelete,
     shiftTextEditsForInsert, shiftTextEditsForDelete,
-    normalizeSignatureStrokes,
 } from './annotationModel';
 import { bakeAnnotations } from './pdfBake';
 import { useAnnotationHistory, type DocSnapshot } from './useAnnotationHistory';
-import { usePdfDocument } from './usePdfDocument';
+import { usePdfDocument, type PdfDocLike } from './usePdfDocument';
 import type { ViewportLike } from './pdfCoords';
 import * as pdfCoords from './pdfCoords';
+import { subscribeDocViewerOpen, takePendingDocViewerOpen, type DocViewerOpenRequest } from '../../lib/docViewerLauncher';
+import type { PDFPageProxy, PageViewport } from 'pdfjs-dist';
+import { drawAnnotationOverlay } from './annotationOverlay';
+import { useAnnotationPointerTool } from './useAnnotationPointerTool';
+import PageSidebar from './PageSidebar';
+import DocToolbar from './DocToolbar';
+import EditToolbar from './EditToolbar';
+import TextLayerEditor from './TextLayerEditor';
+import SignatureModal from './SignatureModal';
 
 // ============================================
 // TYPES — see docViewerTypes.ts for the shared shapes; ToolMode/ShapeType/
 // StampType/PreviewMode/Point/Annotation/AnnotationMap/TextItem/TextEdit
-// and STAMP_COLORS are imported above.
+// are imported above.
 // ============================================
 
 const API_FILES = `${API_BASE}/api/files`;
@@ -34,8 +41,6 @@ const isPdfAttemptType = (type: string) => !TEXT_FILE_TYPES.has(type) && !IMAGE_
 // Text Save Back must never PUT a truncated body (audit finding #2). Above
 // this cap the file opens read-only instead of silently truncating.
 const TEXT_CONTENT_CAP_BYTES = 2 * 1024 * 1024;
-// Width (annotation-space units) a placed signature is scaled to.
-const SIGNATURE_TARGET_WIDTH = 160;
 
 // ============================================
 // COMPONENT
@@ -102,15 +107,13 @@ export default function DocViewer() {
     const [editedText, setEditedText] = useState('');
     const [textEdits, setTextEdits] = useState<TextEdit[]>([]);
 
-    // Drawing state
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [drawStart, setDrawStart] = useState<Point | null>(null);
-    const [currentPath, setCurrentPath] = useState<Point[]>([]);
+    // Drawing state (isDrawing/drawStart/currentPath) now lives inside
+    // useAnnotationPointerTool (P2 item 11 module split) — see `pointerTool`
+    // below, defined once `renderOverlay` exists.
 
     // Refs
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const overlayRef = useRef<HTMLCanvasElement | null>(null);
-    const sigCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const hasDrainedPending = useRef(false);
     // P1 item 6: the live pdf.js viewport for the currently-rendered page —
@@ -350,8 +353,22 @@ export default function DocViewer() {
     };
 
     // Command Palette / Desktop deep-link.
-    const openFileFromPalette = useCallback(async (detail: { fileId?: string; name?: string }) => {
+    const openFileFromPalette = useCallback(async (detail: DocViewerOpenRequest) => {
         const { fileId, name } = detail;
+        // R-item15 (adversarial review): requestDocViewerOpen() redispatches
+        // its open event up to 6 times over ~9.5s so a still-mounting Doc
+        // Viewer has several chances to catch it (see docViewerLauncher.ts).
+        // 'doc-viewer' is a singleton window (WindowContext.tsx re-focuses
+        // an existing one instead of spawning a new one), so DocViewer is
+        // normally ALREADY mounted and subscribed for every dispatch after
+        // the first. Without this guard each replay re-ran loadDocument ->
+        // resetDocumentState on the SAME already-open file, silently
+        // wiping any annotation/signature/text edit made in the meantime.
+        // Reopening a file that's already open is a no-op — the window is
+        // already showing it and openWindow() already re-focused it.
+        if (selectedFile && ((fileId && selectedFile.id === fileId) || (!fileId && name && selectedFile.name === name))) {
+            return;
+        }
         let candidate = files.find(file => (fileId && file.id === fileId) || (name && file.name === name));
         if (!candidate && fileId) {
             // P1 item 8: don't require the file to be on the first page of
@@ -370,22 +387,12 @@ export default function DocViewer() {
             candidate = refreshed.find(file => (fileId && file.id === fileId) || (name && file.name === name));
         }
         if (candidate) void loadDocument(candidate);
-    }, [files, fetchDocFiles, loadDocument]);
+    }, [files, fetchDocFiles, loadDocument, selectedFile]);
 
-    useEffect(() => {
-        const onOpenFile = (event: Event) => {
-            const detail = (event as CustomEvent<{ fileId?: string; name?: string }>).detail;
-            if (!detail?.fileId && !detail?.name) return;
-            // N2: a request consumed via the live event listener must ALSO
-            // clear the global pending slot — otherwise a later remount's
-            // drain-pending effect sees a stale non-null slot and reopens
-            // this same (already-handled) request.
-            (window as any).__qualiaDocViewerPendingFile = null;
-            void openFileFromPalette(detail);
-        };
-        window.addEventListener('qualia-docviewer-open-file', onOpenFile);
-        return () => window.removeEventListener('qualia-docviewer-open-file', onOpenFile);
-    }, [openFileFromPalette]);
+    // P2 item 15: subscribeDocViewerOpen already clears the global pending
+    // slot on receipt (N2 fix) — a later remount's drain-pending effect
+    // below can't reopen this same already-handled request.
+    useEffect(() => subscribeDocViewerOpen(detail => void openFileFromPalette(detail)), [openFileFromPalette]);
 
     // ---- DRAIN PENDING FILE QUEUE ----
     // When DocViewer freshly mounts (cold-open), events may arrive before
@@ -393,11 +400,8 @@ export default function DocViewer() {
     useEffect(() => {
         if (hasDrainedPending.current || files.length === 0) return;
         hasDrainedPending.current = true;
-        const pending = (window as any).__qualiaDocViewerPendingFile;
-        if (pending) {
-            (window as any).__qualiaDocViewerPendingFile = null;
-            void openFileFromPalette(pending);
-        }
+        const pending = takePendingDocViewerOpen();
+        if (pending) void openFileFromPalette(pending);
     }, [files, openFileFromPalette]);
 
     // ---- RENDER PDF PAGE ----
@@ -409,14 +413,14 @@ export default function DocViewer() {
     // viewport itself is UNCHANGED (still what pins the zoom in
     // docViewerUndoZoom.test.tsx) — dpr is layered on top via `transform`,
     // never folded into `scale`, so it stays decoupled from zoom.
-    const renderPage = async (pdf: any, pageNum: number, zoomLevel: number) => {
+    const renderPage = async (pdf: PdfDocLike, pageNum: number, zoomLevel: number) => {
         const canvas = canvasRef.current;
         if (!canvas || !pdf) return;
 
         try {
             const page = await pdf.getPage(pageNum);
             const viewport = page.getViewport({ scale: zoomLevel * 1.5 });
-            viewportRef.current = viewport;
+            viewportRef.current = pdfCoords.fromPdfjsViewport(viewport);
             const dpr = window.devicePixelRatio || 1;
             canvas.width = Math.ceil(viewport.width * dpr);
             canvas.height = Math.ceil(viewport.height * dpr);
@@ -424,7 +428,9 @@ export default function DocViewer() {
             canvas.style.height = `${viewport.height}px`;
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
-            await page.render({ canvasContext: ctx, viewport, transform: [dpr, 0, 0, dpr, 0, 0] }).promise;
+            // `canvas` is required by pdf.js's own RenderParameters type
+            // (canvasContext alone is the legacy/back-compat form).
+            await page.render({ canvasContext: ctx, canvas, viewport, transform: [dpr, 0, 0, dpr, 0, 0] }).promise;
             setRenderError(null);
             setRenderVersion(v => v + 1);
 
@@ -463,13 +469,17 @@ export default function DocViewer() {
     };
 
     // ---- EXTRACT TEXT LAYER ----
-    const extractTextLayer = async (page: any, viewport: any) => {
+    const extractTextLayer = async (page: PDFPageProxy, viewport: PageViewport) => {
         try {
             const textContent = await page.getTextContent();
             const items: TextItem[] = [];
 
-            textContent.items.forEach((item: any, index: number) => {
-                if (!item.str || item.str.trim() === '') return;
+            textContent.items.forEach((item, index) => {
+                // getTextContent() items are TextItem | TextMarkedContent —
+                // the latter (marked-content markers) only appear when
+                // { includeMarkedContent: true } is passed, which this call
+                // never does, but the 'str' guard narrows the union either way.
+                if (!('str' in item) || !item.str || item.str.trim() === '') return;
 
                 const tx = item.transform;
                 // transform is [scaleX, skewX, skewY, scaleY, translateX, translateY]
@@ -540,6 +550,37 @@ export default function DocViewer() {
     // viewport/CSS-pixel units, matching what getCanvasCoords hands back and
     // what pdfToViewport produces — no `zoom * 1.5` multiplication anywhere
     // in this function any more.
+    // useAnnotationPointerTool (P1 item 10 / P2 item 11) owns isDrawing/
+    // drawStart/currentPath and the pointer handlers, but ALSO needs
+    // renderOverlay (defined below, since it reads the hook's own state) as
+    // one of its inputs. `renderOverlayRef` breaks that circular dependency:
+    // the hook gets a stable function that always calls whatever renderOverlay
+    // currently is, and renderOverlay itself is assigned into the ref right
+    // after it's defined (and on every render, so it's never stale).
+    const renderOverlayRef = useRef<() => void>(() => {});
+    const invokeRenderOverlay = useCallback(() => renderOverlayRef.current(), []);
+
+    const addAnnotation = useCallback((ann: Annotation) => {
+        pushUndo(false);
+        setPdfDirty(true);
+        setAnnotations(prev => {
+            const next = new Map(prev);
+            const pageAnns = [...(next.get(ann.page) || []), ann];
+            next.set(ann.page, pageAnns);
+            return next;
+        });
+    }, [pushUndo]);
+
+    const pointerTool = useAnnotationPointerTool({
+        overlayRef, viewportRef, rootRef,
+        activeTool, currentPage, drawColor, drawSize, fontSize, selectedShape, selectedStamp, signatureStrokes,
+        renderOverlay: invokeRenderOverlay,
+        addAnnotation,
+        showToast,
+        onNeedSignature: () => setShowSignatureModal(true),
+    });
+    const { isDrawing, drawStart, currentPath, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } = pointerTool;
+
     const renderOverlay = useCallback(() => {
         const overlay = overlayRef.current;
         const base = canvasRef.current;
@@ -555,165 +596,21 @@ export default function DocViewer() {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, overlay.width / dpr, overlay.height / dpr);
 
-        const pageAnnotations = annotations.get(currentPage) || [];
-        const viewport = viewportRef.current;
-        // R3 (adversarial review of P1 item 6): converting ANN POSITIONS
-        // through pdfCoords already accounts for zoom (baked into the
-        // viewport's own transform) — but every drawn SIZE (font size, line
-        // width, arrowhead length, stamp padding) is a raw CSS-pixel value
-        // from the Annotation, with no equivalent multiplication. Pre-P1 it
-        // was `* scale` where `scale = zoom * 1.5`; that got dropped instead
-        // of replaced with `* viewport.scale` (pdf.js's own viewport already
-        // carries that same zoom*1.5 as its `scale`), so annotations stopped
-        // growing/shrinking with the page at non-default zoom.
-        const vscale = viewport?.scale ?? 1;
-
-        for (const ann of pageAnnotations) {
-            switch (ann.type) {
-                case 'text':
-                    if (ann.position && ann.text && viewport) {
-                        const p = pdfCoords.pdfToViewport(viewport, ann.position.x, ann.position.y);
-                        ctx.fillStyle = ann.color;
-                        ctx.font = `${(ann.fontSize || 16) * vscale}px Inter, sans-serif`;
-                        ctx.fillText(ann.text, p.x, p.y);
-                    }
-                    break;
-
-                case 'highlight':
-                    if (ann.rect && viewport) {
-                        const r = pdfCoords.pdfRectToViewportRect(viewport, ann.rect);
-                        ctx.fillStyle = ann.color;
-                        ctx.globalAlpha = ann.opacity;
-                        ctx.fillRect(r.x, r.y, r.w, r.h);
-                        ctx.globalAlpha = 1;
-                    }
-                    break;
-
-                case 'draw':
-                    if (ann.points && ann.points.length > 1 && viewport) {
-                        const pts = ann.points.map(p => pdfCoords.pdfToViewport(viewport, p.x, p.y));
-                        ctx.strokeStyle = ann.color;
-                        ctx.lineWidth = (ann.lineWidth || 3) * vscale;
-                        ctx.lineCap = 'round';
-                        ctx.lineJoin = 'round';
-                        ctx.beginPath();
-                        ctx.moveTo(pts[0].x, pts[0].y);
-                        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-                        ctx.stroke();
-                    }
-                    break;
-
-                case 'shape':
-                    if (ann.rect && viewport) {
-                        const r = pdfCoords.pdfRectToViewportRect(viewport, ann.rect);
-                        ctx.strokeStyle = ann.color;
-                        ctx.lineWidth = (ann.lineWidth || 2) * vscale;
-                        if (ann.shapeType === 'rectangle') {
-                            ctx.strokeRect(r.x, r.y, r.w, r.h);
-                        } else if (ann.shapeType === 'circle') {
-                            const cx = r.x + r.w / 2;
-                            const cy = r.y + r.h / 2;
-                            const rx = Math.abs(r.w / 2);
-                            const ry = Math.abs(r.h / 2);
-                            ctx.beginPath();
-                            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-                            ctx.stroke();
-                        } else if (ann.shapeType === 'line') {
-                            ctx.beginPath();
-                            ctx.moveTo(r.x, r.y);
-                            ctx.lineTo(r.x + r.w, r.y + r.h);
-                            ctx.stroke();
-                        } else if (ann.shapeType === 'arrow') {
-                            const sx = r.x, sy = r.y;
-                            const ex = r.x + r.w, ey = r.y + r.h;
-                            ctx.beginPath();
-                            ctx.moveTo(sx, sy);
-                            ctx.lineTo(ex, ey);
-                            ctx.stroke();
-                            // Arrowhead
-                            const angle = Math.atan2(ey - sy, ex - sx);
-                            const headLen = 12 * vscale;
-                            ctx.beginPath();
-                            ctx.moveTo(ex, ey);
-                            ctx.lineTo(ex - headLen * Math.cos(angle - Math.PI / 6), ey - headLen * Math.sin(angle - Math.PI / 6));
-                            ctx.moveTo(ex, ey);
-                            ctx.lineTo(ex - headLen * Math.cos(angle + Math.PI / 6), ey - headLen * Math.sin(angle + Math.PI / 6));
-                            ctx.stroke();
-                        }
-                    }
-                    break;
-
-                case 'stamp':
-                    if (ann.position && ann.stampType && viewport) {
-                        const p = pdfCoords.pdfToViewport(viewport, ann.position.x, ann.position.y);
-                        const stampColor = STAMP_COLORS[ann.stampType] || '#ef4444';
-                        const stampSize = 28 * vscale;
-                        ctx.save();
-                        ctx.translate(p.x, p.y);
-                        ctx.rotate(-0.15);
-                        ctx.strokeStyle = stampColor;
-                        ctx.lineWidth = 3 * vscale;
-                        ctx.font = `bold ${stampSize}px Inter, sans-serif`;
-                        const textMetrics = ctx.measureText(ann.stampType);
-                        const pad = 12 * vscale;
-                        ctx.strokeRect(
-                            -pad, -stampSize - pad / 2,
-                            textMetrics.width + pad * 2, stampSize + pad
-                        );
-                        ctx.fillStyle = stampColor;
-                        ctx.globalAlpha = 0.85;
-                        ctx.fillText(ann.stampType, 0, 0);
-                        ctx.globalAlpha = 1;
-                        ctx.restore();
-                    }
-                    break;
-
-                case 'signature':
-                    // signatureData is PDF-space (normalizeSignatureStrokes'
-                    // viewport-space output is converted at placement time —
-                    // see addAnnotation's 'signature' branch); bake
-                    // (pdfBake.ts) draws the SAME points with no further
-                    // conversion, so overlay and bake agree by construction.
-                    if (ann.signatureData && viewport) {
-                        ctx.strokeStyle = ann.color || '#1a1a2e';
-                        ctx.lineWidth = 2 * vscale;
-                        ctx.lineCap = 'round';
-                        ctx.lineJoin = 'round';
-                        for (const stroke of ann.signatureData) {
-                            if (stroke.length < 2) continue;
-                            const pts = stroke.map(p => pdfCoords.pdfToViewport(viewport, p.x, p.y));
-                            ctx.beginPath();
-                            ctx.moveTo(pts[0].x, pts[0].y);
-                            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-                            ctx.stroke();
-                        }
-                    }
-                    break;
-            }
-        }
-
-        // Draw current in-progress shape/highlight — still viewport-space
-        // (not committed as an Annotation yet), so no conversion needed for
-        // POSITION, but the stroke width still needs the same * vscale as
-        // the committed 'draw' case above, or the live preview looks a
-        // different thickness than what gets committed a moment later.
-        if (isDrawing && drawStart && activeTool === 'draw' && currentPath.length > 1) {
-            ctx.strokeStyle = drawColor;
-            ctx.lineWidth = drawSize * vscale;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(currentPath[0].x, currentPath[0].y);
-            for (let i = 1; i < currentPath.length; i++) {
-                ctx.lineTo(currentPath[i].x, currentPath[i].y);
-            }
-            ctx.stroke();
-        }
+        // The actual per-annotation-type drawing is a pure function in
+        // annotationOverlay.ts (P2 item 11 module split) — this wrapper only
+        // owns the DOM/canvas plumbing (sizing the overlay to the base
+        // canvas, DPR scaling, clearing) that has to live next to the refs.
+        drawAnnotationOverlay(ctx, {
+            pageAnnotations: annotations.get(currentPage) || [],
+            viewport: viewportRef.current,
+            isDrawing, drawStart, activeTool, currentPath, drawColor, drawSize,
+        });
         // renderVersion isn't read directly — it's the trigger that makes this
         // redraw whenever renderPage produces a NEW viewport (zoom, rotate,
         // page nav, insert/delete, undo/redo), not only on a zoom change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [annotations, currentPage, renderVersion, isDrawing, drawStart, activeTool, currentPath, drawColor, drawSize]);
+    renderOverlayRef.current = renderOverlay;
 
     useEffect(() => { renderOverlay(); }, [renderOverlay]);
 
@@ -818,269 +715,6 @@ export default function DocViewer() {
         } else if (e.key === 'Escape') {
             cancelTextEdit();
         }
-    };
-
-    // ---- POINTER EVENTS (P1 item 10) ----
-    // Screen -> viewport-space (CSS pixel, top-left origin, y-down): a ratio
-    // of the overlay's ACTUAL rendered CSS size to the viewport's own
-    // width/height, not a `zoom * 1.5` division — decoupled from that magic
-    // constant (P1 item 6) and correct even if the browser visually scales
-    // the canvas down (e.g. a narrow container).
-    const getCanvasCoords = (e: { clientX: number; clientY: number }): Point => {
-        const overlay = overlayRef.current;
-        if (!overlay) return { x: 0, y: 0 };
-        const rect = overlay.getBoundingClientRect();
-        const viewport = viewportRef.current;
-        const cssWidth = viewport?.width ?? rect.width;
-        const cssHeight = viewport?.height ?? rect.height;
-        const scaleX = rect.width > 0 ? cssWidth / rect.width : 1;
-        const scaleY = rect.height > 0 ? cssHeight / rect.height : 1;
-        return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY,
-        };
-    };
-
-    const addAnnotation = (ann: Annotation) => {
-        pushUndo(false);
-        setPdfDirty(true);
-        setAnnotations(prev => {
-            const next = new Map(prev);
-            const pageAnns = [...(next.get(ann.page) || []), ann];
-            next.set(ann.page, pageAnns);
-            return next;
-        });
-    };
-
-    const capturePointer = (e: React.PointerEvent) => {
-        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* not supported (e.g. jsdom) */ }
-    };
-    const releasePointer = (e: React.PointerEvent) => {
-        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* not supported */ }
-    };
-
-    // R6 (adversarial review of P1 item 10): only ONE pointer contact drives
-    // the overlay at a time. Without this, a second concurrent touch (e.g. a
-    // palm graze — more likely now that `touch-action: none` suppresses the
-    // browser's own touch-scroll rejection) writes its coordinates into the
-    // SAME isDrawing/drawStart/currentPath state as the first, corrupting or
-    // duplicating the in-progress annotation.
-    const activePointerIdRef = useRef<number | null>(null);
-
-    const handlePointerDown = (e: React.PointerEvent) => {
-        // R5 (adversarial review of P1 item 9): clicking this canvas doesn't
-        // natively focus it (a plain <canvas> isn't focusable), so the
-        // browser drops focus to <body> — the rootRef keydown listener never
-        // sees a SUBSEQUENT Cmd+Z at all (its target is <body>, outside the
-        // viewer subtree, so it never bubbles in). Reclaiming focus onto the
-        // (tabIndex=-1, programmatically-focusable) viewer root on every
-        // pointer interaction keeps Cmd+Z working right after a draw.
-        rootRef.current?.focus({ preventScroll: true });
-        if (activePointerIdRef.current !== null) return; // a pointer is already active — ignore a second contact
-        if (activeTool === 'select' || activeTool === 'editText') return;
-        activePointerIdRef.current = e.pointerId;
-        capturePointer(e);
-        const pos = getCanvasCoords(e);
-        setIsDrawing(true);
-        setDrawStart(pos);
-
-        if (activeTool === 'draw') {
-            setCurrentPath([pos]);
-        }
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (e.pointerId !== activePointerIdRef.current) return;
-        if (!isDrawing || !drawStart) return;
-        const pos = getCanvasCoords(e);
-
-        if (activeTool === 'draw') {
-            setCurrentPath(prev => [...prev, pos]);
-        } else if (activeTool === 'highlight' || activeTool === 'shape') {
-            // Live preview via overlay re-render — POSITION is still
-            // viewport-space, no conversion needed. Stroke width/arrowhead
-            // length DO still need * (viewport.scale ?? 1) — same as
-            // renderOverlay's committed 'shape'/'draw' cases (R3, adversarial
-            // review of P1 item 6) — or the live preview is a different
-            // thickness than what gets committed on pointer-up.
-            const overlay = overlayRef.current;
-            if (!overlay) return;
-            const ctx = overlay.getContext('2d');
-            if (!ctx) return;
-            renderOverlay();
-            const vscale = viewportRef.current?.scale ?? 1;
-            const x = Math.min(drawStart.x, pos.x);
-            const y = Math.min(drawStart.y, pos.y);
-            const w = Math.abs(pos.x - drawStart.x);
-            const h = Math.abs(pos.y - drawStart.y);
-
-            if (activeTool === 'highlight') {
-                ctx.fillStyle = drawColor;
-                ctx.globalAlpha = 0.3;
-                ctx.fillRect(x, y, w, h);
-                ctx.globalAlpha = 1;
-            } else {
-                ctx.strokeStyle = drawColor;
-                ctx.lineWidth = drawSize * vscale;
-                if (selectedShape === 'rectangle') {
-                    ctx.strokeRect(x, y, w, h);
-                } else if (selectedShape === 'circle') {
-                    const cx = x + w / 2;
-                    const cy = y + h / 2;
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
-                    ctx.stroke();
-                } else if (selectedShape === 'line' || selectedShape === 'arrow') {
-                    ctx.beginPath();
-                    ctx.moveTo(drawStart.x, drawStart.y);
-                    ctx.lineTo(pos.x, pos.y);
-                    ctx.stroke();
-                    if (selectedShape === 'arrow') {
-                        const angle = Math.atan2(pos.y - drawStart.y, pos.x - drawStart.x);
-                        const headLen = 12 * vscale;
-                        ctx.beginPath();
-                        ctx.moveTo(pos.x, pos.y);
-                        ctx.lineTo(pos.x - headLen * Math.cos(angle - Math.PI / 6), pos.y - headLen * Math.sin(angle - Math.PI / 6));
-                        ctx.moveTo(pos.x, pos.y);
-                        ctx.lineTo(pos.x - headLen * Math.cos(angle + Math.PI / 6), pos.y - headLen * Math.sin(angle + Math.PI / 6));
-                        ctx.stroke();
-                    }
-                }
-            }
-        }
-    };
-
-    const handlePointerUp = (e: React.PointerEvent) => {
-        if (e.pointerId !== activePointerIdRef.current) return;
-        activePointerIdRef.current = null;
-        releasePointer(e);
-        if (!isDrawing || !drawStart) {
-            setIsDrawing(false);
-            return;
-        }
-        const pos = getCanvasCoords(e);
-        // P1 item 6: convert the viewport-space geometry just captured into
-        // PDF user space with the live viewport, ONCE, right here at commit
-        // — everything downstream (overlay render, bake) works in PDF space.
-        const viewport = viewportRef.current;
-
-        if (activeTool === 'text') {
-            const text = prompt('Enter text:');
-            if (text && viewport) {
-                addAnnotation({
-                    id: crypto.randomUUID(),
-                    type: 'text',
-                    page: currentPage,
-                    color: drawColor,
-                    opacity: 1,
-                    text,
-                    fontSize,
-                    position: pdfCoords.viewportToPdf(viewport, pos.x, pos.y),
-                    rotation: viewport.rotation ?? 0,
-                });
-            }
-        } else if (activeTool === 'highlight' && viewport) {
-            const rx = Math.min(drawStart.x, pos.x);
-            const ry = Math.min(drawStart.y, pos.y);
-            const rw = Math.abs(pos.x - drawStart.x);
-            const rh = Math.abs(pos.y - drawStart.y);
-            if (rw > 2 && rh > 2) {
-                addAnnotation({
-                    id: crypto.randomUUID(),
-                    type: 'highlight',
-                    page: currentPage,
-                    color: drawColor,
-                    opacity: 0.3,
-                    rect: pdfCoords.viewportRectToPdfRect(viewport, { x: rx, y: ry, w: rw, h: rh }),
-                });
-            }
-        } else if (activeTool === 'draw' && viewport) {
-            if (currentPath.length > 1) {
-                addAnnotation({
-                    id: crypto.randomUUID(),
-                    type: 'draw',
-                    page: currentPage,
-                    color: drawColor,
-                    opacity: 1,
-                    points: currentPath.map(p => pdfCoords.viewportToPdf(viewport, p.x, p.y)),
-                    lineWidth: drawSize,
-                });
-            }
-            setCurrentPath([]);
-        } else if (activeTool === 'shape' && viewport) {
-            const rx = Math.min(drawStart.x, pos.x);
-            const ry = Math.min(drawStart.y, pos.y);
-            const rw = pos.x - drawStart.x;
-            const rh = pos.y - drawStart.y;
-            if (Math.abs(rw) > 2 || Math.abs(rh) > 2) {
-                // Line/arrow encode direction via (x,y) -> (x+w,y+h) — the
-                // rect is deliberately NOT normalized to abs(w)/abs(h) for
-                // those, and pdfCoords.viewportRectToPdfRect is a 2-point
-                // (not 4-corner) conversion, so it preserves that direction.
-                const viewportRect = selectedShape === 'line' || selectedShape === 'arrow'
-                    ? { x: drawStart.x, y: drawStart.y, w: rw, h: rh }
-                    : { x: rx, y: ry, w: Math.abs(rw), h: Math.abs(rh) };
-                addAnnotation({
-                    id: crypto.randomUUID(),
-                    type: 'shape',
-                    page: currentPage,
-                    color: drawColor,
-                    opacity: 1,
-                    shapeType: selectedShape,
-                    rect: pdfCoords.viewportRectToPdfRect(viewport, viewportRect),
-                    lineWidth: drawSize,
-                });
-            }
-        } else if (activeTool === 'stamp' && viewport) {
-            addAnnotation({
-                id: crypto.randomUUID(),
-                type: 'stamp',
-                page: currentPage,
-                color: STAMP_COLORS[selectedStamp],
-                opacity: 0.85,
-                stampType: selectedStamp,
-                position: pdfCoords.viewportToPdf(viewport, pos.x, pos.y),
-                rotation: viewport.rotation ?? 0,
-            });
-        } else if (activeTool === 'signature') {
-            if (signatureStrokes.length > 0 && viewport) {
-                // normalizeSignatureStrokes works in viewport-space (the
-                // signature reads at a consistent SCREEN size regardless of
-                // zoom); convert its output to PDF space here at placement
-                // (plan P1 item 6: "convert each point into PDF space at
-                // placement"), same as every other annotation type.
-                const { strokes: normalizedStrokes, rect } = normalizeSignatureStrokes(
-                    signatureStrokes,
-                    { x: pos.x, y: pos.y, width: SIGNATURE_TARGET_WIDTH },
-                );
-                addAnnotation({
-                    id: crypto.randomUUID(),
-                    type: 'signature',
-                    page: currentPage,
-                    color: '#1a1a2e',
-                    opacity: 1,
-                    position: pdfCoords.viewportToPdf(viewport, pos.x, pos.y),
-                    rect: pdfCoords.viewportRectToPdfRect(viewport, rect),
-                    signatureData: normalizedStrokes.map(stroke => stroke.map(p => pdfCoords.viewportToPdf(viewport, p.x, p.y))),
-                });
-                showToast('Signature placed');
-            } else if (signatureStrokes.length === 0) {
-                showToast('Draw a signature first');
-                setShowSignatureModal(true);
-            }
-        }
-
-        setIsDrawing(false);
-        setDrawStart(null);
-    };
-
-    const handlePointerCancel = (e: React.PointerEvent) => {
-        if (e.pointerId !== activePointerIdRef.current) return;
-        activePointerIdRef.current = null;
-        releasePointer(e);
-        setIsDrawing(false);
-        setDrawStart(null);
-        setCurrentPath([]);
     };
 
     // ---- PAGE MANIPULATION ----
@@ -1304,87 +938,15 @@ export default function DocViewer() {
     }, [buildPdfBytes, pdfBytes, previewMode, selectedFile, textDraft, textReadOnly]);
 
     // ---- SIGNATURE MODAL ----
-    const sigDrawingRef = useRef(false);
-    const sigCurrentStroke = useRef<Point[]>([]);
-    // R6: same single-active-pointer guard as the overlay canvas.
-    const sigPointerIdRef = useRef<number | null>(null);
-
-    // P1 item 10: the canvas's CSS width is `100%` of the modal body while
-    // its bitmap is a fixed 480x200 — they're rarely equal, so pointer
-    // offsets must be scaled by canvas.width / rect.width (bitmap px per CSS
-    // px), not used as raw CSS-pixel offsets, or ink lands offset from the
-    // cursor.
-    const sigPointerPos = (canvas: HTMLCanvasElement, e: { clientX: number; clientY: number }): Point => {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
-        const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
-        return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
-    };
-
-    const handleSigPointerDown = (e: React.PointerEvent) => {
-        if (sigPointerIdRef.current !== null) return; // already drawing with another contact
-        const canvas = sigCanvasRef.current;
-        if (!canvas) return;
-        sigPointerIdRef.current = e.pointerId;
-        capturePointer(e);
-        sigDrawingRef.current = true;
-        sigCurrentStroke.current = [sigPointerPos(canvas, e)];
-    };
-
-    const handleSigPointerMove = (e: React.PointerEvent) => {
-        if (e.pointerId !== sigPointerIdRef.current) return;
-        if (!sigDrawingRef.current) return;
-        const canvas = sigCanvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        const pt = sigPointerPos(canvas, e);
-        const prev = sigCurrentStroke.current;
-        if (prev.length > 0) {
-            ctx.strokeStyle = '#1a1a2e';
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(prev[prev.length - 1].x, prev[prev.length - 1].y);
-            ctx.lineTo(pt.x, pt.y);
-            ctx.stroke();
-        }
-        sigCurrentStroke.current.push(pt);
-    };
-
-    const handleSigPointerUp = (e: React.PointerEvent) => {
-        if (e.pointerId !== sigPointerIdRef.current) return;
-        sigPointerIdRef.current = null;
-        releasePointer(e);
-        // Take the stroke BEFORE clearing the ref: the functional updater may run later (at
-        // render time), and reading sigCurrentStroke.current there stored an EMPTY stroke —
-        // the signature showed "placed" but drew nothing and baked nothing.
-        const stroke = sigCurrentStroke.current;
-        sigCurrentStroke.current = [];
-        if (sigDrawingRef.current && stroke.length > 1) {
-            setSignatureStrokes(prev => [...prev, stroke]);
-        }
-        sigDrawingRef.current = false;
-    };
-
-    const clearSignature = () => {
-        setSignatureStrokes([]);
-        const canvas = sigCanvasRef.current;
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-    };
-
-    const confirmSignature = () => {
-        if (signatureStrokes.length === 0) {
-            showToast('Please draw your signature first');
-            return;
-        }
+    // Drawing mechanics (canvas ref, pointer handlers, clear) live in
+    // SignatureModal.tsx (P2 item 11 module split) — `signatureStrokes`
+    // itself stays lifted here because handlePointerUp's 'signature' branch
+    // still needs it AFTER the modal has closed, at placement time.
+    const onSignatureConfirmed = useCallback(() => {
         setShowSignatureModal(false);
         setActiveTool('signature');
         showToast('Click on the page to place your signature');
-    };
+    }, []);
 
     // ---- NAVIGATION ----
     const goToPage = (page: number) => {
@@ -1405,7 +967,6 @@ export default function DocViewer() {
     };
 
     // ---- TOOL CONFIG ----
-    const COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#D6FE51', '#ec4899', '#1a1a2e', '#ffffff'];
     const canEditPdf = previewMode === 'pdf' && !!pdfBytes;
     const canSaveBack = previewMode === 'pdf' || previewMode === 'text';
     const isTextDirty = previewMode === 'text' && textDraft !== textContent;
@@ -1439,245 +1000,71 @@ export default function DocViewer() {
         <div className="doc-viewer" ref={rootRef} tabIndex={-1}>
             {/* Page Thumbnails */}
             {selectedFile && previewMode === 'pdf' && totalPages > 0 && (
-                <div className="dv-nav">
-                    {Array.from({ length: totalPages }, (_, i) => (
-                        <div key={i + 1}
-                            className={`dv-nav__thumb ${currentPage === i + 1 ? 'dv-nav__thumb--active' : ''}`}
-                            onClick={() => goToPage(i + 1)}>
-                            p.{i + 1}
-                        </div>
-                    ))}
-                    <button className="dv-nav__add-page" onClick={insertPage} title="Insert blank page">
-                        +
-                    </button>
-                </div>
+                <PageSidebar totalPages={totalPages} currentPage={currentPage} onGoToPage={goToPage} onInsertPage={insertPage} />
             )}
 
             {/* Main Area */}
             <div className="dv-main">
                 {/* File Toolbar */}
-                <div className="dv-toolbar">
-                    <select className="dv-toolbar__file-select"
-                        value={selectedFile?.id || ''}
-                        onChange={(e) => {
-                            const file = files.find(f => f.id === e.target.value);
-                            if (file) void loadDocument(file);
-                        }}>
-                        <option value="">Select a document...</option>
-                        {files.map(f => (
-                            <option key={f.id} value={f.id}>{f.name}</option>
-                        ))}
-                    </select>
-
-                    {selectedFile && (
-                        <>
-                            {previewMode === 'pdf' && (
-                                <>
-                                    <div className="dv-toolbar__page">
-                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page"><ChevronLeft size={14} aria-hidden /></button>
-                                        <input className="dv-toolbar__page-input" type="number" value={currentPage}
-                                            onChange={e => goToPage(parseInt(e.target.value) || 1)}
-                                            min={1} max={totalPages} />
-                                        <span>/ {totalPages}</span>
-                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages} aria-label="Next page"><ChevronRight size={14} aria-hidden /></button>
-                                    </div>
-
-                                    <div className="dv-zoom">
-                                        <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}>−</button>
-                                        <span className="dv-zoom__level">{Math.round(zoom * 100)}%</span>
-                                        <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.min(3, z + 0.25))}>+</button>
-                                    </div>
-                                </>
-                            )}
-
-                            <button className="dv-toolbar__btn dv-toolbar__btn--download" onClick={downloadCurrentDocument} title="Export current document">
-                                <Download size={14} aria-hidden /> Export
-                            </button>
-                            {canSaveBack && (
-                                <button className="dv-toolbar__btn" onClick={() => void saveDocumentToQualia()} disabled={saveBackDisabled} title={saveBackTitle}>
-                                    {isSaving ? 'Saving…' : <><Save size={14} aria-hidden /> Save Back</>}
-                                </button>
-                            )}
-                            <button className="dv-toolbar__btn" onClick={() => void materializeLocalCopy()} title="Materialize local copy and copy path">
-                                <Download size={14} aria-hidden /> Cache Local
-                            </button>
-                            <button className="dv-toolbar__btn" onClick={openOriginalFile} title="Open original file route">
-                                <ExternalLink size={14} aria-hidden /> Open Original
-                            </button>
-                        </>
-                    )}
-                </div>
-                {selectedFile && (previewMessage || savedLocalPath) && (
-                    <div className="dv-toolbar dv-toolbar--info">
-                        {previewMessage && <span className="dv-toolbar__hint">{previewMessage}</span>}
-                        {savedLocalPath && <span className="dv-toolbar__hint">Local path: {savedLocalPath}</span>}
-                    </div>
-                )}
+                <DocToolbar
+                    files={files}
+                    selectedFile={selectedFile}
+                    onSelectFile={file => void loadDocument(file)}
+                    previewMode={previewMode}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onGoToPage={goToPage}
+                    zoom={zoom}
+                    setZoom={setZoom}
+                    onExport={() => void downloadCurrentDocument()}
+                    canSaveBack={canSaveBack}
+                    onSaveBack={() => void saveDocumentToQualia()}
+                    saveBackDisabled={saveBackDisabled}
+                    saveBackTitle={saveBackTitle}
+                    isSaving={isSaving}
+                    onCacheLocal={() => void materializeLocalCopy()}
+                    onOpenOriginal={openOriginalFile}
+                    previewMessage={previewMessage}
+                    savedLocalPath={savedLocalPath}
+                />
 
                 {/* Editing Toolbar */}
                 {selectedFile && canEditPdf && (
-                    <div className="dv-edit-toolbar">
-                        <div className="dv-edit-toolbar__group">
-                            <button className={`dv-edit-btn ${activeTool === 'select' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => { setActiveTool('select'); setEditingTextItem(null); }} title="Select">
-                                <span className="dv-edit-btn__icon"><ArrowUp size={14} /></span>
-                                <span className="dv-edit-btn__label">Select</span>
-                            </button>
-                            <button className={`dv-edit-btn ${activeTool === 'editText' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => { setActiveTool('editText'); showToast('Click on any text to edit it'); }} title="Edit Existing Text">
-                                <span className="dv-edit-btn__icon"><Pencil size={14} /></span>
-                                <span className="dv-edit-btn__label">Edit Text</span>
-                            </button>
-                            <button className={`dv-edit-btn ${activeTool === 'text' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => setActiveTool('text')} title="Add Text">
-                                <span className="dv-edit-btn__icon">T</span>
-                                <span className="dv-edit-btn__label">Text</span>
-                            </button>
-                            <button className={`dv-edit-btn ${activeTool === 'highlight' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => { setActiveTool('highlight'); setDrawColor('#f59e0b'); }} title="Highlight">
-                                <span className="dv-edit-btn__icon"><Highlighter size={14} /></span>
-                                <span className="dv-edit-btn__label">Highlight</span>
-                            </button>
-                            <button className={`dv-edit-btn ${activeTool === 'draw' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => setActiveTool('draw')} title="Freehand Draw">
-                                <span className="dv-edit-btn__icon"><Pencil size={14} /></span>
-                                <span className="dv-edit-btn__label">Draw</span>
-                            </button>
-                            <button className={`dv-edit-btn ${activeTool === 'shape' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => setActiveTool('shape')} title="Shapes">
-                                <span className="dv-edit-btn__icon"><Square size={14} aria-hidden /></span>
-                                <span className="dv-edit-btn__label">Shapes</span>
-                            </button>
-                        </div>
-
-                        <div className="dv-edit-toolbar__divider" />
-
-                        <div className="dv-edit-toolbar__group">
-                            <button className={`dv-edit-btn ${activeTool === 'signature' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => {
-                                    // Always open the modal — even with an existing
-                                    // signature — so the user can redraw/replace it
-                                    // (audit finding: the gate on strokes.length made
-                                    // an existing signature unreplaceable). Existing
-                                    // strokes aren't cleared just by reopening, so
-                                    // "Use Signature" alone still re-places the same one.
-                                    setShowSignatureModal(true);
-                                }} title="Signature">
-                                <span className="dv-edit-btn__icon"><PenTool size={14} /></span>
-                                <span className="dv-edit-btn__label">Sign</span>
-                            </button>
-                            <button className={`dv-edit-btn ${activeTool === 'stamp' ? 'dv-edit-btn--active' : ''}`}
-                                onClick={() => { setActiveTool('stamp'); setShowStampPicker(!showStampPicker); }} title="Stamps">
-                                <span className="dv-edit-btn__icon"><Bookmark size={14} /></span>
-                                <span className="dv-edit-btn__label">Stamp</span>
-                            </button>
-                        </div>
-
-                        <div className="dv-edit-toolbar__divider" />
-
-                        <div className="dv-edit-toolbar__group">
-                            <button className="dv-edit-btn" onClick={insertPage} title="Insert Blank Page">
-                                <span className="dv-edit-btn__icon"><Plus size={14} aria-hidden /></span>
-                                <span className="dv-edit-btn__label">Insert</span>
-                            </button>
-                            <button className="dv-edit-btn" onClick={deletePage} title="Delete Current Page">
-                                <span className="dv-edit-btn__icon"><Trash2 size={14} /></span>
-                                <span className="dv-edit-btn__label">Delete</span>
-                            </button>
-                            <button className="dv-edit-btn" onClick={() => rotatePage('cw')} title="Rotate CW">
-                                <span className="dv-edit-btn__icon"><RotateCw size={14} aria-hidden /></span>
-                                <span className="dv-edit-btn__label">Rotate</span>
-                            </button>
-                        </div>
-
-                        <div className="dv-edit-toolbar__divider" />
-
-                        <div className="dv-edit-toolbar__group">
-                            <button className="dv-edit-btn" onClick={undo} title="Undo (Ctrl+Z)" disabled={!history.canUndo}>
-                                <span className="dv-edit-btn__icon"><Undo2 size={14} aria-hidden /></span>
-                                <span className="dv-edit-btn__label">Undo</span>
-                            </button>
-                            <button className="dv-edit-btn" onClick={redo} title="Redo (Ctrl+Shift+Z)" disabled={!history.canRedo}>
-                                <span className="dv-edit-btn__icon"><Redo2 size={14} aria-hidden /></span>
-                                <span className="dv-edit-btn__label">Redo</span>
-                            </button>
-                            <button className="dv-edit-btn" onClick={clearAnnotations} title="Clear Annotations">
-                                <span className="dv-edit-btn__icon"><Eraser size={14} /></span>
-                                <span className="dv-edit-btn__label">Clear</span>
-                            </button>
-                        </div>
-
-                        {/* Color Picker */}
-                        {(activeTool === 'text' || activeTool === 'draw' || activeTool === 'highlight' || activeTool === 'shape') && (
-                            <div className="dv-edit-toolbar__group dv-color-group">
-                                <div className="dv-edit-toolbar__divider" />
-                                <button className="dv-edit-btn dv-color-toggle"
-                                    onClick={() => setShowColorPicker(!showColorPicker)}
-                                    title="Color">
-                                    <span className="dv-color-swatch" style={{ background: drawColor }} />
-                                </button>
-                                {showColorPicker && (
-                                    <div className="dv-color-picker">
-                                        {COLORS.map(c => (
-                                            <button key={c}
-                                                className={`dv-color-picker__item ${drawColor === c ? 'dv-color-picker__item--active' : ''}`}
-                                                style={{ background: c }}
-                                                onClick={() => { setDrawColor(c); setShowColorPicker(false); }}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Size control for draw/shape */}
-                        {(activeTool === 'draw' || activeTool === 'shape') && (
-                            <div className="dv-edit-toolbar__group">
-                                <input type="range" min="1" max="12" value={drawSize}
-                                    onChange={e => setDrawSize(parseInt(e.target.value))}
-                                    className="dv-size-slider" title={`Size: ${drawSize}`} />
-                            </div>
-                        )}
-
-                        {/* Font size for text */}
-                        {activeTool === 'text' && (
-                            <div className="dv-edit-toolbar__group">
-                                <input type="number" min="8" max="72" value={fontSize}
-                                    onChange={e => setFontSize(parseInt(e.target.value) || 16)}
-                                    className="dv-font-size-input" title="Font size" />
-                            </div>
-                        )}
-
-                        {/* Shape sub-tools */}
-                        {activeTool === 'shape' && (
-                            <div className="dv-edit-toolbar__group dv-shape-group">
-                                <div className="dv-edit-toolbar__divider" />
-                                {(['rectangle', 'circle', 'line', 'arrow'] as ShapeType[]).map(s => (
-                                    <button key={s}
-                                        className={`dv-edit-btn dv-edit-btn--small ${selectedShape === s ? 'dv-edit-btn--active' : ''}`}
-                                        onClick={() => setSelectedShape(s)} title={s}>
-                                        <span className="dv-edit-btn__icon">
-                                            {s === 'rectangle' ? <Square size={14} aria-hidden /> : s === 'circle' ? <Circle size={14} aria-hidden /> : s === 'line' ? <Minus size={14} aria-hidden /> : <ArrowRight size={14} aria-hidden />}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Stamp picker */}
-                        {showStampPicker && activeTool === 'stamp' && (
-                            <div className="dv-stamp-picker">
-                                {(Object.keys(STAMP_COLORS) as StampType[]).map(s => (
-                                    <button key={s}
-                                        className={`dv-stamp-picker__item ${selectedStamp === s ? 'dv-stamp-picker__item--active' : ''}`}
-                                        style={{ borderColor: STAMP_COLORS[s], color: STAMP_COLORS[s] }}
-                                        onClick={() => { setSelectedStamp(s); setShowStampPicker(false); }}>
-                                        {s}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <EditToolbar
+                        activeTool={activeTool}
+                        setActiveTool={setActiveTool}
+                        onEnterSelectTool={() => { setActiveTool('select'); setEditingTextItem(null); }}
+                        showToast={showToast}
+                        drawColor={drawColor}
+                        setDrawColor={setDrawColor}
+                        drawSize={drawSize}
+                        setDrawSize={setDrawSize}
+                        fontSize={fontSize}
+                        setFontSize={setFontSize}
+                        selectedShape={selectedShape}
+                        setSelectedShape={setSelectedShape}
+                        selectedStamp={selectedStamp}
+                        setSelectedStamp={setSelectedStamp}
+                        showColorPicker={showColorPicker}
+                        setShowColorPicker={setShowColorPicker}
+                        showStampPicker={showStampPicker}
+                        setShowStampPicker={setShowStampPicker}
+                        // Always open the modal — even with an existing
+                        // signature — so the user can redraw/replace it
+                        // (audit finding: the gate on strokes.length made an
+                        // existing signature unreplaceable). Existing strokes
+                        // aren't cleared just by reopening, so "Use
+                        // Signature" alone still re-places the same one.
+                        onOpenSignatureModal={() => setShowSignatureModal(true)}
+                        onInsertPage={insertPage}
+                        onDeletePage={deletePage}
+                        onRotatePage={rotatePage}
+                        onUndo={undo}
+                        onRedo={redo}
+                        canUndo={history.canUndo}
+                        canRedo={history.canRedo}
+                        onClearAnnotations={clearAnnotations}
+                    />
                 )}
 
                 {/* Content */}
@@ -1712,55 +1099,19 @@ export default function DocViewer() {
 
                             {/* Text Layer — visible in editText mode */}
                             {activeTool === 'editText' && textItems.length > 0 && (
-                                <div className="dv-text-layer" style={{
-                                    width: viewportRef.current?.width ?? canvasRef.current?.width ?? 0,
-                                    height: viewportRef.current?.height ?? canvasRef.current?.height ?? 0,
-                                }}>
-                                    {textItems.map((item, idx) => (
-                                        <span
-                                            key={`text-${item.itemIndex}-${idx}`}
-                                            className={`dv-text-item ${editingTextItem?.itemIndex === item.itemIndex ? 'dv-text-item--editing' : ''
-                                                } ${textEdits.some(e => e.pageNum === currentPage && e.itemIndex === item.itemIndex) ? 'dv-text-item--edited' : ''
-                                                }`}
-                                            style={{
-                                                left: `${item.x}px`,
-                                                top: `${item.y}px`,
-                                                width: `${item.width}px`,
-                                                height: `${item.height}px`,
-                                                fontSize: `${item.height * 0.85}px`,
-                                            }}
-                                            onClick={() => handleTextItemClick(item)}
-                                            title={`Click to edit: "${item.str}"`}
-                                        >
-                                            {item.str}
-                                        </span>
-                                    ))}
-
-                                    {/* Inline Text Editor */}
-                                    {editingTextItem && (
-                                        <div className="dv-text-editor-container" style={{
-                                            left: `${editingTextItem.x}px`,
-                                            top: `${editingTextItem.y - 4}px`,
-                                        }}>
-                                            <input
-                                                className="dv-text-editor-input"
-                                                type="text"
-                                                value={editedText}
-                                                onChange={e => setEditedText(e.target.value)}
-                                                onKeyDown={handleTextEditKeyDown}
-                                                onBlur={() => void commitTextEdit()}
-                                                autoFocus
-                                                style={{
-                                                    fontSize: `${editingTextItem.height * 0.85}px`,
-                                                    minWidth: `${Math.max(editingTextItem.width, 120)}px`,
-                                                }}
-                                            />
-                                            <div className="dv-text-editor-hint">
-                                                Enter to save · Esc to cancel
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                <TextLayerEditor
+                                    width={viewportRef.current?.width ?? canvasRef.current?.width ?? 0}
+                                    height={viewportRef.current?.height ?? canvasRef.current?.height ?? 0}
+                                    textItems={textItems}
+                                    editingTextItem={editingTextItem}
+                                    editedText={editedText}
+                                    setEditedText={setEditedText}
+                                    currentPage={currentPage}
+                                    textEdits={textEdits}
+                                    onTextItemClick={handleTextItemClick}
+                                    onCommitTextEdit={() => void commitTextEdit()}
+                                    onKeyDown={handleTextEditKeyDown}
+                                />
                             )}
                         </div>
                     </div>
@@ -1817,35 +1168,14 @@ export default function DocViewer() {
             </div>
 
             {/* Signature Modal */}
-            {showSignatureModal && (
-                <div className="dv-modal-overlay" onClick={() => setShowSignatureModal(false)}>
-                    <div className="dv-modal" onClick={e => e.stopPropagation()}>
-                        <div className="dv-modal__header">
-                            <h3>Draw Your Signature</h3>
-                            <button className="dv-modal__close" onClick={() => setShowSignatureModal(false)}><X size={16} /></button>
-                        </div>
-                        <div className="dv-modal__body">
-                            <canvas
-                                ref={sigCanvasRef}
-                                width={480}
-                                height={200}
-                                className="dv-sig-canvas"
-                                onPointerDown={handleSigPointerDown}
-                                onPointerMove={handleSigPointerMove}
-                                onPointerUp={handleSigPointerUp}
-                                onPointerCancel={handleSigPointerUp}
-                            />
-                            <div className="dv-sig-hint">Draw your signature above</div>
-                        </div>
-                        <div className="dv-modal__footer">
-                            <button className="dv-modal-btn dv-modal-btn--ghost" onClick={clearSignature}>Clear</button>
-                            <button className="dv-modal-btn dv-modal-btn--primary" onClick={confirmSignature}>
-                                Use Signature
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <SignatureModal
+                open={showSignatureModal}
+                strokes={signatureStrokes}
+                onStrokesChange={setSignatureStrokes}
+                onClose={() => setShowSignatureModal(false)}
+                onConfirmed={onSignatureConfirmed}
+                showToast={showToast}
+            />
 
             {/* Toast */}
             {toast && (

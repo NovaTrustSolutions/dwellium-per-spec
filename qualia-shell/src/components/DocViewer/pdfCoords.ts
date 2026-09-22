@@ -20,6 +20,7 @@
  * `docViewerPdfCoords.test.ts`.
  */
 import type { Point, Rect } from './docViewerTypes';
+import type { PageViewport } from 'pdfjs-dist';
 
 export interface ViewportLike {
     convertToViewportPoint(x: number, y: number): [number, number];
@@ -130,6 +131,27 @@ export function makeViewport(params: RawViewportParams): Viewport {
         viewBox, scale, rotation, width, height, transform,
         convertToViewportPoint: (x, y) => applyTransform(transform, x, y),
         convertToPdfPoint: (x, y) => applyInverseTransform(transform, x, y),
+    };
+}
+
+/**
+ * Adapts a REAL pdf.js `PageViewport` into this module's `Viewport`. pdf.js's
+ * own `.d.ts` types `convertToViewportPoint`/`convertToPdfPoint` as returning
+ * `any[]` (not the 2-tuple they always actually produce) — item 12: this is
+ * the one place that gap is bridged, so every other caller in this module
+ * (and in DocViewer.tsx) works with a properly 2-tuple-typed `ViewportLike`
+ * with no `any` of its own.
+ */
+export function fromPdfjsViewport(viewport: PageViewport): Viewport {
+    return {
+        viewBox: viewport.viewBox as [number, number, number, number],
+        scale: viewport.scale,
+        rotation: viewport.rotation,
+        width: viewport.width,
+        height: viewport.height,
+        transform: viewport.transform as [number, number, number, number, number, number],
+        convertToViewportPoint: (x, y) => viewport.convertToViewportPoint(x, y) as [number, number],
+        convertToPdfPoint: (x, y) => viewport.convertToPdfPoint(x, y) as [number, number],
     };
 }
 

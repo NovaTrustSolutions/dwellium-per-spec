@@ -9,13 +9,15 @@
  * (file switch / unmount), and there is never a window with two live docs.
  */
 import { useCallback, useRef, useState } from 'react';
+import { loadPdfjs } from '../PDFGear/pdfRaster';
+import type { PDFPageProxy } from 'pdfjs-dist';
 
 export type PdfLoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface PdfDocLike {
     numPages: number;
     destroy?: () => void | Promise<void>;
-    getPage: (n: number) => Promise<any>;
+    getPage: (n: number) => Promise<PDFPageProxy>;
 }
 
 export interface UsePdfDocument {
@@ -87,8 +89,11 @@ export function usePdfDocument(): UsePdfDocument {
         setStatus('loading');
         setError(null);
         try {
-            const pdfjsLib = await import('pdfjs-dist');
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+            // P2 item 12: pdf.js loaded through the existing loadPdfjs()
+            // vendor (bundled worker via `new URL(..., import.meta.url)`)
+            // instead of wiring a CDN worker URL here — removes the cdnjs
+            // dependency (offline/CSP exposure, audit #20).
+            const pdfjsLib = await loadPdfjs();
             const loadingTask = pdfjsLib.getDocument(url);
             const [docResult, bytesResult] = await Promise.allSettled([
                 loadingTask.promise,
@@ -104,7 +109,7 @@ export function usePdfDocument(): UsePdfDocument {
                 setError(docResult.reason instanceof Error ? docResult.reason.message : 'Failed to load PDF');
                 throw docResult.reason;
             }
-            const newDoc = docResult.value as unknown as PdfDocLike;
+            const newDoc: PdfDocLike = docResult.value;
 
             if (bytesResult.status === 'rejected') {
                 // We DID get a parsed doc, but can't use it (bytes failed or
@@ -142,19 +147,19 @@ export function usePdfDocument(): UsePdfDocument {
         abortRef.current?.abort();
         abortRef.current = null;
         try {
-            const pdfjsLib = await import('pdfjs-dist');
-            const newDoc = await pdfjsLib.getDocument({ data: next.slice() }).promise;
+            const pdfjsLib = await loadPdfjs();
+            const newDoc: PdfDocLike = await pdfjsLib.getDocument({ data: next.slice() }).promise;
             if (mySeq !== seqRef.current) {
-                destroyDoc(newDoc as unknown as PdfDocLike);
+                destroyDoc(newDoc);
                 return null;
             }
             destroyDoc(docRef.current);
-            docRef.current = newDoc as unknown as PdfDocLike;
-            setDoc(newDoc as unknown as PdfDocLike);
+            docRef.current = newDoc;
+            setDoc(newDoc);
             setBytes(next);
-            setNumPages((newDoc as unknown as PdfDocLike).numPages);
+            setNumPages(newDoc.numPages);
             setStatus('ready');
-            return newDoc as unknown as PdfDocLike;
+            return newDoc;
         } catch (err) {
             if (mySeq !== seqRef.current) return null;
             setStatus('error');

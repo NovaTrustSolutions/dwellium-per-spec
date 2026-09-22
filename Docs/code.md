@@ -299,3 +299,52 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Fix:** `startDictation` takes an optional `onFinal(utterance, isWholeInput) => boolean`; returning true consumes the utterance (not appended). `ARAConsole` consumes only when the utterance is the WHOLE input and `parseCommand` accepts it, then calls the same `dispatchTiers` Enter runs, and stops the mic so ARA's spoken ack is not transcribed back into the box. Questions/drafts still dictate. Tests: `araDictation.test.ts` (consume / decline / whole-input), `dwelliumCommands.test.ts` (seven spoken phrasings → `research-lab` on the open-widget bus).
 - **Not verified live:** the spoken path needs a real microphone + Web Speech API in a signed-in session — not drivable from an agent. Unit-verified only until Ilya says the phrase on a deploy that contains the fix.
 - **Prevention:** when "ARA doesn't do X when I say it", type X + Enter first. If typing works, the bug is the voice→dispatch seam, not the parser or the widget. One tap = one command today (mic closes after a command); making it continuous needs echo handling for ARA's TTS first.
+
+## 2026-09-22 — The local dev backend's god-user API was reachable from the network (RCE)
+
+- **Error:** With `AUTH_ENABLED` unset (the launchd dev backend and the Electron sidecar) `authMiddleware` serves every request as the dev god user. `app.listen(port)` took no host, so it bound every interface: `http://[<Mac's public IPv6>]:3000/health` → 200, and `/api/terminal/sessions` (a real node-pty shell) → 200 with no token.
+- **Root cause:** dev-mode auth bypass + wildcard bind were each fine alone; together they put a shell on the LAN. Electron's comment "sidecar binds 127.0.0.1 only" was never enforced by code.
+- **Fix:** backend `src/services/bindHosts.ts` — `BIND_HOST` if set; all interfaces only when `AUTH_ENABLED=true` (Cloud Run); otherwise `127.0.0.1` **and** `::1` (macOS resolves `localhost` to `::1` first). Proven on real sockets: auth off → 200 on both loopbacks, refused on LAN v4/v6; auth on → reachable, `/api/terminal` 401. Dwellium#8.
+- **Prevention:** any new listener in the backend goes through `resolveBindHosts()`. "Works on localhost" says nothing about what else can reach the port — `curl` the machine's LAN address too.
+
+## 2026-09-22 — Port 3000 was shared: the backend on IPv6, a Docker container on IPv4
+
+- **Error:** `http://127.0.0.1:3000/health` returned inbox-zero's HTML (404); `http://[::1]:3000` returned Dwellium. The app worked only because `localhost` → `::1` on this Mac.
+- **Root cause:** `inbox-zero-services-web-1` maps `0.0.0.0:3000`. macOS lets a host-less (wildcard `::`) listener share a port that a specific-address listener already holds and routes each connection to the more specific socket — so the backend silently got IPv6 only. (Linux refuses the second bind with `EADDRINUSE`; verified in `node:22-alpine`.)
+- **Fix:** same loopback bind as above — a specific `127.0.0.1:3000` bind wins that address back. `~/Library/Application Support/Dwellium/start-backend.sh` now logs a WARNING naming the foreign holder at startup.
+- **Prevention:** before blaming the app, `lsof -nP -iTCP:3000 -sTCP:LISTEN` and check BOTH families answer with Dwellium's JSON.
+
+## 2026-09-22 — `/api/terminal`, `/api/files` and 13 more routers had no role gate; `requireRole('admin')` admitted everyone
+
+- **Error:** a `tenant` account could spawn a shell (`POST /api/terminal/sessions` → 200), download and delete any file, grant itself file permissions, read the operator's inbox through ARA, and list every invoice. Two routes used `requireRole('admin')`; `'admin'` is not in `ROLE_HIERARCHY`, unknown roles scored −1, every real role outranks −1 → the gate passed everyone.
+- **Root cause:** routers mounted with `authenticate` only; `hasMinRole` failed open on an unknown *required* role; `checkFileAccess()` was dead code that returned true for every row.
+- **Fix:** `hasMinRole` fails closed + a test scans `src/` for unknown role names; `requirePermission()` gates on the same per-user grants the UI uses to show widgets (throws at load on an unknown key); 13 routers gated with tenant-403 *and* granted-user-200 cases each; per-file ACL (`fileAcl.ts`) makes `restricted` real. Dwellium#7.
+- **Prevention:** a denial test can pass for the wrong reason — assert the exact 403 and make sure the fixture exists (a missing route/fixture gives 404). Every gate needs a positive case or it can "pass" by breaking everyone.
+
+## 2026-09-22 — Every file-based e-sign send was refused by Documenso, and no test could see it
+
+- **Error:** "PDF from Dwellium files" → `POST /api/esign/send` → 502 `Documenso envelope distribute failed (400)`, and an orphaned DRAFT left in Documenso. Documenso's actual reason: `MISSING_SIGNATURE_FIELD — Signers must have at least one signature field`.
+- **Root cause:** the file flow (`/envelope/create` → `/envelope/distribute`) sent recipients with no fields. Templates carry their own fields, so the template path worked and the stubbed tests — which accept any payload shape — were green throughout.
+- **Fix:** one signature box per SIGNER in the create payload (percent-positioned, stacked). Re-run live: 200, envelope PENDING, email delivered with the consent disclosure and signing link, audit-log PDF downloads, signing page serves. `7c8028c`.
+- **Prevention:** a stub that accepts anything verifies nothing about the upstream contract. Keep one live smoke against the real Documenso (`tools/documenso/connect-local.sh` + a send to a mailpit address) in the release checklist.
+
+## 2026-09-22 — Backend suite failed ~1 run in 8 in a random suite (`socket hang up`, stray 404, `Parse Error`)
+
+- **Error:** every suite passed alone; full runs failed randomly. Diagnostic caught it: the failing request's own server had received **zero** connections.
+- **Root cause:** supertest starts a per-request server with `app.listen(0)` (wildcard `::`) but connects to `127.0.0.1`. A Postgres (paperclipai's embedded one) and a chromedriver on this Mac hold ephemeral-range ports on `127.0.0.1`/`[::1]`; when the kernel handed supertest one of those port numbers, the squatter got the request — non-HTTP bytes → hang up / Parse Error, chromedriver → 404.
+- **Fix:** `tests/helpers/harness.ts` starts one server per file bound to `127.0.0.1` (the kernel can't assign a busy port on a specific address); `tests/setup/supertestLoopback.ts` makes direct `supertest(app)` users connect in the family they bound. 30/30 clean full runs after; 4/30 before. `247c806`.
+- **Prevention:** `--runInBand` shares the process, but the *kernel* is shared with every other process on the box. When a flake is "random suite, passes alone", instrument the server side (`connection` count) before theorising about the client.
+
+## 2026-09-22 — Local Documenso: sign-in, sign-up and forgot-password all failed silently
+
+- **Error:** every auth action failed with a generic toast; no reset email; "unable to create your account". Pages rendered fine.
+- **Root cause:** `tools/documenso/.env` had `NEXT_PUBLIC_WEBAPP_URL=http://127.0.0.1:3101` while the container is published on **3140**. Server-rendered pages worked; every client-side tRPC call went to 3101 → `ERR_CONNECTION_REFUSED`. The network tab showed it in one look; the database did not (two wrong theories first).
+- **Fix:** URL corrected to 3140, container recreated; `session-json` → 200. Reset mail then landed in **mailpit** (`127.0.0.1:8025`) — never Gmail; SMTP is the local catcher.
+- **Prevention:** for "the page loads but nothing works", open the network tab before the database. At production cutover `NEXT_PUBLIC_WEBAPP_URL` must equal the public URL or auth breaks the same way.
+
+## 2026-09-22 — Entity Guardian blocks valid PDFs (open)
+
+- **Error:** a 616-byte, spec-valid PDF upload → 403 `Upload blocked … PHONE (6), BANK_ACCOUNT (6)`.
+- **Root cause:** the guardian regex-scans **raw bytes** (`buffer.toString('utf-8')`); `\b\d{8,17}\b` matches the six 10-digit byte offsets in a classic PDF xref table. Mode is STRICT with no exemption for binary formats.
+- **Status:** not fixed. Worked around in the live test with an xref-stream PDF (binary offsets, no digit runs — what most modern PDFs use). Decision needed: text-extract before scanning, or exempt binary formats.
+- **Prevention:** scanners that run over bytes will find "PII" in any binary container; scan extracted text.

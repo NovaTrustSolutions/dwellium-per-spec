@@ -3,83 +3,33 @@ import { ArrowRight, ArrowUp, Bookmark, ChevronLeft, ChevronRight, Circle, Downl
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import './DocViewer.css';
 import { API_BASE } from '../../config';
+import type {
+    DocFile, ToolMode, ShapeType, StampType, PreviewMode, Point,
+    Annotation, AnnotationMap, TextItem, TextEdit,
+} from './docViewerTypes';
+import { STAMP_COLORS } from './docViewerTypes';
+import {
+    shiftAnnotationsForInsert, shiftAnnotationsForDelete,
+    shiftTextEditsForInsert, shiftTextEditsForDelete,
+    normalizeSignatureStrokes,
+} from './annotationModel';
+import { bakeAnnotations } from './pdfBake';
+import { useAnnotationHistory, type DocSnapshot } from './useAnnotationHistory';
 
 // ============================================
-// TYPES
+// TYPES — see docViewerTypes.ts for the shared shapes; ToolMode/ShapeType/
+// StampType/PreviewMode/Point/Annotation/AnnotationMap/TextItem/TextEdit
+// and STAMP_COLORS are imported above.
 // ============================================
-
-interface DocFile {
-    id: string;
-    name: string;
-    type: string;
-    url?: string;
-}
-
-type ToolMode = 'select' | 'text' | 'editText' | 'highlight' | 'draw' | 'shape' | 'signature' | 'stamp';
-type ShapeType = 'rectangle' | 'circle' | 'line' | 'arrow';
-type StampType = 'APPROVED' | 'DRAFT' | 'CONFIDENTIAL' | 'REVIEWED' | 'URGENT' | 'FINAL';
-type PreviewMode = 'pdf' | 'text' | 'image' | 'unavailable';
-
-interface Point { x: number; y: number; }
-
-interface Annotation {
-    id: string;
-    type: 'text' | 'highlight' | 'draw' | 'shape' | 'signature' | 'stamp';
-    page: number;
-    color: string;
-    opacity: number;
-    // Text
-    text?: string;
-    fontSize?: number;
-    position?: Point;
-    // Highlight / Shape
-    rect?: { x: number; y: number; w: number; h: number };
-    shapeType?: ShapeType;
-    lineWidth?: number;
-    // Draw
-    points?: Point[];
-    // Stamp
-    stampType?: StampType;
-    // Signature
-    signatureData?: Point[][];
-}
-
-interface TextItem {
-    str: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fontSize: number;
-    fontFamily: string;
-    transform: number[];
-    itemIndex: number;
-}
-
-interface TextEdit {
-    pageNum: number;
-    itemIndex: number;
-    originalText: string;
-    newText: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fontSize: number;
-}
 
 const API_FILES = `${API_BASE}/api/files`;
 const TEXT_FILE_TYPES = new Set(['txt', 'md', 'csv', 'json', 'html']);
 const IMAGE_FILE_TYPES = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']);
-
-const STAMP_COLORS: Record<StampType, string> = {
-    APPROVED: '#22c55e',
-    DRAFT: '#f59e0b',
-    CONFIDENTIAL: '#ef4444',
-    REVIEWED: '#3b82f6',
-    URGENT: '#dc2626',
-    FINAL: '#D6FE51',
-};
+// Text Save Back must never PUT a truncated body (audit finding #2). Above
+// this cap the file opens read-only instead of silently truncating.
+const TEXT_CONTENT_CAP_BYTES = 2 * 1024 * 1024;
+// Width (annotation-space units) a placed signature is scaled to.
+const SIGNATURE_TARGET_WIDTH = 160;
 
 // ============================================
 // COMPONENT
@@ -91,6 +41,15 @@ export default function DocViewer() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [zoom, setZoom] = useState(1.0);
+    // R2 (adversarial review): reloadPdfFromBytes is a plain closure
+    // recreated every render, but applySnapshot (a useCallback keyed only on
+    // currentPage) can hold onto a STALE reloadPdfFromBytes from a render
+    // where `zoom` was old — undo/redo after a zoom change (with no page
+    // change) then renders the restored page at the wrong scale. A ref
+    // always reads the live value regardless of which render's closure is
+    // executing, with no dependency-array changes needed.
+    const zoomRef = useRef(zoom);
+    zoomRef.current = zoom;
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [previewMode, setPreviewMode] = useState<PreviewMode>('unavailable');
@@ -98,17 +57,20 @@ export default function DocViewer() {
     const [previewMessage, setPreviewMessage] = useState<string | null>(null);
     const [textContent, setTextContent] = useState('');
     const [textDraft, setTextDraft] = useState('');
+    const [textReadOnly, setTextReadOnly] = useState(false);
     const [savedLocalPath, setSavedLocalPath] = useState<string | null>(null);
 
     // PDF state
     const [pdfDoc, setPdfDoc] = useState<any>(null);
     const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
+    // True once annotations/text edits/byte mutations have happened since
+    // load or the last successful Save Back (P0 item 3 dirty flag).
+    const [pdfDirty, setPdfDirty] = useState(false);
+    const [renderError, setRenderError] = useState<string | null>(null);
 
     // Editing state
     const [activeTool, setActiveTool] = useState<ToolMode>('select');
-    const [annotations, setAnnotations] = useState<Map<number, Annotation[]>>(new Map());
-    const [undoStack, setUndoStack] = useState<Map<number, Annotation[]>[]>([]);
-    const [redoStack, setRedoStack] = useState<Map<number, Annotation[]>[]>([]);
+    const [annotations, setAnnotations] = useState<AnnotationMap>(new Map());
     const [drawColor, setDrawColor] = useState('#ef4444');
     const [drawSize, setDrawSize] = useState(3);
     const [fontSize, setFontSize] = useState(16);
@@ -144,6 +106,9 @@ export default function DocViewer() {
         setTimeout(() => setToast(null), 2500);
     };
 
+    // ---- HISTORY (undo/redo covering annotations + text edits + pdf bytes) ----
+    const history = useAnnotationHistory(showToast);
+
     // ---- FETCH FILES ----
     useEffect(() => { void fetchDocFiles(); }, []);
 
@@ -166,34 +131,35 @@ export default function DocViewer() {
     }, []);
 
     // ---- SAVE UNDO STATE ----
-    const pushUndo = useCallback(() => {
-        const snapshot = new Map<number, Annotation[]>();
-        annotations.forEach((v, k) => snapshot.set(k, [...v]));
-        setUndoStack(prev => [...prev.slice(-30), snapshot]);
-        setRedoStack([]);
-    }, [annotations]);
+    // Call BEFORE mutating annotations/textEdits/pdfBytes. bytesChanged tells
+    // the history hook whether this step touched pdfBytes (insert/delete/
+    // rotate page, baked text edit) vs annotations only.
+    const pushUndo = useCallback((bytesChanged: boolean) => {
+        history.pushHistory({ annotations, textEdits, pdfBytes }, bytesChanged);
+    }, [history, annotations, textEdits, pdfBytes]);
+
+    const applySnapshot = useCallback(async (snap: DocSnapshot) => {
+        setAnnotations(snap.annotations);
+        setTextEdits(snap.textEdits);
+        if (snap.pdfBytes) {
+            setPdfBytes(snap.pdfBytes);
+            await reloadPdfFromBytes(snap.pdfBytes, currentPage);
+        }
+        setPdfDirty(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage]);
 
     const undo = useCallback(() => {
-        if (undoStack.length === 0) return;
-        const current = new Map<number, Annotation[]>();
-        annotations.forEach((v, k) => current.set(k, [...v]));
-        setRedoStack(prev => [...prev, current]);
-        const prev = undoStack[undoStack.length - 1];
-        setUndoStack(s => s.slice(0, -1));
-        setAnnotations(prev);
-    }, [undoStack, annotations]);
+        const restored = history.undo({ annotations, textEdits, pdfBytes });
+        if (restored) void applySnapshot(restored);
+    }, [history, annotations, textEdits, pdfBytes, applySnapshot]);
 
     const redo = useCallback(() => {
-        if (redoStack.length === 0) return;
-        const current = new Map<number, Annotation[]>();
-        annotations.forEach((v, k) => current.set(k, [...v]));
-        setUndoStack(prev => [...prev, current]);
-        const next = redoStack[redoStack.length - 1];
-        setRedoStack(s => s.slice(0, -1));
-        setAnnotations(next);
-    }, [redoStack, annotations]);
+        const restored = history.redo({ annotations, textEdits, pdfBytes });
+        if (restored) void applySnapshot(restored);
+    }, [history, annotations, textEdits, pdfBytes, applySnapshot]);
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts — scoped in P1 (item 9); still window-level here.
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -209,20 +175,23 @@ export default function DocViewer() {
         setSelectedFile(file);
         setCurrentPage(1);
         setAnnotations(new Map());
-        setUndoStack([]);
-        setRedoStack([]);
         setTextItems([]);
         setEditingTextItem(null);
         setEditedText('');
         setTextEdits([]);
         setPdfDoc(null);
         setPdfBytes(null);
+        setPdfDirty(false);
+        setRenderError(null);
         setPreviewMode('unavailable');
         setPreviewUrl(null);
         setPreviewMessage(null);
         setTextContent('');
         setTextDraft('');
+        setTextReadOnly(false);
         setSavedLocalPath(null);
+        history.reset();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // ---- DOCUMENT LOADING ----
@@ -236,15 +205,31 @@ export default function DocViewer() {
             if (TEXT_FILE_TYPES.has(file.type)) {
                 setPreviewMode('text');
                 setTotalPages(1);
-                const res = await fetch(`${API_FILES}/${file.id}/preview`);
-                const json = await res.json();
-                if (!res.ok || !json?.success || json?.data?.previewType !== 'text') {
-                    throw new Error(json?.error || `Text preview failed (${res.status})`);
+                // P0 item 2: load the FULL body (never the truncated /preview
+                // route) and PUT it back only when it's under the cap.
+                try {
+                    const res = await fetch(`${API_FILES}/${file.id}`);
+                    if (!res.ok) throw new Error(`Could not load file (${res.status})`);
+                    const declaredSize = Number(res.headers.get('content-length'));
+                    if (Number.isFinite(declaredSize) && declaredSize > TEXT_CONTENT_CAP_BYTES) {
+                        throw new Error(`File is over the ${(TEXT_CONTENT_CAP_BYTES / (1024 * 1024)).toFixed(0)} MB preview cap`);
+                    }
+                    const content = await res.text();
+                    if (new TextEncoder().encode(content).length > TEXT_CONTENT_CAP_BYTES) {
+                        throw new Error(`File exceeds the ${(TEXT_CONTENT_CAP_BYTES / (1024 * 1024)).toFixed(0)} MB preview cap`);
+                    }
+                    setTextContent(content);
+                    setTextDraft(content);
+                    setTextReadOnly(false);
+                    setPreviewMessage(null);
+                } catch (err) {
+                    setTextContent('');
+                    setTextDraft('');
+                    setTextReadOnly(true);
+                    setPreviewMessage(
+                        `Opened read-only — ${err instanceof Error ? err.message : 'could not load file content'}. Save Back is disabled.`,
+                    );
                 }
-                const content = json.data.content || '';
-                setTextContent(content);
-                setTextDraft(content);
-                setPreviewMessage(json.data.truncated ? 'Preview truncated to first 5,000 characters.' : null);
                 setIsLoading(false);
                 return;
             }
@@ -257,21 +242,25 @@ export default function DocViewer() {
                 return;
             }
 
-            setPreviewMode('pdf');
+            // P0 item 3: only flip previewMode to 'pdf' — which is what makes
+            // Save Back visible — once BOTH the pdf.js doc and the real bytes
+            // are in hand. No window where previewMode==='pdf' but
+            // pdfBytes is still null.
             const pdfjsLib = await import('pdfjs-dist');
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
             try {
-                const pdf = await pdfjsLib.getDocument(url).promise;
-                setPdfDoc(pdf);
-                setTotalPages(pdf.numPages);
-
-                // Also load as pdf-lib bytes for page manipulation
-                const response = await fetch(url);
+                const [pdf, response] = await Promise.all([
+                    pdfjsLib.getDocument(url).promise,
+                    fetch(url),
+                ]);
+                if (!response.ok) throw new Error(`Could not load file bytes (${response.status})`);
                 const bytes = new Uint8Array(await response.arrayBuffer());
-                setPdfBytes(bytes);
 
-                renderPage(pdf, 1, zoom);
+                setPdfDoc(pdf);
+                setPdfBytes(bytes);
+                setTotalPages(pdf.numPages);
+                setPreviewMode('pdf');
             } catch {
                 setPdfDoc(null);
                 setPdfBytes(null);
@@ -288,7 +277,7 @@ export default function DocViewer() {
         }
 
         setIsLoading(false);
-    }, [resetDocumentState, zoom]);
+    }, [resetDocumentState]);
 
     // Command Palette deep-link
     const openFileFromPalette = useCallback(async (detail: { fileId?: string; name?: string }) => {
@@ -337,13 +326,33 @@ export default function DocViewer() {
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
             await page.render({ canvasContext: ctx, viewport }).promise;
+            setRenderError(null);
 
             // Extract text layer for editText mode
             await extractTextLayer(page, viewport);
-        } catch {
-            renderDemoPage(pageNum);
+        } catch (err) {
+            // P0 item 3: no fabricated fallback page — an honest error
+            // instead of the old `renderDemoPage` fake document.
+            console.error('Page render error:', err);
+            canvas.width = 0;
+            canvas.height = 0;
+            setRenderError('This page could not be rendered.');
             setTextItems([]);
         }
+    };
+
+    /** Re-load pdf.js + re-render after pdfBytes changes (insert/delete/rotate/undo). */
+    const reloadPdfFromBytes = async (bytes: Uint8Array, pageToShow: number) => {
+        const pdfjsLib = await import('pdfjs-dist');
+        // pdf.js transfers (detaches) the buffer it is given; hand it a copy so `bytes`, which
+        // is also the pdfBytes Save Back/Export bake from, keeps its content.
+        const newPdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+        setPdfDoc(newPdf);
+        setTotalPages(newPdf.numPages);
+        const clamped = Math.max(1, Math.min(newPdf.numPages, pageToShow));
+        setCurrentPage(clamped);
+        await renderPage(newPdf, clamped, zoomRef.current);
+        return clamped;
     };
 
     // ---- EXTRACT TEXT LAYER ----
@@ -393,58 +402,13 @@ export default function DocViewer() {
         }
     };
 
-    const renderDemoPage = (pageNum: number) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const scale = zoom * 1.5;
-        canvas.width = 612 * scale;
-        canvas.height = 792 * scale;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, canvas.width, 80 * scale);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${20 * scale}px Inter, sans-serif`;
-        ctx.fillText(selectedFile?.name || 'Document', 40 * scale, 50 * scale);
-
-        ctx.fillStyle = '#374151';
-        ctx.font = `${12 * scale}px Inter, sans-serif`;
-        const lines = [
-            'MASTER SERVICES AGREEMENT', '',
-            `Page ${pageNum} of ${totalPages}`, '',
-            'This Agreement is entered into as of the date set forth below,',
-            'by and between the parties identified herein.', '',
-            'SECTION 1. SCOPE OF SERVICES', '',
-            'The Provider shall deliver the services described in Exhibit A,',
-            'attached hereto and incorporated herein by reference.', '',
-            'All services shall be performed in accordance with industry',
-            'standards and applicable regulations.', '',
-            'SECTION 2. COMPENSATION', '',
-            'Client shall compensate Provider according to the fee schedule',
-            'outlined in Exhibit B, with payments due net-30 from invoice date.', '',
-            'SECTION 3. TERM AND TERMINATION', '',
-            'This Agreement shall commence on the Effective Date and continue',
-            'for a period of twelve (12) months unless terminated earlier.',
-        ];
-        lines.forEach((line, i) => {
-            ctx.fillText(line, 40 * scale, (120 + i * 22) * scale);
-        });
-
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = `${10 * scale}px Inter, sans-serif`;
-        ctx.fillText(`— ${pageNum} —`, canvas.width / 2 - 15 * scale, canvas.height - 30 * scale);
-    };
-
-    // Re-render on page/zoom change
+    // Re-render on page/zoom change. No fabricated fallback page when
+    // pdfDoc isn't loaded (P0 item 3/4) — the loading spinner or the
+    // "unavailable" empty state covers that window honestly.
     useEffect(() => {
-        if (previewMode !== 'pdf') return;
-        if (pdfDoc) renderPage(pdfDoc, currentPage, zoom);
-        else if (selectedFile) renderDemoPage(currentPage);
-    }, [currentPage, zoom, pdfDoc, selectedFile, previewMode]);
+        if (previewMode !== 'pdf' || !pdfDoc) return;
+        void renderPage(pdfDoc, currentPage, zoom);
+    }, [currentPage, zoom, pdfDoc, previewMode]);
 
     // ---- RENDER OVERLAY (ANNOTATIONS) ----
     const renderOverlay = useCallback(() => {
@@ -563,23 +527,26 @@ export default function DocViewer() {
                     break;
 
                 case 'signature':
-                    if (ann.position && ann.signatureData) {
-                        ctx.save();
-                        ctx.translate(ann.position.x * scale, ann.position.y * scale);
-                        ctx.strokeStyle = '#1a1a2e';
+                    // signatureData is already normalized into absolute
+                    // annotation-space points (normalizeSignatureStrokes at
+                    // placement time) — draw them exactly like 'draw', with
+                    // one `* scale` to canvas pixels. No ad-hoc extra factor
+                    // and no translate: bake (pdfBake.ts) draws the SAME
+                    // absolute points, so overlay and bake agree.
+                    if (ann.signatureData) {
+                        ctx.strokeStyle = ann.color || '#1a1a2e';
                         ctx.lineWidth = 2 * scale;
                         ctx.lineCap = 'round';
                         ctx.lineJoin = 'round';
                         for (const stroke of ann.signatureData) {
                             if (stroke.length < 2) continue;
                             ctx.beginPath();
-                            ctx.moveTo(stroke[0].x * scale * 0.5, stroke[0].y * scale * 0.5);
+                            ctx.moveTo(stroke[0].x * scale, stroke[0].y * scale);
                             for (let i = 1; i < stroke.length; i++) {
-                                ctx.lineTo(stroke[i].x * scale * 0.5, stroke[i].y * scale * 0.5);
+                                ctx.lineTo(stroke[i].x * scale, stroke[i].y * scale);
                             }
                             ctx.stroke();
                         }
-                        ctx.restore();
                     }
                     break;
             }
@@ -614,6 +581,11 @@ export default function DocViewer() {
             setEditingTextItem(null);
             return;
         }
+        if (!pdfBytes) {
+            showToast('No document bytes loaded — cannot edit text');
+            setEditingTextItem(null);
+            return;
+        }
 
         const scale = zoom * 1.5;
         const edit: TextEdit = {
@@ -628,69 +600,53 @@ export default function DocViewer() {
             fontSize: editingTextItem.fontSize,
         };
 
+        pushUndo(true);
+
         // Store the edit
-        setTextEdits(prev => {
-            const filtered = prev.filter(
-                e => !(e.pageNum === edit.pageNum && e.itemIndex === edit.itemIndex)
-            );
-            return [...filtered, edit];
-        });
+        const nextTextEdits = [
+            ...textEdits.filter(e => !(e.pageNum === edit.pageNum && e.itemIndex === edit.itemIndex)),
+            edit,
+        ];
+        setTextEdits(nextTextEdits);
 
         // Apply the edit to the PDF bytes using pdf-lib
-        if (pdfBytes) {
-            try {
-                const doc = await PDFDocument.load(pdfBytes);
-                const page = doc.getPage(currentPage - 1);
-                const { height } = page.getSize();
-                const font = await doc.embedFont(StandardFonts.Helvetica);
+        try {
+            const doc = await PDFDocument.load(pdfBytes);
+            const page = doc.getPage(currentPage - 1);
+            const font = await doc.embedFont(StandardFonts.Helvetica);
 
-                // Draw a white rectangle over the original text
-                const pdfX = editingTextItem.transform[4];
-                const pdfY = editingTextItem.transform[5];
-                const originalFontSize = edit.fontSize;
-                const textWidth = font.widthOfTextAtSize(edit.originalText, originalFontSize);
+            // Draw a white rectangle over the original text
+            const pdfX = editingTextItem.transform[4];
+            const pdfY = editingTextItem.transform[5];
+            const originalFontSize = edit.fontSize;
+            const textWidth = font.widthOfTextAtSize(edit.originalText, originalFontSize);
 
-                page.drawRectangle({
-                    x: pdfX - 1,
-                    y: pdfY - 2,
-                    width: textWidth + 4,
-                    height: originalFontSize + 4,
-                    color: rgb(1, 1, 1), // white
-                });
+            page.drawRectangle({
+                x: pdfX - 1,
+                y: pdfY - 2,
+                width: textWidth + 4,
+                height: originalFontSize + 4,
+                color: rgb(1, 1, 1), // white
+            });
 
-                // Draw the new text
-                page.drawText(editedText, {
-                    x: pdfX,
-                    y: pdfY,
-                    size: originalFontSize,
-                    font,
-                    color: rgb(0, 0, 0),
-                });
+            // Draw the new text
+            page.drawText(editedText, {
+                x: pdfX,
+                y: pdfY,
+                size: originalFontSize,
+                font,
+                color: rgb(0, 0, 0),
+            });
 
-                const newBytes = await doc.save();
-                setPdfBytes(new Uint8Array(newBytes));
+            const newBytes = new Uint8Array(await doc.save());
+            setPdfBytes(newBytes);
+            setPdfDirty(true);
+            await reloadPdfFromBytes(newBytes, currentPage);
 
-                // Re-load in pdfjs
-                const pdfjsLib = await import('pdfjs-dist');
-                const newPdf = await pdfjsLib.getDocument({ data: newBytes }).promise;
-                setPdfDoc(newPdf);
-                await renderPage(newPdf, currentPage, zoom);
-
-                showToast(`Text updated: "${edit.originalText}" → "${editedText}"`);
-            } catch (err) {
-                console.error('Text edit error:', err);
-                showToast('Error applying text edit');
-            }
-        } else {
-            // Demo mode — just update the text items display
-            setTextItems(prev =>
-                prev.map(ti =>
-                    ti.itemIndex === editingTextItem.itemIndex
-                        ? { ...ti, str: editedText }
-                        : ti
-                )
-            );
-            showToast(`Text updated (demo mode)`);
+            showToast(`Text updated: "${edit.originalText}" → "${editedText}"`);
+        } catch (err) {
+            console.error('Text edit error:', err);
+            showToast('Error applying text edit');
         }
 
         setEditingTextItem(null);
@@ -723,7 +679,8 @@ export default function DocViewer() {
     };
 
     const addAnnotation = (ann: Annotation) => {
-        pushUndo();
+        pushUndo(false);
+        setPdfDirty(true);
         setAnnotations(prev => {
             const next = new Map(prev);
             const pageAnns = [...(next.get(ann.page) || []), ann];
@@ -878,6 +835,10 @@ export default function DocViewer() {
             });
         } else if (activeTool === 'signature') {
             if (signatureStrokes.length > 0) {
+                const { strokes: normalizedStrokes, rect } = normalizeSignatureStrokes(
+                    signatureStrokes,
+                    { x: pos.x, y: pos.y, width: SIGNATURE_TARGET_WIDTH },
+                );
                 addAnnotation({
                     id: crypto.randomUUID(),
                     type: 'signature',
@@ -885,7 +846,8 @@ export default function DocViewer() {
                     color: '#1a1a2e',
                     opacity: 1,
                     position: pos,
-                    signatureData: signatureStrokes,
+                    rect,
+                    signatureData: normalizedStrokes,
                 });
                 showToast('Signature placed');
             } else {
@@ -899,31 +861,30 @@ export default function DocViewer() {
     };
 
     // ---- PAGE MANIPULATION ----
+    // P0 item 5: insert/delete re-key the annotation Map AND the text-edit
+    // list so they stay on the page they were placed on, and the byte
+    // mutation is snapshotted for undo (pushUndo(true) BEFORE the mutation).
     const insertPage = async () => {
-        if (pdfBytes) {
-            try {
-                const doc = await PDFDocument.load(pdfBytes);
-                const [width, height] = [612, 792];
-                doc.insertPage(currentPage, [width, height]); // Insert after current
-                const newBytes = await doc.save();
-                setPdfBytes(new Uint8Array(newBytes));
-
-                // Re-load in pdfjs
-                const pdfjsLib = await import('pdfjs-dist');
-                const newPdf = await pdfjsLib.getDocument({ data: newBytes }).promise;
-                setPdfDoc(newPdf);
-                setTotalPages(newPdf.numPages);
-                setCurrentPage(currentPage + 1);
-                showToast(`Blank page inserted after page ${currentPage}`);
-            } catch (err) {
-                console.error('Insert page error:', err);
-                showToast('Error inserting page');
-            }
-        } else {
-            // Demo mode
-            setTotalPages(prev => prev + 1);
-            setCurrentPage(currentPage + 1);
-            showToast(`Blank page inserted (demo mode)`);
+        if (!pdfBytes) {
+            showToast('No document bytes loaded — cannot insert a page');
+            return;
+        }
+        pushUndo(true);
+        try {
+            const doc = await PDFDocument.load(pdfBytes);
+            const [width, height] = [612, 792];
+            const insertedPageNum = currentPage + 1;
+            doc.insertPage(currentPage, [width, height]); // Insert after current
+            const newBytes = new Uint8Array(await doc.save());
+            setPdfBytes(newBytes);
+            setAnnotations(prev => shiftAnnotationsForInsert(prev, insertedPageNum));
+            setTextEdits(prev => shiftTextEditsForInsert(prev, insertedPageNum));
+            setPdfDirty(true);
+            await reloadPdfFromBytes(newBytes, insertedPageNum);
+            showToast(`Blank page inserted after page ${currentPage}`);
+        } catch (err) {
+            console.error('Insert page error:', err);
+            showToast('Error inserting page');
         }
     };
 
@@ -932,185 +893,62 @@ export default function DocViewer() {
             showToast("Can't delete the only page");
             return;
         }
-        if (pdfBytes) {
-            try {
-                const doc = await PDFDocument.load(pdfBytes);
-                doc.removePage(currentPage - 1);
-                const newBytes = await doc.save();
-                setPdfBytes(new Uint8Array(newBytes));
-
-                const pdfjsLib = await import('pdfjs-dist');
-                const newPdf = await pdfjsLib.getDocument({ data: newBytes }).promise;
-                setPdfDoc(newPdf);
-                setTotalPages(newPdf.numPages);
-                if (currentPage > newPdf.numPages) setCurrentPage(newPdf.numPages);
-                showToast(`Page ${currentPage} deleted`);
-            } catch (err) {
-                console.error('Delete page error:', err);
-                showToast('Error deleting page');
-            }
-        } else {
-            setTotalPages(prev => Math.max(1, prev - 1));
-            if (currentPage > totalPages - 1) setCurrentPage(Math.max(1, totalPages - 1));
-            showToast(`Page ${currentPage} deleted (demo mode)`);
+        if (!pdfBytes) {
+            showToast('No document bytes loaded — cannot delete a page');
+            return;
+        }
+        pushUndo(true);
+        try {
+            const doc = await PDFDocument.load(pdfBytes);
+            const deletedPageNum = currentPage;
+            doc.removePage(currentPage - 1);
+            const newBytes = new Uint8Array(await doc.save());
+            setPdfBytes(newBytes);
+            setAnnotations(prev => shiftAnnotationsForDelete(prev, deletedPageNum));
+            setTextEdits(prev => shiftTextEditsForDelete(prev, deletedPageNum));
+            setPdfDirty(true);
+            await reloadPdfFromBytes(newBytes, currentPage);
+            showToast(`Page ${deletedPageNum} deleted`);
+        } catch (err) {
+            console.error('Delete page error:', err);
+            showToast('Error deleting page');
         }
     };
 
     const rotatePage = async (direction: 'cw' | 'ccw') => {
-        if (pdfBytes) {
-            try {
-                const doc = await PDFDocument.load(pdfBytes);
-                const page = doc.getPage(currentPage - 1);
-                const current = page.getRotation().angle;
-                const delta = direction === 'cw' ? 90 : -90;
-                page.setRotation(degrees(current + delta));
-                const newBytes = await doc.save();
-                setPdfBytes(new Uint8Array(newBytes));
-
-                const pdfjsLib = await import('pdfjs-dist');
-                const newPdf = await pdfjsLib.getDocument({ data: newBytes }).promise;
-                setPdfDoc(newPdf);
-                renderPage(newPdf, currentPage, zoom);
-                showToast(`Page rotated ${direction === 'cw' ? '90° clockwise' : '90° counter-clockwise'}`);
-            } catch (err) {
-                console.error('Rotate error:', err);
-                showToast('Error rotating page');
-            }
-        } else {
-            showToast(`Rotate ${direction === 'cw' ? 'CW' : 'CCW'} (requires real PDF)`);
+        if (!pdfBytes) {
+            showToast('Rotate requires a loaded PDF');
+            return;
+        }
+        pushUndo(true);
+        try {
+            const doc = await PDFDocument.load(pdfBytes);
+            const page = doc.getPage(currentPage - 1);
+            const current = page.getRotation().angle;
+            const delta = direction === 'cw' ? 90 : -90;
+            page.setRotation(degrees(current + delta));
+            const newBytes = new Uint8Array(await doc.save());
+            setPdfBytes(newBytes);
+            setPdfDirty(true);
+            await reloadPdfFromBytes(newBytes, currentPage);
+            showToast(`Page rotated ${direction === 'cw' ? '90° clockwise' : '90° counter-clockwise'}`);
+        } catch (err) {
+            console.error('Rotate error:', err);
+            showToast('Error rotating page');
         }
     };
 
     // ---- DOWNLOAD / EXPORT ----
+    // P0 items 1+3: bakeAnnotations (pdfBake.ts) is the single bake
+    // implementation (handles signature too) and throws when there are no
+    // real bytes — Export/Save Back refuse instead of fabricating a blank
+    // document.
     const buildPdfBytes = useCallback(async (): Promise<Uint8Array> => {
-        let doc: PDFDocument;
-        if (pdfBytes) {
-            doc = await PDFDocument.load(pdfBytes);
-        } else {
-            doc = await PDFDocument.create();
-            for (let i = 0; i < totalPages; i++) {
-                doc.addPage([612, 792]);
-            }
+        if (!pdfBytes) {
+            throw new Error('No PDF loaded — nothing to export or save.');
         }
-
-        const font = await doc.embedFont(StandardFonts.Helvetica);
-        const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
-
-        annotations.forEach((pageAnns, pageIdx) => {
-            if (pageIdx < 1 || pageIdx > doc.getPageCount()) return;
-            const page = doc.getPage(pageIdx - 1);
-            const { height } = page.getSize();
-
-            for (const ann of pageAnns) {
-                switch (ann.type) {
-                    case 'text':
-                        if (ann.position && ann.text) {
-                            const hexColor = ann.color;
-                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
-                            page.drawText(ann.text, {
-                                x: ann.position.x,
-                                y: height - ann.position.y,
-                                size: ann.fontSize || 16,
-                                font,
-                                color: rgb(r1, g1, b1),
-                            });
-                        }
-                        break;
-
-                    case 'highlight':
-                        if (ann.rect) {
-                            const hexColor = ann.color;
-                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
-                            page.drawRectangle({
-                                x: ann.rect.x,
-                                y: height - ann.rect.y - ann.rect.h,
-                                width: ann.rect.w,
-                                height: ann.rect.h,
-                                color: rgb(r1, g1, b1),
-                                opacity: ann.opacity,
-                            });
-                        }
-                        break;
-
-                    case 'shape':
-                        if (ann.rect) {
-                            const hexColor = ann.color;
-                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
-                            const borderColor = rgb(r1, g1, b1);
-                            if (ann.shapeType === 'rectangle') {
-                                page.drawRectangle({
-                                    x: ann.rect.x,
-                                    y: height - ann.rect.y - ann.rect.h,
-                                    width: ann.rect.w,
-                                    height: ann.rect.h,
-                                    borderColor,
-                                    borderWidth: ann.lineWidth || 2,
-                                });
-                            } else if (ann.shapeType === 'circle') {
-                                page.drawEllipse({
-                                    x: ann.rect.x + ann.rect.w / 2,
-                                    y: height - ann.rect.y - ann.rect.h / 2,
-                                    xScale: ann.rect.w / 2,
-                                    yScale: ann.rect.h / 2,
-                                    borderColor,
-                                    borderWidth: ann.lineWidth || 2,
-                                });
-                            } else if (ann.shapeType === 'line' || ann.shapeType === 'arrow') {
-                                page.drawLine({
-                                    start: { x: ann.rect.x, y: height - ann.rect.y },
-                                    end: { x: ann.rect.x + ann.rect.w, y: height - ann.rect.y - ann.rect.h },
-                                    color: borderColor,
-                                    thickness: ann.lineWidth || 2,
-                                });
-                            }
-                        }
-                        break;
-
-                    case 'stamp':
-                        if (ann.position && ann.stampType) {
-                            const stampColor = STAMP_COLORS[ann.stampType];
-                            const r1 = parseInt(stampColor.slice(1, 3), 16) / 255;
-                            const g1 = parseInt(stampColor.slice(3, 5), 16) / 255;
-                            const b1 = parseInt(stampColor.slice(5, 7), 16) / 255;
-                            page.drawText(ann.stampType, {
-                                x: ann.position.x,
-                                y: height - ann.position.y,
-                                size: 28,
-                                font: boldFont,
-                                color: rgb(r1, g1, b1),
-                                opacity: 0.85,
-                            });
-                        }
-                        break;
-
-                    case 'draw':
-                        if (ann.points && ann.points.length > 1) {
-                            const hexColor = ann.color;
-                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
-                            for (let i = 0; i < ann.points.length - 1; i++) {
-                                page.drawLine({
-                                    start: { x: ann.points[i].x, y: height - ann.points[i].y },
-                                    end: { x: ann.points[i + 1].x, y: height - ann.points[i + 1].y },
-                                    color: rgb(r1, g1, b1),
-                                    thickness: ann.lineWidth || 3,
-                                });
-                            }
-                        }
-                        break;
-                }
-            }
-        });
-
-        return new Uint8Array(await doc.save());
-    }, [annotations, pdfBytes, totalPages]);
+        return bakeAnnotations(pdfBytes, annotations);
+    }, [annotations, pdfBytes]);
 
     const materializeLocalCopy = useCallback(async () => {
         if (!selectedFile) return;
@@ -1171,6 +1009,20 @@ export default function DocViewer() {
             showToast('Save-back is currently available for PDF and text documents.');
             return;
         }
+        if (previewMode === 'text' && textReadOnly) {
+            showToast('This file is read-only — Save Back is disabled.');
+            return;
+        }
+        if (previewMode === 'pdf' && !pdfBytes) {
+            showToast('No document bytes loaded — nothing to save.');
+            return;
+        }
+
+        // P0 item 3: confirm before overwriting the original, naming the file.
+        // Cancel sends no request.
+        if (!window.confirm(`Overwrite "${selectedFile.name}" in Qualia with these changes?`)) {
+            return;
+        }
 
         setIsSaving(true);
         try {
@@ -1203,6 +1055,7 @@ export default function DocViewer() {
             if (nextSavedPath) {
                 setSavedLocalPath(nextSavedPath);
             }
+            setPdfDirty(false);
             showToast('Changes saved back into Qualia');
         } catch (err) {
             console.error('Save document error:', err);
@@ -1210,7 +1063,7 @@ export default function DocViewer() {
         } finally {
             setIsSaving(false);
         }
-    }, [buildPdfBytes, previewMode, selectedFile, textDraft]);
+    }, [buildPdfBytes, pdfBytes, previewMode, selectedFile, textDraft, textReadOnly]);
 
     // ---- SIGNATURE MODAL ----
     const sigDrawingRef = useRef(false);
@@ -1247,11 +1100,15 @@ export default function DocViewer() {
     };
 
     const handleSigMouseUp = () => {
-        if (sigDrawingRef.current && sigCurrentStroke.current.length > 1) {
-            setSignatureStrokes(prev => [...prev, [...sigCurrentStroke.current]]);
+        // Take the stroke BEFORE clearing the ref: the functional updater may run later (at
+        // render time), and reading sigCurrentStroke.current there stored an EMPTY stroke —
+        // the signature showed "placed" but drew nothing and baked nothing.
+        const stroke = sigCurrentStroke.current;
+        sigCurrentStroke.current = [];
+        if (sigDrawingRef.current && stroke.length > 1) {
+            setSignatureStrokes(prev => [...prev, stroke]);
         }
         sigDrawingRef.current = false;
-        sigCurrentStroke.current = [];
     };
 
     const clearSignature = () => {
@@ -1281,7 +1138,8 @@ export default function DocViewer() {
 
     // ---- CLEAR ALL ANNOTATIONS ----
     const clearAnnotations = () => {
-        pushUndo();
+        pushUndo(false);
+        setPdfDirty(true);
         setAnnotations(prev => {
             const next = new Map(prev);
             next.set(currentPage, []);
@@ -1292,9 +1150,33 @@ export default function DocViewer() {
 
     // ---- TOOL CONFIG ----
     const COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#D6FE51', '#ec4899', '#1a1a2e', '#ffffff'];
-    const canEditPdf = previewMode === 'pdf';
+    const canEditPdf = previewMode === 'pdf' && !!pdfBytes;
     const canSaveBack = previewMode === 'pdf' || previewMode === 'text';
     const isTextDirty = previewMode === 'text' && textDraft !== textContent;
+
+    // P0 item 3: Save Back is disabled until pdfBytes are loaded, and while
+    // clean (nothing to save) — with a title explaining why in each case.
+    let saveBackDisabled = isSaving;
+    let saveBackTitle = 'Save changes back into Qualia';
+    if (isSaving) {
+        saveBackTitle = 'Saving…';
+    } else if (previewMode === 'pdf') {
+        if (!pdfBytes) {
+            saveBackDisabled = true;
+            saveBackTitle = 'Waiting for the PDF to finish loading';
+        } else if (!pdfDirty) {
+            saveBackDisabled = true;
+            saveBackTitle = 'No changes to save';
+        }
+    } else if (previewMode === 'text') {
+        if (textReadOnly) {
+            saveBackDisabled = true;
+            saveBackTitle = 'File is read-only (too large, or failed to load fully) — Save Back is disabled';
+        } else if (!isTextDirty) {
+            saveBackDisabled = true;
+            saveBackTitle = 'No changes to save';
+        }
+    }
 
     // ---- RENDER ----
     return (
@@ -1356,7 +1238,7 @@ export default function DocViewer() {
                                 <Download size={14} aria-hidden /> Export
                             </button>
                             {canSaveBack && (
-                                <button className="dv-toolbar__btn" onClick={() => void saveDocumentToQualia()} disabled={isSaving || (previewMode === 'text' && !isTextDirty)}>
+                                <button className="dv-toolbar__btn" onClick={() => void saveDocumentToQualia()} disabled={saveBackDisabled} title={saveBackTitle}>
                                     {isSaving ? 'Saving…' : <><Save size={14} aria-hidden /> Save Back</>}
                                 </button>
                             )}
@@ -1417,8 +1299,13 @@ export default function DocViewer() {
                         <div className="dv-edit-toolbar__group">
                             <button className={`dv-edit-btn ${activeTool === 'signature' ? 'dv-edit-btn--active' : ''}`}
                                 onClick={() => {
-                                    if (signatureStrokes.length === 0) setShowSignatureModal(true);
-                                    else setActiveTool('signature');
+                                    // Always open the modal — even with an existing
+                                    // signature — so the user can redraw/replace it
+                                    // (audit finding: the gate on strokes.length made
+                                    // an existing signature unreplaceable). Existing
+                                    // strokes aren't cleared just by reopening, so
+                                    // "Use Signature" alone still re-places the same one.
+                                    setShowSignatureModal(true);
                                 }} title="Signature">
                                 <span className="dv-edit-btn__icon"><PenTool size={14} /></span>
                                 <span className="dv-edit-btn__label">Sign</span>
@@ -1450,11 +1337,11 @@ export default function DocViewer() {
                         <div className="dv-edit-toolbar__divider" />
 
                         <div className="dv-edit-toolbar__group">
-                            <button className="dv-edit-btn" onClick={undo} title="Undo (Ctrl+Z)" disabled={undoStack.length === 0}>
+                            <button className="dv-edit-btn" onClick={undo} title="Undo (Ctrl+Z)" disabled={!history.canUndo}>
                                 <span className="dv-edit-btn__icon"><Undo2 size={14} aria-hidden /></span>
                                 <span className="dv-edit-btn__label">Undo</span>
                             </button>
-                            <button className="dv-edit-btn" onClick={redo} title="Redo (Ctrl+Shift+Z)" disabled={redoStack.length === 0}>
+                            <button className="dv-edit-btn" onClick={redo} title="Redo (Ctrl+Shift+Z)" disabled={!history.canRedo}>
                                 <span className="dv-edit-btn__icon"><Redo2 size={14} aria-hidden /></span>
                                 <span className="dv-edit-btn__label">Redo</span>
                             </button>
@@ -1547,6 +1434,9 @@ export default function DocViewer() {
                     <div className="dv-canvas-container" ref={containerRef}>
                         <div className="dv-canvas-wrapper"
                             style={{ cursor: activeTool === 'select' ? 'default' : activeTool === 'text' || activeTool === 'editText' ? 'text' : 'crosshair' }}>
+                            {renderError && (
+                                <div className="dv-canvas-error" role="status">{renderError}</div>
+                            )}
                             <canvas ref={canvasRef} />
                             <canvas ref={overlayRef} className="dv-overlay-canvas"
                                 onMouseDown={handleMouseDown}
@@ -1614,12 +1504,14 @@ export default function DocViewer() {
                         <div className="dv-text-preview__meta">
                             <span>{selectedFile.name}</span>
                             <span>{textDraft.length.toLocaleString()} chars</span>
-                            {isTextDirty && <span className="dv-text-preview__dirty">Unsaved changes</span>}
+                            {textReadOnly && <span className="dv-text-preview__dirty">Read-only</span>}
+                            {!textReadOnly && isTextDirty && <span className="dv-text-preview__dirty">Unsaved changes</span>}
                         </div>
                         <textarea
                             className="dv-text-preview__editor"
                             value={textDraft}
                             onChange={(e) => setTextDraft(e.target.value)}
+                            readOnly={textReadOnly}
                             spellCheck={false}
                         />
                     </div>

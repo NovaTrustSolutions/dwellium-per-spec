@@ -473,6 +473,21 @@
     border-radius: 4px;
 }
 
+/* Honest render-failure message — replaces the old fabricated demo page. */
+.dv-canvas-error {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 2;
+    padding: 10px 14px;
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    font-size: 13px;
+}
+
 /* ===== ZOOM CONTROLS ===== */
 .dv-zoom {
     display: flex;
@@ -639,7 +654,9 @@
 .dv-sig-canvas {
     width: 100%;
     height: 200px;
-    background: var(--bg-surface);
+    /* Paper-white in every theme: the ink is dark (#1a1a2e, the colour it is baked in), and on
+       the old --bg-surface it was invisible while signing. */
+    background: #fff;
     border-radius: 10px;
     cursor: crosshair;
     border: 2px solid color-mix(in srgb, var(--accent) 20%, transparent);

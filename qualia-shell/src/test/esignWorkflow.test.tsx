@@ -145,6 +145,15 @@ describe('ESign widget — documents list', () => {
         await waitFor(() => expect(screen.getByText('Nothing out for signature')).toBeInTheDocument());
     });
 
+    it('an unrecognised status still gets its own pill class (esign__status--unknown)', async () => {
+        stubBackend(u => (u.includes('/api/esign/documents')
+            ? jsonResponse({ success: true, data: [{ ...LOCAL_DOC, docStatus: 'weird-new-state', status: null }] })
+            : undefined));
+        render(<ESign />);
+        const pill = await screen.findByText('UNKNOWN');
+        expect(pill).toHaveClass('esign__status--unknown');
+    });
+
     it('Documenso list down but backend up → local rows plus an honest notice', async () => {
         stubBackend(u => (u.includes('/api/esign/envelopes') ? jsonResponse({ error: 'upstream 502' }, 502) : undefined));
         render(<ESign />);
@@ -230,6 +239,9 @@ describe('ESign widget — send flow', () => {
             if (u.includes('/api/files')) {
                 return jsonResponse({ success: true, data: [{ id: 'file-1', name: 'lease.pdf', type: 'pdf' }, { id: 'file-2', name: 'notes.txt', type: 'text' }] });
             }
+            if (u.includes('/api/esign/consent')) {
+                return jsonResponse({ success: true, data: { version: '2026-09-1', text: 'Signing electronically is voluntary. You may request a paper copy at no charge.' } });
+            }
             if (u.includes('/api/esign/send')) return jsonResponse({ success: true, data: { envelopeId: 'envl_new', recipients: [{ email: 'a@example.com', token: 'tok_new' }] } });
             return undefined;
         });
@@ -241,6 +253,7 @@ describe('ESign widget — send flow', () => {
     }
 
     it('template flow: Andy lease template preselected, recipients editable, POST /send carries templateId', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
         const calls = await openSend();
         const templateSelect = screen.getByLabelText('Template') as HTMLSelectElement;
         expect(templateSelect.value).toBe('42'); // DOCUMENSO_TEMPLATE_LEASE default
@@ -267,9 +280,28 @@ describe('ESign widget — send flow', () => {
         // sent panel offers the per-recipient signing link
         expect(screen.getByLabelText('Copy signing link for a@example.com')).toBeInTheDocument();
         expect(calls.some(c => c.includes('/api/esign/templates'))).toBe(true);
+        // the confirmation names the document and every recipient it is about to email
+        const prompt = String(confirmSpy.mock.calls[0][0]);
+        expect(prompt).toContain('a@example.com');
+        expect(prompt).toContain('b@example.com');
+    });
+
+    it('shows the ESIGN consent disclosure before sending, and the confirmation says it goes out', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        await openSend();
+        // the sender sees the exact wording the backend appends to every recipient's message
+        await waitFor(() => expect(screen.getByText(/You may request a paper copy at no charge/)).toBeInTheDocument());
+
+        fireEvent.change(screen.getByLabelText('Recipient 1 email'), { target: { value: 'a@example.com' } });
+        fireEvent.click(screen.getByRole('button', { name: /Send for signature/ }));
+        await waitFor(() => expect(screen.getByText('Sent for signature.')).toBeInTheDocument());
+        // one confirmation only, and it states the disclosure travels with the request
+        expect(confirmSpy).toHaveBeenCalledTimes(1);
+        expect(String(confirmSpy.mock.calls[0][0])).toMatch(/consent disclosure/i);
     });
 
     it('fileId flow: the picker lists only PDFs from the Dwellium files store and POSTs fileId', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
         await openSend();
         fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'file' } });
         const fileSelect = await screen.findByLabelText('PDF');
@@ -294,6 +326,55 @@ describe('ESign widget — send flow', () => {
         fireEvent.click(screen.getByRole('button', { name: /Send for signature/ }));
         await waitFor(() => expect(screen.getByText('Add at least one recipient email.')).toBeInTheDocument());
     });
+
+    it('declining the confirmation never sends the envelope', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+        const calls = await openSend();
+        fireEvent.change(screen.getByLabelText('Recipient 1 email'), { target: { value: 'a@example.com' } });
+        fireEvent.click(screen.getByRole('button', { name: /Send for signature/ }));
+        expect(confirmSpy).toHaveBeenCalled();
+        await waitFor(() => expect(screen.queryByText('Sent for signature.')).toBeNull());
+        expect(calls.some(c => c.includes('/api/esign/send'))).toBe(false);
+    });
+
+    it('a filled-but-invalid recipient blocks the send and says which row is wrong', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const calls = await openSend();
+        fireEvent.change(screen.getByLabelText('Recipient 1 email'), { target: { value: 'a@example.com' } });
+        fireEvent.click(screen.getByRole('button', { name: /Add recipient/ }));
+        fireEvent.change(screen.getByLabelText('Recipient 2 name'), { target: { value: 'Typo Tenant' } });
+        fireEvent.change(screen.getByLabelText('Recipient 2 email'), { target: { value: 'not-an-email' } });
+        fireEvent.click(screen.getByRole('button', { name: /Send for signature/ }));
+
+        const row2 = screen.getByLabelText('Recipient 2 email');
+        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Recipient 2 needs a valid email/));
+        expect(row2).toHaveAttribute('aria-invalid', 'true');
+        expect(row2).toHaveAttribute('aria-describedby', screen.getByRole('alert').id);
+        expect(document.activeElement).toBe(row2);
+        expect(confirmSpy).not.toHaveBeenCalled();
+        expect(calls.some(c => c.includes('/api/esign/send'))).toBe(false);
+    });
+
+    it('a successful send locks the draft — no second envelope without starting another send', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const calls = await openSend();
+        fireEvent.change(screen.getByLabelText('Recipient 1 email'), { target: { value: 'a@example.com' } });
+        fireEvent.click(screen.getByRole('button', { name: /Send for signature/ }));
+        await waitFor(() => expect(screen.getByText('Sent for signature.')).toBeInTheDocument());
+        const sends = () => calls.filter(c => c.includes('/api/esign/send')).length;
+        expect(sends()).toBe(1);
+
+        const sendBtn = screen.getByRole('button', { name: /Send for signature/ });
+        expect(sendBtn).toBeDisabled();
+        expect(screen.getByLabelText('Recipient 1 email')).toBeDisabled();
+        fireEvent.click(sendBtn);
+        await waitFor(() => expect(sends()).toBe(1));
+
+        // the obvious way back to a fresh draft
+        fireEvent.click(screen.getByRole('button', { name: /Start another send/ }));
+        expect(screen.getByLabelText('Recipient 1 email')).toHaveValue('');
+        expect(screen.getByRole('button', { name: /Send for signature/ })).toBeEnabled();
+    });
 });
 
 describe('TenantSignPrompt', () => {
@@ -317,5 +398,21 @@ describe('TenantSignPrompt', () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ needsSetup: true }, 503)));
         const { container: c2 } = render(<TenantSignPrompt />);
         await waitFor(() => expect(c2.firstChild).toBeNull());
+    });
+
+    it('a fetch failure says so quietly and retries — a waiting lease is never silently hidden', async () => {
+        let fail = true;
+        vi.stubGlobal('fetch', vi.fn(async () => (fail
+            ? Promise.reject(new Error('offline'))
+            : jsonResponse({
+                success: true,
+                data: [{ workitemId: 'wi-1', title: 'Lease — Woodland Parc 2B', docStatus: 'sent', status: null, signingUrl: 'https://app.documenso.com/sign/tok_mine' }],
+            }))));
+        render(<TenantSignPrompt />);
+        await screen.findByText(/couldn’t check|couldn't check/);
+
+        fail = false;
+        fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+        expect(await screen.findByRole('link', { name: /Review & sign Lease — Woodland Parc 2B \(opens in a new tab\)/ })).toBeInTheDocument();
     });
 });

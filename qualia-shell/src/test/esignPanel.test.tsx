@@ -88,6 +88,7 @@ describe('ESign — embedded Documenso panel', () => {
     });
 
     it('"Review & sign here" loads the recipient signing URL in the embedded frame', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true); // send is confirm-gated
         stubBackend(u => {
             if (u.includes('/api/esign/templates')) return jsonResponse({ success: true, data: [{ id: 42, title: 'GA Lease' }], leaseTemplateId: 42 });
             if (u.includes('/api/files')) return jsonResponse({ success: true, data: [] });

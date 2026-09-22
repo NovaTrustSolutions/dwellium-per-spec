@@ -24,6 +24,7 @@ import {
     documensoConfiguredUrl,
     documensoDocumentUrl,
     downloadAuditLog,
+    getEsignConsent,
     isCloudDocumensoHost,
     downloadSignedPdf,
     listDocumensoEnvelopes,
@@ -52,6 +53,9 @@ type ViewState =
 interface DraftRecipient { name: string; email: string; role: string }
 
 const ANDY_MESSAGE = 'Please review and sign at your earliest convenience. — AstraStrata Management';
+
+/** Good enough for a send gate: something@something.tld, no spaces. The backend re-validates. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type ViteEnv = Record<string, string | undefined> | undefined;
 type Reach = 'checking' | 'up' | 'down';
@@ -87,7 +91,7 @@ function DocumensoFrame({ base, src }: { base: string; src: string }) {
     }, [reach, src]);
 
     if (reach === 'checking') {
-        return <div className="esign__empty" data-state="panel-checking"><RefreshCw size={20} aria-hidden /><p>Checking Documenso…</p></div>;
+        return <div className="esign__empty" data-state="panel-checking"><RefreshCw size={20} aria-hidden /><p role="status">Checking Documenso…</p></div>;
     }
     if (reach === 'down') {
         return (
@@ -175,8 +179,23 @@ export default function ESign({
     // navigating to a specific doc reloads the frame to that path (plan: in-Dwellium Documenso).
     const [panelSrc, setPanelSrc] = useState<string>(documensoAppUrl(env));
     const openPanel = (src: string): void => { setPanelSrc(src); setView('panel'); };
+    // Successes are announced politely; failures go through `error` (role="alert"), and a
+    // recipient-row failure additionally names its row so the message sits next to the field.
     const [notice, setNotice] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [badRow, setBadRow] = useState<number | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
+    const emailRefs = useRef<Array<HTMLInputElement | null>>([]);
+    const rootRef = useRef<HTMLDivElement>(null);
+    const mounted = useRef(false);
+
+    const fail = (message: string, row: number | null = null): void => {
+        setNotice(null);
+        setError(message);
+        setBadRow(row);
+        if (row !== null) emailRefs.current[row]?.focus();
+    };
+    const succeed = (message: string): void => { setError(null); setBadRow(null); setNotice(message); };
 
     // ── Send-flow state ──
     const [templates, setTemplates] = useState<EsignTemplate[]>([]);
@@ -189,6 +208,10 @@ export default function ESign({
     const [message, setMessage] = useState(ANDY_MESSAGE);
     const [recipients, setRecipients] = useState<DraftRecipient[]>([{ name: '', email: '', role: 'SIGNER' }]);
     const [sentRecipients, setSentRecipients] = useState<EsignRecipient[] | null>(null);
+    // ESIGN Act §101(c) disclosure — wording lives in the backend (esignRoutes.ts
+    // ESIGN_CONSENT) and is pending legal review; shown here so the sender sees
+    // exactly what the recipient will receive.
+    const [consent, setConsent] = useState<{ version: string; text: string } | null>(null);
 
     const refresh = useCallback(async () => {
         setState({ kind: 'loading' });
@@ -203,8 +226,17 @@ export default function ESign({
 
     useEffect(() => { void refresh(); }, [refresh]);
 
+    // Switching view (or finishing a refresh) unmounts whatever held focus, dropping it on
+    // <body>. Put it on the new view's heading instead — never steal focus that still has a home.
+    useEffect(() => {
+        if (!mounted.current) { mounted.current = true; return; }
+        if (document.activeElement && document.activeElement !== document.body) return;
+        rootRef.current?.querySelector<HTMLElement>('[data-view-heading]')?.focus();
+    }, [view, state.kind]);
+
     const loadSendData = useCallback(async () => {
-        const [tpl, pdfs] = await Promise.all([listEsignTemplates(), listPdfFiles()]);
+        const [tpl, pdfs, disclosure] = await Promise.all([listEsignTemplates(), listPdfFiles(), getEsignConsent()]);
+        setConsent(disclosure.kind === 'ok' ? disclosure.data : null);
         if (tpl.kind === 'ok') {
             setTemplates(tpl.data.templates);
             setLeaseTemplateId(tpl.data.leaseTemplateId);
@@ -236,27 +268,54 @@ export default function ESign({
     const updateRecipient = (i: number, patch: Partial<DraftRecipient>) =>
         setRecipients(rs => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
+    const startNewSend = (): void => {
+        setSentRecipients(null);
+        setRecipients([{ name: '', email: '', role: 'SIGNER' }]);
+        setTitle('');
+        setNotice(null);
+        setError(null);
+        setBadRow(null);
+    };
+
     const submitSend = async () => {
-        const wanted = recipients.filter(r => r.email.includes('@'));
-        if (wanted.length === 0) { setNotice('Add at least one recipient email.'); return; }
-        if (mode === 'template' && !templateId) { setNotice('Pick a template.'); return; }
-        if (mode === 'file' && !fileId) { setNotice('Pick a PDF from the files store.'); return; }
+        if (sentRecipients) return; // already sent — the draft is locked until "Start a new send"
+        // A row counts as filled if EITHER field has content: a half-filled row is a recipient
+        // the user meant to contact, never something to silently drop.
+        const filled = recipients.map((r, i) => ({ r, i })).filter(({ r }) => r.email.trim() || r.name.trim());
+        if (filled.length === 0) { fail('Add at least one recipient email.', 0); return; }
+        const bad = filled.find(({ r }) => !EMAIL_RE.test(r.email.trim()));
+        if (bad) {
+            fail(`Recipient ${bad.i + 1} needs a valid email address (for example name@example.com).`, bad.i);
+            return;
+        }
+        if (mode === 'template' && !templateId) { fail('Pick a template.'); return; }
+        if (mode === 'file' && !fileId) { fail('Pick a PDF from the files store.'); return; }
+
+        const docTitle = title.trim() || 'Document from Dwellium';
+        const wanted = filled.map(({ r }) => ({ ...r, email: r.email.trim() }));
+        // Sending emails real people — name the document and every recipient before it goes out
+        // (same confirm gate Cancel uses).
+        const ok = window.confirm(
+            `Send “${docTitle}” for signature to:\n\n${wanted.map(r => r.email).join('\n')}\n\nEach recipient gets a signing email now, including the e-sign consent disclosure (paper copy on request, consent withdrawable before signing).`,
+        );
+        if (!ok) return;
+
         setBusy('send');
         const r = await sendEnvelope({
-            title: title.trim() || 'Document from Dwellium',
+            title: docTitle,
             recipients: wanted,
             ...(mode === 'template' ? { templateId: Number(templateId) } : { fileId }),
             message,
         });
         setBusy(null);
         if (r.kind === 'ok') {
-            setNotice('Sent for signature.');
+            succeed('Sent for signature.');
             setSentRecipients(Array.isArray(r.data.recipients) ? r.data.recipients : []);
             void refresh();
         } else if (r.kind === 'needs-setup') {
             setState({ kind: 'needs-setup' });
         } else {
-            setNotice(r.message);
+            fail(r.message);
         }
     };
 
@@ -264,9 +323,9 @@ export default function ESign({
         setBusy(key);
         const r = await fn();
         setBusy(null);
-        if (r.kind === 'ok') setNotice(okText);
+        if (r.kind === 'ok') succeed(okText);
         else if (r.kind === 'needs-setup') setState({ kind: 'needs-setup' });
-        else setNotice(r.message || 'Action failed');
+        else fail(r.message || 'Action failed');
     };
 
     const onCheckStatus = (row: MergedEsignRow) =>
@@ -301,16 +360,18 @@ export default function ESign({
     const copySigningLink = async (token: string) => {
         try {
             await navigator.clipboard.writeText(signingUrlFromToken(token));
-            setNotice('Signing link copied.');
+            succeed('Signing link copied.');
         } catch {
-            setNotice(signingUrlFromToken(token));
+            succeed(signingUrlFromToken(token));
         }
     };
 
     return (
-        <div className="esign">
+        <div className="esign" ref={rootRef}>
             <div className="esign__head">
-                <h2 className="esign__title"><PenLine size={16} aria-hidden /> E-Sign</h2>
+                <h2 className="esign__title" tabIndex={-1} {...(view !== 'send' ? { 'data-view-heading': '' } : {})}>
+                    <PenLine size={16} aria-hidden /> E-Sign
+                </h2>
                 <div className="esign__head-actions">
                     {view !== 'panel' && (
                         <button className="esign__btn esign__btn--ghost" onClick={() => openPanel(documensoAppUrl(env))}>
@@ -339,10 +400,11 @@ export default function ESign({
             </div>
 
             {notice && <p className="esign__notice" role="status">{notice}</p>}
+            {error && badRow === null && <p className="esign__notice esign__notice--error" role="alert">{error}</p>}
 
             {view === 'panel' && <DocumensoPanel env={env} src={panelSrc} />}
 
-            {view !== 'panel' && state.kind === 'loading' && <p className="esign__muted">Loading sent documents…</p>}
+            {view !== 'panel' && state.kind === 'loading' && <p className="esign__muted" role="status">Loading sent documents…</p>}
 
             {view !== 'panel' && state.kind === 'needs-setup' && (
                 <div className="esign__empty" data-state="needs-setup">
@@ -367,7 +429,7 @@ export default function ESign({
 
             {state.kind === 'ok' && view === 'send' && (
                 <div className="esign__send" data-state="send">
-                    <h3 className="esign__subtitle">New send</h3>
+                    <h2 className="esign__subtitle" tabIndex={-1} data-view-heading>New send</h2>
                     <div className="esign__field-row">
                         <label className="esign__label" htmlFor="esign-mode">Source</label>
                         <select id="esign-mode" className="esign__input" value={mode} onChange={e => setMode(e.target.value as 'template' | 'file')}>
@@ -406,41 +468,60 @@ export default function ESign({
                         <label className="esign__label" htmlFor="esign-message">Message</label>
                         <input id="esign-message" className="esign__input" value={message} onChange={e => setMessage(e.target.value)} />
                     </div>
+                    {/* Consent disclosure shown to the SENDER (staff) — it travels to the consumer in the
+                        message the backend sends. Wording comes from esignRoutes.ts ESIGN_CONSENT and is
+                        engineering placeholder copy: it must be reviewed by counsel before production use. */}
+                    {consent && (
+                        <p className="esign__muted" data-state="consent">
+                            Included in every recipient’s message: {consent.text}
+                        </p>
+                    )}
 
-                    <h4 className="esign__subtitle">Recipients (signing order = row order)</h4>
-                    {recipients.map((r, i) => (
-                        // ponytail: index key is correct here — rows ARE positional (signing order).
-                        <div className="esign__recipient-row" key={`recipient-${i}`}>
-                            <span className="esign__order">{i + 1}.</span>
-                            <input className="esign__input" aria-label={`Recipient ${i + 1} name`} placeholder="Name"
-                                value={r.name} onChange={e => updateRecipient(i, { name: e.target.value })} />
-                            <input className="esign__input" aria-label={`Recipient ${i + 1} email`} placeholder="email@example.com"
-                                value={r.email} onChange={e => updateRecipient(i, { email: e.target.value })} />
-                            <select className="esign__input" aria-label={`Recipient ${i + 1} role`}
-                                value={r.role} onChange={e => updateRecipient(i, { role: e.target.value })}>
-                                <option value="SIGNER">Signer</option>
-                                <option value="APPROVER">Approver</option>
-                                <option value="CC">CC</option>
-                                <option value="VIEWER">Viewer</option>
-                            </select>
-                            <button className="esign__btn esign__btn--ghost" aria-label={`Remove recipient ${i + 1}`}
-                                onClick={() => setRecipients(rs => rs.filter((_, j) => j !== i))} disabled={recipients.length === 1}>
-                                <Trash2 size={13} aria-hidden />
-                            </button>
-                        </div>
-                    ))}
-                    <div className="esign__send-actions">
+                    <fieldset className="esign__recipients" disabled={sentRecipients !== null}>
+                        <legend className="esign__subtitle">Recipients (signing order = row order)</legend>
+                        {recipients.map((r, i) => (
+                            // ponytail: index key is correct here — rows ARE positional (signing order).
+                            <div className="esign__recipient-row" key={`recipient-${i}`}>
+                                <span className="esign__order">{i + 1}.</span>
+                                <input className="esign__input" aria-label={`Recipient ${i + 1} name`} placeholder="Name"
+                                    autoComplete="name"
+                                    value={r.name} onChange={e => updateRecipient(i, { name: e.target.value })} />
+                                <input className="esign__input" aria-label={`Recipient ${i + 1} email`} placeholder="email@example.com"
+                                    type="email" autoComplete="email"
+                                    ref={el => { emailRefs.current[i] = el; }}
+                                    aria-invalid={badRow === i || undefined}
+                                    aria-describedby={badRow === i ? `esign-recipient-error-${i}` : undefined}
+                                    value={r.email} onChange={e => updateRecipient(i, { email: e.target.value })} />
+                                <select className="esign__input" aria-label={`Recipient ${i + 1} role`}
+                                    value={r.role} onChange={e => updateRecipient(i, { role: e.target.value })}>
+                                    <option value="SIGNER">Signer</option>
+                                    <option value="APPROVER">Approver</option>
+                                    <option value="CC">CC</option>
+                                    <option value="VIEWER">Viewer</option>
+                                </select>
+                                <button className="esign__btn esign__btn--ghost" aria-label={`Remove recipient ${i + 1}`}
+                                    onClick={() => setRecipients(rs => rs.filter((_, j) => j !== i))} disabled={recipients.length === 1}>
+                                    <Trash2 size={13} aria-hidden />
+                                </button>
+                                {badRow === i && error && (
+                                    <p className="esign__notice esign__notice--error" id={`esign-recipient-error-${i}`} role="alert">{error}</p>
+                                )}
+                            </div>
+                        ))}
                         <button className="esign__btn esign__btn--ghost" onClick={() => setRecipients(rs => [...rs, { name: '', email: '', role: 'SIGNER' }])}>
                             <Plus size={12} aria-hidden /> Add recipient
                         </button>
-                        <button className="esign__btn" onClick={() => void submitSend()} disabled={busy === 'send'}>
+                    </fieldset>
+                    <div className="esign__send-actions">
+                        <button className="esign__btn" onClick={() => void submitSend()}
+                            disabled={busy === 'send' || sentRecipients !== null} aria-busy={busy === 'send' || undefined}>
                             <Send size={12} aria-hidden /> {busy === 'send' ? 'Sending…' : 'Send for signature'}
                         </button>
                     </div>
 
                     {sentRecipients && (
                         <div className="esign__sent-panel" data-state="sent">
-                            <h4 className="esign__subtitle">Sent — signing links</h4>
+                            <h3 className="esign__subtitle">Sent — signing links</h3>
                             {sentRecipients.length === 0 && <p className="esign__muted">Recipients will receive Documenso email invitations.</p>}
                             {sentRecipients.map(r => (
                                 <div className="esign__sent-row" key={r.email}>
@@ -459,13 +540,16 @@ export default function ESign({
                                     )}
                                 </div>
                             ))}
+                            <button className="esign__btn esign__btn--ghost" onClick={startNewSend}>
+                                <Plus size={12} aria-hidden /> Start another send
+                            </button>
                         </div>
                     )}
                 </div>
             )}
 
             {state.kind === 'ok' && view === 'list' && state.liveError && (
-                <p className="esign__muted" data-state="live-error">Documenso list unavailable ({state.liveError}) — showing Dwellium records.</p>
+                <p className="esign__muted" data-state="live-error" role="status">Documenso list unavailable ({state.liveError}) — showing Dwellium records.</p>
             )}
 
             {state.kind === 'ok' && view === 'list' && state.rows.length === 0 && (
@@ -478,8 +562,12 @@ export default function ESign({
 
             {state.kind === 'ok' && view === 'list' && state.rows.length > 0 && (
                 <table className="esign__table">
+                    <caption className="esign__muted">Documents out for signature — recipients, status and per-document actions.</caption>
                     <thead>
-                        <tr><th>Document</th><th>Recipients</th><th>Status</th><th>Sent</th><th>Actions</th></tr>
+                        <tr>
+                            <th scope="col">Document</th><th scope="col">Recipients</th><th scope="col">Status</th>
+                            <th scope="col">Sent</th><th scope="col">Actions</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {state.rows.map(row => {
@@ -502,19 +590,27 @@ export default function ESign({
                                                         {r.email} <Copy size={10} aria-hidden />
                                                     </button>
                                                 )
-                                                : <span key={r.email} className="esign__chip" title={r.status || r.signingStatus || r.role || 'signer'}>{r.email}</span>)}
+                                                : (
+                                                    // Per-recipient status is readable text, not a title tooltip.
+                                                    <span key={r.email} className="esign__chip">
+                                                        <span>{r.email}</span>{' '}
+                                                        <span className="esign__chip-status">{r.status || r.signingStatus || r.role || 'signer'}</span>
+                                                    </span>
+                                                ))}
                                     </td>
                                     <td><span className={`esign__status esign__status--${row.pill.toLowerCase()}`}>{row.pill}</span></td>
                                     <td className="esign__muted">{row.sentAt ? new Date(row.sentAt).toLocaleDateString() : '—'}</td>
                                     <td className="esign__actions">
                                         {row.workitemId && (
                                             <button className="esign__btn esign__btn--ghost" aria-label={`Check status of ${row.title}`}
-                                                disabled={busy === `status:${row.workitemId}`} onClick={() => void onCheckStatus(row)}>
+                                                disabled={busy === `status:${row.workitemId}`} aria-busy={busy === `status:${row.workitemId}` || undefined}
+                                                onClick={() => void onCheckStatus(row)}>
                                                 <RefreshCw size={12} aria-hidden />
                                             </button>
                                         )}
                                         {(row.workitemId || row.envelopeId) && !completed && row.pill !== 'CANCELLED' && (
                                             <button className="esign__btn esign__btn--ghost" aria-label={`Resend ${row.title}`}
+                                                aria-busy={busy === `resend:${row.envelopeId || row.workitemId}` || undefined}
                                                 onClick={() => void onResend(row)}>
                                                 <Send size={12} aria-hidden />
                                             </button>

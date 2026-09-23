@@ -58,6 +58,17 @@ export interface SyncOptions<T> {
     serialize?: (value: T) => string;
     /** Write-through debounce; default 800ms. */
     debounceMs?: number;
+    /**
+     * Reconcile hydrate()'s remote payload with the local snapshot instead of
+     * remote unconditionally replacing local. `merge(local, remote)` runs
+     * right after a successful GET; its result is applied via `base.set()`.
+     * When the merged value differs from what the backend sent (JSON
+     * comparison), a write-through is scheduled so local-only data reaches
+     * the backend. Omit for the old behaviour (remote replaces local
+     * outright) — every store not passing `merge` is byte-identical to
+     * before this option existed.
+     */
+    merge?: (local: T, remote: T) => T;
 }
 
 export interface StaticSyncOptions<T> {
@@ -286,6 +297,7 @@ function makeSynced<T>(
     persistLocal: (value: T) => void,
     debounceMs: number,
     setOwner: (userId: string | null) => void,
+    merge?: (local: T, remote: T) => T,
 ): SyncedStore<T> {
     const objectId = (): string => `${objectType}_${ownerId()}`;
     // Set by the most recent hydrate() this session; lets migrate() skip its
@@ -357,8 +369,19 @@ function makeSynced<T>(
             // write-through — applying the stale remote would eat the user's input.
             if (localWriteSeq !== seqAtStart) return;
             if (remote && remote.deletedAt == null) {
-                const value = remote.payload as T;
-                base.set(value, () => persistLocal(value));
+                const remoteValue = remote.payload as T;
+                if (merge) {
+                    const merged = merge(base.getSnapshot(), remoteValue);
+                    base.set(merged, () => persistLocal(merged));
+                    // Local-only data survived the merge (differs from what the
+                    // backend actually has) — schedule a write-through so it
+                    // reaches the backend instead of only living in this tab.
+                    if (JSON.stringify(merged) !== JSON.stringify(remoteValue)) {
+                        scheduleWriteThrough(merged);
+                    }
+                } else {
+                    base.set(remoteValue, () => persistLocal(remoteValue));
+                }
             }
         },
 
@@ -392,7 +415,7 @@ export function withSync<T>(base: LocalStorageStore<T>, opts: SyncOptions<T>): S
     };
     return makeSynced(base, opts.objectType, ownerId, persistLocal, opts.debounceMs ?? 800, (userId) => {
         opts.holder.current = userId;
-    });
+    }, opts.merge);
 }
 
 /** Wrap a static-key store; owner is the logged-in user (set by bootstrap). */

@@ -464,6 +464,86 @@ describe('oneSaveStore bootstrap isolation', () => {
     });
 });
 
+// SyncOptions.merge (wiki-widget-hardening plan §A): hydrate() can reconcile
+// the remote payload against the local snapshot instead of remote always
+// replacing local outright — and schedule a write-through when the
+// reconciled result carries local-only data the backend doesn't have yet.
+describe('oneSaveStore hydrate merge option', () => {
+    interface Item { v: number }
+    type ItemMap = Record<string, Item>;
+
+    function higherValueWins(local: ItemMap, remote: ItemMap): ItemMap {
+        const out: ItemMap = { ...remote };
+        for (const [k, lv] of Object.entries(local)) {
+            const rv = out[k];
+            if (!rv || lv.v > rv.v) out[k] = lv;
+        }
+        return out;
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.mocked(oneSaveClient.get).mockReset();
+        vi.mocked(oneSaveClient.put).mockReset();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('merges local + remote on hydrate and schedules a write-through for the reconciled result', async () => {
+        const holder: { current: string | null } = { current: 'user-1' };
+        const resolveKey = () => `merge-test:${holder.current}`;
+        const store = withSync(
+            createLocalStorageStore<ItemMap>({ key: resolveKey, deserializer: () => ({}), defaultValue: {} }),
+            { objectType: 'merge-test', holder, resolveKey, debounceMs: 10, merge: higherValueWins },
+        );
+        // A local-only edit, newer than whatever the backend has for `a`.
+        store.set({ a: { v: 2 } }, () => { /* not exercising real persistence */ });
+        vi.mocked(oneSaveClient.put).mockResolvedValue(savedObject('merge-test_user-1', 'user-1', {}));
+        vi.mocked(oneSaveClient.get).mockResolvedValue(
+            savedObject('merge-test_user-1', 'user-1', { a: { v: 1 }, b: { v: 5 } }),
+        );
+
+        await store.hydrate();
+
+        // Local's newer `a` survives; remote-only `b` is picked up too.
+        expect(store.getSnapshot()).toEqual({ a: { v: 2 }, b: { v: 5 } });
+
+        await vi.advanceTimersByTimeAsync(10);
+        expect(oneSaveClient.put).toHaveBeenCalledWith(expect.objectContaining({
+            id: 'merge-test_user-1',
+            payload: { a: { v: 2 }, b: { v: 5 } },
+        }));
+    });
+
+    it('control: a store with no merge option still has hydrate replace local with remote outright', async () => {
+        const holder: { current: string | null } = { current: 'user-1' };
+        const resolveKey = () => `no-merge-test:${holder.current}`;
+        const store = withSync(
+            createLocalStorageStore<ItemMap>({ key: resolveKey, deserializer: () => ({}), defaultValue: {} }),
+            { objectType: 'no-merge-test', holder, resolveKey, debounceMs: 10 },
+        );
+        store.set({ a: { v: 2 } }, () => { /* not exercising real persistence */ });
+        // Let the local set's own write-through flush and clear before
+        // isolating what hydrate() itself does.
+        vi.mocked(oneSaveClient.put).mockResolvedValue(savedObject('no-merge-test_user-1', 'user-1', {}));
+        await vi.advanceTimersByTimeAsync(10);
+        vi.mocked(oneSaveClient.put).mockReset();
+
+        vi.mocked(oneSaveClient.get).mockResolvedValue(
+            savedObject('no-merge-test_user-1', 'user-1', { a: { v: 1 }, b: { v: 5 } }),
+        );
+
+        await store.hydrate();
+
+        expect(store.getSnapshot()).toEqual({ a: { v: 1 }, b: { v: 5 } });
+        // Byte-identical to pre-merge behaviour: hydrate alone never PUTs.
+        await vi.advanceTimersByTimeAsync(10);
+        expect(oneSaveClient.put).not.toHaveBeenCalled();
+    });
+});
+
 // Plan 060 phase 4 — module-level flush queue: many stores' debounced writes
 // coalesce into one oneSaveClient.putBatch call instead of one PUT each.
 describe('oneSaveStore batched write-through', () => {

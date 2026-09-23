@@ -115,7 +115,9 @@ export default function Wiki() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const cancelLoadRef = useRef<(() => void) | null>(null);
     const loadTree = useCallback(() => {
+        cancelLoadRef.current?.(); // a Retry while a fetch is in flight must not race it
         let cancelled = false;
         setLoading(true);
         (async () => {
@@ -131,7 +133,9 @@ export default function Wiki() {
                 if (!cancelled) setLoading(false);
             }
         })();
-        return () => { cancelled = true; };
+        const cancel = () => { cancelled = true; };
+        cancelLoadRef.current = cancel;
+        return cancel;
     }, []);
 
     useEffect(() => loadTree(), [loadTree]);
@@ -234,6 +238,7 @@ export default function Wiki() {
     }, []);
 
     return (
+        <div className="wiki-host">
         <div className="wiki-root">
             {/* Left: tier tree */}
             <div className="wiki-sidebar">
@@ -350,6 +355,7 @@ export default function Wiki() {
                     </>
                 )}
             </div>
+        </div>
         </div>
     );
 }

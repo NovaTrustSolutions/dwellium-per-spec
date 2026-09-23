@@ -5,14 +5,20 @@
    --accent --accent-text --accent-subtle --danger --success --text-inverse
    Container query (not @media): the widget window resizes independently of viewport. */
 
+/* The query container must be an ancestor: a container query can't restyle its own container. */
+.wiki-host {
+    height: 100%;
+    width: 100%;
+    container-type: inline-size;
+}
+
 .wiki-root {
     display: flex;
     height: 100%;
     width: 100%;
     background: var(--bg-desktop);
-    color: var(--text-secondary);
+    color: var(--text-primary); /* content reads as primary text: latte's --muted fails AA on its own surfaces */
     overflow: hidden;
-    container-type: inline-size;
 }
 
 .wiki-sidebar {
@@ -76,7 +82,7 @@
     background: transparent;
     border: none;
     border-left: 2px solid transparent;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     cursor: pointer;
     font: inherit;
     font-size: 12px;
@@ -235,7 +241,7 @@
     padding: 3px 0;
     border: none;
     background: none;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font: inherit;
     font-size: 12px;
     text-align: left;

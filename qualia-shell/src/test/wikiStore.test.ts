@@ -160,6 +160,12 @@ describe('isWikiPageStale with inputs (LLM cited a subset)', () => {
         expect(isWikiPageStale(page, [{ path: 'a.md', modified: '2026-01-01T00:00:00Z' }, { path: 'b.md' }])).toBe(false);
         expect(isWikiPageStale(page, [{ path: 'a.md' }, { path: 'b.md' }, { path: 'c.md' }])).toBe(true);
     });
+    it('legacy pages (no inputs) are judged by modification time only, not by the cited subset', () => {
+        const legacy = sanitizeWikiPage({ path: '/n', name: 'n', sources: ['a.md'], compiledAt: '2026-01-02T00:00:00Z', compiledBy: 'llm' })!;
+        expect(legacy.inputs).toBeUndefined();
+        expect(isWikiPageStale(legacy, [{ path: 'a.md', modified: '2026-01-01T00:00:00Z' }, { path: 'b.md' }])).toBe(false);
+        expect(isWikiPageStale(legacy, [{ path: 'a.md', modified: '2026-01-03T00:00:00Z' }])).toBe(true);
+    });
     it('sanitize keeps inputs', () => {
         expect(sanitizeWikiPage({ path: '/p', name: 'p', inputs: ['a', 1] })?.inputs).toEqual(['a']);
     });

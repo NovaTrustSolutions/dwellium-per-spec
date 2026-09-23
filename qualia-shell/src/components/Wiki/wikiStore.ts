@@ -134,9 +134,14 @@ export function setWikiPage(page: WikiPage): void {
  *  any current source was modified after the page was compiled. Missing or
  *  unparsable `modified` values are ignored (not treated as stale). */
 export function isWikiPageStale(page: WikiPage, current: { path: string; modified?: string }[]): boolean {
-    const pageKey = [...new Set(page.inputs ?? page.sources)].sort().join('\u0000');
-    const curKey = [...new Set(current.map((c) => c.path))].sort().join('\u0000');
-    if (pageKey !== curKey) return true;
+    // Pages compiled before `inputs` existed only kept the LLM's cited subset, which
+    // never matches the real file set — for those, judge by modification time alone
+    // rather than flagging every legacy page "out of date" forever.
+    if (page.inputs) {
+        const pageKey = [...new Set(page.inputs)].sort().join('\u0000');
+        const curKey = [...new Set(current.map((c) => c.path))].sort().join('\u0000');
+        if (pageKey !== curKey) return true;
+    }
     const compiledTime = Date.parse(page.compiledAt);
     if (Number.isNaN(compiledTime)) return false;
     return current.some((c) => {

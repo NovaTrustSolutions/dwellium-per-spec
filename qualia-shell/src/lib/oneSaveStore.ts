@@ -362,12 +362,17 @@ function makeSynced<T>(
         async hydrate(prefetched?: DwelliumObject<unknown> | null) {
             if (!ONE_SAVE_ENABLED) return;
             const seqAtStart = localWriteSeq;
+            const ownerAtStart = ownerId();
             const remote = (prefetched !== undefined ? prefetched : await oneSaveClient.get<T>(objectId())) as DwelliumObject<T> | null;
             lastHydrateSeen = remote != null;
             // A local edit landed while the GET was in flight (e.g. typing in a
             // just-opened lazy widget): local is newer and is already queued for
             // write-through — applying the stale remote would eat the user's input.
             if (localWriteSeq !== seqAtStart) return;
+            // The account switched while the GET was in flight: the dynamic-key base
+            // store now resolves to the NEW owner's key, so applying (or merging) the
+            // old owner's payload would write it into the new account's storage.
+            if (ownerId() !== ownerAtStart) return;
             if (remote && remote.deletedAt == null) {
                 const remoteValue = remote.payload as T;
                 if (merge) {

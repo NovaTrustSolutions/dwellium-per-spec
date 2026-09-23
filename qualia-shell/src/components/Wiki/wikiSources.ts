@@ -45,7 +45,7 @@ export async function fetchSourceExcerpts(
     let total = 0;
     for (const r of results) {
         if (!r) continue;
-        if (total + r.excerpt.length > maxTotalChars) break;
+        if (total + r.excerpt.length > maxTotalChars) continue; // skip just this one; smaller later files may still fit
         out.push(r);
         total += r.excerpt.length;
     }

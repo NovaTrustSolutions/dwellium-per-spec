@@ -30,6 +30,12 @@ describe('fetchSourceExcerpts', () => {
         expect(out[0].excerpt).toHaveLength(100);
     });
 
+    it('skips an oversized file but still packs smaller later ones under the total cap', async () => {
+        const files: Record<string, string> = { 'big.md': 'x'.repeat(900), 'small.md': 'tiny', 'mid.md': 'y'.repeat(50) };
+        const out = await fetchSourceExcerpts(['big.md', 'small.md', 'mid.md'], async (p) => ({ content: files[p] }), { maxCharsPerFile: 1000, maxTotalChars: 100 });
+        expect(out.map((e) => e.path)).toEqual(['small.md', 'mid.md']);
+    });
+
     it('respects maxTotalChars across files', async () => {
         const read = vi.fn(async () => ({ content: 'x'.repeat(3000) }));
         const out = await fetchSourceExcerpts(['a.txt', 'b.txt', 'c.txt'], read, {

@@ -348,3 +348,17 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Root cause:** the guardian regex-scans **raw bytes** (`buffer.toString('utf-8')`); `\b\d{8,17}\b` matches the six 10-digit byte offsets in a classic PDF xref table. Mode is STRICT with no exemption for binary formats.
 - **Status:** not fixed. Worked around in the live test with an xref-stream PDF (binary offsets, no digit runs — what most modern PDFs use). Decision needed: text-extract before scanning, or exempt binary formats.
 - **Prevention:** scanners that run over bytes will find "PII" in any binary container; scan extracted text.
+
+## 2026-09-23 — One Save hydrate wrote the previous account's payload into the new account's key
+
+- **Error:** (found by the wiki-hardening adversarial review, proven with a runtime test) switching accounts while a store's hydrate GET was in flight left account A's remote payload in account B's localStorage.
+- **Root cause:** `makeSynced.hydrate()` issued the GET for the owner at call time, but after the `await` applied the payload through the dynamic-key base store, whose key now resolved to the NEW owner. Every `withSync` store had it; the new `merge` option made it worse by folding A's pages into B's local map.
+- **Fix:** `hydrate()` captures `ownerAtStart` before the await and returns if `ownerId()` changed (`src/lib/oneSaveStore.ts`). The bulk-prefetch path was already safe (it looks up the NEW owner's object id). Regression: `src/test/oneSaveOwnerRace.test.ts` (mutation-checked).
+- **Prevention:** anything applied after an `await` must re-check both "did local change" (`localWriteSeq`) and "is it still the same owner".
+
+## 2026-09-23 — Wiki widget: container query never fired; staleness judged cited sources
+
+- **Error:** at a 460px window the Wiki sidebar overflowed off the left edge; every page would have shown "Out of date".
+- **Root cause:** (1) `.wiki-root` was both the `container-type` element and the target of the `@container` rule — a container query cannot restyle its own container. (2) staleness compared the page's *cited* sources (the LLM may cite a subset) with the node's files.
+- **Fix:** outer `.wiki-host` is the query container; pages store `inputs` (every file compiled from) and staleness uses it; legacy pages without `inputs` are judged by modification time only.
+- **Prevention:** put `container-type` on a wrapper, never on the element the query restyles. Verify responsive CSS with a real render (the standalone harness), not jsdom — all unit tests were green through this bug.

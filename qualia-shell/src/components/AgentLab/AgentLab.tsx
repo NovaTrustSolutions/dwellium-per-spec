@@ -448,7 +448,12 @@ function RunOutput(props: {
             {showRatingFor && (
                 <div className="alab-final">
                     <div className="alab-final-head">
-                        <span>{showRatingFor === 'team' ? 'Final product' : 'Result'}</span>
+                        <span>
+                            {showRatingFor === 'team' ? 'Final product' : 'Result'}
+                            {/* D2: a solo result carries its own verification status (team members show theirs above). */}
+                            {showRatingFor === 'solo' && soloResult?.verifyStatus === 'flagged' && <span className="alab-unverified"> · unverified claims</span>}
+                            {showRatingFor === 'solo' && soloResult?.verifyStatus === 'unavailable' && <span className="alab-unverified"> · verification unavailable</span>}
+                        </span>
                         <span className="alab-rate">
                             <button className={`alab-rate-btn ${props.rating === 1 ? 'alab-rate-btn--on' : ''}`} onClick={() => props.onRate(1)} disabled={!props.lastRunId} title="Good — Hermes learns from this" aria-label="Mark result good"><ThumbsUp size={16} /></button>
                             <button className={`alab-rate-btn ${props.rating === -1 ? 'alab-rate-btn--on' : ''}`} onClick={() => props.onRate(-1)} disabled={!props.lastRunId} title="Bad" aria-label="Mark result bad"><ThumbsDown size={16} /></button>

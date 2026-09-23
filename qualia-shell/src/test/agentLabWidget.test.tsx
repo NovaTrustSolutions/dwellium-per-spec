@@ -197,6 +197,23 @@ describe('AgentLab — D12 rating', () => {
     });
 });
 
+describe('AgentLab — D2 solo verification status is visible', () => {
+    it('a solo run whose fact-check reply is unparseable says "verification unavailable"', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+
+        // the fact-check call carries no personaId → the default mock answers with prose, not JSON
+        plan.byPersona.researcher = async () => ({ text: 'Rent for unit 4 is $2,000.', provider: 'anthropic', model: 'x' });
+
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'What is the rent?' } });
+        fireEvent.change(screen.getByLabelText(/^Sources/), { target: { value: 'Rent for unit 4 is $1,500.' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+
+        expect(await screen.findByText(/verification unavailable/)).toBeInTheDocument();
+    });
+});
+
 describe('AgentLab — D3 Hermes outcome honesty', () => {
     it('a team run where every member returns "" records outcome "fail"', async () => {
         saveIntegrations(activeLlm());

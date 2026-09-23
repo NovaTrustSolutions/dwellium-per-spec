@@ -150,8 +150,10 @@ export function similarity(a: string, b: string): number {
 
 /**
  * Rank past runs by relevance to `prompt`, SUCCESSES ONLY, returning the top-K.
- * Same-task-type runs get a small boost; ties broken by recency. Pure (operates
- * on the supplied array, reads no store).
+ * Downvoted runs (rating < 0) are excluded entirely — the strongest "don't do
+ * that again" signal available, same exclusion araChatRuns() applies. Same-
+ * task-type runs get a small boost; ties broken by recency. Pure (operates on
+ * the supplied array, reads no store).
  */
 export function rankPastRuns(
     runs: HermesRunRecord[],
@@ -161,6 +163,7 @@ export function rankPastRuns(
     const wantType = classifyTaskType(prompt);
     const scored = runs
         .filter(r => r.outcome === 'success')
+        .filter(r => !(typeof r.rating === 'number' && r.rating < 0))
         .map(r => {
             const sim = similarity(prompt, r.prompt);
             const typeBoost = r.taskType === wantType ? 0.15 : 0;

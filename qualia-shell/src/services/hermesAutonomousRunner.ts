@@ -112,10 +112,10 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
             deps: deps.orchestratorDeps,
         });
         const result = output.verified.trim();
-        const ok = !!output.output.trim() && !output.output.startsWith('(no response');
+        const ok = output.ok;
         const duration = Math.max(0, now() - startedAt);
         if (!ok) {
-            const error = 'No usable response. Check the persona model/key assignment and retry.';
+            const error = output.error || 'No usable response. Check the persona model/key assignment and retry.';
             fail(persona.id, claim.task.id, error);
             remember(persona.id, `Autonomous task failed: ${claim.task.title}`, duration, 'fail');
             return { personaId: persona.id, taskId: claim.task.id, outcome: 'fail', error };

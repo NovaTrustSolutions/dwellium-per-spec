@@ -13,6 +13,15 @@
  * The LLM and the Hermes learning hooks are INJECTED (OrchestratorDeps) so the
  * whole engine is unit-testable with a mock invoker and no network. The widget
  * wires `invoke` to `callLlm` and `recall` / `record` to Hermes.
+ *
+ * D1/D2/D3/D10/P5 fix (2026-09): a provider error thrown by one member no
+ * longer discards the run — each member is isolated in its own try/catch,
+ * `ok`/`error` on PersonaOutput make a real failure distinguishable from a
+ * real success (the old placeholder text was a truthy "(no response…)"
+ * string), verification failing OPEN (defaulting to supported) is replaced
+ * by an explicit `verifyStatus`, and a team with zero resolvable members (or
+ * a decompose result naming only unknown personas) no longer silently runs
+ * nobody / everybody without saying so.
  */
 import type { TaskType } from '../../components/HonchoHermesPanel/hermesLearningStore';
 import { AgentTeam, Persona, findPersona, disciplineToTaskType, ORCHESTRATOR_ID } from './personas';
@@ -67,7 +76,12 @@ export interface MemberTaskEvent {
     durationMs?: number;
     result?: string;
     ok?: boolean;
+    /** set alongside `ok: false` on phase 'done'. */
+    error?: string;
 }
+
+/** Outcome of STEP 3 (verify) for one member's output. */
+export type VerifyStatus = 'passed' | 'flagged' | 'unavailable' | 'skipped';
 
 export interface PersonaOutput {
     personaId: string;
@@ -75,15 +89,36 @@ export interface PersonaOutput {
     tasks: string[];
     output: string;
     verified: string;
-    /** false when verification found unsupported claims (or the run failed). */
+    /** true ONLY when the member produced a real answer AND that answer either
+     *  passed verification or had nothing to verify against. A failed member,
+     *  or one whose verification we couldn't run, is never "supported". */
     supported: boolean;
+    /** the member produced a real (non-empty) model answer. */
+    ok: boolean;
+    /** set when !ok: the provider error message, or the no-response message. */
+    error?: string;
+    verifyStatus: VerifyStatus;
 }
 
 export interface TeamRunResult {
     assignments: Array<{ personaId: string; tasks: string[] }>;
     outputs: PersonaOutput[];
     final: string;
+    /** set iff the run produced no usable deliverable (then final === ''). */
     error?: string;
+    outcome: 'success' | 'partial' | 'fail';
+    /** human-readable, e.g. "Engineer: [anthropic] 429 rate limited". */
+    warnings: string[];
+}
+
+/** Friendly message when the model returns no text at all (null/blank invoke). */
+export const NO_RESPONSE_MESSAGE =
+    'No response from the model. The active provider may not be configured (Settings → API Keys).';
+
+/** A thrown LlmError already reads "[provider] ..."; any other Error/value falls back to its own text. */
+export function describeLlmFailure(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    return String(err);
 }
 
 /** Pull JSON out of a model response that may be fenced or chatty. */
@@ -114,9 +149,13 @@ function roster(team: AgentTeam, personas: Persona[]): string {
         .join('\n');
 }
 
-/** STEP 1 — orchestrator decomposes the goal into a task list per member. */
+/**
+ * STEP 1 — orchestrator decomposes the goal into a task list per member.
+ * A thrown planning error is NOT caught here — it propagates to runTeam.
+ */
 async function decompose(
     goal: string, sources: string, team: AgentTeam, personas: Persona[], deps: OrchestratorDeps,
+    resolvableMembers: Persona[],
 ): Promise<Array<{ personaId: string; tasks: string[] }>> {
     const orchestrator = findPersona(personas, team.orchestratorId) ?? findPersona(personas, ORCHESTRATOR_ID);
     const res = await deps.invoke({
@@ -131,21 +170,41 @@ async function decompose(
             `Assign each member a short, specific task list toward the GOAL. ` +
             `Respond with ONLY a JSON array: [{"personaId":"<id>","tasks":["...","..."]}].`,
     });
-    const parsed = extractJson<Array<{ personaId: string; tasks: string[] }>>(res);
+    const parsed = extractJson<Array<{ personaId?: unknown; tasks?: unknown }>>(res);
     if (Array.isArray(parsed) && parsed.length > 0) {
-        // keep only real members; coerce tasks to string[]
-        return parsed
-            .filter(a => team.memberIds.includes(a.personaId))
-            .map(a => ({ personaId: a.personaId, tasks: Array.isArray(a.tasks) ? a.tasks.map(String) : [] }));
+        // D10 fix: normalise each entry to a real member — exact id, then
+        // case-insensitive id, then case-insensitive NAME — dropping anything
+        // that still doesn't resolve, and merging duplicates (concatenating
+        // tasks) rather than overwriting. A model returning only unknown ids
+        // used to filter to [] and run nobody; that now falls through to the
+        // "every resolvable member gets the goal" fallback below.
+        const byId = new Map<string, { personaId: string; tasks: string[] }>();
+        for (const a of parsed) {
+            const rawId = typeof a.personaId === 'string' ? a.personaId : '';
+            const match =
+                resolvableMembers.find(p => p.id === rawId) ??
+                resolvableMembers.find(p => p.id.toLowerCase() === rawId.toLowerCase()) ??
+                resolvableMembers.find(p => p.name.toLowerCase() === rawId.toLowerCase());
+            if (!match) continue;
+            const tasks = Array.isArray(a.tasks) ? a.tasks.map(String) : [];
+            const existing = byId.get(match.id);
+            if (existing) existing.tasks.push(...tasks);
+            else byId.set(match.id, { personaId: match.id, tasks });
+        }
+        const normalised = Array.from(byId.values()).map(a => ({
+            personaId: a.personaId,
+            tasks: a.tasks.length > 0 ? a.tasks : [goal],
+        }));
+        if (normalised.length > 0) return normalised;
     }
-    // Fallback: give every member the whole goal.
-    return team.memberIds.map(personaId => ({ personaId, tasks: [goal] }));
+    // Fallback: give every resolvable member the whole goal.
+    return resolvableMembers.map(p => ({ personaId: p.id, tasks: [goal] }));
 }
 
 /** STEP 2 — a specialist completes its task list, learning from past successes. */
 async function execute(
     goal: string, sources: string, persona: Persona, tasks: string[], deps: OrchestratorDeps,
-): Promise<{ output: string; ok: boolean }> {
+): Promise<{ output: string; ok: boolean; error?: string }> {
     const taskType = disciplineToTaskType[persona.discipline];
     const fewShot = deps.recall?.(goal, taskType) ?? '';
     // P11-5: run equipped skills against the member's tasks first; outputs
@@ -159,6 +218,9 @@ async function execute(
             } catch { /* tools are best-effort — the member still writes */ }
         }
     }
+    // A thrown provider error here is NOT caught — it propagates to the caller
+    // (runTeam isolates it per-member; runPersona/runTeam callers have their
+    // own catch).
     const out = await deps.invoke({
         personaId: persona.id,
         systemPrompt: persona.systemPrompt,
@@ -179,35 +241,59 @@ async function execute(
         summary: ok ? out!.slice(0, 200) : undefined,
         toolsUsed: [persona.id],
     });
-    return { output: ok ? out! : '(no response — is an LLM key configured in Settings → API Keys?)', ok };
+    // D3 fix: the placeholder text stays (other callers display it) but is no
+    // longer the only signal — `ok`/`error` tell a real failure apart from a
+    // real success.
+    return {
+        output: ok ? out! : '(no response — is an LLM key configured in Settings → API Keys?)',
+        ok,
+        error: ok ? undefined : NO_RESPONSE_MESSAGE,
+    };
 }
 
-/** STEP 3 — verify a contribution against the provided sources. */
+/**
+ * STEP 3 — verify a contribution against the provided sources.
+ * D2 fix: verification failing OPEN (silently treating an error or an
+ * unparseable check as supported) is replaced by an explicit `verifyStatus`
+ * — callers derive `supported` from `ok && verifyStatus`, never from this
+ * function assuming the best.
+ */
 async function verify(
     output: string, sources: string, deps: OrchestratorDeps,
-): Promise<{ verified: string; supported: boolean }> {
-    if (!sources.trim()) return { verified: output, supported: true }; // nothing to verify against
-    const res = await deps.invoke({
-        responseFormat: 'json',
-        temperature: 0,
-        systemPrompt: 'You are a fact-checker. You verify a draft strictly against the provided sources.',
-        prompt:
-            `SOURCES:\n${sources}\n\n` +
-            `DRAFT:\n${output}\n\n` +
-            `Check every factual claim against the SOURCES. Respond with ONLY JSON: ` +
-            `{"supported": true|false, "verified": "<the draft with any unsupported claim explicitly flagged as [UNVERIFIED]>"}.`,
-    });
-    const parsed = extractJson<{ supported?: boolean; verified?: string }>(res);
-    if (parsed && typeof parsed.verified === 'string') {
-        return { verified: parsed.verified, supported: parsed.supported !== false };
+): Promise<{ verified: string; verifyStatus: VerifyStatus }> {
+    if (!sources.trim()) return { verified: output, verifyStatus: 'skipped' }; // nothing to verify against
+    let res: string | null;
+    try {
+        res = await deps.invoke({
+            responseFormat: 'json',
+            temperature: 0,
+            systemPrompt: 'You are a fact-checker. You verify a draft strictly against the provided sources.',
+            prompt:
+                `SOURCES:\n${sources}\n\n` +
+                `DRAFT:\n${output}\n\n` +
+                `Check every factual claim against the SOURCES. Respond with ONLY JSON: ` +
+                `{"supported": true|false, "verified": "<the draft with any unsupported claim explicitly flagged as [UNVERIFIED]>"}.`,
+        });
+    } catch {
+        return { verified: output, verifyStatus: 'unavailable' };
     }
-    return { verified: output, supported: true };
+    const parsed = extractJson<{ supported?: unknown; verified?: unknown }>(res);
+    // Accept the parse ONLY when both fields are the right type — prose, a
+    // missing field, or a non-boolean `supported` never counts as supported.
+    if (parsed && typeof parsed.verified === 'string' && typeof parsed.supported === 'boolean') {
+        return { verified: parsed.verified, verifyStatus: parsed.supported ? 'passed' : 'flagged' };
+    }
+    return { verified: output, verifyStatus: 'unavailable' };
 }
 
-/** STEP 4 — orchestrator merges verified contributions into the final product. */
+/**
+ * STEP 4 — orchestrator merges verified contributions into the final product.
+ * Callers pass ONLY the ok outputs. `fellBack: true` means the model
+ * returned nothing usable and the caller should warn the user.
+ */
 async function merge(
     goal: string, outputs: PersonaOutput[], team: AgentTeam, personas: Persona[], deps: OrchestratorDeps,
-): Promise<string> {
+): Promise<{ text: string; fellBack: boolean }> {
     const orchestrator = findPersona(personas, team.orchestratorId) ?? findPersona(personas, ORCHESTRATOR_ID);
     const body = outputs.map(o => `### ${o.personaName}${o.supported ? '' : ' (contains UNVERIFIED claims)'}\n${o.verified}`).join('\n\n');
     const res = await deps.invoke({
@@ -220,10 +306,11 @@ async function merge(
             `Merge these into one coherent, final deliverable for the GOAL. Resolve overlaps, ` +
             `keep any [UNVERIFIED] flags, and lead with the answer.`,
     });
-    return res && res.trim() ? res : outputs.map(o => o.verified).join('\n\n');
+    if (res && res.trim()) return { text: res, fellBack: false };
+    return { text: outputs.map(o => o.verified).join('\n\n'), fellBack: true };
 }
 
-/** Run a whole team against a goal. */
+/** Run a whole team against a goal. Members run SEQUENTIALLY (parallelism is out of scope). */
 export async function runTeam(params: {
     goal: string;
     sources?: string;
@@ -239,12 +326,38 @@ export async function runTeam(params: {
     const onMemberTask = params.onMemberTask ?? (() => {});
     const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-    if (!goal.trim()) return { assignments: [], outputs: [], final: '', error: 'Give the team a goal first.' };
+    if (!goal.trim()) {
+        return { assignments: [], outputs: [], final: '', error: 'Give the team a goal first.', outcome: 'fail', warnings: [] };
+    }
+
+    // P5 fix: a team whose members were all deleted from the catalog used to
+    // still "run" (decompose + merge with an empty roster). Fail fast, with
+    // no LLM call at all.
+    const resolvableMembers = team.memberIds
+        .map(id => findPersona(personas, id))
+        .filter((p): p is Persona => !!p);
+    if (resolvableMembers.length === 0) {
+        return {
+            assignments: [], outputs: [], final: '',
+            error: 'This team has no members. Edit the team and add at least one persona.',
+            outcome: 'fail', warnings: [],
+        };
+    }
 
     emit({ phase: 'decompose', message: 'Orchestrator is planning the work…' });
-    const assignments = await decompose(goal, sources, team, personas, deps);
+    let assignments: Array<{ personaId: string; tasks: string[] }>;
+    try {
+        assignments = await decompose(goal, sources, team, personas, deps, resolvableMembers);
+    } catch (e) {
+        const error = `Planning failed: ${describeLlmFailure(e)}`;
+        emit({ phase: 'error', message: error });
+        return { assignments: [], outputs: [], final: '', error, outcome: 'fail', warnings: [] };
+    }
 
+    // D1 fix: each member is isolated in its own try/catch so one provider
+    // error can't discard every other member's finished work.
     const outputs: PersonaOutput[] = [];
+    const warnings: string[] = [];
     for (const a of assignments) {
         const persona = findPersona(personas, a.personaId);
         if (!persona) continue;
@@ -253,18 +366,71 @@ export async function runTeam(params: {
         onMemberTask({ phase: 'start', personaId: persona.id, title });
         const t0 = now();
         emit({ phase: 'execute', personaId: persona.id, message: `${persona.name} is working…` });
-        const { output, ok } = await execute(goal, sources, persona, a.tasks, deps);
-        emit({ phase: 'verify', personaId: persona.id, message: `Verifying ${persona.name}'s output…` });
-        const { verified, supported } = await verify(output, sources, deps);
-        onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok });
-        outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported });
+
+        let output = '';
+        let verified = '';
+        let ok = false;
+        let error: string | undefined;
+        let verifyStatus: VerifyStatus = 'skipped';
+        try {
+            const ex = await execute(goal, sources, persona, a.tasks, deps);
+            output = ex.output;
+            ok = ex.ok;
+            error = ex.error;
+            if (ok) {
+                emit({ phase: 'verify', personaId: persona.id, message: `Verifying ${persona.name}'s output…` });
+                const v = await verify(output, sources, deps);
+                verified = v.verified;
+                verifyStatus = v.verifyStatus;
+                if (verifyStatus === 'unavailable') warnings.push(`${persona.name}: verification unavailable`);
+            } else {
+                // A failed member skips verification entirely — nothing to check.
+                verified = output;
+            }
+        } catch (e) {
+            ok = false;
+            error = describeLlmFailure(e);
+            output = '';
+            verified = '';
+        }
+        if (!ok) {
+            emit({ phase: 'error', personaId: persona.id, message: `${persona.name} failed: ${error}` });
+            warnings.push(`${persona.name}: ${error}`);
+        }
+        const supported = ok && (verifyStatus === 'passed' || verifyStatus === 'skipped');
+        onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok, error });
+        outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported, ok, error, verifyStatus });
+    }
+
+    const okOutputs = outputs.filter(o => o.ok);
+    if (okOutputs.length === 0) {
+        const firstError = outputs[0]?.error ?? 'unknown error';
+        const error = `No team member produced a result. ${firstError}`;
+        emit({ phase: 'error', message: error });
+        return { assignments, outputs, final: '', error, outcome: 'fail', warnings };
     }
 
     emit({ phase: 'merge', message: 'Orchestrator is merging the final product…' });
-    const final = await merge(goal, outputs, team, personas, deps);
+    let final: string;
+    let mergeOk = true;
+    try {
+        const m = await merge(goal, okOutputs, team, personas, deps);
+        final = m.text;
+        if (m.fellBack) {
+            mergeOk = false;
+            warnings.push('Merge step returned nothing; showing member outputs as-is.');
+        }
+    } catch (e) {
+        mergeOk = false;
+        final = okOutputs.map(o => o.verified).join('\n\n');
+        warnings.push(`Merge step failed (${describeLlmFailure(e)}); showing member outputs as-is.`);
+    }
+
+    const allMembersOk = outputs.every(o => o.ok);
+    const outcome: TeamRunResult['outcome'] = allMembersOk && mergeOk && !!final.trim() ? 'success' : 'partial';
 
     emit({ phase: 'done', message: 'Done.' });
-    return { assignments, outputs, final };
+    return { assignments, outputs, final, outcome, warnings };
 }
 
 /** Run a single persona (no orchestration) — used for solo persona runs. */
@@ -276,7 +442,17 @@ export async function runPersona(params: {
 }): Promise<PersonaOutput> {
     const { goal, persona, deps } = params;
     const sources = params.sources ?? '';
-    const { output } = await execute(goal, sources, persona, [goal], deps);
-    const { verified, supported } = await verify(output, sources, deps);
-    return { personaId: persona.id, personaName: persona.name, tasks: [goal], output, verified, supported };
+    const ex = await execute(goal, sources, persona, [goal], deps);
+    let verified = ex.output;
+    let verifyStatus: VerifyStatus = 'skipped';
+    if (ex.ok) {
+        const v = await verify(ex.output, sources, deps);
+        verified = v.verified;
+        verifyStatus = v.verifyStatus;
+    }
+    const supported = ex.ok && (verifyStatus === 'passed' || verifyStatus === 'skipped');
+    return {
+        personaId: persona.id, personaName: persona.name, tasks: [goal],
+        output: ex.output, verified, supported, ok: ex.ok, error: ex.error, verifyStatus,
+    };
 }

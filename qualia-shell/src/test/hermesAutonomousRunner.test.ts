@@ -17,6 +17,8 @@ describe('runNextHermesTask', () => {
             output: 'Launch map',
             verified: 'Launch map with evidence',
             supported: true,
+            ok: true,
+            verifyStatus: 'skipped',
         }));
 
         const result = await runNextHermesTask({

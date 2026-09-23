@@ -44,7 +44,7 @@ describe('oneSaveStore hydrate: account switch while the GET is in flight', () =
         holder.current = 'account-a';
 
         // Simulate a slow GET for account A that resolves AFTER the account switches.
-        let resolveGet!: (v: unknown) => void;
+        let resolveGet!: (v: any) => void;
         vi.mocked(oneSaveClient.get).mockReturnValue(new Promise((res) => { resolveGet = res; }));
 
         const hydratePromise = store.hydrate(); // captures objectId() for account-a NOW

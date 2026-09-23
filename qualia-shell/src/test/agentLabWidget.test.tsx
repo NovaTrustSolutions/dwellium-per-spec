@@ -214,6 +214,33 @@ describe('AgentLab — D2 solo verification status is visible', () => {
     });
 });
 
+describe('AgentLab — wave-3 review findings', () => {
+    it('F1: a solo error from persona A never paints on persona B after switching', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        const pending = deferred<unknown>();
+        plan.byPersona.researcher = () => pending.promise as never;
+
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Slow question' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        selectPersona('Legal Analyst');
+        await act(async () => { pending.reject(new LlmError('anthropic', 429, 'rate limited')); });
+
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('F2: every tab\'s aria-controls resolves to an element in the DOM', () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        for (const tab of screen.getAllByRole('tab')) {
+            const target = tab.getAttribute('aria-controls');
+            if (target) expect(document.getElementById(target), `${tab.textContent} → #${target}`).not.toBeNull();
+        }
+    });
+});
+
 describe('AgentLab — D3 Hermes outcome honesty', () => {
     it('a team run where every member returns "" records outcome "fail"', async () => {
         saveIntegrations(activeLlm());

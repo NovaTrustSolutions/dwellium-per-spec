@@ -75,7 +75,8 @@ export default function AgentLab() {
     const [events, setEvents] = useState<RunEvent[]>([]);
     const [teamResult, setTeamResult] = useState<TeamRunResult | null>(null);
     const [soloResult, setSoloResult] = useState<PersonaOutput | null>(null);
-    const [soloError, setSoloError] = useState<string | null>(null);
+    // F1 (review): tagged with its persona, like soloResult, so a late error can't land on another persona's screen.
+    const [soloError, setSoloError] = useState<{ personaId: string; message: string } | null>(null);
     const [lastRunId, setLastRunId] = useState<string | null>(null);
     const [rating, setRating] = useState<number | null>(null);
     const [editing, setEditing] = useState<Persona | null>(null);
@@ -180,7 +181,7 @@ export default function AgentLab() {
                     // this is that catch. Never let it vanish silently.
                     const durationMs = performance.now() - t0;
                     const msg = describeLlmFailure(e);
-                    setSoloError(msg);
+                    setSoloError({ personaId: persona.id, message: msg });
                     recordPersonaRun(persona.id, `Goal: ${goal} → ${msg}`, durationMs, 'fail');
                     logAudit(persona.id, 'Run failed', msg);
                 }
@@ -268,6 +269,7 @@ export default function AgentLab() {
     // D16: a background task's result must never paint over another persona's
     // screen — only show it when it belongs to the persona currently in view.
     const gatedSoloResult = soloResult && selectedPersona && soloResult.personaId === selectedPersona.id ? soloResult : null;
+    const gatedSoloError = soloError && selectedPersona && soloError.personaId === selectedPersona.id ? soloError.message : null;
 
     return (
         <div className="alab">
@@ -339,7 +341,8 @@ export default function AgentLab() {
                                     id={`${personaTabsUid}-tab-${tk}`}
                                     role="tab"
                                     aria-selected={personaTab === tk}
-                                    aria-controls={`${personaTabsUid}-panel-${tk}`}
+                                    // F2 (review): only the selected tab's panel is mounted, so only it can be referenced.
+                                    aria-controls={personaTab === tk ? `${personaTabsUid}-panel-${tk}` : undefined}
                                     tabIndex={personaTab === tk ? 0 : -1}
                                     ref={el => { personaTabRefs.current[tk] = el; }}
                                     className={`alab-ptab ${personaTab === tk ? 'alab-ptab--active' : ''}`}
@@ -375,7 +378,7 @@ export default function AgentLab() {
                             )}
                         </div>
                         <RunPanel goal={goal} setGoal={setGoal} sources={sources} setSources={setSources} run={run} running={running} runLabel={`Run ${selectedPersona.name}`} disabled={!llmReady} />
-                        <RunOutput events={events} teamResult={null} soloResult={gatedSoloResult} running={running} lastRunId={lastRunId} rating={rating} onRate={rate} error={soloError} />
+                        <RunOutput events={events} teamResult={null} soloResult={gatedSoloResult} running={running} lastRunId={lastRunId} rating={rating} onRate={rate} error={gatedSoloError} />
                     </>
                 ) : (
                     <div className="alab-empty">Pick a team or persona on the left, or create one with “+”.</div>

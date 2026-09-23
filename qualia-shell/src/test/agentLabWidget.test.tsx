@@ -241,6 +241,28 @@ describe('AgentLab — wave-3 review findings', () => {
     });
 });
 
+describe('AgentLab — a task result never rates another run', () => {
+    it('after a solo Goal run, rating a Tasks-tab result does not rate that earlier run', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        plan.byPersona.researcher = async () => ({ text: 'Answer', provider: 'anthropic', model: 'x' });
+
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Earlier goal run' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await screen.findByRole('button', { name: 'Mark result good' });
+
+        fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }));
+        fireEvent.change(screen.getByPlaceholderText('Give this persona a task…'), { target: { value: 'A task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+        await waitFor(() => expect(personaWorkStore.getSnapshot().researcher?.tasks.find(t => t.title === 'A task')?.status).toBe('done'));
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Mark result good' }));
+        expect(hermesLearningStore.getSnapshot().find(r => r.prompt === 'Earlier goal run')?.rating).toBeUndefined();
+    });
+});
+
 describe('AgentLab — D3 Hermes outcome honesty', () => {
     it('a team run where every member returns "" records outcome "fail"', async () => {
         saveIntegrations(activeLlm());

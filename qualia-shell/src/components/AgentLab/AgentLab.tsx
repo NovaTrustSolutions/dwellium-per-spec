@@ -209,6 +209,10 @@ export default function AgentLab() {
         const personaId = selectedPersona.id;
         const augmented = { ...selectedPersona, systemPrompt: selectedPersona.systemPrompt + formatMemory(personaId) };
         setRunningTasks(prev => ({ ...prev, [personaId]: taskId }));
+        // A task result is not a Hermes run: clear the rating target so its
+        // 👍/👎 can't land on an earlier Goal run of this persona.
+        setLastRunId(null);
+        setRating(null);
         startTask(personaId, taskId);
         logAudit(personaId, 'Task started', taskTitle);
         const t0 = performance.now();

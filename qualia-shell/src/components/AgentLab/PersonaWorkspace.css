@@ -1,5 +1,7 @@
 /* PersonaWorkspace — Tools / Tasks / Memory / Audit panels */
-.pw { display: grid; gap: 8px; padding: 4px 2px; }
+/* minmax(0,1fr): without it the single auto column grows to the widest row's
+   min-content (a failed task's nowrap error), pushing the panel past the window. */
+.pw { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 4px 2px; }
 .pw-head { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary, #808080); margin-top: 8px; }
 .pw-empty { font-size: 12px; color: var(--text-tertiary, #808080); padding: 6px 0; }
 

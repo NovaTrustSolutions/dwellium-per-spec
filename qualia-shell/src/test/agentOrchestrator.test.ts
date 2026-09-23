@@ -4,7 +4,7 @@
  * → merge, plus Hermes recording and graceful no-LLM behavior.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { runTeam, runPersona, extractJson, NO_RESPONSE_MESSAGE, type OrchestratorDeps, type RunEvent } from '../lib/agents/orchestrator';
+import { runTeam, runPersona, extractJson, describeLlmFailure, NO_RESPONSE_MESSAGE, type OrchestratorDeps, type RunEvent } from '../lib/agents/orchestrator';
 import { DEFAULT_PERSONAS, type AgentTeam } from '../lib/agents/personas';
 import { LlmError } from '../lib/llmClient';
 
@@ -44,6 +44,20 @@ describe('extractJson', () => {
     it('returns null on garbage', () => {
         expect(extractJson('no json here')).toBeNull();
         expect(extractJson(null)).toBeNull();
+    });
+});
+
+describe('describeLlmFailure', () => {
+    it('shows the provider\'s own error text instead of the raw JSON body', () => {
+        const anthropic = new LlmError('anthropic', 429, JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'Rate limit reached' } }));
+        expect(describeLlmFailure(anthropic)).toBe('[anthropic] 429 Rate limit reached');
+        const openai = new LlmError('openai', 401, JSON.stringify({ error: { message: 'Incorrect API key provided', type: 'invalid_request_error' } }));
+        expect(describeLlmFailure(openai)).toBe('[openai] 401 Incorrect API key provided');
+    });
+    it('keeps non-JSON messages exactly as they are', () => {
+        expect(describeLlmFailure(new LlmError('anthropic', 429, 'rate limited'))).toBe('[anthropic] rate limited');
+        expect(describeLlmFailure(new Error('network down'))).toBe('network down');
+        expect(describeLlmFailure('boom')).toBe('boom');
     });
 });
 

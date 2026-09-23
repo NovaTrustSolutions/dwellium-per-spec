@@ -117,8 +117,21 @@ export const NO_RESPONSE_MESSAGE =
 
 /** A thrown LlmError already reads "[provider] ..."; any other Error/value falls back to its own text. */
 export function describeLlmFailure(err: unknown): string {
-    if (err instanceof Error) return err.message;
-    return String(err);
+    if (!(err instanceof Error)) return String(err);
+    // An LlmError reads "[provider] <raw response body>", and provider bodies are
+    // JSON ({"error":{"message":"…"}}) — show the provider's own message, not the JSON.
+    const m = err.message.match(/^(\[[^\]]+\]) ([\s\S]*)$/);
+    if (m) {
+        try {
+            const body = JSON.parse(m[2]) as { error?: { message?: unknown }; message?: unknown };
+            const msg = body?.error?.message ?? body?.message;
+            if (typeof msg === 'string' && msg.trim()) {
+                const status = (err as { status?: number }).status;
+                return `${m[1]}${status ? ` ${status}` : ''} ${msg.trim()}`;
+            }
+        } catch { /* not JSON — keep the text as it is */ }
+    }
+    return err.message;
 }
 
 /** Pull JSON out of a model response that may be fenced or chatty. */

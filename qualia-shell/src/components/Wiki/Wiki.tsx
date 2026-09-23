@@ -3,12 +3,19 @@
  *
  * Compiles auto-synthesis pages at Domain / Project / Thread tiers. Each page
  * has an overview, key concepts, open questions, and source citations.
- * Synthesis runs client-side through the user's configured LLM (`callLlm`);
- * with no LLM it still builds a structure-only page (sources from the node's
- * documents) so the three-tier model is usable offline. Pages persist per-user
- * via `wikiStore`. Defaults to the globally-active thread when one is set.
+ * Synthesis runs client-side through the user's configured LLM (`callLlm`),
+ * grounded in real excerpts read from the node's source documents (not just
+ * titles); with no LLM it still builds a structure-only page so the
+ * three-tier model is usable offline. Pages persist per-user via `wikiStore`
+ * and sync across tabs. Defaults to the globally-active thread when one is
+ * set, but re-following the active thread never yanks a manual selection
+ * away except when the thread itself changes.
+ *
+ * Hardening pass (plan wiki-widget-hardening §C): confirm before an outline
+ * silently replaces an AI-written page, offline view of stored pages with
+ * retry, stale badge, list filter + count, clickable sources, deep links.
  */
-import { useState, useEffect, useContext, useSyncExternalStore, useCallback } from 'react';
+import { useState, useEffect, useContext, useSyncExternalStore, useCallback, useRef } from 'react';
 import { Globe, FolderTree, MessageSquare, Folder, BookOpen, RefreshCw, FileText, TriangleAlert } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { TagInput } from '../Tags/TagInput';
@@ -16,17 +23,23 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
-import { fetchTree } from '../FileExplorer/fileExplorerApi';
+import { fetchTree, readFile } from '../FileExplorer/fileExplorerApi';
 import { collectMoveTargets, type MoveTarget } from '../FileExplorer/moveTargets';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { activeThreadStore, activeThreadUserIdHolder } from '../Workspace/activeThreadStore';
+import { fetchSourceExcerpts, buildCompilePrompt, WIKI_SYSTEM_PROMPT } from './wikiSources';
 import {
-    wikiStore, wikiUserIdHolder, getWikiPage, setWikiPage,
-    parseWikiResponse, outlinePage, type WikiMap,
+    wikiStore, wikiUserIdHolder, getWikiPage, setWikiPage, isWikiPageStale, attachWikiCrossTabSync,
+    parseWikiResponse, outlinePage, type WikiMap, type WikiPage,
 } from './wikiStore';
+import './Wiki.css';
 
 const TIER_ICON: Record<string, typeof Globe> = { domain: Globe, project: FolderTree, thread: MessageSquare, folder: Folder };
-const ACCENT = '#D6FE51';
+
+const WIKI_OPEN_EVENT = 'dwellium:wiki-open-page';
+
+interface ListNode { path: string; name: string; tier: string; depth: number }
+interface SourceFile { path: string; modified?: string }
 
 function findNode(list: FileEntry[], path: string): FileEntry | null {
     for (const e of list) {
@@ -35,11 +48,12 @@ function findNode(list: FileEntry[], path: string): FileEntry | null {
     }
     return null;
 }
-function collectFilesUnder(tree: FileEntry[], path: string): string[] {
+
+function collectFilesUnder(tree: FileEntry[], path: string): SourceFile[] {
     const node = findNode(tree, path);
     if (!node) return [];
-    const out: string[] = [];
-    const walk = (e: FileEntry) => { if (e.tier === 'file') out.push(e.path); e.children?.forEach(walk); };
+    const out: SourceFile[] = [];
+    const walk = (e: FileEntry) => { if (e.tier === 'file') out.push({ path: e.path, modified: e.modified }); e.children?.forEach(walk); };
     walk(node);
     return out;
 }
@@ -62,17 +76,54 @@ export default function Wiki() {
     const [backendOffline, setBackendOffline] = useState(false);
     const [compiling, setCompiling] = useState(false);
     const [err, setErr] = useState('');
+    const [status, setStatus] = useState('');
+    const [filter, setFilter] = useState('');
+    const [focusTick, setFocusTick] = useState(0);
 
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    const lastAppliedThreadRef = useRef<string | null>(null);
+
+    // `focus` only for selections the user made in this widget (click, deep link) —
+    // initial selection and following the active thread must not pull focus out of
+    // whatever widget the user is working in.
+    const selectPath = useCallback((path: string | null, focus = false) => {
+        setSelectedPath(path);
+        setErr('');
+        setStatus('');
+        if (focus) setFocusTick((t) => t + 1);
+    }, []);
+
+    // Cross-tab sync (plan §A): another tab's compile/edit merges straight into this store.
+    useEffect(() => attachWikiCrossTabSync(), []);
+
+    // Deep link: consume a not-yet-mounted pending path, then listen for the live event.
     useEffect(() => {
+        const w = window as unknown as { __dwelliumWikiPendingPath?: string };
+        if (w.__dwelliumWikiPendingPath) {
+            selectPath(w.__dwelliumWikiPendingPath, true);
+            delete w.__dwelliumWikiPendingPath;
+        }
+        const onOpen = (e: Event): void => {
+            const path = (e as CustomEvent<{ path?: string }>).detail?.path;
+            // Mounted already: the pending global the sender also set is ours to clear,
+            // or a later mount would jump back to this stale path.
+            delete (window as unknown as { __dwelliumWikiPendingPath?: string }).__dwelliumWikiPendingPath;
+            if (path) selectPath(path, true);
+        };
+        window.addEventListener(WIKI_OPEN_EVENT, onOpen);
+        return () => window.removeEventListener(WIKI_OPEN_EVENT, onOpen);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const loadTree = useCallback(() => {
         let cancelled = false;
+        setLoading(true);
         (async () => {
             try {
                 const t = await fetchTree();
                 if (cancelled) return;
                 setTree(t);
-                const folderLikes = collectMoveTargets(t, ' __none__');
-                setNodes(folderLikes);
-                setSelectedPath((prev) => prev ?? activeThread?.path ?? folderLikes[0]?.path ?? null);
+                setNodes(collectMoveTargets(t, ' __none__'));
                 setBackendOffline(false);
             } catch {
                 if (!cancelled) setBackendOffline(true);
@@ -81,172 +132,280 @@ export default function Wiki() {
             }
         })();
         return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => loadTree(), [loadTree]);
+
+    // Initial selection, once nodes are known: prefer the active thread if present in the tree.
+    useEffect(() => {
+        if (selectedPath !== null || nodes.length === 0) return;
+        const tp = activeThread?.path ?? null;
+        const initial = tp && nodes.some((n) => n.path === tp) ? tp : nodes[0]?.path ?? null;
+        lastAppliedThreadRef.current = tp;
+        if (initial) selectPath(initial);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [nodes, selectedPath]);
+
+    // Follow the active thread when IT changes — never yank a manual selection on unrelated refetches.
+    useEffect(() => {
+        const tp = activeThread?.path ?? null;
+        if (tp && tp !== lastAppliedThreadRef.current) {
+            lastAppliedThreadRef.current = tp;
+            selectPath(tp);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeThread?.path]);
 
-    const selected = nodes.find((n) => n.path === selectedPath) ?? null;
-    const sources = selected ? collectFilesUnder(tree, selected.path) : [];
-    const page = getWikiPage(wikiMap, selectedPath);
+    useEffect(() => { if (focusTick > 0) headingRef.current?.focus(); }, [focusTick]);
+
+    const filesFor = useCallback((path: string): SourceFile[] => (backendOffline ? [] : collectFilesUnder(tree, path)), [tree, backendOffline]);
+
+    // Node list: normal tree nodes online; fall back to stored pages when the backend is offline
+    // so already-compiled pages stay readable.
+    const listItems: ListNode[] = backendOffline
+        ? Object.values(wikiMap)
+            .map((p): ListNode => ({ path: p.path, name: p.name, tier: p.tier, depth: 0 }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        : nodes;
+
+    const filteredItems = filter.trim()
+        ? listItems.filter((n) => n.name.toLowerCase().includes(filter.trim().toLowerCase()))
+        : listItems;
+    const compiledCount = filteredItems.filter((n) => !!wikiMap[n.path]).length;
+
+    const selectedNode = listItems.find((n) => n.path === selectedPath) ?? null;
+    const currentSources = selectedNode ? filesFor(selectedNode.path) : [];
+    const sourcePaths = currentSources.map((s) => s.path);
+    const page: WikiPage | null = getWikiPage(wikiMap, selectedPath);
+    const stale = !backendOffline && page ? isWikiPageStale(page, currentSources) : false;
 
     const compile = useCallback(async () => {
-        if (!selected || compiling) return;
+        if (!selectedNode || compiling || backendOffline) return;
+        const node = { path: selectedNode.path, tier: selectedNode.tier, name: selectedNode.name };
+        const llmActive = hasActiveLlm(integrations.llm);
+        // Never silently overwrite an AI-written page with a structure-only outline.
+        if (!llmActive && page && page.compiledBy === 'llm') {
+            const ok = window.confirm(`Replace the AI-written page for "${node.name}" with a structure-only outline?`);
+            if (!ok) return;
+        }
         setCompiling(true);
         setErr('');
-        const node = { path: selected.path, tier: selected.tier, name: selected.name };
+        setStatus('Compiling…');
         try {
-            if (hasActiveLlm(integrations.llm)) {
+            if (llmActive) {
+                const excerpts = await fetchSourceExcerpts(sourcePaths, readFile).catch(() => []);
+                const prompt = buildCompilePrompt(node, sourcePaths, excerpts);
                 const res = await callLlm({
-                    systemPrompt: 'You compile a knowledge-base wiki page for a node in a Domain→Project→Thread hierarchy. Respond with JSON only: {"overview": string (2-4 sentences), "concepts": string[] (key concepts), "openQuestions": string[], "sources": string[]}. Base it on the node name and its source document titles. Do not invent specific facts you cannot infer.',
-                    prompt: `Tier: ${node.tier}\nNode: ${node.name}\nSource documents (titles):\n${sources.length ? sources.join('\n') : '(none yet)'}`,
+                    systemPrompt: WIKI_SYSTEM_PROMPT,
+                    prompt,
                     responseFormat: 'json',
                     maxTokens: 1024,
                     temperature: 0.3,
                 }, integrations.llm);
-                const parsed = res ? parseWikiResponse(res.text, node, sources) : null;
-                if (parsed) setWikiPage(parsed);
-                else { setErr('The LLM returned no usable page — try again.'); }
+                const parsed = res ? parseWikiResponse(res.text, node, sourcePaths) : null;
+                if (parsed) {
+                    setWikiPage(parsed);
+                    setStatus('Page compiled.');
+                    setFocusTick((t) => t + 1);
+                } else {
+                    setErr('The LLM returned no usable page — try again.');
+                    setStatus('');
+                }
             } else {
-                // No LLM: build a structure-only page from the node's documents.
-                setWikiPage(outlinePage(node, sources));
+                setWikiPage(outlinePage(node, sourcePaths));
+                setStatus('Page compiled.');
+                setFocusTick((t) => t + 1);
             }
         } catch (e: any) {
             setErr(e?.message || 'Compile failed.');
+            setStatus('');
         } finally {
             setCompiling(false);
         }
-    }, [selected, compiling, integrations.llm, sources]);
+    }, [selectedNode, compiling, backendOffline, integrations.llm, sourcePaths, page]);
+
+    const copySource = useCallback(async (path: string) => {
+        try {
+            await navigator.clipboard.writeText(path);
+            setStatus('Path copied');
+        } catch {
+            setStatus(`Couldn't copy — path: ${path}`);
+        }
+    }, []);
 
     return (
-        <div style={{ display: 'flex', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
+        <div className="wiki-root">
             {/* Left: tier tree */}
-            <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid #222', display: 'flex', flexDirection: 'column', background: '#070707' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid #222' }}>
-                    <BookOpen size={14} style={{ color: ACCENT }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Three-Tier Wiki</span>
+            <div className="wiki-sidebar">
+                <div className="wiki-sidebar-head">
+                    <BookOpen size={14} aria-hidden />
+                    <span>Three-Tier Wiki</span>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-                    {loading && <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 11 }}>Loading…</div>}
-                    {!loading && nodes.length === 0 && (
-                        <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.6 }}>
-                            No domains/projects/threads yet. Create them in the File Explorer to compile wiki pages.
-                        </div>
-                    )}
-                    {nodes.map((n) => {
-                        const Icon = TIER_ICON[n.tier] ?? Folder;
-                        const isSel = n.path === selectedPath;
-                        const has = !!wikiMap[n.path];
-                        return (
-                            <button key={n.path} onClick={() => setSelectedPath(n.path)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '5px 10px', paddingLeft: 10 + n.depth * 12, background: isSel ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent', border: 'none', borderLeft: isSel ? `2px solid ${ACCENT}` : '2px solid transparent', color: isSel ? ACCENT : '#bbb', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                                <Icon size={13} strokeWidth={1.75} style={{ flexShrink: 0, opacity: isSel ? 1 : 0.7 }} />
-                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.name}</span>
-                                {has && <span title="Compiled" style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT, flexShrink: 0 }} />}
-                            </button>
-                        );
-                    })}
-                </div>
+
+                {backendOffline && (
+                    <div className="wiki-offline">
+                        <TriangleAlert size={20} aria-hidden />
+                        <p>File backend offline — showing saved pages.</p>
+                        <button className="wiki-offline-retry" onClick={() => loadTree()}>Retry</button>
+                    </div>
+                )}
+
+                <input
+                    type="search"
+                    className="wiki-filter"
+                    aria-label="Filter pages"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    placeholder="Filter pages…"
+                />
+                <div className="wiki-count">{compiledCount} of {filteredItems.length} compiled</div>
+
+                {loading ? (
+                    <div role="status" className="wiki-empty">Loading…</div>
+                ) : filteredItems.length === 0 ? (
+                    <div className="wiki-empty">{listItems.length === 0 ? 'No domains/projects/threads yet. Create them in the File Explorer to compile wiki pages.' : 'No pages match.'}</div>
+                ) : (
+                    <ul className="wiki-list">
+                        {filteredItems.map((n) => {
+                            const Icon = TIER_ICON[n.tier] ?? Folder;
+                            const isSel = n.path === selectedPath;
+                            const p = wikiMap[n.path];
+                            const compiledFlag = !!p;
+                            const staleFlag = !backendOffline && p ? isWikiPageStale(p, filesFor(n.path)) : false;
+                            return (
+                                <li key={n.path}>
+                                    <button
+                                        className="wiki-list-item"
+                                        style={{ paddingLeft: 10 + n.depth * 12 }}
+                                        aria-current={isSel ? 'page' : undefined}
+                                        aria-label={`${n.name}, ${n.tier}${compiledFlag ? ', compiled' : ''}${staleFlag ? ', out of date' : ''}`}
+                                        onClick={() => selectPath(n.path, true)}
+                                    >
+                                        <Icon size={13} strokeWidth={1.75} aria-hidden />
+                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.name}</span>
+                                        {compiledFlag && <span className="wiki-dot" aria-hidden />}
+                                        {staleFlag && <span className="wiki-badge--stale" aria-hidden>Out of date</span>}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
             </div>
 
             {/* Right: page */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                {!selected ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: 24, textAlign: 'center' }}>
+            <div className="wiki-main">
+                {!selectedNode ? (
+                    <div className="wiki-empty" style={{ margin: 'auto', textAlign: 'center', padding: 24 }}>
                         {backendOffline ? 'File backend offline — connect it to load your domains, projects, and threads.' : 'Select a domain, project, or thread to view or compile its wiki page.'}
                     </div>
                 ) : (
                     <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '1px solid #222' }}>
-                            {(() => { const I = TIER_ICON[selected.tier] ?? Folder; return <I size={18} style={{ color: ACCENT, flexShrink: 0 }} />; })()}
+                        <div className="wiki-header">
+                            {(() => { const I = TIER_ICON[selectedNode.tier] ?? Folder; return <I size={18} aria-hidden />; })()}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.name}</div>
-                                <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{selected.tier} wiki · {sources.length} source{sources.length === 1 ? '' : 's'}</div>
+                                <h2 className="wiki-heading" tabIndex={-1} data-view-heading ref={headingRef}>{selectedNode.name}</h2>
+                                <div className="wiki-meta">
+                                    {selectedNode.tier} wiki · {sourcePaths.length} source{sourcePaths.length === 1 ? '' : 's'}
+                                    {stale && <span className="wiki-badge--stale" style={{ marginLeft: 8 }}>Out of date</span>}
+                                </div>
                             </div>
-                            <button onClick={() => void compile()} disabled={compiling}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, border: 'none', background: ACCENT, color: 'var(--text-inverse)', fontSize: 12, fontWeight: 700, cursor: compiling ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: compiling ? 0.7 : 1 }}>
-                                {compiling ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <BookOpen size={13} />}
+                            <button
+                                className="wiki-compile-btn"
+                                onClick={() => void compile()}
+                                disabled={compiling || backendOffline}
+                                aria-busy={compiling || undefined}
+                                title={backendOffline ? 'Compile is unavailable while the file backend is offline — sources are unknown.' : undefined}
+                            >
+                                {compiling ? <RefreshCw size={13} className="wiki-spin" aria-hidden /> : <BookOpen size={13} aria-hidden />}
                                 {compiling ? 'Compiling…' : page ? 'Recompile' : 'Compile'}
                             </button>
                         </div>
 
                         {/* Tags — links this node into projects / cross-app associations */}
-                        <div style={{ padding: '8px 18px', borderBottom: '1px solid #222' }}>
-                            <TagInput source="wiki" sourceId={selected.path} title={selected.name} />
+                        <div className="wiki-tags">
+                            <TagInput source="wiki" sourceId={selectedNode.path} title={selectedNode.name} />
                         </div>
 
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
-                            {err && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}><TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} /><span>{err}</span></div>}
+                        <div className="wiki-body">
+                            {err && <div className="wiki-error" role="alert"><TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} /><span>{err}</span></div>}
+                            {!err && status && <div className="wiki-status" role="status">{status}</div>}
                             <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" reason="No LLM configured — “Compile” builds a structure-only page. Add a key for full synthesis." />
 
                             {!page ? (
-                                <div style={{ color: 'var(--text-tertiary)', fontSize: 13, lineHeight: 1.7 }}>
-                                    <p style={{ marginTop: 0 }}>No wiki page compiled for this {selected.tier} yet.</p>
-                                    {sources.length > 0 && (
-                                        <>
-                                            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: ACCENT, margin: '16px 0 8px' }}>Source documents</div>
-                                            {sources.map((s) => (
-                                                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', color: '#bbb', fontSize: 12 }}>
-                                                    <FileText size={13} style={{ color: '#666', flexShrink: 0 }} />
-                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s}</span>
-                                                </div>
-                                            ))}
-                                        </>
+                                <div className="wiki-empty">
+                                    <p style={{ marginTop: 0 }}>No wiki page compiled for this {selectedNode.tier} yet.</p>
+                                    {sourcePaths.length > 0 && (
+                                        <div className="wiki-section">
+                                            <h3 className="wiki-section-title">Source documents</h3>
+                                            <SourceList sources={sourcePaths} onOpen={copySource} />
+                                        </div>
                                     )}
-                                    <p style={{ marginTop: 16 }}>Click <strong style={{ color: ACCENT }}>Compile</strong> to synthesize this page.</p>
+                                    <p style={{ marginTop: 16 }}>Click <strong>Compile</strong> to synthesize this page.</p>
                                 </div>
                             ) : (
-                                <WikiPageView page={page} />
+                                <WikiPageView page={page} onOpenSource={copySource} />
                             )}
                         </div>
                     </>
                 )}
             </div>
-            <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }`}</style>
         </div>
+    );
+}
+
+function SourceList({ sources, onOpen }: { sources: string[]; onOpen: (path: string) => void }) {
+    if (sources.length === 0) return <div className="wiki-empty">No source documents yet.</div>;
+    return (
+        <ul className="wiki-sources">
+            {sources.map((s) => (
+                <li key={s}>
+                    <button className="wiki-source-btn" onClick={() => void onOpen(s)} title="Copy path">
+                        <FileText size={13} aria-hidden />
+                        <span>{s}</span>
+                    </button>
+                </li>
+            ))}
+        </ul>
     );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, marginBottom: 8 }}>{title}</div>
+        <div className="wiki-section">
+            <h3 className="wiki-section-title">{title}</h3>
             {children}
         </div>
     );
 }
 
-function WikiPageView({ page }: { page: import('./wikiStore').WikiPage }) {
+function WikiPageView({ page, onOpenSource }: { page: WikiPage; onOpenSource: (path: string) => void }) {
     return (
         <div>
-            <div style={{ fontSize: 10, color: '#666', marginBottom: 16 }}>
+            <div className="wiki-meta" style={{ marginBottom: 16 }}>
                 Compiled {new Date(page.compiledAt).toLocaleString()} · {page.compiledBy === 'llm' ? 'AI synthesis' : 'structure only'}
             </div>
             {page.overview && (
                 <Section title="Overview">
-                    <p style={{ margin: 0, color: '#ddd', fontSize: 13, lineHeight: 1.7 }}>{page.overview}</p>
+                    <p style={{ margin: 0 }}>{page.overview}</p>
                 </Section>
             )}
             {page.concepts.length > 0 && (
                 <Section title="Key concepts">
-                    <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
                         {page.concepts.map((c, i) => <li key={i}>{c}</li>)}
                     </ul>
                 </Section>
             )}
             {page.openQuestions.length > 0 && (
                 <Section title="Open questions">
-                    <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
                         {page.openQuestions.map((q, i) => <li key={i}>{q}</li>)}
                     </ul>
                 </Section>
             )}
             <Section title={`Sources (${page.sources.length})`}>
-                {page.sources.length === 0 ? (
-                    <div style={{ color: '#666', fontSize: 12 }}>No source documents yet.</div>
-                ) : page.sources.map((s) => (
-                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', color: '#bbb', fontSize: 12 }}>
-                        <FileText size={13} style={{ color: '#666', flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s}</span>
-                    </div>
-                ))}
+                <SourceList sources={page.sources} onOpen={onOpenSource} />
             </Section>
         </div>
     );

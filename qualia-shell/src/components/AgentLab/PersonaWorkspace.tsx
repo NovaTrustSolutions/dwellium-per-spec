@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { type Persona } from '../../lib/agents/personas';
 import {
-    usePersonaWork, addTask, completeTask, deleteTask, addMemory, updateMemory, deleteMemory, formatDuration,
+    usePersonaWork, addTask, completeTask, deleteTask, retryTask, addMemory, updateMemory, deleteMemory, formatDuration,
     type PersonaWork,
 } from '../../lib/agents/personaWorkStore';
 import { STELLA_TOOL_CATALOG, CATEGORY_ORDER } from '../StellaAgent/stellaToolCatalog';
@@ -12,19 +12,22 @@ export type WorkspaceView = 'tools' | 'tasks' | 'memory' | 'audit';
 
 /**
  * PersonaWorkspace — the Tools / Tasks / Memory / Audit panels for a persona.
- * Tasks can be run (timed → completed with duration); memory grows with use;
- * the audit log records every action.
+ * Tasks can be run (timed → completed with duration, or failed with the real
+ * error + a Retry); memory grows with use; the audit log records every action.
  */
-export default function PersonaWorkspace({ persona, view, onPersonaChange, onRunTask, runningTaskId }: {
+export default function PersonaWorkspace({ persona, view, onPersonaChange, onRunTask, runningTaskId, llmReady }: {
     persona: Persona;
     view: WorkspaceView;
     onPersonaChange: (p: Persona) => void;
     onRunTask: (taskId: string, title: string) => void;
+    /** The task id THIS persona currently has running, or null — per-persona lock (D16). */
     runningTaskId: string | null;
+    /** D8: Run/Retry are disabled (with a title explaining why) when no LLM is configured. */
+    llmReady: boolean;
 }) {
     const work = usePersonaWork(persona.id);
     if (view === 'tools') return <ToolsView persona={persona} onPersonaChange={onPersonaChange} />;
-    if (view === 'tasks') return <TasksView persona={persona} work={work} onRunTask={onRunTask} runningTaskId={runningTaskId} />;
+    if (view === 'tasks') return <TasksView persona={persona} work={work} onRunTask={onRunTask} runningTaskId={runningTaskId} llmReady={llmReady} />;
     if (view === 'memory') return <MemoryView persona={persona} work={work} />;
     return <AuditView work={work} />;
 }
@@ -72,13 +75,20 @@ function ToolsView({ persona, onPersonaChange }: { persona: Persona; onPersonaCh
     );
 }
 
-function TasksView({ persona, work, onRunTask, runningTaskId }: {
-    persona: Persona; work: PersonaWork; onRunTask: (id: string, title: string) => void; runningTaskId: string | null;
+function TasksView({ persona, work, onRunTask, runningTaskId, llmReady }: {
+    persona: Persona; work: PersonaWork; onRunTask: (id: string, title: string) => void; runningTaskId: string | null; llmReady: boolean;
 }) {
     const [title, setTitle] = useState('');
-    const todo = work.tasks.filter(t => t.status !== 'done');
+    const todo = work.tasks.filter(t => t.status === 'todo' || t.status === 'running');
+    const failed = work.tasks.filter(t => t.status === 'failed');
     const done = work.tasks.filter(t => t.status === 'done');
     const add = () => { if (title.trim()) { addTask(persona.id, title, 'user'); setTitle(''); } };
+
+    // D8: Run/Retry disabled when there's no LLM to run it, or when THIS
+    // persona already has a different task running (D16 — other personas are
+    // unaffected, since each persona only ever sees its OWN runningTaskId).
+    const lockedByOther = (id: string) => Boolean(runningTaskId) && runningTaskId !== id;
+    const runTitle = (id: string) => (!llmReady ? 'Configure an LLM key in Settings to run this' : (lockedByOther(id) ? 'This persona is already running a task' : undefined));
 
     return (
         <div className="pw">
@@ -99,12 +109,25 @@ function TasksView({ persona, work, onRunTask, runningTaskId }: {
                         <span className={`pw-task-by pw-task-by--${t.assignedBy}`}>{t.assignedBy}</span>
                         {running
                             ? <span className="pw-task-running">running…</span>
-                            : <button type="button" className="pw-mini" onClick={() => onRunTask(t.id, t.title)}>Run</button>}
+                            : <button type="button" className="pw-mini" onClick={() => onRunTask(t.id, t.title)} disabled={!llmReady || lockedByOther(t.id)} title={runTitle(t.id)}>Run</button>}
                         <button type="button" className="pw-mini" onClick={() => completeTask(persona.id, t.id)} title="Mark done">Done</button>
                         <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteTask(persona.id, t.id)} aria-label="Delete task"><X size={16} /></button>
                     </div>
                 );
             })}
+
+            <div className="pw-head">Failed ({failed.length})</div>
+            {failed.length === 0 && <div className="pw-empty">Failed tasks show here with the error and a Retry button.</div>}
+            {failed.map(t => (
+                <div key={t.id} className="pw-task pw-task--failed">
+                    <span className="pw-task-dot pw-task-dot--failed" />
+                    <span className="pw-task-title">{t.title}</span>
+                    <span className="pw-task-status">failed</span>
+                    {t.lastError && <span className="pw-task-error" title={t.lastError}>{t.lastError}</span>}
+                    <button type="button" className="pw-mini" onClick={() => { retryTask(persona.id, t.id); onRunTask(t.id, t.title); }} disabled={!llmReady || lockedByOther(t.id)} title={runTitle(t.id)}>Retry</button>
+                    <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteTask(persona.id, t.id)} aria-label="Delete task"><X size={16} /></button>
+                </div>
+            ))}
 
             <div className="pw-head">Completed ({done.length})</div>
             {done.length === 0 && <div className="pw-empty">Completed tasks show here with the time they took.</div>}

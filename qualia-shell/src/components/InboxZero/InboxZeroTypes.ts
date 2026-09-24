@@ -14,6 +14,8 @@ import { Zap, VolumeX, Pause } from 'lucide-react';
 export type TabId =
     | 'triage'
     | 'newsletters'
+    | 'rules'
+    | 'audit'
     | 'stats'
     | 'settings';
 

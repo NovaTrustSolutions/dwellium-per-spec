@@ -27,7 +27,7 @@ const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
-import { formatInline } from './araInline';
+import { formatInline, toPlainText, toSpeechText, splitFences } from './araInline';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
@@ -385,7 +385,8 @@ function createChatMessage(
 }
 
 function summarizeText(value: string, fallback: string, maxLength = 72): string {
-    const cleaned = value.replace(/\s+/g, ' ').replace(/[*_`#>-]/g, '').trim();
+    // Markers only — underscores inside words and hyphens (follow-up, 2026-09-24) stay.
+    const cleaned = toPlainText(value).replace(/\s+/g, ' ').trim();
     if (!cleaned) return fallback;
     return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength - 1).trim()}…` : cleaned;
 }
@@ -666,14 +667,8 @@ export default function ARAConsole() {
 
     // Strip markdown for clean spoken text
     const stripMarkdown = useCallback((text: string): string => {
-        return text
-            .replace(/\*\*(.+?)\*\*/g, '$1')       // bold
-            .replace(/\*(.+?)\*/g, '$1')            // italic
-            .replace(/_(.+?)_/g, '$1')              // italic underscore
-            .replace(/`([^`]+)`/g, '$1')            // inline code
-            .replace(/^#{1,6}\s+/gm, '')           // headings
-            .replace(/^[-•]\s/gm, '')              // bullets
-            .replace(/^\d+\.\s/gm, '')             // numbered lists
+        // toSpeechText drops markdown markers and reads user_id_map as "user id map".
+        return toSpeechText(text)
             .replace(/\[Error\]/g, 'Error')         // error prefix
             .replace(/\[Connection Error\]/g, 'Connection Error')
             .replace(/\n{2,}/g, '. ')               // double newlines to pauses
@@ -2121,26 +2116,28 @@ export default function ARAConsole() {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
-    const renderContent = (text: string) => {
-        const lines = text.split('\n');
-        return lines.map((line, i) => {
-            let processed = formatInline(escapeHtml(line));
-            if (processed.match(/^[-•]\s/)) {
-                processed = `<span class="ara-bullet">•</span>${processed.slice(2)}`;
-            }
-            if (processed.match(/^\d+\.\s/)) {
-                const num = processed.match(/^(\d+)\./)?.[1];
-                processed = `<span class="ara-num">${num}.</span>${processed.replace(/^\d+\.\s/, '')}`;
-            }
-            if (processed.startsWith('### ')) {
-                return <h5 key={i} className="ara-h3" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(4)) }} />;
-            }
-            if (processed.startsWith('## ')) {
-                return <h4 key={i} className="ara-h2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(3)) }} />;
-            }
-            if (processed === '') return <br key={i} />;
-            return <p key={i} className="ara-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed) }} />;
-        });
+    const renderContent = (text: string) => splitFences(text).flatMap(block => (block.kind === 'code'
+        // a fenced block is one <pre>, its text inserted as text (never as HTML)
+        ? [<pre key={`code-${block.start}`} className="ara-code-block"><code>{block.lines.join('\n')}</code></pre>]
+        : block.lines.map((line, k) => renderLine(line, block.start + k))));
+
+    const renderLine = (line: string, i: number) => {
+        let processed = formatInline(escapeHtml(line));
+        if (processed.match(/^[-•]\s/)) {
+            processed = `<span class="ara-bullet">•</span>${processed.slice(2)}`;
+        }
+        if (processed.match(/^\d+\.\s/)) {
+            const num = processed.match(/^(\d+)\./)?.[1];
+            processed = `<span class="ara-num">${num}.</span>${processed.replace(/^\d+\.\s/, '')}`;
+        }
+        if (processed.startsWith('### ')) {
+            return <h5 key={i} className="ara-h3" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(4)) }} />;
+        }
+        if (processed.startsWith('## ')) {
+            return <h4 key={i} className="ara-h2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(3)) }} />;
+        }
+        if (processed === '') return <br key={i} />;
+        return <p key={i} className="ara-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed) }} />;
     };
 
     const getPersonaTheme = (id: string) => PERSONA_THEMES[id] || DEFAULT_THEME;

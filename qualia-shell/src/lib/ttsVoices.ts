@@ -51,6 +51,8 @@ export function stripMarkdownForSpeech(text: string): string {
         .replace(/`([^`]+)`/g, '$1')
         .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
         .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/(?<=\p{N})_(?=\p{N})/gu, '') // 1_000_000 stays one number
+        .replace(/(?<=[\p{L}\p{M}\p{N}])_(?=[\p{L}\p{M}\p{N}])/gu, ' ') // user_id_map → "user id map", not "useridmap"
         .replace(/[*_#>~|]/g, '')
         .replace(/\s+/g, ' ')
         .trim();

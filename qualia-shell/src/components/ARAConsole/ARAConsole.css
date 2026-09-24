@@ -846,6 +846,21 @@
     color: var(--accent);
 }
 
+/* Fenced ``` code block: one block, shown as written, scrolls sideways instead of wrapping. */
+.ara-code-block {
+    margin: 6px 0;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--text-primary, #fff) 6%, transparent); /* visible on light and dark themes */
+    border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+    border-radius: 8px;
+    overflow-x: auto;
+    white-space: pre;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.85em;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
 /* [D36] Bullets with accent */
 .ara-bullet,
 .ara-num {

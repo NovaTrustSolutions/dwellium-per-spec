@@ -476,6 +476,86 @@ describe('ARAConsole', () => {
         expect([...line.querySelectorAll('code')].map(c => c.textContent)).toEqual(['org_01abc', 'on_demand']);
     });
 
+    it('Save As Note pre-fills a subject that keeps underscores inside words and hyphens', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Noted.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Fix user_id_map follow-up for 2026-09-24');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText('Noted.');
+        await user.click(screen.getByRole('button', { name: /Save As Note/i }));
+        expect((screen.getByLabelText('Note subject') as HTMLInputElement).value).toBe('ARA Note — Fix user_id_map follow-up for 2026-09-24');
+    });
+
+    it('reads identifiers aloud as words (user_id_map → "user id map")', async () => {
+        araPrefsStore.set('streamTokens', false);
+        araPrefsStore.set('ttsEnabled', true);
+        const spoken: string[] = [];
+        vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; pitch = 1; volume = 1; voice = null; onend = null; onerror = null; constructor(public text: string) { spoken.push(text); } });
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Check user_id_map and **generate_content_free_tier_requests** now.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'What next?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/Check user_id_map/);
+        const readButtons = screen.getAllByRole('button', { name: 'Read message aloud' });
+        await user.click(readButtons[readButtons.length - 1]); // the reply's own "Read aloud"
+        await waitFor(() => expect(spoken.some(t => /user id map/.test(t))).toBe(true));
+        const said = spoken.find(t => /user id map/.test(t))!;
+        expect(said).toContain('generate content free tier requests');
+        expect(said).not.toMatch(/userid|useridmap/);
+    });
+
+    it('renders a fenced code block as one code block, with nothing formatted inside', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Run this:\n```bash\nfind . -name "*.tsx" | grep **bold** _x_\nls -la\n```\nDone.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'How do I list files?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText('Done.');
+        const pre = document.querySelector('.ara-message-body pre.ara-code-block') as HTMLElement;
+        expect(pre).not.toBeNull();
+        expect(pre.textContent).toBe('find . -name "*.tsx" | grep **bold** _x_\nls -la');
+        expect(pre.querySelector('em, strong')).toBeNull();
+        expect(document.body.textContent).not.toContain('```');
+    });
+
+    it('a line starting with inline ```code``` is not a fence — nothing after it is swallowed', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Run:\n```npm install``` then restart.\nAfter that, you are done.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Setup?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        const after = await screen.findByText('After that, you are done.');
+        expect(after.closest('pre')).toBeNull();
+        expect(document.querySelector('.ara-message-body pre.ara-code-block')).toBeNull();
+        expect(document.body.textContent).toContain('then restart.');
+    });
+
+    it('a fence indented inside a numbered list renders without the list indent', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: '1. Install:\n   ```bash\n   npm i\n   ```\n2. Run it.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Steps?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/Run it\./);
+        expect(document.querySelector('.ara-message-body pre.ara-code-block')?.textContent).toBe('npm i');
+    });
+
     it('offline fallback uses single-shot callLlm when streamTokens is OFF', async () => {
         araPrefsStore.set('streamTokens', false);
         chatShouldThrow = true;

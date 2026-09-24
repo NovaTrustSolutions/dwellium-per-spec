@@ -461,6 +461,21 @@ describe('ARAConsole', () => {
         expect(screen.getAllByText('Offline LLM reply.')).toHaveLength(1);
     });
 
+    it('renders underscores inside words literally, keeps _real italics_, and leaves code spans alone', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Quota metric generate_content_free_tier_requests hit; see _the docs_ and `org_01abc` on `on_demand`.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'What happened?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        const line = (await screen.findByText(/Quota metric/)).closest('.ara-line') as HTMLElement;
+        expect(line.textContent).toContain('generate_content_free_tier_requests');
+        expect([...line.querySelectorAll('em')].map(e => e.textContent)).toEqual(['the docs']);
+        expect([...line.querySelectorAll('code')].map(c => c.textContent)).toEqual(['org_01abc', 'on_demand']);
+    });
+
     it('offline fallback uses single-shot callLlm when streamTokens is OFF', async () => {
         araPrefsStore.set('streamTokens', false);
         chatShouldThrow = true;
@@ -847,6 +862,27 @@ describe('ARAConsole', () => {
             await screen.findByText(/Researcher failed:/);
             expect(document.body.textContent).toMatch(/Researcher failed: \[custom\] 400 Model 'x' is currently unavailable\./);
             expect(document.body.textContent).not.toMatch(/invalid_request_error|\{"error"/);
+        });
+
+        it('the "taking on:" header shows a goal with underscores and code cleanly (no stray _ or *)', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on check user_id_map and `on_demand`');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            const header = (await screen.findByText(/taking on:/)).closest('.ara-line') as HTMLElement;
+            expect(header.textContent).toBe('Researcher taking on: check user_id_map and on_demand');
+            expect(header.querySelector('em')?.textContent).toBe('check user_id_map and on_demand');
+            expect(header.querySelector('em code')?.textContent).toBe('on_demand');
+        });
+
+        it('the "taking on:" header shows a goal containing * cleanly', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on find all *.tsx files');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            const header = (await screen.findByText(/taking on:/)).closest('.ara-line') as HTMLElement;
+            expect(header.textContent).toBe('Researcher taking on: find all *.tsx files');
+            expect(header.querySelector('em')?.textContent).toBe('find all *.tsx files');
         });
 
         it('direct team spawn where no member answered says the team failed and saves nothing', async () => {

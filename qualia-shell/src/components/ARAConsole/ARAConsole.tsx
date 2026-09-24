@@ -27,6 +27,7 @@ const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
+import { formatInline } from './araInline';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
@@ -1393,7 +1394,7 @@ export default function ARAConsole() {
         hermesLearningUserIdHolder.current = user?.id ?? null;
         const progress = createChatMessage({
             role: 'assistant',
-            content: `**${req.name}** taking on: _${req.goal}_`,
+            content: `**${req.name}** taking on: _${req.goal}_`, // _…_ may contain in-word underscores (araInline)
         });
         setMessages(prev => (echoUser
             ? [...prev, createChatMessage({ role: 'user', content: `${req.kind === 'team' ? 'Spawn' : 'Solo'} ${req.name}: ${req.goal}` }), progress]
@@ -2123,11 +2124,7 @@ export default function ARAConsole() {
     const renderContent = (text: string) => {
         const lines = text.split('\n');
         return lines.map((line, i) => {
-            let processed = escapeHtml(line);
-            processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            processed = processed.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-            processed = processed.replace(/_([^_]+)_/g, '<em>$1</em>');
-            processed = processed.replace(/`([^`]+)`/g, '<code>$1</code>');
+            let processed = formatInline(escapeHtml(line));
             if (processed.match(/^[-•]\s/)) {
                 processed = `<span class="ara-bullet">•</span>${processed.slice(2)}`;
             }

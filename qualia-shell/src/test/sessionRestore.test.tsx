@@ -8,7 +8,7 @@
  * WindowProvider component-level restore with exact geometry.
  */
 import React from 'react';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
     sessionRestoreStore,
@@ -273,6 +273,17 @@ describe('WindowProvider — component-level restore', () => {
             { component: 'notepad', x: 33, y: 44, width: 555, height: 444, zIndex: 3, minimized: true, groupId: 'stack-1' },
             { component: 'ara-console', x: 700, y: 0, width: 900, height: 700, zIndex: 5, minimized: false, groupId: null },
         ]);
+    });
+
+    it("plan 066: openWindow('inbox-zero') opens 'inbox'; a second open of 'inbox' re-focuses it (one window)", () => {
+        let open: ((c: string, t: string, i: string) => string | null) | null = null;
+        function Opener() { open = useWindows().openWindow; return null; }
+        render(
+            <UserProvider><LayoutProvider><WindowProvider><Probe /><Opener /></WindowProvider></LayoutProvider></UserProvider>,
+        );
+        act(() => { open!('inbox-zero', 'Inbox Zero (deprecated)', 'mail-open'); });
+        act(() => { open!('inbox', 'Inbox Zero', 'mail-open'); });
+        expect(JSON.parse(screen.getByTestId('windows').textContent!).map((w: { component: string }) => w.component)).toEqual(['inbox']);
     });
 
     it('fresh user (no snapshot) mounts with an empty canvas — default-stack path intact', () => {

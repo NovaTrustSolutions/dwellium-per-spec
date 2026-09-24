@@ -949,7 +949,7 @@ export const WINDOW_COMPONENTS: Record<string, React.LazyExoticComponent<Compone
 
 /** Get widget metadata by key */
 export function getWidgetMeta(key: string): WidgetRegistration | undefined {
-    return WIDGET_REGISTRY[key];
+    return WIDGET_REGISTRY[resolveWidgetId(key)]; // plan 066: retired ids read as their live widget
 }
 
 /**

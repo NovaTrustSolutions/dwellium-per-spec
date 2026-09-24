@@ -8,7 +8,7 @@
  * Shell lookup sites — covered by their own tests).
  */
 import { describe, it, expect } from 'vitest';
-import { WIDGET_REGISTRY, resolveWidgetId } from '../registry/widgetRegistry';
+import { WIDGET_REGISTRY, getWidgetMeta, resolveWidgetId } from '../registry/widgetRegistry';
 
 describe('resolveWidgetId', () => {
     it('maps the retired inbox-zero id to the live inbox id', () => {
@@ -26,6 +26,11 @@ describe('resolveWidgetId', () => {
     it('never returns an Object.prototype member for an id that shadows one', () => {
         expect(resolveWidgetId('constructor')).toBe('constructor');
         expect(resolveWidgetId('toString')).toBe('toString');
+    });
+
+    it('getWidgetMeta reads a retired id as its live widget (all 14 callers)', () => {
+        expect(getWidgetMeta('inbox-zero')?.id).toBe('inbox');
+        expect(getWidgetMeta('tasks')?.id).toBe('tasks');
     });
 
     it('inbox-zero is gone from the registry; its resolved id is present', () => {

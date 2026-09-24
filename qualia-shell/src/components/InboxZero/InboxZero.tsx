@@ -870,7 +870,7 @@ export default function InboxZero() {
                                         <div className="iz-card__main" style={{ flex: 1 }} onClick={() => {
                                             const nextId = isExpanded ? null : item.id;
                                             setExpandedId(nextId);
-                                            if (!item.isRead) handleMarkRead(item.id);
+                                            if (nextId && !item.isRead) handleMarkRead(item.id); // open only — collapse fired it twice
                                             if (nextId && !auditCache[nextId]) {
                                                 authFetch(`${INBOX_API}/${nextId}/audit`).then(r => r.ok ? r.json() : { entries: [] }).then(d => {
                                                     setAuditCache(prev => ({ ...prev, [nextId]: d.entries || [] }));

@@ -9,7 +9,7 @@ import { parseCommand, recallMemory, type ParsedCommand } from '../../lib/dwelli
 import { requestAraPrompt } from '../../lib/llmRouter';
 import { searchTranscriptions, type TranscriptHit } from '../../lib/transcriptSearch';
 import { hiddenWidgetsStore } from '../../lib/hiddenWidgetsStore';
-import { getWidgetMeta } from '../../registry/widgetRegistry';
+import { getWidgetMeta, resolveWidgetId } from '../../registry/widgetRegistry';
 import { buildHelpRows } from '../../lib/helpCommands';
 import { UserContext } from '../../context/UserContext';
 import { recentActivityStore, type RecentActivityEntry } from '../../lib/recentActivityStore';
@@ -831,6 +831,12 @@ export default function CommandPalette() {
         // Plan 055 phase 3 — Resume: the last 5 distinct widgets/docs touched,
         // always on top when the palette opens; filtered by label on query.
         const resumeResults: CommandResult[] = recentActivity
+            // plan 066: history saved before the alias retirement may hold 'inbox-zero'
+            // next to 'inbox' — resolve, then keep the first (most recent) of each.
+            .map(e => (e.kind === 'widget' && resolveWidgetId(e.id) !== e.id
+                ? { ...e, id: resolveWidgetId(e.id), label: getWidgetMeta(e.id)?.label ?? e.label }
+                : e))
+            .filter((e, i, all) => all.findIndex(x => x.kind === e.kind && x.id === e.id) === i)
             .filter(e => e.kind === 'scribe-doc' ? getWidgetMeta('scribe') != null : (getWidgetMeta(e.id) != null && !hiddenSet.has(e.id)))
             .filter(e => !queryValue || e.label.toLowerCase().includes(queryValue.toLowerCase()))
             .slice(0, 5)

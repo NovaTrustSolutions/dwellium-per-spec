@@ -235,6 +235,17 @@ describe('InboxZero', () => {
     // Plan 066 §2d — every mutation checks res.ok before touching cache/state
     // and surfaces failure via the qualia-toast event; the item is never removed
     // and no success is shown on a non-2xx.
+    it('marks an unread message read once on expand — collapsing does not fire it again', async () => {
+        authFetch.mockImplementation(routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } })));
+        renderInbox();
+        await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+        const card = screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__main')!;
+        fireEvent.click(card); // expand
+        fireEvent.click(card); // collapse
+        const reads = authFetch.mock.calls.filter(([u]) => typeof u === 'string' && /\/read$/.test(u));
+        expect(reads).toHaveLength(1);
+    });
+
     it('shows an error toast and keeps the item when archive fails', async () => {
         const onToast = vi.fn();
         window.addEventListener('qualia-toast', onToast);

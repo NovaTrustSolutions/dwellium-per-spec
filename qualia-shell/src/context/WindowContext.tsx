@@ -304,7 +304,9 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         return () => clearTimeout(timer);
     }, [windows, dockItems]);
 
-    const openWindow = useCallback((component: string, title: string, icon: string): string | null => {
+    const openWindow = useCallback((rawComponent: string, title: string, icon: string): string | null => {
+        // plan 066: every open resolves a retired id (e.g. 'inbox-zero') to the live one here.
+        const component = resolveWidgetId(rawComponent);
         // Plan 055 phase 3 — feed the ⌘K "Resume" trail (open AND re-focus
         // both count as a touch). Central here so sidebar/⌘K/bus all record.
         recordActivity('widget', component, title);

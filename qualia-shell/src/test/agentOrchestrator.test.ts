@@ -152,6 +152,63 @@ describe('runPersona', () => {
     });
 });
 
+describe('a flagged or unverifiable answer is never recorded as a success', () => {
+    const persona = () => DEFAULT_PERSONAS.find(p => p.id === 'researcher')!;
+    const invokeWithVerify = (verifyReply: string | null) => vi.fn(async (req: { prompt: string; responseFormat?: string }) => {
+        if (req.prompt.includes('Check every factual claim')) return verifyReply;
+        return 'The office is open Saturdays.';
+    });
+
+    it('runPersona records outcome fail when the fact-check flags the answer', async () => {
+        const record = vi.fn();
+        await runPersona({ goal: 'Hours?', sources: 'Closed on weekends.', persona: persona(),
+            deps: { invoke: invokeWithVerify('{"supported": false, "verified": "[UNVERIFIED] The office is open Saturdays."}'), record } });
+        expect(record).toHaveBeenCalledTimes(1);
+        expect(record.mock.calls[0][0].outcome).toBe('fail');
+        expect(record.mock.calls[0][0].summary).toMatch(/^\[unverified\]/);
+    });
+
+    it('runPersona records outcome fail when the fact-check is unavailable', async () => {
+        const record = vi.fn();
+        await runPersona({ goal: 'Hours?', sources: 'Closed on weekends.', persona: persona(),
+            deps: { invoke: invokeWithVerify('Looks fine to me.'), record } });
+        expect(record.mock.calls[0][0].outcome).toBe('fail');
+    });
+
+    it('runPersona records success when the check passes or there is nothing to check', async () => {
+        const passed = vi.fn();
+        await runPersona({ goal: 'Hours?', sources: 'Open Saturdays.', persona: persona(),
+            deps: { invoke: invokeWithVerify('{"supported": true, "verified": "The office is open Saturdays."}'), record: passed } });
+        expect(passed.mock.calls[0][0].outcome).toBe('success');
+        const noSources = vi.fn();
+        await runPersona({ goal: 'Hours?', sources: '', persona: persona(), deps: { invoke: invokeWithVerify(null), record: noSources } });
+        expect(noSources.mock.calls[0][0].outcome).toBe('success');
+    });
+
+    it('runTeam: a flagged member is recorded as fail, the team outcome is partial, and the done event says unsupported', async () => {
+        const record = vi.fn();
+        const events: Array<{ phase: string; personaId: string; supported?: boolean }> = [];
+        const invoke = vi.fn(async (req: { prompt: string; responseFormat?: string; systemPrompt?: string }) => {
+            if (req.responseFormat === 'json' && req.prompt.includes('Assign each member')) return '[{"personaId":"researcher","tasks":["a"]},{"personaId":"data-analyst","tasks":["b"]}]';
+            if (req.prompt.includes('Check every factual claim')) {
+                return req.prompt.includes('research claim')
+                    ? '{"supported": false, "verified": "[UNVERIFIED] research claim"}'
+                    : '{"supported": true, "verified": "data claim"}';
+            }
+            if (req.prompt.includes('YOUR TASKS')) return req.systemPrompt?.includes('Researcher') ? 'research claim' : 'data claim';
+            if (req.prompt.includes('Merge these into one')) return 'MERGED';
+            return 'unexpected';
+        });
+        const result = await runTeam({ goal: 'Do it', sources: 'facts', team: TEAM, personas: DEFAULT_PERSONAS, deps: { invoke, record },
+            onMemberTask: e => { if (e.phase === 'done') events.push(e as never); } });
+        const byPersona = Object.fromEntries(record.mock.calls.map(c => [c[0].toolsUsed[0], c[0].outcome]));
+        expect(byPersona).toEqual({ researcher: 'fail', 'data-analyst': 'success' });
+        expect(result.outcome).toBe('partial');
+        expect(events.find(e => e.personaId === 'researcher')?.supported).toBe(false);
+        expect(events.find(e => e.personaId === 'data-analyst')?.supported).toBe(true);
+    });
+});
+
 describe('P11-5: equipped skills execute during member tasks', () => {
     it('runSkill output is injected into the member prompt as TOOL RESULTS', async () => {
         const invoke = mockInvoke();

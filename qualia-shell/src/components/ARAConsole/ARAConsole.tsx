@@ -1433,7 +1433,7 @@ export default function ARAConsole() {
                 const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
                 // D3 fix: record success/fail from out.ok, not output-text truthiness
                 // (the placeholder no-response text used to read as a truthy success).
-                recordRun({ prompt: req.goal, taskType: 'general', outcome: out.ok ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
+                recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
                 const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
                 if (text) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                 line(text ? `---\n\n${text}` : 'No output — the model returned nothing.');
@@ -1520,7 +1520,7 @@ export default function ARAConsole() {
         // D3 fix: record success/fail from out.ok, not output-text truthiness; surface
         // out.error in the returned text when the member failed.
         const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
-        recordRun({ prompt: req.goal, taskType: 'general', outcome: out.ok ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id] });
+        recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id] });
         return { ok: !!text, text: text || 'No output — the model returned nothing.' };
     }, [user, integrations.llm]);
 

@@ -78,6 +78,8 @@ export interface MemberTaskEvent {
     ok?: boolean;
     /** set alongside `ok: false` on phase 'done'. */
     error?: string;
+    /** on phase 'done': the answer passed the fact-check or had nothing to check against. */
+    supported?: boolean;
 }
 
 /** Outcome of STEP 3 (verify) for one member's output. */
@@ -247,13 +249,7 @@ async function execute(
             `Complete your tasks and produce your contribution.`,
     });
     const ok = !!out && out.trim().length > 0;
-    deps.record?.({
-        prompt: `[${persona.discipline}] ${goal}`,
-        taskType,
-        outcome: ok ? 'success' : 'fail',
-        summary: ok ? out!.slice(0, 200) : undefined,
-        toolsUsed: [persona.id],
-    });
+    // Recording happens AFTER the fact-check (recordOutcome), so a flagged answer is never logged as a success.
     // D3 fix: the placeholder text stays (other callers display it) but is no
     // longer the only signal — `ok`/`error` tell a real failure apart from a
     // real success.
@@ -262,6 +258,22 @@ async function execute(
         ok,
         error: ok ? undefined : NO_RESPONSE_MESSAGE,
     };
+}
+
+/**
+ * Record one member's run in Hermes once its fact-check is done. Only an answer
+ * that passed the check (or had nothing to check against) counts as a success;
+ * a flagged or unverifiable answer is logged as a fail, marked [unverified], so
+ * recall (which ranks successes only) never offers it as a past example.
+ */
+function recordOutcome(deps: OrchestratorDeps, persona: Persona, goal: string, ok: boolean, supported: boolean, verified: string): void {
+    deps.record?.({
+        prompt: `[${persona.discipline}] ${goal}`,
+        taskType: disciplineToTaskType[persona.discipline],
+        outcome: supported ? 'success' : 'fail',
+        summary: !ok ? undefined : (supported ? verified : `[unverified] ${verified}`).slice(0, 200),
+        toolsUsed: [persona.id],
+    });
 }
 
 /**
@@ -385,8 +397,10 @@ export async function runTeam(params: {
         let ok = false;
         let error: string | undefined;
         let verifyStatus: VerifyStatus = 'skipped';
+        let executed = false;
         try {
             const ex = await execute(goal, sources, persona, a.tasks, deps);
+            executed = true;
             output = ex.output;
             ok = ex.ok;
             error = ex.error;
@@ -411,7 +425,8 @@ export async function runTeam(params: {
             warnings.push(`${persona.name}: ${error}`);
         }
         const supported = ok && (verifyStatus === 'passed' || verifyStatus === 'skipped');
-        onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok, error });
+        if (executed) recordOutcome(deps, persona, goal, ok, supported, verified);
+        onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok, error, supported });
         outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported, ok, error, verifyStatus });
     }
 
@@ -439,8 +454,10 @@ export async function runTeam(params: {
         warnings.push(`Merge step failed (${describeLlmFailure(e)}); showing member outputs as-is.`);
     }
 
-    const allMembersOk = outputs.every(o => o.ok);
-    const outcome: TeamRunResult['outcome'] = allMembersOk && mergeOk && !!final.trim() ? 'success' : 'partial';
+    // Success means every member answered AND passed its fact-check (or had nothing to check) —
+    // a run with a flagged member is partial, so it is never taught as a clean success.
+    const allMembersSupported = outputs.every(o => o.supported);
+    const outcome: TeamRunResult['outcome'] = allMembersSupported && mergeOk && !!final.trim() ? 'success' : 'partial';
 
     emit({ phase: 'done', message: 'Done.' });
     return { assignments, outputs, final, outcome, warnings };
@@ -464,6 +481,7 @@ export async function runPersona(params: {
         verifyStatus = v.verifyStatus;
     }
     const supported = ex.ok && (verifyStatus === 'passed' || verifyStatus === 'skipped');
+    recordOutcome(deps, persona, goal, ex.ok, supported, verified);
     return {
         personaId: persona.id, personaName: persona.name, tasks: [goal],
         output: ex.output, verified, supported, ok: ex.ok, error: ex.error, verifyStatus,

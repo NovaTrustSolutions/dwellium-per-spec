@@ -55,6 +55,12 @@ function Icon({ k, size = 16 }: { k: string; size?: number }) {
     return <L size={size} strokeWidth={1.75} />;
 }
 
+/** Working-memory note for a finished run. A flagged/unverifiable answer is noted without its
+ *  text — memory is fed back into later prompts, so an unsupported claim must not travel with it. */
+function learnedNote(label: string, out: Pick<PersonaOutput, 'ok' | 'supported' | 'verified'>, max: number): string {
+    return out.ok && !out.supported ? `${label} → flagged by the fact-check (not reused)` : `${label} → ${out.verified.slice(0, max)}`;
+}
+
 export default function AgentLab() {
     const userCtx = useContext(UserContext);
     hermesLearningUserIdHolder.current = userCtx?.user?.id ?? null; // record/recall to this user
@@ -147,7 +153,8 @@ export default function AgentLab() {
                                 if (m.ok) completeTask(m.personaId, id, m.result);
                                 else failTask(m.personaId, id, m.error ?? NO_RESPONSE_MESSAGE);
                             }
-                            recordPersonaRun(m.personaId, `Team task: ${m.title} → ${(m.result ?? '').slice(0, 140)}`, m.durationMs ?? 0, m.ok ? 'success' : 'fail');
+                            const supported = !!m.ok && m.supported !== false;
+                            recordPersonaRun(m.personaId, learnedNote(`Team task: ${m.title}`, { ok: !!m.ok, supported, verified: m.result ?? '' }, 140), m.durationMs ?? 0, supported ? 'success' : 'fail');
                         }
                     },
                 });
@@ -173,9 +180,10 @@ export default function AgentLab() {
                     const durationMs = performance.now() - t0;
                     setSoloResult(out);
                     // D3: outcome from `ok`, never from output-text truthiness.
-                    const rec = recordRun({ prompt: goal, taskType: 'general', outcome: out.ok ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
+                    // Only an answer that passed its fact-check (or had nothing to check) is a success.
+                    const rec = recordRun({ prompt: goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.ok && !out.supported ? `[unverified] ${out.verified}` : out.verified).slice(0, 200), toolsUsed: [persona.id] });
                     setLastRunId(rec.id);
-                    recordPersonaRun(persona.id, `Goal: ${goal} → ${out.verified.slice(0, 160)}`, durationMs, out.ok ? 'success' : 'fail');
+                    recordPersonaRun(persona.id, learnedNote(`Goal: ${goal}`, out, 160), durationMs, out.supported ? 'success' : 'fail');
                 } catch (e) {
                     // D1: runPersona doesn't catch a thrown provider error —
                     // this is that catch. Never let it vanish silently.
@@ -224,7 +232,7 @@ export default function AgentLab() {
             // silent "completed" with nothing in it.
             if (out.ok) completeTask(personaId, taskId, out.verified.slice(0, 400));
             else failTask(personaId, taskId, out.error ?? NO_RESPONSE_MESSAGE);
-            recordPersonaRun(personaId, `Task: ${taskTitle} → ${out.verified.slice(0, 140)}`, durationMs, out.ok ? 'success' : 'fail');
+            recordPersonaRun(personaId, learnedNote(`Task: ${taskTitle}`, out, 140), durationMs, out.supported ? 'success' : 'fail');
             setSoloResult(out);
         } catch (e) {
             // D1: a thrown provider error fails the task with the real message.

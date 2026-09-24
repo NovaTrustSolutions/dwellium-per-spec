@@ -15,7 +15,7 @@ import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-type LlmReqLike = { personaId?: string; systemPrompt?: string; responseFormat?: string };
+type LlmReqLike = { personaId?: string; systemPrompt?: string; responseFormat?: string; prompt?: string };
 type MockLlmResponse = { text: string; provider: string; model: string } | null;
 type PlanFn = (req: LlmReqLike) => Promise<MockLlmResponse>;
 
@@ -260,6 +260,30 @@ describe('AgentLab — a task result never rates another run', () => {
 
         fireEvent.click(await screen.findByRole('button', { name: 'Mark result good' }));
         expect(hermesLearningStore.getSnapshot().find(r => r.prompt === 'Earlier goal run')?.rating).toBeUndefined();
+    });
+});
+
+describe('AgentLab — a flagged answer is not learned as a success', () => {
+    it('solo run flagged by the fact-check: Hermes records fail, and the claim stays out of working memory', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        // the fact-check call carries no personaId, so route by prompt
+        callLlmMock.mockImplementation(async (req: LlmReqLike) => (req.prompt?.includes('Check every factual claim')
+            ? { text: '{"supported": false, "verified": "[UNVERIFIED] The office is open Saturdays."}', provider: 'anthropic', model: 'x' }
+            : { text: 'The office is open Saturdays.', provider: 'anthropic', model: 'x' }));
+
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Is the office open Saturday?' } });
+        fireEvent.change(screen.getByLabelText(/^Sources/), { target: { value: 'Closed on weekends.' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await screen.findByText(/unverified claims/);
+
+        const recs = hermesLearningStore.getSnapshot().filter(r => r.prompt.includes('Is the office open Saturday?'));
+        expect(recs.length).toBeGreaterThan(0);
+        expect(recs.every(r => r.outcome === 'fail')).toBe(true);
+        const memory = personaWorkStore.getSnapshot().researcher?.memory.map(m => m.text).join(' ') ?? '';
+        expect(memory).not.toMatch(/open Saturdays/);
+        expect(memory).toMatch(/flagged/);
     });
 });
 

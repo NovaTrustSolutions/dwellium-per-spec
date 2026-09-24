@@ -45,6 +45,16 @@ describe('personaWorkStore', () => {
         expect(formatMemory('researcher')).toContain('Summarized the lease');
     });
 
+    it('keeps unchecked runs out of the prompt too, but still shows them', () => {
+        recordRun('researcher', 'Summarized the lease', 1200, 'success');
+        recordRun('researcher', 'Goal: say it is open Saturdays → not fact-checked', 900, 'unchecked');
+        expect(getWork('researcher').memory[0].text).toMatch(/^\[unchecked\]/);
+        expect(getWork('researcher').audit[0].detail).toMatch(/^unchecked · /);
+        const prompt = formatMemory('researcher');
+        expect(prompt).not.toContain('Saturdays');
+        expect(prompt).toContain('Summarized the lease');
+    });
+
     it('keeps failed runs out of the prompt (their goal can carry the rejected claim) but still shows them', () => {
         recordRun('researcher', 'Summarized the lease', 1200, 'success');
         addMemory('researcher', 'Always cite the source');

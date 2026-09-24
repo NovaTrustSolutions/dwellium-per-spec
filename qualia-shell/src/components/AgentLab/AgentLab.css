@@ -111,6 +111,7 @@
 .alab-contrib { border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1)); border-radius: 9px; background: rgba(255, 255, 255, 0.02); }
 .alab-contrib > summary { padding: 8px 12px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
 .alab-unverified { color: var(--alab-warn-text); font-weight: 400; }
+.alab-unchecked { color: var(--text-secondary, var(--text-tertiary)); font-weight: 400; }
 .alab-error-suffix { color: var(--alab-danger-text); font-weight: 400; }
 .alab-pre { white-space: pre-wrap; word-break: break-word; margin: 0; border: none; border-radius: 0; background: transparent; padding: 0 12px 12px; font-size: 12.5px; line-height: 1.55; }
 

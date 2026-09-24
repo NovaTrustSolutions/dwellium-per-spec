@@ -17,6 +17,7 @@ function run(partial: Partial<HermesRunRecord> & { prompt: string }): HermesRunR
         outcome: partial.outcome ?? 'success',
         rating: partial.rating,
         summary: partial.summary,
+        unchecked: partial.unchecked,
         createdAt: partial.createdAt ?? '2026-05-29T10:00:00.000Z',
     };
 }
@@ -37,5 +38,20 @@ describe('rankPastRuns — downvote exclusion', () => {
     it('a small negative rating (e.g. -0.5) is also excluded, not just -1', () => {
         const runs = [run({ id: 'down-half', prompt: 'draft an email reply', rating: -0.5 })];
         expect(rankPastRuns(runs, 'draft an email reply', 5)).toHaveLength(0);
+    });
+});
+
+describe('rankPastRuns — a 👍 promotes an answer that was never fact-checked', () => {
+    const P = 'draft a renewal notice for the tenant';
+    it('an unchecked fail is reused only after a thumbs-up', () => {
+        expect(rankPastRuns([run({ id: 'u', prompt: P, outcome: 'fail', unchecked: true })], P, 5)).toHaveLength(0);
+        expect(rankPastRuns([run({ id: 'u', prompt: P, outcome: 'fail', unchecked: true, rating: 0 })], P, 5)).toHaveLength(0);
+        expect(rankPastRuns([run({ id: 'u', prompt: P, outcome: 'fail', unchecked: true, rating: 1 })], P, 5).map(r => r.id)).toEqual(['u']);
+    });
+    it('a thumbs-up never promotes a fail the fact-check disputed or that errored (not unchecked)', () => {
+        expect(rankPastRuns([run({ id: 'f', prompt: P, outcome: 'fail', rating: 1 })], P, 5)).toHaveLength(0);
+    });
+    it('a later thumbs-down demotes it again', () => {
+        expect(rankPastRuns([run({ id: 'u', prompt: P, outcome: 'fail', unchecked: true, rating: -1 })], P, 5)).toHaveLength(0);
     });
 });

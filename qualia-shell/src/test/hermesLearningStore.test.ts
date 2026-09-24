@@ -184,6 +184,20 @@ describe('hermesLearningStore (per-user)', () => {
         expect(weights[0].weight).toBeCloseTo(3 / 4, 5);
     });
 
+    it('keeps the unchecked flag through save and reload; anything but true is dropped', () => {
+        const rec = recordRun({ prompt: 'draft a notice', outcome: 'fail', unchecked: true, summary: 'Dear tenant' });
+        expect(rec.unchecked).toBe(true);
+        expect(recordRun({ prompt: 'x', outcome: 'success' }).unchecked).toBeUndefined();
+        const key = 'hermes:learning:_anonymous'; // holder is null in beforeEach
+        const stored = JSON.parse(localStorage.getItem(key)!);
+        stored.push({ ...stored[0], id: 'junk', unchecked: 'yes' });
+        localStorage.setItem(key, JSON.stringify(stored));
+        hermesLearningStore.reset();
+        const byId = Object.fromEntries(hermesLearningStore.getSnapshot().map(r => [r.id, r]));
+        expect(byId[rec.id].unchecked).toBe(true);
+        expect(byId['junk'].unchecked).toBeUndefined();
+    });
+
     it('rateRun attaches a rating to a recorded run', () => {
         const rec = recordRun({ prompt: 'do a thing', outcome: 'success' });
         rateRun(rec.id, 1);

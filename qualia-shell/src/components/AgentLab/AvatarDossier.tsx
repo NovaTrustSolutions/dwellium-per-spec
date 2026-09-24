@@ -261,6 +261,7 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                                 <dl className="avd-activity-list">
                                     <div className="avd-activity-row"><dt>Runs</dt><dd>{stats.runs}</dd></div>
                                     <div className="avd-activity-row"><dt>Success rate</dt><dd>{stats.successRate == null ? 'Not available' : `${Math.round(stats.successRate * 100)}%`}</dd></div>
+                                    {stats.uncheckedRuns > 0 && <div className="avd-activity-row"><dt>Not fact-checked</dt><dd>{stats.uncheckedRuns} {stats.uncheckedRuns === 1 ? 'run' : 'runs'} (no Sources)</dd></div>}
                                     <div className="avd-activity-row"><dt>Avg task time</dt><dd>{stats.avgTaskMs == null ? 'Not available' : formatDuration(stats.avgTaskMs)}</dd></div>
                                     <div className="avd-activity-row"><dt>Last run</dt><dd>{stats.lastRunAt == null ? 'Never' : new Date(stats.lastRunAt).toLocaleDateString()}</dd></div>
                                 </dl>

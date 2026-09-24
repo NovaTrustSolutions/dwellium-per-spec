@@ -31,7 +31,7 @@ import { LlmError } from '../lib/llmClient';
 import { agentTeamsStore, upsertPersona } from '../lib/agents/agentTeamsStore';
 import { DEFAULT_PERSONAS } from '../lib/agents/personas';
 import { personaWorkStore, addMemory } from '../lib/agents/personaWorkStore';
-import { hermesLearningStore } from '../components/HonchoHermesPanel/hermesLearningStore';
+import { hermesLearningStore, relevantPastRuns } from '../components/HonchoHermesPanel/hermesLearningStore';
 import { integrationsStore, saveIntegrations } from '../utils/integrationsStore';
 import { emptyIntegrations, type IntegrationsBundle } from '../types/integrations';
 
@@ -284,6 +284,116 @@ describe('AgentLab — a flagged answer is not learned as a success', () => {
         const memory = personaWorkStore.getSnapshot().researcher?.memory.map(m => m.text).join(' ') ?? '';
         expect(memory).not.toMatch(/open Saturdays/);
         expect(memory).toMatch(/flagged/);
+    });
+});
+
+describe('AgentLab — an answer with no Sources is not fact-checked, so it is only reused after a 👍', () => {
+    it('solo: labelled "not fact-checked", logged fail + unchecked, kept out of memory, promoted by 👍', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        callLlmMock.mockImplementation(async () => ({ text: 'The office is open on Saturday.', provider: 'anthropic', model: 'x' }));
+        const goalText = 'Is the office open on Saturday?';
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: goalText } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await screen.findByText(/not fact-checked/);
+
+        // no fact-check call was made (there was nothing to check against)
+        expect(callLlmMock.mock.calls.some(c => String((c[0] as LlmReqLike).prompt ?? '').includes('Check every factual claim'))).toBe(false);
+        const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === goalText)!;
+        expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+        expect(relevantPastRuns(goalText, 3).map(r => r.id)).not.toContain(rec.id);
+        const memory = personaWorkStore.getSnapshot().researcher?.memory.map(m => m.text).join(' ') ?? '';
+        expect(memory).toMatch(/^\[unchecked\]/);
+        expect(memory).toMatch(/not fact-checked/);
+        expect(memory).not.toMatch(/open on Saturday\./);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Mark result good' }));
+        expect(relevantPastRuns(goalText, 3).map(r => r.id)).toContain(rec.id);
+    });
+
+    it('team: the final product is labelled and a 👍 promotes the team run', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        const goalText = 'Plan the spring tenant newsletter';
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: goalText } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run team' }));
+        await screen.findByText('Final product');
+        // the final-product header carries its own label, and each member's summary carries one
+        expect(document.querySelector('.alab-final-head')?.textContent).toMatch(/not fact-checked \(no Sources\)/);
+        const memberLabels = [...document.querySelectorAll('.alab-contrib summary')].filter(el => /not fact-checked/.test(el.textContent ?? ''));
+        expect(memberLabels.length).toBe(document.querySelectorAll('.alab-contrib').length);
+        expect(memberLabels.length).toBeGreaterThan(0);
+        // each member's work log says unchecked, not fail
+        const work = personaWorkStore.getSnapshot();
+        const memberIds = Object.keys(work).filter(id => (work[id]?.audit ?? []).some(a => a.action === 'Run'));
+        expect(memberIds.length).toBeGreaterThan(0);
+        for (const id of memberIds) expect(work[id]!.audit.find(a => a.action === 'Run')?.detail).toMatch(/^unchecked · /);
+        const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === goalText)!;
+        expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+        expect(relevantPastRuns(goalText, 3).map(r => r.id)).not.toContain(rec.id);
+        fireEvent.click(screen.getByRole('button', { name: 'Mark result good' }));
+        expect(relevantPastRuns(goalText, 3).map(r => r.id)).toContain(rec.id);
+    });
+
+    it('a 👍 never promotes an answer the fact-check flagged', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        callLlmMock.mockImplementation(async (req: LlmReqLike) => (req.prompt?.includes('Check every factual claim')
+            ? { text: '{"supported": false, "verified": "[UNVERIFIED] The office is open Saturdays."}', provider: 'anthropic', model: 'x' }
+            : { text: 'The office is open Saturdays.', provider: 'anthropic', model: 'x' }));
+        const goalText = 'Is the office open Saturdays?';
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: goalText } });
+        fireEvent.change(screen.getByLabelText(/^Sources/), { target: { value: 'Closed on weekends.' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await screen.findByText(/unverified claims/);
+        const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === goalText)!;
+        expect(rec.unchecked).toBeUndefined();
+        fireEvent.click(screen.getByRole('button', { name: 'Mark result good' }));
+        expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
+        expect(relevantPastRuns(goalText, 3).map(r => r.id)).not.toContain(rec.id);
+    });
+
+    it('Tasks tab, no Sources: logged unchecked, labelled, and the 👍 hint is not offered where 👍 is disabled', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        plan.byPersona.researcher = async () => ({ text: 'Task answer', provider: 'anthropic', model: 'x' });
+        fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }));
+        fireEvent.change(screen.getByPlaceholderText('Give this persona a task…'), { target: { value: 'A task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+        await waitFor(() => expect(personaWorkStore.getSnapshot().researcher?.tasks.find(t => t.title === 'A task')?.status).toBe('done'));
+        expect(personaWorkStore.getSnapshot().researcher?.audit.find(a => a.action === 'Run')?.detail).toMatch(/^unchecked · /);
+        const label = await screen.findByText(/not fact-checked \(no Sources\)/);
+        expect(screen.getByRole('button', { name: 'Mark result good' })).toBeDisabled();
+        expect(label.getAttribute('title') ?? '').not.toMatch(/👍/);
+    });
+
+    it('a Goal run finishing before a task: once the task answer shows, 👍 cannot rate the Goal run', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        let releaseTask: (v: { text: string; provider: string; model: string }) => void = () => {};
+        plan.byPersona.researcher = async (req: LlmReqLike) => (String(req.prompt ?? '').includes('Slow task')
+            ? new Promise(res => { releaseTask = res; })
+            : { text: 'Goal answer', provider: 'anthropic', model: 'x' });
+        fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }));
+        fireEvent.change(screen.getByPlaceholderText('Give this persona a task…'), { target: { value: 'Slow task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Goal while task runs' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Mark result good' })).not.toBeDisabled());
+        await act(async () => { releaseTask({ text: 'Task answer', provider: 'anthropic', model: 'x' }); });
+        await waitFor(() => expect(personaWorkStore.getSnapshot().researcher?.tasks.find(t => t.title === 'Slow task')?.status).toBe('done'));
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Mark result good' })).toBeDisabled());
+    });
+
+    it('the Sources hint says an answer without Sources is reused only after a 👍', () => {
+        render(<StrictMode><AgentLab /></StrictMode>);
+        expect(screen.getByText(/without them, an answer is reused only after you 👍 it/i)).toBeInTheDocument();
     });
 });
 

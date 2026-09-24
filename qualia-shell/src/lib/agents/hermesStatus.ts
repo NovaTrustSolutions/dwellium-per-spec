@@ -64,7 +64,10 @@ export function estimateCompletion(
 
 export interface PersonaStats {
     runs: number;
+    /** over runs that were fact-checked or failed; unchecked runs (no Sources) are not scored. */
     successRate: number | null;
+    /** answered with no Sources, so nothing was checked. */
+    uncheckedRuns: number;
     avgTaskMs: number | null;
     lastRunAt: number | null;
 }
@@ -78,15 +81,17 @@ export interface PersonaStats {
  */
 export function personaStats(work?: PersonaWork): PersonaStats {
     const runEntries = (work?.audit ?? []).filter(a => a.action === 'Run');
-    const successRate = runEntries.length === 0
+    const scored = runEntries.filter(a => !(a.detail ?? '').startsWith('unchecked'));
+    const successRate = scored.length === 0
         ? null
-        : runEntries.filter(a => (a.detail ?? '').startsWith('success')).length / runEntries.length;
+        : scored.filter(a => (a.detail ?? '').startsWith('success')).length / scored.length;
     const lastRunAt = runEntries.length === 0
         ? null
         : runEntries.reduce((max, a) => Math.max(max, a.ts), runEntries[0].ts);
     return {
         runs: work?.usageCount ?? 0,
         successRate,
+        uncheckedRuns: runEntries.length - scored.length,
         avgTaskMs: averageTaskMs(work),
         lastRunAt,
     };

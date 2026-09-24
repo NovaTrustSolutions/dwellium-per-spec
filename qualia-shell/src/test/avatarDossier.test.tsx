@@ -80,7 +80,7 @@ afterEach(() => {
 
 describe('AvatarDossier — Activity block (P2)', () => {
     it('shows "Not available" for a null success rate and avg task time, and "Never" for no last run', () => {
-        const stats: PersonaStats = { runs: 3, successRate: null, avgTaskMs: null, lastRunAt: null };
+        const stats: PersonaStats = { runs: 3, successRate: null, uncheckedRuns: 0, avgTaskMs: null, lastRunAt: null };
         render(<StrictMode><Wrapper initialDossier={makeDossier()} stats={stats} /></StrictMode>);
 
         expect(screen.getAllByText('Not available')).toHaveLength(2);
@@ -89,10 +89,20 @@ describe('AvatarDossier — Activity block (P2)', () => {
     });
 
     it('formats a known rate as a rounded percent', () => {
-        const stats: PersonaStats = { runs: 8, successRate: 0.75, avgTaskMs: 4200, lastRunAt: Date.now() };
+        const stats: PersonaStats = { runs: 8, successRate: 0.75, uncheckedRuns: 0, avgTaskMs: 4200, lastRunAt: Date.now() };
         render(<StrictMode><Wrapper initialDossier={makeDossier()} stats={stats} /></StrictMode>);
 
         expect(screen.getByText('75%')).toBeInTheDocument();
+    });
+
+    it('shows how many runs were not fact-checked, only when there are some', () => {
+        const stats: PersonaStats = { runs: 5, successRate: 0.5, uncheckedRuns: 3, avgTaskMs: null, lastRunAt: null };
+        render(<StrictMode><Wrapper initialDossier={makeDossier()} stats={stats} /></StrictMode>);
+        expect(screen.getByText('Not fact-checked')).toBeInTheDocument();
+        expect(screen.getByText('3 runs (no Sources)')).toBeInTheDocument();
+        cleanup();
+        render(<StrictMode><Wrapper initialDossier={makeDossier()} stats={{ ...stats, uncheckedRuns: 0 }} /></StrictMode>);
+        expect(screen.queryByText('Not fact-checked')).not.toBeInTheDocument();
     });
 
     it('renders no Activity block when stats is not provided', () => {

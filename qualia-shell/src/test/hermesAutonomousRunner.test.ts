@@ -18,7 +18,7 @@ describe('runNextHermesTask', () => {
             verified: 'Launch map with evidence',
             supported: true,
             ok: true,
-            verifyStatus: 'skipped',
+            verifyStatus: 'passed',
         }));
 
         const result = await runNextHermesTask({
@@ -45,9 +45,10 @@ describe('runNextHermesTask', () => {
     });
 
     it.each([
-        ['flagged', 'flagged by the fact-check'],
-        ['unavailable', 'fact-check unavailable'],
-    ] as const)('a %s answer completes the task but is remembered as fail, without the claim text', async (verifyStatus, label) => {
+        ['flagged', 'flagged by the fact-check', 'fail'],
+        ['unavailable', 'fact-check unavailable', 'fail'],
+        ['skipped', 'not fact-checked', 'unchecked'],
+    ] as const)('a %s answer completes the task but is remembered as not reusable, without the claim text', async (verifyStatus, label, expectedOutcome) => {
         const complete = vi.fn();
         const remember = vi.fn();
         const runPersonaFn = vi.fn(async ({ persona }: any) => ({
@@ -67,7 +68,7 @@ describe('runNextHermesTask', () => {
         expect(complete).toHaveBeenCalledWith(labyrinth.id, 'task-9', expect.any(String));
         expect(result).toMatchObject({ outcome: 'success' });
         const [, note, , outcome] = remember.mock.calls[0];
-        expect(outcome).toBe('fail');
+        expect(outcome).toBe(expectedOutcome);
         expect(note).toContain(label);
         expect(note).not.toContain('open Saturdays');
     });

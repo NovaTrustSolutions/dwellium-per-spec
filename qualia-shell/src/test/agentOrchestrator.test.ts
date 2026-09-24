@@ -4,7 +4,7 @@
  * → merge, plus Hermes recording and graceful no-LLM behavior.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { runTeam, runPersona, extractJson, describeLlmFailure, NO_RESPONSE_MESSAGE, type OrchestratorDeps, type RunEvent } from '../lib/agents/orchestrator';
+import { runTeam, runPersona, extractJson, describeLlmFailure, notReusedReason, workOutcome, NO_RESPONSE_MESSAGE, type OrchestratorDeps, type RunEvent } from '../lib/agents/orchestrator';
 import { DEFAULT_PERSONAS, type AgentTeam } from '../lib/agents/personas';
 import { LlmError } from '../lib/llmClient';
 
@@ -117,12 +117,50 @@ describe('runTeam', () => {
         expect(done.ok).toBe(true);
     });
 
-    it('skips verification when no sources are provided', async () => {
+    it('no sources: no fact-check call, and the answers count as unchecked, not supported', async () => {
         const invoke = mockInvoke();
-        const result = await runTeam({ goal: 'Plan a launch', team: TEAM, personas: DEFAULT_PERSONAS, deps: { invoke } });
-        // verified === raw output (no fact-check step)
+        const record = vi.fn();
+        const result = await runTeam({ goal: 'Plan a launch', team: TEAM, personas: DEFAULT_PERSONAS, deps: { invoke, record } });
+        // verified === raw output (no fact-check step, nothing rewrites the answer)
         expect(result.outputs[0].verified).toBe(result.outputs[0].output);
-        expect(result.outputs.every(o => o.supported)).toBe(true);
+        expect((invoke as ReturnType<typeof vi.fn>).mock.calls.some((c: unknown[]) => (c[0] as { prompt: string }).prompt.includes('Check every factual claim'))).toBe(false);
+        expect(result.outputs.every(o => o.ok && o.verifyStatus === 'skipped' && !o.supported)).toBe(true);
+        // Nothing was checked, so it is not a clean success — but it is marked unchecked so a 👍 can promote it.
+        expect(result.outcome).toBe('partial');
+        expect(result.unchecked).toBe(true);
+        expect(record).toHaveBeenCalledTimes(2); // one per member — not vacuously true over zero calls
+        expect(record.mock.calls.every(c => c[0].outcome === 'fail' && c[0].unchecked === true)).toBe(true);
+        // The merge step is not told an unchecked contribution "contains UNVERIFIED claims" — nothing disputed it.
+        const mergePrompt = (invoke as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => (c[0] as { prompt: string }).prompt).find(p => p.includes('Merge these into one'))!;
+        expect(mergePrompt).toContain('### Researcher\n');
+        expect(mergePrompt).not.toContain('(contains UNVERIFIED claims)');
+        // An unchecked answer is stored as-is: no [unverified] prefix (nothing disputed it).
+        expect(record.mock.calls.every(c => !/^\[unverified\]/.test(c[0].summary ?? ''))).toBe(true);
+    });
+
+    it('no sources + a member that errored: the team is not "unchecked", so a 👍 cannot promote it', async () => {
+        const invoke: OrchestratorDeps['invoke'] = vi.fn(async (req) => {
+            const p = req.prompt;
+            if (req.responseFormat === 'json' && p.includes('Assign each member')) return '[{"personaId":"researcher","tasks":["a"]},{"personaId":"data-analyst","tasks":["b"]}]';
+            if (p.includes('YOUR TASKS')) return req.systemPrompt?.includes('Researcher') ? 'research output' : '';
+            if (p.includes('Merge these into one')) return 'MERGED';
+            return 'unexpected';
+        });
+        const result = await runTeam({ goal: 'Do it', team: TEAM, personas: DEFAULT_PERSONAS, deps: { invoke } });
+        expect(result.outputs.find(o => o.personaId === 'data-analyst')?.ok).toBe(false);
+        expect(result.final).toBe('MERGED');
+        expect(result.outcome).toBe('partial');
+        expect(result.unchecked).toBe(false);
+    });
+
+    it('notReusedReason and workOutcome name the no-Sources case honestly', () => {
+        expect(notReusedReason('skipped')).toMatch(/not fact-checked/);
+        expect(notReusedReason('skipped')).not.toMatch(/flagged/);
+        expect(workOutcome({ ok: true, supported: true, verifyStatus: 'passed' })).toBe('success');
+        expect(workOutcome({ ok: true, supported: false, verifyStatus: 'skipped' })).toBe('unchecked');
+        expect(workOutcome({ ok: true, supported: false, verifyStatus: 'flagged' })).toBe('fail');
+        expect(workOutcome({ ok: true, supported: false, verifyStatus: 'unavailable' })).toBe('fail');
+        expect(workOutcome({ ok: false, supported: false, verifyStatus: 'skipped' })).toBe('fail');
     });
 
     it('errors clearly on an empty goal', async () => {
@@ -175,14 +213,17 @@ describe('a flagged or unverifiable answer is never recorded as a success', () =
         expect(record.mock.calls[0][0].outcome).toBe('fail');
     });
 
-    it('runPersona records success when the check passes or there is nothing to check', async () => {
+    it('runPersona records success only when the check passes; no Sources is fail + unchecked', async () => {
         const passed = vi.fn();
         await runPersona({ goal: 'Hours?', sources: 'Open Saturdays.', persona: persona(),
             deps: { invoke: invokeWithVerify('{"supported": true, "verified": "The office is open Saturdays."}'), record: passed } });
         expect(passed.mock.calls[0][0].outcome).toBe('success');
+        expect(passed.mock.calls[0][0].unchecked).toBeUndefined();
         const noSources = vi.fn();
-        await runPersona({ goal: 'Hours?', sources: '', persona: persona(), deps: { invoke: invokeWithVerify(null), record: noSources } });
-        expect(noSources.mock.calls[0][0].outcome).toBe('success');
+        const out = await runPersona({ goal: 'Hours?', sources: '', persona: persona(), deps: { invoke: invokeWithVerify(null), record: noSources } });
+        expect(out).toMatchObject({ ok: true, supported: false, verifyStatus: 'skipped' });
+        expect(noSources.mock.calls[0][0]).toMatchObject({ outcome: 'fail', unchecked: true });
+        expect(noSources.mock.calls[0][0].summary).not.toMatch(/^\[unverified\]/);
     });
 
     it('runTeam: a flagged member is recorded as fail, the team outcome is partial, and the done event says unsupported', async () => {
@@ -204,6 +245,8 @@ describe('a flagged or unverifiable answer is never recorded as a success', () =
         const byPersona = Object.fromEntries(record.mock.calls.map(c => [c[0].toolsUsed[0], c[0].outcome]));
         expect(byPersona).toEqual({ researcher: 'fail', 'data-analyst': 'success' });
         expect(result.outcome).toBe('partial');
+        expect(result.unchecked).toBe(false); // a disputed answer is never promotable by 👍
+        expect(record.mock.calls.every(c => c[0].unchecked !== true)).toBe(true);
         expect(events.find(e => e.personaId === 'researcher')?.supported).toBe(false);
         expect(events.find(e => e.personaId === 'data-analyst')?.supported).toBe(true);
     });

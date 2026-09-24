@@ -1421,7 +1421,7 @@ export default function ARAConsole() {
                 if (result.error) {
                     line(`${result.error}`);
                 } else {
-                    recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
+                    recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
                     recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                     line(`---\n\n${result.final}`);
                     if (ttsEnabled) void speakText(`${req.name} has finished.`);
@@ -1433,7 +1433,7 @@ export default function ARAConsole() {
                 const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
                 // D3 fix: record success/fail from out.ok, not output-text truthiness
                 // (the placeholder no-response text used to read as a truthy success).
-                recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
+                recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
                 const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
                 if (text) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                 line(text ? `---\n\n${text}` : 'No output — the model returned nothing.');
@@ -1511,7 +1511,7 @@ export default function ARAConsole() {
             if (!team) return { ok: false, text: `Team "${req.name}" not found in the Agent Lab catalog.` };
             const result = await runTeam({ goal: req.goal, sources: '', team, personas, deps });
             if (result.error) return { ok: false, text: result.error };
-            recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
+            recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
             return { ok: true, text: result.final };
         }
         const persona = findPersona(personas, req.id);
@@ -1520,7 +1520,7 @@ export default function ARAConsole() {
         // D3 fix: record success/fail from out.ok, not output-text truthiness; surface
         // out.error in the returned text when the member failed.
         const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
-        recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id] });
+        recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
         return { ok: !!text, text: text || 'No output — the model returned nothing.' };
     }, [user, integrations.llm]);
 

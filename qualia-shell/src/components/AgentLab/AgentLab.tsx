@@ -25,7 +25,7 @@ import {
 } from '../../lib/agents/personaWorkStore';
 import { personaStats } from '../../lib/agents/hermesStatus';
 import {
-    runTeam, runPersona, describeLlmFailure, notReusedReason, NO_RESPONSE_MESSAGE,
+    runTeam, runPersona, describeLlmFailure, notReusedReason, workOutcome, NO_RESPONSE_MESSAGE,
     type OrchestratorDeps, type RunEvent, type TeamRunResult, type PersonaOutput,
 } from '../../lib/agents/orchestrator';
 import { AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
@@ -153,8 +153,8 @@ export default function AgentLab() {
                                 if (m.ok) completeTask(m.personaId, id, m.result);
                                 else failTask(m.personaId, id, m.error ?? NO_RESPONSE_MESSAGE);
                             }
-                            const supported = !!m.ok && m.supported !== false;
-                            recordPersonaRun(m.personaId, learnedNote(`Team task: ${m.title}`, { ok: !!m.ok, supported, verified: m.result ?? '', verifyStatus: m.verifyStatus ?? 'skipped' }, 140), m.durationMs ?? 0, supported ? 'success' : 'fail');
+                            const memberOut = { ok: !!m.ok, supported: !!m.ok && m.supported === true, verified: m.result ?? '', verifyStatus: m.verifyStatus ?? 'skipped' } as const;
+                            recordPersonaRun(m.personaId, learnedNote(`Team task: ${m.title}`, memberOut, 140), m.durationMs ?? 0, workOutcome(memberOut));
                         }
                     },
                 });
@@ -166,6 +166,8 @@ export default function AgentLab() {
                     outcome: result.outcome === 'success' ? 'success' : 'fail',
                     summary: (result.final || result.error || '').slice(0, 200),
                     toolsUsed: [team.id],
+                    // no Sources: not a success, but the 👍 below can make it reusable
+                    unchecked: result.unchecked,
                 });
                 setLastRunId(rec.id);
             } else {
@@ -180,10 +182,12 @@ export default function AgentLab() {
                     const durationMs = performance.now() - t0;
                     setSoloResult(out);
                     // D3: outcome from `ok`, never from output-text truthiness.
-                    // Only an answer that passed its fact-check (or had nothing to check) is a success.
-                    const rec = recordRun({ prompt: goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.ok && !out.supported ? `[unverified] ${out.verified}` : out.verified).slice(0, 200), toolsUsed: [persona.id] });
+                    // Only an answer that passed its fact-check against Sources is a success; one with no
+                    // Sources is 'unchecked' — a fail the 👍 below can make reusable.
+                    const outcome = workOutcome(out);
+                    const rec = recordRun({ prompt: goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (outcome === 'fail' && out.ok ? `[unverified] ${out.verified}` : out.verified).slice(0, 200), toolsUsed: [persona.id], unchecked: outcome === 'unchecked' });
                     setLastRunId(rec.id);
-                    recordPersonaRun(persona.id, learnedNote(`Goal: ${goal}`, out, 160), durationMs, out.supported ? 'success' : 'fail');
+                    recordPersonaRun(persona.id, learnedNote(`Goal: ${goal}`, out, 160), durationMs, outcome);
                 } catch (e) {
                     // D1: runPersona doesn't catch a thrown provider error —
                     // this is that catch. Never let it vanish silently.
@@ -232,8 +236,11 @@ export default function AgentLab() {
             // silent "completed" with nothing in it.
             if (out.ok) completeTask(personaId, taskId, out.verified.slice(0, 400));
             else failTask(personaId, taskId, out.error ?? NO_RESPONSE_MESSAGE);
-            recordPersonaRun(personaId, learnedNote(`Task: ${taskTitle}`, out, 140), durationMs, out.supported ? 'success' : 'fail');
+            recordPersonaRun(personaId, learnedNote(`Task: ${taskTitle}`, out, 140), durationMs, workOutcome(out));
             setSoloResult(out);
+            // The task answer is now what's shown; a Goal run that finished meanwhile must not be the 👍 target.
+            setLastRunId(null);
+            setRating(null);
         } catch (e) {
             // D1: a thrown provider error fails the task with the real message.
             const durationMs = performance.now() - t0;
@@ -408,7 +415,7 @@ function RunPanel(props: { goal: string; setGoal: (v: string) => void; sources: 
         <div className="alab-runpanel">
             <label className="alab-label" htmlFor={goalId}>Goal</label>
             <textarea id={goalId} className="alab-goal" value={props.goal} onChange={e => props.setGoal(e.target.value)} placeholder="What should the team accomplish?" />
-            <label className="alab-label" htmlFor={sourcesId}>Sources <span className="alab-label-hint">(optional — outputs are verified against these)</span></label>
+            <label className="alab-label" htmlFor={sourcesId}>Sources <span className="alab-label-hint">(optional — outputs are fact-checked against these; without them, an answer is reused only after you 👍 it)</span></label>
             <textarea id={sourcesId} className="alab-sources" value={props.sources} onChange={e => props.setSources(e.target.value)} placeholder="Paste reference text, notes, or facts the agents must rely on…" />
             <button className="alab-run" onClick={props.run} disabled={props.running || props.disabled || !props.goal.trim()}>
                 {props.running ? 'Running…' : props.runLabel}
@@ -454,6 +461,7 @@ function RunOutput(props: {
                                 {!o.ok && <span className="alab-error-suffix"> · failed</span>}
                                 {o.ok && o.verifyStatus === 'flagged' && <span className="alab-unverified"> · unverified claims</span>}
                                 {o.ok && o.verifyStatus === 'unavailable' && <span className="alab-unverified"> · verification unavailable</span>}
+                                {o.ok && o.verifyStatus === 'skipped' && <span className="alab-unchecked"> · not fact-checked (no Sources)</span>}
                             </summary>
                             <pre className="alab-pre">{o.ok ? o.verified : (o.error ?? o.verified)}</pre>
                         </details>
@@ -468,6 +476,9 @@ function RunOutput(props: {
                             {/* D2: a solo result carries its own verification status (team members show theirs above). */}
                             {showRatingFor === 'solo' && soloResult?.verifyStatus === 'flagged' && <span className="alab-unverified"> · unverified claims</span>}
                             {showRatingFor === 'solo' && soloResult?.verifyStatus === 'unavailable' && <span className="alab-unverified"> · verification unavailable</span>}
+                            {((showRatingFor === 'solo' && soloResult?.verifyStatus === 'skipped') || (showRatingFor === 'team' && teamResult?.unchecked)) && (
+                                <span className="alab-unchecked" title={props.lastRunId ? 'There were no Sources to check it against. It is not reused as a past example unless you 👍 it.' : 'There were no Sources to check it against, so it is not reused as a past example.'}> · not fact-checked (no Sources)</span>
+                            )}
                         </span>
                         <span className="alab-rate">
                             <button className={`alab-rate-btn ${props.rating === 1 ? 'alab-rate-btn--on' : ''}`} onClick={() => props.onRate(1)} disabled={!props.lastRunId} title="Good — Hermes learns from this" aria-label="Mark result good"><ThumbsUp size={16} /></button>

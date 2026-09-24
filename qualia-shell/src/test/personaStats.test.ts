@@ -20,12 +20,26 @@ function work(partial: Partial<PersonaWork>): PersonaWork {
 }
 
 describe('personaStats', () => {
+    it('unchecked runs (no Sources) are counted separately and left out of the success rate', () => {
+        const w = work({ usageCount: 4, audit: [
+            audit({ ts: 400, detail: 'unchecked · 1.0 s' }),
+            audit({ ts: 300, detail: 'unchecked · 1.0 s' }),
+            audit({ ts: 200, detail: 'success · 1.0 s' }),
+            audit({ ts: 100, detail: 'fail · 1.0 s' }),
+        ] });
+        const st = personaStats(w);
+        expect(st.uncheckedRuns).toBe(2);
+        expect(st.successRate).toBe(0.5);
+        expect(st.lastRunAt).toBe(400);
+        expect(personaStats(work({ usageCount: 1, audit: [audit({ ts: 1, detail: 'unchecked · 1.0 s' })] })).successRate).toBeNull();
+    });
+
     it('is all-empty/null for undefined work', () => {
-        expect(personaStats(undefined)).toEqual({ runs: 0, successRate: null, avgTaskMs: null, lastRunAt: null });
+        expect(personaStats(undefined)).toEqual({ runs: 0, successRate: null, uncheckedRuns: 0, avgTaskMs: null, lastRunAt: null });
     });
 
     it('is all-empty/null for work with no runs yet', () => {
-        expect(personaStats(work({}))).toEqual({ runs: 0, successRate: null, avgTaskMs: null, lastRunAt: null });
+        expect(personaStats(work({}))).toEqual({ runs: 0, successRate: null, uncheckedRuns: 0, avgTaskMs: null, lastRunAt: null });
     });
 
     it('runs comes from usageCount, independent of audit entry count', () => {

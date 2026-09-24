@@ -42,6 +42,8 @@ export interface RecordInput {
     outcome: 'success' | 'fail';
     summary?: string;
     toolsUsed?: string[];
+    /** answered but had no Sources to be checked against (outcome is 'fail'). */
+    unchecked?: boolean;
 }
 
 export interface OrchestratorDeps {
@@ -78,7 +80,7 @@ export interface MemberTaskEvent {
     ok?: boolean;
     /** set alongside `ok: false` on phase 'done'. */
     error?: string;
-    /** on phase 'done': the answer passed the fact-check or had nothing to check against. */
+    /** on phase 'done': the answer passed a fact-check against the Sources. */
     supported?: boolean;
     /** on phase 'done': how the fact-check went (flagged vs. could not run). */
     verifyStatus?: VerifyStatus;
@@ -93,9 +95,9 @@ export interface PersonaOutput {
     tasks: string[];
     output: string;
     verified: string;
-    /** true ONLY when the member produced a real answer AND that answer either
-     *  passed verification or had nothing to verify against. A failed member,
-     *  or one whose verification we couldn't run, is never "supported". */
+    /** true ONLY when the member produced a real answer AND that answer passed
+     *  a fact-check against the Sources. No Sources means nothing was checked,
+     *  so it is not "supported" (verifyStatus 'skipped' — see workOutcome). */
     supported: boolean;
     /** the member produced a real (non-empty) model answer. */
     ok: boolean;
@@ -113,11 +115,26 @@ export interface TeamRunResult {
     outcome: 'success' | 'partial' | 'fail';
     /** human-readable, e.g. "Engineer: [anthropic] 429 rate limited". */
     warnings: string[];
+    /** every member answered and nothing disputed it — it just had no Sources to be
+     *  checked against. Not a success, but a user 👍 may promote it (rankPastRuns). */
+    unchecked: boolean;
 }
 
 /** Why an answered-but-unsupported run is kept out of learning — honest about flagged vs. unchecked. */
 export function notReusedReason(status?: VerifyStatus): string {
+    if (status === 'skipped') return 'not fact-checked, no Sources (not reused)';
     return status === 'unavailable' ? 'fact-check unavailable (not reused)' : 'flagged by the fact-check (not reused)';
+}
+
+/** Only an answer checked against Sources and not disputed counts as supported. */
+function isSupported(ok: boolean, status: VerifyStatus): boolean {
+    return ok && status === 'passed';
+}
+
+/** How a run is logged in the persona's work log: 'unchecked' = answered, but there were no Sources to check it against. */
+export function workOutcome(out: Pick<PersonaOutput, 'ok' | 'supported' | 'verifyStatus'>): 'success' | 'fail' | 'unchecked' {
+    if (out.supported) return 'success';
+    return out.ok && out.verifyStatus === 'skipped' ? 'unchecked' : 'fail';
 }
 
 /** Friendly message when the model returns no text at all (null/blank invoke). */
@@ -269,17 +286,21 @@ async function execute(
 
 /**
  * Record one member's run in Hermes once its fact-check is done. Only an answer
- * that passed the check (or had nothing to check against) counts as a success;
- * a flagged or unverifiable answer is logged as a fail, marked [unverified], so
- * recall (which ranks successes only) never offers it as a past example.
+ * that passed the check against Sources counts as a success; a flagged or
+ * unverifiable answer is logged as a fail, marked [unverified], and an answer
+ * with no Sources as a fail marked `unchecked` — recall offers neither as a past
+ * example (an unchecked one only after a user 👍).
  */
-function recordOutcome(deps: OrchestratorDeps, persona: Persona, goal: string, ok: boolean, supported: boolean, verified: string): void {
+function recordOutcome(deps: OrchestratorDeps, persona: Persona, goal: string, ok: boolean, verifyStatus: VerifyStatus, verified: string): void {
+    const supported = isSupported(ok, verifyStatus);
+    const unchecked = ok && verifyStatus === 'skipped';
     deps.record?.({
         prompt: `[${persona.discipline}] ${goal}`,
         taskType: disciplineToTaskType[persona.discipline],
         outcome: supported ? 'success' : 'fail',
-        summary: !ok ? undefined : (supported ? verified : `[unverified] ${verified}`).slice(0, 200),
+        summary: !ok ? undefined : (supported || unchecked ? verified : `[unverified] ${verified}`).slice(0, 200),
         toolsUsed: [persona.id],
+        ...(unchecked ? { unchecked: true } : {}),
     });
 }
 
@@ -327,7 +348,9 @@ async function merge(
     goal: string, outputs: PersonaOutput[], team: AgentTeam, personas: Persona[], deps: OrchestratorDeps,
 ): Promise<{ text: string; fellBack: boolean }> {
     const orchestrator = findPersona(personas, team.orchestratorId) ?? findPersona(personas, ORCHESTRATOR_ID);
-    const body = outputs.map(o => `### ${o.personaName}${o.supported ? '' : ' (contains UNVERIFIED claims)'}\n${o.verified}`).join('\n\n');
+    // Only a contribution the fact-check disputed or could not check is marked; one with no
+    // Sources was never checked, so it is not "unverified" — the merge must not hedge it.
+    const body = outputs.map(o => `### ${o.personaName}${o.supported || o.verifyStatus === 'skipped' ? '' : ' (contains UNVERIFIED claims)'}\n${o.verified}`).join('\n\n');
     const res = await deps.invoke({
         personaId: orchestrator?.id,
         systemPrompt: orchestrator?.systemPrompt,
@@ -359,7 +382,7 @@ export async function runTeam(params: {
     const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
     if (!goal.trim()) {
-        return { assignments: [], outputs: [], final: '', error: 'Give the team a goal first.', outcome: 'fail', warnings: [] };
+        return { assignments: [], outputs: [], final: '', error: 'Give the team a goal first.', outcome: 'fail', warnings: [], unchecked: false };
     }
 
     // P5 fix: a team whose members were all deleted from the catalog used to
@@ -372,7 +395,7 @@ export async function runTeam(params: {
         return {
             assignments: [], outputs: [], final: '',
             error: 'This team has no members. Edit the team and add at least one persona.',
-            outcome: 'fail', warnings: [],
+            outcome: 'fail', warnings: [], unchecked: false,
         };
     }
 
@@ -383,7 +406,7 @@ export async function runTeam(params: {
     } catch (e) {
         const error = `Planning failed: ${describeLlmFailure(e)}`;
         emit({ phase: 'error', message: error });
-        return { assignments: [], outputs: [], final: '', error, outcome: 'fail', warnings: [] };
+        return { assignments: [], outputs: [], final: '', error, outcome: 'fail', warnings: [], unchecked: false };
     }
 
     // D1 fix: each member is isolated in its own try/catch so one provider
@@ -431,8 +454,8 @@ export async function runTeam(params: {
             emit({ phase: 'error', personaId: persona.id, message: `${persona.name} failed: ${error}` });
             warnings.push(`${persona.name}: ${error}`);
         }
-        const supported = ok && (verifyStatus === 'passed' || verifyStatus === 'skipped');
-        if (executed) recordOutcome(deps, persona, goal, ok, supported, verified);
+        const supported = isSupported(ok, verifyStatus);
+        if (executed) recordOutcome(deps, persona, goal, ok, verifyStatus, verified);
         onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok, error, supported, verifyStatus });
         outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported, ok, error, verifyStatus });
     }
@@ -442,7 +465,7 @@ export async function runTeam(params: {
         const firstError = outputs[0]?.error ?? 'unknown error';
         const error = `No team member produced a result. ${firstError}`;
         emit({ phase: 'error', message: error });
-        return { assignments, outputs, final: '', error, outcome: 'fail', warnings };
+        return { assignments, outputs, final: '', error, outcome: 'fail', warnings, unchecked: false };
     }
 
     emit({ phase: 'merge', message: 'Orchestrator is merging the final product…' });
@@ -461,13 +484,15 @@ export async function runTeam(params: {
         warnings.push(`Merge step failed (${describeLlmFailure(e)}); showing member outputs as-is.`);
     }
 
-    // Success means every member answered AND passed its fact-check (or had nothing to check) —
-    // a run with a flagged member is partial, so it is never taught as a clean success.
+    // Success means every member answered AND passed its fact-check against the Sources —
+    // a run with a flagged or unchecked member is partial, so it is never taught as a clean success.
     const allMembersSupported = outputs.every(o => o.supported);
-    const outcome: TeamRunResult['outcome'] = allMembersSupported && mergeOk && !!final.trim() ? 'success' : 'partial';
+    const delivered = mergeOk && !!final.trim();
+    const outcome: TeamRunResult['outcome'] = allMembersSupported && delivered ? 'success' : 'partial';
+    const unchecked = !allMembersSupported && delivered && outputs.every(o => o.ok && o.verifyStatus === 'skipped');
 
     emit({ phase: 'done', message: 'Done.' });
-    return { assignments, outputs, final, outcome, warnings };
+    return { assignments, outputs, final, outcome, warnings, unchecked };
 }
 
 /** Run a single persona (no orchestration) — used for solo persona runs. */
@@ -487,8 +512,8 @@ export async function runPersona(params: {
         verified = v.verified;
         verifyStatus = v.verifyStatus;
     }
-    const supported = ex.ok && (verifyStatus === 'passed' || verifyStatus === 'skipped');
-    recordOutcome(deps, persona, goal, ex.ok, supported, verified);
+    const supported = isSupported(ex.ok, verifyStatus);
+    recordOutcome(deps, persona, goal, ex.ok, verifyStatus, verified);
     return {
         personaId: persona.id, personaName: persona.name, tasks: [goal],
         output: ex.output, verified, supported, ok: ex.ok, error: ex.error, verifyStatus,

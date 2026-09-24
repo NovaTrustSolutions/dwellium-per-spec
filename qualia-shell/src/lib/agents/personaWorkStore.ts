@@ -227,7 +227,10 @@ export function logAudit(personaId: string, action: string, detail?: string): vo
 }
 
 /* ── run recording (the "gets better with use" loop) ── */
-export function recordRun(personaId: string, summary: string, durationMs: number, outcome: 'success' | 'fail'): void {
+/** 'unchecked' = answered, but there were no Sources to fact-check it against. */
+export type WorkOutcome = 'success' | 'fail' | 'unchecked';
+
+export function recordRun(personaId: string, summary: string, durationMs: number, outcome: WorkOutcome): void {
     update(personaId, w => ({
         ...w,
         usageCount: w.usageCount + 1,
@@ -238,9 +241,9 @@ export function recordRun(personaId: string, summary: string, durationMs: number
 
 /** Inject a persona's recent memory into its prompt (self-improvement). */
 export function formatMemory(personaId: string, limit = 6): string {
-    // A failed run's note repeats its goal, which can carry the claim the fact-check rejected;
-    // the model treats it as a source. It stays on the Memory tab but never reaches a prompt.
-    const mem = getWork(personaId).memory.filter(m => !(m.kind === 'learned' && m.text.startsWith('[fail]'))).slice(0, limit);
+    // A failed or unchecked run's note repeats its goal, which can carry a rejected or unchecked
+    // claim; the model treats it as a source. It stays on the Memory tab but never reaches a prompt.
+    const mem = getWork(personaId).memory.filter(m => !(m.kind === 'learned' && /^\[(fail|unchecked)\]/.test(m.text))).slice(0, limit);
     if (mem.length === 0) return '';
     return `\n\n## Working memory (learned from past runs — apply what is relevant)\n${mem.map(m => `- ${m.text}`).join('\n')}`;
 }

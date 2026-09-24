@@ -24,6 +24,7 @@ import {
     recordRun as recordPersonaRun,
     recoverStaleTasks,
     type ClaimedPersonaTask,
+    type WorkOutcome,
 } from '../lib/agents/personaWorkStore';
 import {
     HERMES_PERSONA_IDS,
@@ -33,6 +34,7 @@ import {
 import {
     runPersona,
     notReusedReason,
+    workOutcome,
     type OrchestratorDeps,
     type PersonaOutput,
 } from '../lib/agents/orchestrator';
@@ -58,7 +60,7 @@ export interface RunNextHermesTaskDeps {
     claim?: () => ClaimedPersonaTask | null;
     complete?: (personaId: string, taskId: string, result: string) => void;
     fail?: (personaId: string, taskId: string, error: string) => void;
-    remember?: (personaId: string, summary: string, durationMs: number, outcome: 'success' | 'fail') => void;
+    remember?: (personaId: string, summary: string, durationMs: number, outcome: WorkOutcome) => void;
     wikiContext?: () => string;
     personaMemory?: (personaId: string) => string;
     recall?: (query: string) => Promise<string>;
@@ -122,12 +124,13 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
             return { personaId: persona.id, taskId: claim.task.id, outcome: 'fail', error };
         }
         complete(persona.id, claim.task.id, result.slice(0, 2_000));
-        // The task is done either way, but only an answer that passed its fact-check (or had
-        // nothing to check) is remembered as a success — and a flagged claim never enters memory.
-        if (output.supported === false) {
-            remember(persona.id, `Autonomous task: ${claim.task.title} -> ${notReusedReason(output.verifyStatus)}`, duration, 'fail');
-        } else {
+        // The task is done either way, but only an answer that passed its fact-check against
+        // Sources is remembered as a success — a flagged or unchecked claim never enters memory.
+        const outcome = workOutcome(output);
+        if (outcome === 'success') {
             remember(persona.id, `Autonomous task: ${claim.task.title} -> ${result.slice(0, 180)}`, duration, 'success');
+        } else {
+            remember(persona.id, `Autonomous task: ${claim.task.title} -> ${notReusedReason(output.verifyStatus)}`, duration, outcome);
         }
         return { personaId: persona.id, taskId: claim.task.id, outcome: 'success', result };
     } catch (err: any) {

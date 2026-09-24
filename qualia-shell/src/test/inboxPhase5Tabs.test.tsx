@@ -116,7 +116,8 @@ describe('GlobalAuditTab', () => {
         fireEvent.click(screen.getByRole('button', { name: /View/ }));
         const dialog = await screen.findByRole('dialog');
         expect(dialog).toHaveAttribute('aria-modal', 'true');
-        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close preview' }));
+        // focus moves in an effect after the dialog commits — wait for it rather than racing it
+        await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close preview' })));
         fireEvent.keyDown(document, { key: 'Escape' });
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });

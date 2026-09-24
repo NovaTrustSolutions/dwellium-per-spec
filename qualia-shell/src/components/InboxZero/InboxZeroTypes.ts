@@ -1,7 +1,7 @@
 /**
  * InboxZeroTypes.ts — Shared TypeScript interfaces for all Inbox Zero tabs
  *
- * Imported by: TriageTab, NewsletterTab, StatsTab, CapabilitiesTab,
+ * Imported by: TriageTab, NewsletterTab, StatsTab,
  *              SettingsTab, InboxZero (orchestrator), and all sub-components.
  *
  * Single source of truth — no duplicate interface definitions.
@@ -15,16 +15,7 @@ export type TabId =
     | 'triage'
     | 'newsletters'
     | 'stats'
-    | 'capabilities'
-    | 'rules'
-    | 'nif'
-    | 'actions'
-    | 'analytics'
-    | 'cold-email'
-    | 'replies'
-    | 'tracker'
-    | 'settings'
-    | 'audit';
+    | 'settings';
 
 // ─── Core Entities ─────────────────────────────────────
 
@@ -148,141 +139,8 @@ export interface ThreadLink {
     created_at: string;
 }
 
-export interface CapabilityFeature {
-    name: string;
-    description: string;
-    status: 'live' | 'beta' | 'planned';
-}
-
-export interface CapabilityCategory {
-    id: string;
-    icon: string;
-    title: string;
-    description: string;
-    color: string;
-    features: CapabilityFeature[];
-}
-
-export const CAPABILITIES_STORAGE_KEY = 'dwellium-iz-capabilities';
-
-export const CAPABILITIES_DATA: CapabilityCategory[] = [
-    {
-        id: 'email-triage',
-        icon: '',
-        title: 'Email Triage & Processing',
-        description: 'NIF classification → smart routing → approval queue with undo, labels, threads, and scheduled actions.',
-        color: '#818cf8',
-        features: [
-            { name: 'Real-time SSE updates', status: 'live', description: 'Server-sent events for instant inbox changes' },
-            { name: 'NIF signal classification', status: 'live', description: 'AI-powered signal/noise/low-priority categorization' },
-            { name: 'Smart routing', status: 'live', description: '19 regex-based rules + AI fallback for project routing' },
-            { name: 'Approval queue', status: 'live', description: 'Human-in-the-loop approval before any action executes' },
-            { name: 'Batch operations', status: 'live', description: 'Bulk archive, classify, and label operations' },
-            { name: 'Undo system', status: 'live', description: '30-second undo window for any status change' },
-            { name: 'Thread linking', status: 'live', description: 'Link emails to workitems, tenants, or properties' },
-            { name: 'Full email viewer', status: 'live', description: 'On-demand body fetching with sandboxed HTML rendering' },
-            { name: 'Snooze', status: 'live', description: 'Snooze emails for 1h/4h/1d/1w with auto-resurface' },
-            { name: 'Retry classification', status: 'live', description: 'Re-run NIF classification on any email' },
-            { name: 'Keyboard navigation', status: 'planned', description: 'j/k/x shortcuts for power users' },
-        ],
-    },
-    {
-        id: 'ai-agents',
-        icon: '',
-        title: 'AI Intelligence',
-        description: 'ARA conversational AI, NIF classification engine, and smart action generation',
-        color: '#22d3ee',
-        features: [
-            { name: 'ARA Chat Engine', status: 'live', description: 'Context-aware AI assistant with property/workitem/decision awareness' },
-            { name: 'NIF Intelligence', status: 'live', description: 'Neural Intake Filter — 3-class email classification with confidence scores' },
-            { name: 'Smart Actions', status: 'live', description: 'AI-suggested next steps (reply, schedule, create task, escalate)' },
-            { name: 'Predictive analytics', status: 'live', description: 'Volume forecasting and backlog aging analysis' },
-            { name: 'Summarization', status: 'live', description: 'AI-generated email summaries for quick scanning' },
-            { name: 'Entity Guardian', status: 'live', description: 'PII/legal term filter preventing sensitive data in AI prompts' },
-            { name: 'Multi-model support', status: 'beta', description: 'Switchable between GPT-4, Claude, and local models' },
-        ],
-    },
-    {
-        id: 'analytics',
-        icon: '',
-        title: 'Analytics & Monitoring',
-        description: 'Visual dashboards, sender analysis, classification metrics, and NIF intelligence stats',
-        color: '#22c55e',
-        features: [
-            { name: 'Email activity dashboard', status: 'live', description: 'AnalyticsDashboard with volume charts, class breakdown, top senders' },
-            { name: 'Top senders analysis', status: 'live', description: 'analyticsService ranks senders by volume and signal class' },
-            { name: 'Newsletter stats', status: 'live', description: 'Newsletter tab tracks subscription count and read rates' },
-            { name: 'NIF classification metrics', status: 'live', description: 'NIF Intel dashboard: confidence trends, class distribution, model perf' },
-            { name: 'Smart Actions analytics', status: 'live', description: 'Action execution history and success rate tracking' },
-            { name: 'Response time metrics', status: 'beta', description: 'Reply Tracker calculates avg response days for received replies' },
-            { name: 'Stats by time period', status: 'planned', description: 'Filter analytics by day, week, month' },
-            { name: 'Organization-wide stats', status: 'planned', description: 'Aggregate stats across team members' },
-        ],
-    },
-    {
-        id: 'automation',
-        icon: '',
-        title: 'Automation & Rules',
-        description: 'Regex routing rules with priority ordering, bulk classify, and scheduled scans',
-        color: '#fb923c',
-        features: [
-            { name: 'NIF signal classification', status: 'live', description: 'Emails auto-categorized as signal/noise/low_priority' },
-            { name: 'Custom routing rules', status: 'live', description: '19 regex-based rules for domain-specific routing' },
-            { name: 'Custom categories', status: 'planned', description: 'Define your own sender categories' },
-            { name: 'Category-based rules', status: 'planned', description: 'Apply different rules per category' },
-        ],
-    },
-    {
-        id: 'integrations',
-        icon: '',
-        title: 'Integrations',
-        description: 'Gmail, Google Calendar, Drive, Trello, OpenAI, and observability integrations',
-        color: '#2dd4bf',
-        features: [
-            { name: 'Gmail API', status: 'live', description: 'Core email provider — read, label, archive via OAuth2' },
-            { name: 'Google Calendar', status: 'live', description: 'Event scheduling and ARA context injection' },
-            { name: 'Google Drive', status: 'live', description: 'Document storage and file management' },
-            { name: 'Trello', status: 'live', description: 'Task board sync, card creation, and property matching' },
-            { name: 'OpenAI / AI providers', status: 'live', description: 'ARA chat, NIF classification, smart actions via aiProviderService' },
-            { name: 'Sentry / Pino logging', status: 'live', description: 'Error tracking (optional DSN) + structured JSON logging' },
-            { name: 'Microsoft Outlook', status: 'planned', description: 'Alternative email provider with full parity' },
-            { name: 'Slack', status: 'planned', description: 'Notifications and alerts channel integration' },
-        ],
-    },
-    {
-        id: 'organization',
-        icon: '',
-        title: 'Organization / Team',
-        description: 'RBAC with 7 roles, field-level permissions, and user management',
-        color: '#fbbf24',
-        features: [
-            { name: 'RBAC (7 roles)', status: 'live', description: 'god/corporate/management/advisor/maintenance/agent/tenant' },
-            { name: 'Field-level permissions', status: 'live', description: 'field_permissions table controls access to sensitive fields' },
-            { name: 'User management', status: 'live', description: 'CRUD users with role assignment and property access' },
-            { name: 'Audit log', status: 'live', description: 'Full action audit trail with user/IP/timestamp' },
-            { name: 'Organization-level rules', status: 'planned', description: 'Shared rule sets across team' },
-        ],
-    },
-    {
-        id: 'platform-infra',
-        icon: '',
-        title: 'Platform Infrastructure',
-        description: 'Express.js, SQLite, SSE, background queues, scheduler, API versioning, HMAC signing',
-        color: '#64748b',
-        features: [
-            { name: 'Express.js API', status: 'live', description: 'Production REST API with versioned routes (/api/v1/' },
-            { name: 'SQLite (better-sqlite3)', status: 'live', description: 'Synchronous embedded database with 14+ tables' },
-            { name: 'SSE streaming', status: 'live', description: 'Real-time server-sent events for inbox updates' },
-            { name: 'Background scheduler', status: 'live', description: 'Interval-based task scheduling with approval/report modes' },
-            { name: 'Cron jobs', status: 'live', description: 'Scheduled actions (Gmail polling every 900s, predictive scan every 4h)' },
-            { name: 'Rate limiting', status: 'live', description: 'Per-key rate limits with sliding window (rateLimiter.ts)' },
-            { name: 'API versioning', status: 'live', description: 'v1 canonical + backward-compat /api/ with deprecation headers' },
-            { name: 'HMAC request signing', status: 'live', description: 'X-Signature header validation for browser intern routes' },
-            { name: 'REST API (v1)', status: 'live', description: '40+ routes across 20 route files' },
-            { name: 'Docker deployment', status: 'planned', description: 'Full Docker Compose setup for self-hosting' },
-        ],
-    },
-];
+// ponytail: capability catalog + settings toggles deleted at plan 066 §2b
+// (advertised features the code contradicted); CapabilitiesTab.tsx removed too.
 
 export interface OperatorMetrics {
     throughputToday: number;

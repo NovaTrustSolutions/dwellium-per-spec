@@ -5,17 +5,19 @@
  * Extracted from InboxZero.tsx monolith (Phase 2.1).
  */
 
-import { Bell, BellOff, Newspaper } from 'lucide-react';
+import { Newspaper } from 'lucide-react';
 import type { NewsletterSender } from './InboxZeroTypes';
 
 interface Props {
     newsletters: NewsletterSender[];
+    // authFetch/inboxApiBase/onRefresh are unused since the Unsubscribe button
+    // was removed (plan 066 §2c) — kept on the contract for plan 066 §5d.
     authFetch: (url: string, init?: RequestInit) => Promise<Response>;
     inboxApiBase: string;
     onRefresh: () => void;
 }
 
-export default function NewslettersTab({ newsletters, authFetch, inboxApiBase, onRefresh }: Props) {
+export default function NewslettersTab({ newsletters }: Props) {
     return (
         <div className="iz-newsletters">
             {newsletters.length === 0 ? (
@@ -46,25 +48,8 @@ export default function NewslettersTab({ newsletters, authFetch, inboxApiBase, o
                                 />
                             </div>
                         </div>
-                        {/* GAP-03: Unsubscribe button that calls the real API */}
-                        <button
-                            className={`iz-nl__status ${nl.unsubscribed ? 'iz-nl__status--off' : ''}`}
-                            style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
-                            onClick={async () => {
-                                try {
-                                    const encodedSender = encodeURIComponent(nl.sender);
-                                    const res = await authFetch(`${inboxApiBase}/newsletters/${encodedSender}/unsubscribe`, {
-                                        method: 'PATCH',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ unsubscribed: !nl.unsubscribed }),
-                                    });
-                                    if (res.ok) onRefresh();
-                                } catch { /* offline */ }
-                            }}
-                            title={nl.unsubscribed ? 'Click to re-subscribe' : 'Click to unsubscribe'}
-                        >
-                            {nl.unsubscribed ? <><BellOff size={13} aria-hidden /> Unsubscribed</> : <><Bell size={13} aria-hidden /> Click to Unsubscribe</>}
-                        </button>
+                        {/* ponytail: Unsubscribe button removed at plan 066 §2c — it
+                            called a route that never existed. Restore at plan 066 §5d. */}
                     </div>
                 ))
             )}

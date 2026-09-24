@@ -1,3 +1,4 @@
+// ponytail: unmounted until plan 066 §5c wires its backend
 /**
  * Rules Manager — Phase 1.1.2, 1.2.2, 1.3.4, 1.3.5, 1.4.3, 1.5.4, 1.5.5
  *

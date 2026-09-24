@@ -82,6 +82,8 @@ function routeFetch(itemsResponse: () => Response) {
         if (/\/api\/inbox\?/.test(url)) return Promise.resolve(itemsResponse());
         if (url.includes('/api/inbox/stats')) return Promise.resolve(jsonResponse({ success: true, data: {} }));
         if (url.includes('/api/inbox/metrics')) return Promise.resolve(jsonResponse({ success: true, data: {} }));
+        // Newsletters must come back as an array — the tab maps over it directly.
+        if (url.includes('/api/inbox/newsletters')) return Promise.resolve(jsonResponse({ success: true, data: [] }));
         // Everything else (settings, security, etc.) — benign empty success.
         return Promise.resolve(jsonResponse({ success: true, data: {} }));
     };
@@ -201,5 +203,81 @@ describe('InboxZero', () => {
         const clear = await screen.findByRole('button', { name: 'Clear search' });
         expect(clear).toBeInTheDocument();
         expect(clear.querySelector('svg')).toBeInTheDocument();
+    });
+
+    // Plan 066 §2a — only the 4 tabs with a working backend path remain.
+    it('renders exactly the four surviving tabs: Triage, Newsletters, Stats, Settings', async () => {
+        authFetch.mockImplementation(
+            routeFetch(() => jsonResponse({ success: true, data: [], pagination: { hasMore: false } }))
+        );
+
+        renderInbox();
+
+        const tabs = await screen.findAllByRole('tab');
+        expect(tabs.map(t => t.textContent?.trim())).toEqual(['Triage', 'Newsletters', 'Stats', 'Settings']);
+    });
+
+    // Plan 066 §2a — a persisted tab that no longer exists (e.g. the deleted
+    // Rules tab) falls back to Triage instead of rendering nothing.
+    it('falls back to the Triage tab when the persisted activeTab was removed', async () => {
+        authFetch.mockImplementation(
+            routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))
+        );
+        patchWidgetMemory('inbox-zero', { activeTab: 'rules' });
+
+        renderInbox();
+
+        const triageTab = await screen.findByRole('tab', { name: /Triage/ });
+        expect(triageTab).toHaveAttribute('aria-selected', 'true');
+        expect(await screen.findByText('Lease renewal for Unit 4B')).toBeInTheDocument();
+    });
+
+    // Plan 066 §2d — every mutation checks res.ok before touching cache/state
+    // and surfaces failure via the qualia-toast event; the item is never removed
+    // and no success is shown on a non-2xx.
+    it('shows an error toast and keeps the item when archive fails', async () => {
+        const onToast = vi.fn();
+        window.addEventListener('qualia-toast', onToast);
+        try {
+            authFetch.mockImplementation((url: string) => {
+                if (typeof url === 'string' && /\/archive$/.test(url)) {
+                    return Promise.resolve(jsonResponse({ success: false, error: 'boom' }, false, 500));
+                }
+                return routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))(url);
+            });
+
+            renderInbox();
+
+            await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+            fireEvent.click(screen.getByRole('button', { name: /Archive/ }));
+
+            await waitFor(() => expect(onToast).toHaveBeenCalledTimes(1));
+            const detail = (onToast.mock.calls[0][0] as CustomEvent<string>).detail;
+            expect(detail).toMatch(/failed/i);
+
+            // The item must stay in the list — no success, no removal, on a non-2xx.
+            expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument();
+        } finally {
+            window.removeEventListener('qualia-toast', onToast);
+        }
+    });
+
+    // Plan 066 §2c — Undo, Snooze, bulk Add Label, bulk AI Classify and the
+    // Newsletters Unsubscribe button are gone (they called routes that never
+    // existed, or in Undo's case showed a false success).
+    it('has no undo, snooze, add-label, AI-classify or unsubscribe controls', async () => {
+        authFetch.mockImplementation(
+            routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))
+        );
+
+        renderInbox();
+        await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+
+        fireEvent.click(screen.getByRole('tab', { name: /Newsletters/ }));
+        await screen.findByText('No newsletters detected');
+
+        for (const pattern of [/undo/i, /snooze/i, /add label/i, /ai classify/i, /unsubscribe/i]) {
+            expect(screen.queryByRole('button', { name: pattern })).not.toBeInTheDocument();
+        }
     });
 });

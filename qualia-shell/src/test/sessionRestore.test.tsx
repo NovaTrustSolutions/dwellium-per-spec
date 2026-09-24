@@ -208,6 +208,24 @@ describe('sessionRestoreStore — hardened deserializer + widget validation', ()
         expect(w.y).toBe(0);
         expect(w.maximized).toBe(false);
     });
+
+    // Plan 066 phase 3: 'inbox-zero' retired from the registry — a persisted
+    // reference to it must resolve to 'inbox', not be dropped as unknown.
+    it('a persisted classic window with the retired "inbox-zero" id restores as "inbox"', () => {
+        const [w] = restoreClassicWindows(snap({ classic: [proj({ component: 'inbox-zero' })] }));
+        expect(w).toBeDefined();
+        expect(w.component).toBe('inbox');
+    });
+
+    it('an OS tab slice containing the retired "inbox-zero" id restores as "inbox"', () => {
+        const result = restoreOsTabs({ tabs: ['notepad', 'inbox-zero'], active: 'inbox-zero' });
+        expect(result).toEqual({ tabs: ['notepad', 'inbox'], active: 'inbox' });
+    });
+
+    it('a slice holding both "inbox" and the retired "inbox-zero" restores ONE inbox tab', () => {
+        const result = restoreOsTabs({ tabs: ['inbox', 'notepad', 'inbox-zero'], active: 'inbox-zero' });
+        expect(result).toEqual({ tabs: ['inbox', 'notepad'], active: 'inbox' });
+    });
 });
 
 describe('default stack — only when there is nothing to restore', () => {

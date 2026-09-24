@@ -1026,7 +1026,7 @@ export default function CommandPalette() {
 
         if (result.kind === 'inbox') {
             const item = result.payload as InboxMessageItem;
-            openWindow('inbox-zero', 'Inbox Zero', 'mail-open');
+            openWindow('inbox', 'Inbox Zero', 'mail-open');
             dispatchDeferred('qualia-inbox-focus-item', {
                 itemId: item.id,
                 subject: item.subject,

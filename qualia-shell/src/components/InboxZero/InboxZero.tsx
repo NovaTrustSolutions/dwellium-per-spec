@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore, Suspense, lazy } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import {
-    ArrowDown, ArrowRight, ArrowUp, Bot, Brain, Building2, Check, ClipboardList, Clock, Cloud,
-    Download, FileSpreadsheet, FileText, Film, Folder, FolderOpen, FolderTree, Hourglass, Image,
+    ArrowDown, ArrowUp, Bot, Brain, Building2, Check, ClipboardList, Cloud,
+    Download, FileSpreadsheet, FileText, Film, Folder, FolderOpen, FolderTree, Image,
     Inbox, LayoutDashboard, LayoutGrid, Link, ListChecks, Lock, Mail, MailOpen, Mic, Music, Package,
     Palette, Paperclip, PartyPopper, RefreshCw, Reply, Ruler, Save, Scale, Search, Settings,
-    ShieldCheck, Sparkles, Square, SquareCheck, Tag, Target, Terminal, Trash2, TriangleAlert, Type,
-    Undo2, Workflow, X, Zap,
+    ShieldCheck, Sparkles, Square, SquareCheck, Terminal, Trash2, TriangleAlert, Type,
+    Workflow, X, Zap,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, FONT_PAIRINGS } from '../../context/ThemeContext';
@@ -15,25 +15,15 @@ import { Theme } from '../../data/types';
 import type {
     InboxItem, NewsletterSender, InboxStats, AgentSettings,
     LlmSafetyEvent, LlmSafetyStats, SecurityStatusSnapshot,
-    TabId, AuditLogEntry, ThreadLink, CapabilityCategory, CapabilityFeature, OperatorMetrics,
+    TabId, AuditLogEntry, ThreadLink, OperatorMetrics,
     URGENCY_COLORS as URGENCY_COLORS_TYPE, SIGNAL_CONFIG as SIGNAL_CONFIG_TYPE, PROJECT_NAMES as PROJECT_NAMES_TYPE,
 } from './InboxZeroTypes';
-import { URGENCY_COLORS, SIGNAL_CONFIG, PROJECT_NAMES, CAPABILITIES_DATA, CAPABILITIES_STORAGE_KEY } from './InboxZeroTypes';
-import { GlobalAuditTab } from './GlobalAuditTab';
+import { URGENCY_COLORS, SIGNAL_CONFIG, PROJECT_NAMES } from './InboxZeroTypes';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
 import './InboxZero.css';
 
-// ─── Lazy-loaded tabs (only loaded when user clicks the tab) ──────────────────
-const RulesManager = lazy(() => import('./RulesManager'));
-const NifIntelligence = lazy(() => import('./NifIntelligence'));
-const SmartActions = lazy(() => import('./SmartActions'));
-const AnalyticsDashboard = lazy(() => import('./AnalyticsDashboard'));
-const ColdEmailBlocker = lazy(() => import('./ColdEmailBlocker'));
-const ReplyTracker = lazy(() => import('./ReplyTracker'));
-const OpenTracker = lazy(() => import('./OpenTracker'));
 import NewslettersTab from './NewslettersTab';
 import StatsTab from './StatsTab';
-import CapabilitiesTab from './CapabilitiesTab';
 import {
     useInboxItems, useInboxStats, useNewsletters, useOperatorMetrics,
     useSettings as useSettingsQuery, useEmailBody,
@@ -44,14 +34,6 @@ import { useWidgetMemory } from '../../lib/widgetMemory';
 import { backendStatusStore } from '../../lib/backendStatusStore';
 
 // QueryClient is provided at the App level via QueryProvider.
-
-/** Suspense fallback used for all lazy tabs */
-const TabLoader = () => (
-    <div className="iz-loading" style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 24, marginBottom: 8 }}><Hourglass size={24} aria-hidden /></div>
-        Loading module…
-    </div>
-);
 
 // ============================================
 // Types are imported from ./InboxZeroTypes.ts
@@ -86,12 +68,17 @@ export default function InboxZero() {
     usePerUserIdentity();
     // Plan 055 phase 2 — tab, triage filter and the open message reopen where
     // they were left (a stale message id simply matches no row).
+    // storage key, not a registry id — kept so existing widget memory
+    // (remembered tab/filter) survives the alias retirement (plan 066 §3d).
     const [mem, patchMem] = useWidgetMemory('inbox-zero', {
         activeTab: 'triage',
         triageFilter: 'all',
         expandedId: null as string | null,
     });
-    const IZ_TABS: readonly TabId[] = ['triage', 'newsletters', 'stats', 'capabilities', 'rules', 'nif', 'actions', 'analytics', 'cold-email', 'replies', 'tracker', 'settings', 'audit'];
+    // A persisted activeTab from a retired tab (rules/nif/actions/analytics/
+    // cold-email/replies/tracker/audit/capabilities, plan 066 §2a) falls back
+    // to 'triage' — it simply won't match IZ_TABS below.
+    const IZ_TABS: readonly TabId[] = ['triage', 'newsletters', 'stats', 'settings'];
     const activeTab: TabId = IZ_TABS.includes(mem.activeTab as TabId) ? (mem.activeTab as TabId) : 'triage';
     const setActiveTab = useCallback((t: TabId): void => patchMem({ activeTab: t }), [patchMem]);
     const triageFilter = mem.triageFilter;
@@ -134,18 +121,12 @@ export default function InboxZero() {
         escaped = escaped.replace(/\r?\n/g, '<br>');
         return escaped;
     };
-    const [undoStack, setUndoStack] = useState<{ id: string; action: string; ts: number }[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
     // Sort state
     const [sortField, setSortField] = useState<'date' | 'urgency' | 'signal' | 'sender' | 'subject'>('date');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
-    // Bulk classify state
-    const [bulkClassifying, setBulkClassifying] = useState(false);
-    const [bulkLabelInput, setBulkLabelInput] = useState('');
-    const [showLabelPicker, setShowLabelPicker] = useState(false);
 
     // Debounce search input → 300ms delay before triggering API call
     useEffect(() => {
@@ -158,18 +139,6 @@ export default function InboxZero() {
     const [focusTargetItemId, setFocusTargetItemId] = useState<string | null>(null);
     const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
 
-
-    const [capabilityToggles, setCapabilityToggles] = useState<Record<string, boolean>>(() => {
-        try {
-            const saved = localStorage.getItem(CAPABILITIES_STORAGE_KEY);
-            if (saved) return JSON.parse(saved);
-        } catch { /* ignore */ }
-        // Default: all enabled
-        const defaults: Record<string, boolean> = {};
-        CAPABILITIES_DATA.forEach(cat => { defaults[cat.id] = true; });
-        return defaults;
-    });
-
     // Audit trail + thread links caches (Phase 0.1.7)
     const [auditCache, setAuditCache] = useState<Record<string, any[]>>({});
     const [linksCache, setLinksCache] = useState<Record<string, any[]>>({});
@@ -181,18 +150,6 @@ export default function InboxZero() {
     const [hasMore, setHasMore] = useState(false);
     const [currentOffset, setCurrentOffset] = useState(0);
     const ITEMS_PER_PAGE = 50;
-
-
-
-
-    // Persist capability toggles
-    useEffect(() => {
-        localStorage.setItem(CAPABILITIES_STORAGE_KEY, JSON.stringify(capabilityToggles));
-    }, [capabilityToggles]);
-
-    const toggleCapability = (id: string) => {
-        setCapabilityToggles(prev => ({ ...prev, [id]: !prev[id] }));
-    };
 
     // Settings state
     const [settings, setSettings] = useState<AgentSettings | null>(null);
@@ -438,17 +395,30 @@ export default function InboxZero() {
     }, [activeTab, canViewLlmSafetyAudit, authToken, fetchLlmSafetyAudit]);
 
     // ---- ACTIONS ----
+    // Every mutation below checks res.ok AND the JSON success field (when the
+    // route returns one) before touching cache/state, and surfaces failure via
+    // the qualia-toast event — no success is ever shown for a non-2xx (plan 066 §2d).
+    const mutationFailed = async (res: Response, label: string): Promise<boolean> => {
+        if (!res.ok) {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `${label} failed (${res.status})` }));
+            return true;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (data.success === false) {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `${label} failed: ${data.error || 'unknown error'}` }));
+            return true;
+        }
+        return false;
+    };
+
     const handleArchive = async (id: string) => {
         try {
             const res = await authFetch(`${INBOX_API}/${id}/archive`, { method: 'POST' });
-            const responseData = await res.json().catch(() => ({}));
-            if (res.ok) {
-                // GAP-06: gmailError flag — cache will auto-refresh
-                // gmailError is tracked from the invalidated refetch
-                setUndoStack(prev => [{ id, action: 'archive', ts: Date.now() }, ...prev].slice(0, 10));
-                invalidateInbox();
-            }
-        } catch { /* error */ }
+            if (await mutationFailed(res, 'Archive')) return;
+            invalidateInbox();
+        } catch {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Archive failed: network error' }));
+        }
     };
 
     const handleApprove = async (id: string, projectId?: string) => {
@@ -462,7 +432,6 @@ export default function InboxZero() {
             if (res.ok) {
                 setRoutePickerFor(null);
                 setApprovalReasons(prev => { const n = { ...prev }; delete n[id]; return n; });
-                setUndoStack(prev => [{ id, action: 'approve', ts: Date.now() }, ...prev].slice(0, 10));
                 invalidateInbox();
             } else {
                 const data = await res.json().catch(() => ({}));
@@ -472,17 +441,19 @@ export default function InboxZero() {
                     window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Action failed: ${res.status}` }));
                 }
             }
-        } catch { /* error */ }
+        } catch {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Approve failed: network error' }));
+        }
     };
 
     const handleDelete = async (id: string) => {
         try {
             const res = await authFetch(`${INBOX_API}/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setUndoStack(prev => [{ id, action: 'delete', ts: Date.now() }, ...prev].slice(0, 10));
-                invalidateInbox();
-            }
-        } catch { /* error */ }
+            if (await mutationFailed(res, 'Delete')) return;
+            invalidateInbox();
+        } catch {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Delete failed: network error' }));
+        }
     };
 
     const handleBulkArchive = async () => {
@@ -493,12 +464,12 @@ export default function InboxZero() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ids }),
             });
-            if (res.ok) {
-                setSelectedIds(new Set());
-                invalidateInbox();
-            }
+            if (await mutationFailed(res, 'Bulk archive')) return;
+            setSelectedIds(new Set());
+            invalidateInbox();
         } catch {
-            // Fallback: archive one by one
+            // Network-level failure (not a JSON error response) — fall back to
+            // archiving one at a time; each call surfaces its own toast on failure.
             for (const id of ids) { await handleArchive(id); }
             setSelectedIds(new Set());
         }
@@ -506,8 +477,11 @@ export default function InboxZero() {
 
     const handleMarkRead = async (id: string) => {
         try {
-            await authFetch(`${INBOX_API}/${id}/read`, { method: 'POST' });
-        } catch { /* ignore */ }
+            const res = await authFetch(`${INBOX_API}/${id}/read`, { method: 'POST' });
+            await mutationFailed(res, 'Mark read');
+        } catch {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Mark read failed: network error' }));
+        }
     };
 
     const toggleSelect = (id: string) => {
@@ -530,11 +504,7 @@ export default function InboxZero() {
     // ---- COMPUTED ----
     const pendingItems = useMemo(() => {
         let result = items.filter(i => i.status === 'pending');
-        // GAP-18: client-side filtering only used when no serverside search active
-        if (debouncedSearch.trim() && result.length > 0) {
-            // When server-side search is active (fetchItems already filtered),
-            // still show all returned items (no double-filter needed)
-        }
+        // Search is server-side (backend plan 066 B1) — no client-side re-filter needed.
 
         // Sort
         const urgencyOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
@@ -602,7 +572,9 @@ export default function InboxZero() {
         return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
-    // Undo stack is now strictly persistent per user request. No auto-clear.
+    // ponytail: undo removed at plan 066 §2c (it never checked whether the
+    // Gmail label call succeeded, so it showed a false "recovered"); restore
+    // real undo at plan 066 §5a.
 
     useEffect(() => {
         return () => {
@@ -619,34 +591,6 @@ export default function InboxZero() {
                     <div className="iz-header__title-row" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span className="iz-header__icon"><Inbox size={14} /></span>
                         <h2 className="iz-header__title" style={{ margin: 0 }}>Inbox Zero</h2>
-                        {undoStack.length > 0 && (
-                            <button
-                                onClick={async () => {
-                                    const entry = undoStack[0];
-                                    try {
-                                        await authFetch(`${INBOX_API}/${entry.id}/status`, {
-                                            method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ status: 'pending', reason: 'Undo from header button' }),
-                                        });
-                                        setUndoStack(prev => prev.slice(1));
-                                        invalidateInbox();
-                                        window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Action undone and item recovered' }));
-                                    } catch (err) {
-                                        console.error(err);
-                                    }
-                                }}
-                                style={{
-                                    padding: '6px 16px', background: '#e11d48',
-                                    color: 'var(--text-primary)', border: '1px solid #be123c',
-                                    borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
-                                    fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px',
-                                    boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)'
-                                }}
-                            >
-                                <Undo2 size={14} aria-hidden /> UNDO LAST ACTION
-                            </button>
-                        )}
                     </div>
 
                     {/* Progress ring */}
@@ -668,7 +612,7 @@ export default function InboxZero() {
 
                 {/* Tabs */}
                 <div className="iz-tabs" role="tablist" aria-label="InboxZero sections" onKeyDown={(e) => {
-                    const tabs: TabId[] = ['triage','newsletters','stats','rules','nif','actions','analytics','cold-email','replies','tracker','audit','capabilities','settings'];
+                    const tabs: TabId[] = ['triage','newsletters','stats','settings'];
                     const idx = tabs.indexOf(activeTab);
                     if (idx < 0) return;
                     let next: number | undefined;
@@ -685,15 +629,6 @@ export default function InboxZero() {
                         { id: 'triage' as TabId, label: 'Triage', count: stats?.pending },
                         { id: 'newsletters' as TabId, label: 'Newsletters', count: newsletters.length },
                         { id: 'stats' as TabId, label: 'Stats' },
-                        { id: 'rules' as TabId, label: 'Rules' },
-                        { id: 'nif' as TabId, label: 'NIF Intel' },
-                        { id: 'actions' as TabId, label: 'Actions' },
-                        { id: 'analytics' as TabId, label: 'Analytics' },
-                        { id: 'cold-email' as TabId, label: 'Cold Block' },
-                        { id: 'replies' as TabId, label: 'Replies' },
-                        { id: 'tracker' as TabId, label: 'Tracker' },
-                        { id: 'audit' as TabId, label: 'Audit Log' }, // GAP-08
-                        { id: 'capabilities' as TabId, label: 'Capabilities' },
                         { id: 'settings' as TabId, label: 'Settings' },
                     ]).map(tab => (
                         <button
@@ -828,86 +763,9 @@ export default function InboxZero() {
                             <button className="iz-batch__btn iz-batch__btn--archive" onClick={handleBulkArchive}>
                                 <Download size={14} aria-hidden /> Archive
                             </button>
-                            {/* Bulk AI Classify */}
-                            <button
-                                className="iz-batch__btn"
-                                style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.3)' }}
-                                disabled={bulkClassifying}
-                                onClick={async () => {
-                                    setBulkClassifying(true);
-                                    try {
-                                        const ids = Array.from(selectedIds);
-                                        const res = await authFetch(`${INBOX_API}/ai-classify`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ ids }),
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            alert(`AI classified ${data.data?.length || 0} items. Labels applied.`);
-                                            invalidateInbox();
-                                        } else {
-                                            alert('AI classify failed: ' + (data.error || 'Unknown'));
-                                        }
-                                    } catch (err: any) {
-                                        alert('AI classify error: ' + err.message);
-                                    } finally {
-                                        setBulkClassifying(false);
-                                    }
-                                }}
-                            >
-                                {bulkClassifying ? 'Classifying…' : <><Bot size={14} aria-hidden /> AI Classify</>}
-                            </button>
-                            {/* Add Label */}
-                            <div style={{ position: 'relative', display: 'inline-block' }}>
-                                <button
-                                    className="iz-batch__btn"
-                                    style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
-                                    onClick={() => setShowLabelPicker(!showLabelPicker)}
-                                >
-                                    <Tag size={14} aria-hidden /> Add Label
-                                </button>
-                                {showLabelPicker && (
-                                    <div style={{
-                                        position: 'absolute', top: '100%', left: 0, zIndex: 100,
-                                        background: '#1e1e2e', border: '1px solid #334155', borderRadius: 8,
-                                        padding: 10, minWidth: 200, boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
-                                    }}>
-                                        <input
-                                            placeholder="Enter label name…"
-                                            value={bulkLabelInput}
-                                            onChange={e => setBulkLabelInput(e.target.value)}
-                                            style={{ width: '100%', padding: '6px 10px', borderRadius: 4, border: '1px solid var(--border-strong)', background: '#0f172a', color: 'var(--text-primary)', fontSize: 12, marginBottom: 6, boxSizing: 'border-box' }}
-                                            onKeyDown={async e => {
-                                                if (e.key === 'Enter' && bulkLabelInput.trim()) {
-                                                    const ids = Array.from(selectedIds);
-                                                    await authFetch(`${INBOX_API}/bulk-label`, {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ ids, label: bulkLabelInput.trim() }),
-                                                    });
-                                                    setBulkLabelInput('');
-                                                    setShowLabelPicker(false);
-                                                    invalidateInbox();
-                                                }
-                                            }}
-                                        />
-                                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Press Enter to apply label to {selectedIds.size} items</div>
-                                    </div>
-                                )}
-                            </div>
-                            {/* Batch Route */}
-                            <button
-                                className="iz-batch__btn"
-                                style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
-                                onClick={() => {
-                                    const ids = Array.from(selectedIds).join(', ');
-                                    navigator.clipboard?.writeText(ids).catch(() => {});
-                                    setActiveTab('actions');
-                                }}
-                            >
-                                Batch Route <ArrowRight size={14} aria-hidden />
-                            </button>
+                            {/* ponytail: AI Classify, Add Label and Batch Route removed at plan
+                                066 §2c/§2d — they called routes that never existed (AI Classify,
+                                Add Label) or routed to the deleted Actions tab (Batch Route). */}
                         </div>
                     )}
 
@@ -1209,24 +1067,8 @@ export default function InboxZero() {
                                                     <Trash2 size={14} aria-hidden /> Delete
                                                 </button>
 
-                                                {/* GAP-10: Snooze button */}
-                                                <button
-                                                    className="iz-action"
-                                                    style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' }}
-                                                    onClick={async () => {
-                                                        const until = new Date(Date.now() + 2 * 86400000).toISOString(); // 2 days
-                                                        try {
-                                                            await authFetch(`${INBOX_API}/${item.id}/snooze`, {
-                                                                method: 'POST',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ snoozedUntil: until }),
-                                                            });
-                                                            invalidateInbox();
-                                                        } catch { /* offline */ }
-                                                    }}
-                                                >
-                                                    <Clock size={14} aria-hidden /> Snooze 2d
-                                                </button>
+                                                {/* ponytail: Snooze removed at plan 066 §2c — it called a route
+                                                    that never existed. Restore at plan 066 §5e. */}
 
                                                 {/* Retry button (Phase 0.1.3) — appears when Gmail archival failed */}
                                                 {(item.gmailError || item.retryable) && (
@@ -1235,12 +1077,10 @@ export default function InboxZero() {
                                                         onClick={async () => {
                                                             try {
                                                                 const res = await authFetch(`${INBOX_API}/${item.id}/retry`, { method: 'POST' });
-                                                                const data = await res.json();
-                                                                if (data.success) {
-                                                                    invalidateInbox();
-                                                                }
-                                                            } catch (err) {
-                                                                console.error('Retry failed:', err);
+                                                                if (await mutationFailed(res, 'Retry')) return;
+                                                                invalidateInbox();
+                                                            } catch {
+                                                                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Retry failed: network error' }));
                                                             }
                                                         }}
                                                     >
@@ -1347,12 +1187,11 @@ export default function InboxZero() {
                                                                             targetName: (linkForm as any).targetName || undefined,
                                                                         })
                                                                     });
-                                                                    if (res.ok) {
-                                                                        setLinkModalFor(null);
-                                                                        setLinksCache(prev => { const n = { ...prev }; delete n[item.id]; return n; });
-                                                                    }
-                                                                } catch (err) {
-                                                                    console.error('Link failed:', err);
+                                                                    if (await mutationFailed(res, 'Link')) return;
+                                                                    setLinkModalFor(null);
+                                                                    setLinksCache(prev => { const n = { ...prev }; delete n[item.id]; return n; });
+                                                                } catch {
+                                                                    window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Link failed: network error' }));
                                                                 }
                                                             }}
                                                         >
@@ -1547,18 +1386,6 @@ export default function InboxZero() {
                                             style={{ width: '100%', border: 'none', display: 'block', minHeight: 200 }}
                                             title="email-viewer-body"
                                             sandbox="allow-popups"
-                                            onLoad={(e) => {
-                                                try {
-                                                    const iframe = e.target as HTMLIFrameElement;
-                                                    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                                                    if (doc?.body) {
-                                                        const h = Math.max(doc.body.scrollHeight, doc.documentElement?.scrollHeight || 0, 200);
-                                                        iframe.style.height = `${h + 20}px`;
-                                                        // Open all links in new tab
-                                                        doc.querySelectorAll('a').forEach(a => { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer'); });
-                                                    }
-                                                } catch { /* cross-origin — ignore */ }
-                                            }}
                                         />
                                     </div>
 
@@ -1601,12 +1428,11 @@ export default function InboxZero() {
                 </div>
             )}
 
-            {/* ========== GLOBAL AUDIT LOG TAB (GAP-08) ========== */}
-            {activeTab === 'audit' && (
-                <div role="tabpanel" id="iz-tabpanel-audit" aria-labelledby="iz-tab-audit">
-                    <GlobalAuditTab apiBase={API_BASE} authFetch={authFetch} />
-                </div>
-            )}
+            {/* ponytail: Rules, NIF Intel, Actions, Analytics, Cold Block, Replies,
+                Tracker, Audit Log and Capabilities tabs removed at plan 066 §2a —
+                each called routes that never existed or advertised features the
+                code contradicted. RulesManager.tsx, SmartActions.tsx and
+                GlobalAuditTab.tsx stay on disk, unmounted, for plan 066 §5. */}
 
             {/* ========== NEWSLETTERS TAB ========== */}
             {activeTab === 'newsletters' && (
@@ -1627,62 +1453,6 @@ export default function InboxZero() {
                 </div>
             )}
 
-            {/* ========== RULES TAB ========== */}
-            {activeTab === 'rules' && (
-                <div role="tabpanel" id="iz-tabpanel-rules" aria-labelledby="iz-tab-rules">
-                    <Suspense fallback={<TabLoader />}><RulesManager /></Suspense>
-                </div>
-            )}
-
-            {/* ========== NIF INTELLIGENCE TAB ========== */}
-            {activeTab === 'nif' && (
-                <div role="tabpanel" id="iz-tabpanel-nif" aria-labelledby="iz-tab-nif">
-                    <Suspense fallback={<TabLoader />}><NifIntelligence /></Suspense>
-                </div>
-            )}
-
-            {/* ========== SMART ACTIONS TAB ========== */}
-            {activeTab === 'actions' && (
-                <div role="tabpanel" id="iz-tabpanel-actions" aria-labelledby="iz-tab-actions">
-                    <Suspense fallback={<TabLoader />}><SmartActions /></Suspense>
-                </div>
-            )}
-
-            {/* ========== ANALYTICS DASHBOARD TAB ========== */}
-            {activeTab === 'analytics' && (
-                <div role="tabpanel" id="iz-tabpanel-analytics" aria-labelledby="iz-tab-analytics">
-                    <Suspense fallback={<TabLoader />}><AnalyticsDashboard /></Suspense>
-                </div>
-            )}
-
-            {/* ========== COLD EMAIL BLOCKER TAB ========== */}
-            {activeTab === 'cold-email' && (
-                <div role="tabpanel" id="iz-tabpanel-cold-email" aria-labelledby="iz-tab-cold-email">
-                    <Suspense fallback={<TabLoader />}><ColdEmailBlocker /></Suspense>
-                </div>
-            )}
-
-            {/* ========== REPLY TRACKER TAB ========== */}
-            {activeTab === 'replies' && (
-                <div role="tabpanel" id="iz-tabpanel-replies" aria-labelledby="iz-tab-replies">
-                    <Suspense fallback={<TabLoader />}><ReplyTracker /></Suspense>
-                </div>
-            )}
-
-            {/* ========== OPEN TRACKER TAB ========== */}
-            {activeTab === 'tracker' && (
-                <div role="tabpanel" id="iz-tabpanel-tracker" aria-labelledby="iz-tab-tracker">
-                    <Suspense fallback={<TabLoader />}><OpenTracker /></Suspense>
-                </div>
-            )}
-
-
-            {/* ========== CAPABILITIES TAB ========== */}
-            {activeTab === 'capabilities' && (
-                <div role="tabpanel" id="iz-tabpanel-capabilities" aria-labelledby="iz-tab-capabilities">
-                    <CapabilitiesTab />
-                </div>
-            )}
             {/* ========== SETTINGS TAB ========== */}
             {activeTab === 'settings' && (
                 <div className="iz-settings">
@@ -1710,31 +1480,8 @@ export default function InboxZero() {
                                 </div>
                             )}
 
-                            {/* Inbox Zero Capabilities */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Target size={16} aria-hidden /> Inbox Zero Capabilities</h3>
-                                <p className="iz-settings__section-desc">Enable or disable capability modules. Disabled modules will be marked inactive in the Capabilities tab.</p>
-                                <div className="iz-cap-settings">
-                                    {CAPABILITIES_DATA.map(cat => (
-                                        <label key={cat.id} className={`iz-cap-settings__item ${capabilityToggles[cat.id] !== false ? 'iz-cap-settings__item--on' : ''}`}>
-                                            <div className="iz-cap-settings__info">
-                                                <span className="iz-cap-settings__icon">{cat.icon}</span>
-                                                <div className="iz-cap-settings__text">
-                                                    <span className="iz-cap-settings__name">{cat.title}</span>
-                                                    <span className="iz-cap-settings__count">{cat.features.length} features</span>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                className={`iz-settings__toggle ${capabilityToggles[cat.id] !== false ? 'iz-settings__toggle--on' : ''}`}
-                                                onClick={(e) => { e.preventDefault(); toggleCapability(cat.id); }}
-                                            >
-                                                <span className="iz-settings__toggle-knob" />
-                                            </button>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
+                            {/* ponytail: capability toggles removed at plan 066 §2b — the
+                                Capabilities tab they controlled is gone too. */}
 
                             {/* Legal Shield Status */}
                             <div className="iz-settings__section">
@@ -1943,7 +1690,6 @@ export default function InboxZero() {
                                                         { key: 'widget:astra-dashboard', icon: LayoutDashboard, label: 'Astra' },
                                                         { key: 'widget:strata-dashboard', icon: Building2, label: 'Strata' },
                                                         { key: 'widget:thought-weaver', icon: Workflow, label: 'Thought Weaver' },
-                                                        { key: 'widget:inbox-zero', icon: Inbox, label: 'Inbox Zero' },
                                                         { key: 'widget:inbox', icon: Mail, label: 'Inbox' },
                                                         { key: 'widget:tasks', icon: ListChecks, label: 'Tasks' },
                                                         { key: 'widget:ara-console', icon: Brain, label: 'ARA' },
@@ -2421,27 +2167,6 @@ export default function InboxZero() {
                 </div>
             )}
 
-            {/* ========== UNDO TOAST ========== */}
-            {undoStack.length > 0 && (
-                <div className="iz-undo">
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Download size={14} aria-hidden /> {undoStack.length} item{undoStack.length > 1 ? 's' : ''} archived — </span>
-                    <button className="iz-undo__btn" onClick={async () => {
-                        try {
-                            await Promise.all(undoStack.map(entry =>
-                                authFetch(`${INBOX_API}/${entry.id}/status`, {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ status: 'pending', reason: 'Undo from triage' }),
-                                })
-                            ));
-                            invalidateInbox();
-                        } catch (err) {
-                            console.error('Undo failed:', err);
-                        }
-                        setUndoStack([]);
-                    }}>Undo</button>
-                </div>
-            )}
         </div>
     );
 }

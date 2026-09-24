@@ -1,3 +1,4 @@
+// ponytail: unmounted until plan 066 §5b wires its backend
 /**
  * GAP-08: GlobalAuditTab — shows cross-item audit log from /api/inbox/audit/global
  */

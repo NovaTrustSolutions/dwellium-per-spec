@@ -3,7 +3,7 @@
  * GET `${apiBase}/audit/global?limit&offset`; View merges GET `/:id` + `/:id/body`;
  * Recover (only for archive|bulk_archive|delete|snooze) → PUT `/:id/status`.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { ClipboardList, Eye, RefreshCw, Undo2 } from 'lucide-react';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
 
@@ -70,13 +70,28 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
     const [loading, setLoading] = useState(true);
     const [viewItem, setViewItem] = useState<ViewedItem | null>(null);
 
+    const closeRef = useRef<HTMLButtonElement | null>(null);
+    // Preview dialog: focus the close button on open; Escape closes it.
+    useEffect(() => {
+        if (!viewItem) return;
+        closeRef.current?.focus();
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setViewItem(null); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [viewItem]);
+
     const fetchPage = useCallback(async (offset: number, append: boolean) => {
         setLoading(true);
         try {
             const res = await apiFetch(`${apiBase}/audit/global?limit=${LIMIT}&offset=${offset}`);
             const data = await res.json().catch(() => ({}));
             if (res.ok && data.success !== false) {
-                setEntries(prev => (append ? [...prev, ...(data.data || [])] : data.data || []));
+                // Offset paging over a feed that grows at the top can hand back a row already shown — keep the first copy.
+                setEntries(prev => {
+                    if (!append) return data.data || [];
+                    const seen = new Set(prev.map(e => e.id));
+                    return [...prev, ...((data.data || []) as AuditEntry[]).filter(e => !seen.has(e.id))];
+                });
                 setHasMore(!!data.pagination?.hasMore);
             } else {
                 toast(data.error || `Could not load the audit log (${res.status})`);
@@ -196,6 +211,8 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                                 {entry.reason || '—'}
                             </span>
                             <div style={{ display: 'flex', gap: '6px' }}>
+                                {/* subject is null when the row is not an inbox item (rule_* rows use the rule id) — nothing to view or recover. */}
+                                {entry.subject !== null && (
                                 <button
                                     onClick={() => handleView(entry.inbox_item_id)}
                                     style={{
@@ -206,7 +223,8 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                                 >
                                     <Eye size={12} aria-hidden /> View
                                 </button>
-                                {RECOVERABLE_ACTIONS.has(entry.action) && (
+                                )}
+                                {entry.subject !== null && RECOVERABLE_ACTIONS.has(entry.action) && (
                                     <button
                                         onClick={() => handleRecover(entry.inbox_item_id)}
                                         style={{
@@ -239,7 +257,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                     background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999
                 }} onClick={() => setViewItem(null)}>
-                    <div style={{
+                    <div role="dialog" aria-modal="true" aria-label={viewItem.subject || 'Email preview'} style={{
                         width: '800px', maxWidth: '90vw', height: '80vh', background: 'var(--bg-surface-elevated)',
                         borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden'
                     }} onClick={e => e.stopPropagation()}>
@@ -248,7 +266,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                                 <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{viewItem.subject}</div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>From: {viewItem.sender}</div>
                             </div>
-                            <button aria-label="Close preview" onClick={() => setViewItem(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '20px', cursor: 'pointer' }}>×</button>
+                            <button ref={closeRef} aria-label="Close preview" onClick={() => setViewItem(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '20px', cursor: 'pointer' }}>×</button>
                         </div>
                         <div style={{ flex: 1, position: 'relative', background: 'var(--bg-surface)' }}>
                             <iframe

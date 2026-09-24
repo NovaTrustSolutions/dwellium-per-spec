@@ -153,7 +153,8 @@ export default function RulesManager({ apiBase, authFetch, canEdit }: RulesManag
         }
     };
 
-    if (loading) {
+    // Only the first load replaces the panel; a refetch after a mutation keeps the list (and focus) in place.
+    if (loading && rules.length === 0) {
         return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading rules…</div>;
     }
 

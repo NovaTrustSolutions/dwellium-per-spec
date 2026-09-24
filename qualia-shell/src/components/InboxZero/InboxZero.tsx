@@ -1109,18 +1109,17 @@ export default function InboxZero() {
                                                 <button
                                                     className="iz-snooze-trigger"
                                                     style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
-                                                    aria-haspopup="menu"
+                                                    aria-controls={`iz-snooze-${item.id}`}
                                                     aria-expanded={snoozeMenuFor === item.id}
                                                     onClick={e => { e.stopPropagation(); setSnoozeMenuFor(snoozeMenuFor === item.id ? null : item.id); }}
                                                 >
                                                     <Clock size={14} aria-hidden /> Snooze
                                                 </button>
                                                 {snoozeMenuFor === item.id && (
-                                                    <div className="iz-snooze-menu" role="menu">
+                                                    <div className="iz-snooze-menu" id={`iz-snooze-${item.id}`} role="group" aria-label="Snooze for">
                                                         {SNOOZE_OPTIONS.map(opt => (
                                                             <button
                                                                 key={opt.label}
-                                                                role="menuitem"
                                                                 className="iz-snooze-menu__item"
                                                                 onClick={e => { e.stopPropagation(); handleSnooze(item.id, opt.ms); }}
                                                             >

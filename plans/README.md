@@ -77,6 +77,7 @@ Cloud Run env wipe, OAuth origin_mismatch, consent-screen 403). Selected by Ilya
 | 054 | [Operational cutover](054-operational-cutover.md) | P1 | M | ops + env + seeds | 053 | **ACTIVE 2026-08-27** — 6 phases, each with DoD + verify commands; phase 1 blocked on Ilya's `gcloud auth login` |
 | 055 | [Total Recall](055-total-recall.md) | P1 | L | session restore + widget memory + continuity UX + AI weave | 046, 049 | **ACTIVE 2026-08-30** — desktop is amnesiac (windows useState([])); 5 phases w/ DoD+verify |
 | 056 | [The first session](056-first-session.md) | P1 | L | first-run + tool connection store + progress indicator | 055, 053 | **ACTIVE 2026-08-31** — keyless first win, in-app tool connection, one calm indicator |
+| 066 | [Inbox Zero consolidation](066-inbox-zero-consolidation.md) | P1 | L | backend + frontend | — | **ACTIVE 2026-09-24** — phases 1–5 built as stacked draft PRs (Dwellium#9/#10 + per-spec#140/#141 + phase 5); phase 6 next; G1/G3–G6 unanswered (defaults applied) |
 
 **Parallel dispatch guide (one wave, 3–5 agents):**
 

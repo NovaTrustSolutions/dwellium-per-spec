@@ -436,7 +436,7 @@ describe('InboxZero', () => {
         await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
 
         fireEvent.click(screen.getByRole('button', { name: /Snooze/i }));
-        fireEvent.click(await screen.findByRole('menuitem', { name: /1 hour/i }));
+        fireEvent.click(await screen.findByRole('button', { name: /^1 hour$/i }));
 
         await waitFor(() => expect(snoozeBody).not.toBeNull());
         const untilMs = new Date(snoozeBody!.until as string).getTime();
@@ -456,7 +456,7 @@ describe('InboxZero', () => {
             renderInbox();
             await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
             fireEvent.click(screen.getByRole('button', { name: /Snooze/i }));
-            fireEvent.click(await screen.findByRole('menuitem', { name: /1 hour/i }));
+            fireEvent.click(await screen.findByRole('button', { name: /^1 hour$/i }));
 
             await waitFor(() => expect(onToast).toHaveBeenCalledTimes(1));
             expect((onToast.mock.calls[0][0] as CustomEvent<string>).detail).toMatch(/failed/i);

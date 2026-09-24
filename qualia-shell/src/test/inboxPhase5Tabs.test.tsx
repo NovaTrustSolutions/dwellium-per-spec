@@ -77,6 +77,50 @@ describe('GlobalAuditTab', () => {
         expect(screen.getAllByRole('button', { name: /Recover/ })).toHaveLength(1);
     });
 
+    it('a row that is not an inbox item (rule_* / subject null) offers neither View nor Recover', async () => {
+        const authFetch = vi.fn().mockResolvedValue(jsonResponse({
+            success: true,
+            data: [
+                { id: 'a1', inbox_item_id: 'rule-x', action: 'rule_delete', actor: 'god', reason: null, details: '{}', created_at: '2026-09-01 00:00:00', subject: null },
+                { id: 'a2', inbox_item_id: 'mail-2', action: 'archive', actor: null, reason: null, details: '{}', created_at: '2026-09-01 00:00:00', subject: 'Archived one' },
+            ],
+            pagination: { total: 2, limit: 50, offset: 0, hasMore: false },
+        }));
+        render(<GlobalAuditTab apiBase="/api/inbox" authFetch={authFetch} />);
+        await waitFor(() => expect(screen.getByText('Archived one')).toBeInTheDocument());
+        expect(screen.getAllByRole('button', { name: /View/ })).toHaveLength(1);
+        expect(screen.getAllByRole('button', { name: /Recover/ })).toHaveLength(1);
+    });
+
+    it('Load more never shows the same row twice when the feed grew between pages', async () => {
+        const row = (n: number) => ({ id: `a${n}`, inbox_item_id: `mail-${n}`, action: 'read', actor: null, reason: null, details: '{}', created_at: '2026-09-01 00:00:00', subject: `Row ${n}` });
+        const authFetch = vi.fn().mockImplementation((url: string) => url.includes('offset=0')
+            ? Promise.resolve(jsonResponse({ success: true, data: [row(1), row(2)], pagination: { total: 3, limit: 50, offset: 0, hasMore: true } }))
+            // a new row arrived at the top, so offset=2 hands back row 2 again plus row 3
+            : Promise.resolve(jsonResponse({ success: true, data: [row(2), row(3)], pagination: { total: 4, limit: 50, offset: 2, hasMore: false } })));
+        render(<GlobalAuditTab apiBase="/api/inbox" authFetch={authFetch} />);
+        await waitFor(() => expect(screen.getByText('Row 2')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: /Load more/ }));
+        await waitFor(() => expect(screen.getByText('Row 3')).toBeInTheDocument());
+        expect(screen.getAllByText('Row 2')).toHaveLength(1);
+    });
+
+    it('the preview is a modal dialog that Escape closes', async () => {
+        const authFetch = vi.fn().mockImplementation((url: string) => {
+            if (url.includes('/audit/global')) return Promise.resolve(jsonResponse({ success: true, data: [{ id: 'a1', inbox_item_id: 'mail-1', action: 'archive', actor: null, reason: null, details: '{}', created_at: '2026-09-01 00:00:00', subject: 'Viewable' }], pagination: { total: 1, limit: 50, offset: 0, hasMore: false } }));
+            if (url.endsWith('/body')) return Promise.resolve(jsonResponse({ success: true, data: { body: 'hi' } }));
+            return Promise.resolve(jsonResponse({ success: true, data: { subject: 'Viewable', sender: 's@example.invalid' } }));
+        });
+        render(<GlobalAuditTab apiBase="/api/inbox" authFetch={authFetch} />);
+        await waitFor(() => expect(screen.getByText('Viewable')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: /View/ }));
+        const dialog = await screen.findByRole('dialog');
+        expect(dialog).toHaveAttribute('aria-modal', 'true');
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close preview' }));
+        fireEvent.keyDown(document, { key: 'Escape' });
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
     it('renders the server error via toast on a 500', async () => {
         const { onToast, cleanup } = collectToasts();
         try {
@@ -193,6 +237,26 @@ describe('RulesManager', () => {
             expect(call).toBeTruthy();
             expect(call![0]).toBe('/api/inbox/rules/rule-1');
         });
+    });
+
+    it('a refetch after a mutation keeps the list mounted (no full-panel spinner)', async () => {
+        let resolveRefetch: (r: Response) => void = () => {};
+        let gets = 0;
+        const authFetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+            if (!init) {
+                gets++;
+                if (gets === 1) return Promise.resolve(jsonResponse({ success: true, data: [RULE] }));
+                return new Promise<Response>(r => { resolveRefetch = r; });
+            }
+            return Promise.resolve(jsonResponse({ success: true, data: RULE }));
+        });
+        render(<RulesManager apiBase="/api/inbox" authFetch={authFetch} canEdit={true} />);
+        await waitFor(() => expect(screen.getByText('Vendor')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: /Disable rule|Enable rule/ }));
+        await waitFor(() => expect(gets).toBe(2));
+        expect(screen.getByText('Vendor')).toBeInTheDocument();
+        expect(screen.queryByText('Loading rules…')).toBeNull();
+        resolveRefetch(jsonResponse({ success: true, data: [RULE] }));
     });
 
     it('toggle sends PUT /rules/:id {enabled}', async () => {

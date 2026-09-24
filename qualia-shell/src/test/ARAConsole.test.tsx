@@ -12,6 +12,7 @@ const callLlmMock = vi.fn();
 vi.mock('../lib/llmClient', () => ({
     hasActiveLlm: () => llmActive,
     callLlm: (...args: any[]) => callLlmMock(...args),
+    applyModelPreference: (llm: unknown) => llm,
     LlmError: class LlmError extends Error {},
 }));
 
@@ -60,6 +61,7 @@ vi.mock('../context/HierarchyContext', () => ({
 import ARAConsole from '../components/ARAConsole/ARAConsole';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import { araPrefsStore } from '../lib/araPrefsStore';
+import { hermesLearningStore, relevantPastRuns } from '../components/HonchoHermesPanel/hermesLearningStore';
 import { resetAraGlance } from '../lib/araDailyGlance';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 import { sessionRestoreStore, type SessionSnapshot } from '../lib/sessionRestoreStore';
@@ -757,6 +759,81 @@ describe('ARAConsole', () => {
             expect(textbox).toHaveValue('I was last working on WoodlandLease.md in Scribe. Give me a quick re-orientation: what this document is, and suggest the next 2–3 concrete actions to continue.');
             // Not auto-sent: no user message posted yet.
             expect(document.querySelector('.ara-message--user')).toBeNull();
+        });
+    });
+
+
+    describe('ARA — a spawned agent answer has no Sources, so it gets a 👍 (and is reused only after one)', () => {
+        beforeEach(() => {
+            localStorage.clear();
+            hermesLearningStore.reset();
+            callLlmMock.mockReset();
+            araPrefsStore.set('ttsEnabled', false);
+            Element.prototype.scrollIntoView = vi.fn();
+            llmActive = true;
+            callLlmMock.mockResolvedValue({ text: 'The lease renews on March 1.', provider: 'anthropic', model: 'x' });
+        });
+
+        it('solo spawn: the answer says it was not fact-checked, and 👍 makes it reusable', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/The lease renews on March 1\./);
+            expect(await screen.findByText(/not fact-checked \(no Sources\).*agents will reuse it/i)).toBeInTheDocument();
+
+            const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === 'when does the lease renew')!;
+            expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+            expect(relevantPastRuns(rec.prompt, 3).map(r => r.id)).not.toContain(rec.id);
+            await user.click(await screen.findByRole('button', { name: 'Rate this answer up' }));
+            expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
+            expect(relevantPastRuns(rec.prompt, 3).map(r => r.id)).toContain(rec.id);
+        });
+
+        it('a direct team spawn gets the note and a 👍 for the team run', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'spawn research squad on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            expect(await screen.findByText(/not fact-checked \(no Sources\)/i, undefined, { timeout: 4000 })).toBeInTheDocument();
+            const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === 'lease renewals')!;
+            expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+            await user.click(await screen.findByRole('button', { name: 'Rate this answer up' }));
+            expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
+        });
+
+        it('a spawn that produced no answer gets no 👍 and no note', async () => {
+            callLlmMock.mockResolvedValue({ text: '', provider: 'anthropic', model: 'x' });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/No output — the model returned nothing\.|No response from the model/);
+            expect(screen.queryByRole('button', { name: 'Rate this answer up' })).toBeNull();
+            expect(screen.queryByText(/not fact-checked/i)).toBeNull();
+        });
+
+        it('a chain with two spawn steps gets no 👍 (one pair of buttons cannot rate two answers)', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'calculate 2+2 then solo researcher on lease renewals then solo data analyst on rent roll');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/All done\.|Finished with hiccups/, undefined, { timeout: 6000 });
+            const recs = hermesLearningStore.getSnapshot().filter(r => r.prompt === 'lease renewals' || r.prompt === 'rent roll');
+            expect(recs).toHaveLength(2);
+            expect(screen.queryByRole('button', { name: 'Rate this answer up' })).toBeNull();
+        });
+
+        it('a chain with exactly one spawn step gets a 👍 for that run', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'calculate 2+2 then spawn research squad on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/All done\.|Finished with hiccups/, undefined, { timeout: 4000 });
+            const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === 'lease renewals')!;
+            expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+            await user.click(await screen.findByRole('button', { name: 'Rate this answer up' }));
+            expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
         });
     });
 });

@@ -34,7 +34,7 @@ import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStor
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
-import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
+import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun, type HermesRunRecord } from '../HonchoHermesPanel/hermesLearningStore';
 import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
 import { classifyForEscalation, looksLikeActionRequest, runAraEscalation } from './araEscalation';
@@ -438,6 +438,9 @@ function getSafetyNotice(text: string, mode: string): string | null {
     }
     return null;
 }
+
+/** Shown under a spawned agent's answer: it had no Sources, so it is only reused after a 👍. */
+const NOT_CHECKED_NOTE = '_Not fact-checked (no Sources). 👍 it if it is right, and agents will reuse it for similar tasks._';
 
 export default function ARAConsole() {
     const { user, authFetch, isAuthenticated } = useUser();
@@ -1375,6 +1378,16 @@ export default function ARAConsole() {
     const updateMessageContent = useCallback((id: string, transform: (content: string) => string) => {
         setMessages(prev => prev.map(m => (m.id === id ? { ...m, content: transform(m.content) } : m)));
     }, []);
+    // A spawned run has no Sources, so it is logged unchecked and never reused — unless the user
+    // 👍s it. Pin its Hermes run to the reply so the message's 👍/👎 rate exactly that run.
+    const attachRun = useCallback((id: string, rec: HermesRunRecord) => {
+        if (!rec.unchecked && rec.outcome !== 'success') return; // a 👍 could not promote it — don't offer one
+        setMessages(prev => prev.map(m => (m.id === id ? {
+            ...m,
+            hermesRunId: rec.id,
+            content: rec.unchecked ? `${m.content}\n\n${NOT_CHECKED_NOTE}` : m.content,
+        } : m)));
+    }, []);
 
     const runSpawn = useCallback(async (req: SpawnRequest, echoUser: boolean = true) => {
         hermesLearningUserIdHolder.current = user?.id ?? null;
@@ -1421,9 +1434,10 @@ export default function ARAConsole() {
                 if (result.error) {
                     line(`${result.error}`);
                 } else {
-                    recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
+                    const rec = recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
                     recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                     line(`---\n\n${result.final}`);
+                    attachRun(progress.id, rec);
                     if (ttsEnabled) void speakText(`${req.name} has finished.`);
                 }
             } else {
@@ -1433,10 +1447,11 @@ export default function ARAConsole() {
                 const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
                 // D3 fix: record success/fail from out.ok, not output-text truthiness
                 // (the placeholder no-response text used to read as a truthy success).
-                recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
+                const rec = recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
                 const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
                 if (text) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                 line(text ? `---\n\n${text}` : 'No output — the model returned nothing.');
+                if (out.ok) attachRun(progress.id, rec);
                 if (text && ttsEnabled) void speakText(`${persona.name} has finished.`);
             }
         } catch (err) {
@@ -1444,7 +1459,7 @@ export default function ARAConsole() {
         } finally {
             setIsLoading(false);
         }
-    }, [user, integrations.llm, updateMessageContent, ttsEnabled, speakText]);
+    }, [user, integrations.llm, updateMessageContent, attachRun, ttsEnabled, speakText]);
 
     useEffect(() => {
         const handler = (ev: Event) => {
@@ -1482,7 +1497,7 @@ export default function ARAConsole() {
     // ── P11-3: spawn-in-chain runner — orchestrator run as a chain step,
     // returning the final deliverable for result piping (no chat-hosting;
     // the chain renders its own step lines).
-    const runSpawnForChain = useCallback(async (req: SpawnRequest): Promise<{ ok: boolean; text: string }> => {
+    const runSpawnForChain = useCallback(async (req: SpawnRequest): Promise<{ ok: boolean; text: string; run?: HermesRunRecord }> => {
         hermesLearningUserIdHolder.current = user?.id ?? null;
         if (!hasActiveLlm(integrations.llm)) {
             return { ok: false, text: 'No LLM configured — add a key in Control Panel → API Keys.' };
@@ -1511,8 +1526,8 @@ export default function ARAConsole() {
             if (!team) return { ok: false, text: `Team "${req.name}" not found in the Agent Lab catalog.` };
             const result = await runTeam({ goal: req.goal, sources: '', team, personas, deps });
             if (result.error) return { ok: false, text: result.error };
-            recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
-            return { ok: true, text: result.final };
+            const run = recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
+            return { ok: true, text: result.final, run };
         }
         const persona = findPersona(personas, req.id);
         if (!persona) return { ok: false, text: `"${req.name}" not found in the Agent Lab catalog.` };
@@ -1520,8 +1535,8 @@ export default function ARAConsole() {
         // D3 fix: record success/fail from out.ok, not output-text truthiness; surface
         // out.error in the returned text when the member failed.
         const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
-        recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
-        return { ok: !!text, text: text || 'No output — the model returned nothing.' };
+        const run = recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
+        return { ok: !!text, text: text || 'No output — the model returned nothing.', run: out.ok ? run : undefined };
     }, [user, integrations.llm]);
 
     // ── Conductor tier dispatch (Phase-10 B2 refactor) ─────────────────────
@@ -1553,12 +1568,20 @@ export default function ARAConsole() {
             setInput('');
             setIsLoading(true);
             try {
+                const spawnRuns: HermesRunRecord[] = [];
                 const outcomes = await executeChain(chain, { llm: integrations.llm, search: integrations.search }, (i, o) => {
                     const icon = o.ok ? '' : '';
                     updateMessageContent(progress.id, c => `${c}\n\n${icon} **Step ${i + 1}** — ${o.text}`);
-                }, runSpawnForChain); // P11-3: spawn steps run the orchestrator
+                }, async (spawnReq) => { // P11-3: spawn steps run the orchestrator
+                    const r = await runSpawnForChain(spawnReq);
+                    if (r.run) spawnRuns.push(r.run);
+                    return r;
+                });
                 const allOk = outcomes.every(o => o.ok);
                 updateMessageContent(progress.id, c => `${c}\n\n${allOk ? 'All done. What would you like me to do next?' : 'Finished with hiccups — see the flagged step above.'}`);
+                // ponytail: one spawn step → its 👍 on this message; several spawns share one message, so no 👍 (ambiguous) —
+                // counted by steps, so a chain whose other spawn failed still gets none.
+                if (chain.steps.filter(st => st.kind === 'spawn').length === 1 && spawnRuns.length === 1) attachRun(progress.id, spawnRuns[0]);
                 if (ttsEnabled && allOk) void speakText('All done.');
             } finally {
                 setIsLoading(false);
@@ -1604,7 +1627,7 @@ export default function ARAConsole() {
             return true;
         }
         return false;
-    }, [runSpawn, runSpawnForChain, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
+    }, [runSpawn, runSpawnForChain, updateMessageContent, attachRun, ttsEnabled, speakText, integrations.llm]);
 
     // KG arc 2026-06-12 (Ilya): the Graph tab opens the Knowledge Graph in a
     // SPLIT-SCREEN view next to ARA — apply-space restores exactly these two

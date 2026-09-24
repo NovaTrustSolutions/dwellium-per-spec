@@ -4,7 +4,7 @@
  * completes it, outputs are verified against the sources, and the orchestrator
  * merges a final product. Every run feeds Hermes so the agents improve.
  */
-import { useCallback, useContext, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Bot, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -75,6 +75,9 @@ export default function AgentLab() {
     const [sel, setSel] = useState<{ kind: 'team' | 'persona'; id: string } | null>(
         teams[0] ? { kind: 'team', id: teams[0].id } : null,
     );
+    // Read by async runTask: which item is on screen when its task finishes.
+    const selRef = useRef(sel);
+    useEffect(() => { selRef.current = sel; }, [sel]);
     const [goal, setGoal] = useState('');
     const [sources, setSources] = useState('');
     const [running, setRunning] = useState(false);
@@ -103,7 +106,7 @@ export default function AgentLab() {
             return r?.text ?? null;
         },
         recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
-        record: (input) => { recordRun(input); },
+        record: (input) => recordRun(input),
         // P11-5: members EXECUTE their equipped skills (Researcher actually
         // web-searches) — output feeds the member prompt as evidence.
         runSkill: async (input, skillIds) => {
@@ -170,6 +173,7 @@ export default function AgentLab() {
                     unchecked: result.unchecked,
                 });
                 setLastRunId(rec.id);
+                setRating(null);
             } else {
                 const persona = findPersona(personas, sel.id);
                 if (!persona) return;
@@ -187,6 +191,7 @@ export default function AgentLab() {
                     const outcome = workOutcome(out);
                     const rec = recordRun({ prompt: goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (outcome === 'fail' && out.ok ? `[unverified] ${out.verified}` : out.verified).slice(0, 200), toolsUsed: [persona.id], unchecked: outcome === 'unchecked' });
                     setLastRunId(rec.id);
+                    setRating(null);
                     recordPersonaRun(persona.id, learnedNote(`Goal: ${goal}`, out, 160), durationMs, outcome);
                 } catch (e) {
                     // D1: runPersona doesn't catch a thrown provider error —
@@ -234,13 +239,17 @@ export default function AgentLab() {
             // D8: a real answer completes the task; anything else — including a
             // clean "no response" — fails it with the real reason, never a
             // silent "completed" with nothing in it.
-            if (out.ok) completeTask(personaId, taskId, out.verified.slice(0, 400));
+            if (out.ok) completeTask(personaId, taskId, out.verified.slice(0, 400), out.recordId);
             else failTask(personaId, taskId, out.error ?? NO_RESPONSE_MESSAGE);
             recordPersonaRun(personaId, learnedNote(`Task: ${taskTitle}`, out, 140), durationMs, workOutcome(out));
             setSoloResult(out);
-            // The task answer is now what's shown; a Goal run that finished meanwhile must not be the 👍 target.
-            setLastRunId(null);
-            setRating(null);
+            // If this persona is still what's shown, the task answer is what 👍/👎 rate — never a Goal
+            // run that finished meanwhile. If the user moved to a team, leave the team's rating target alone.
+            const shown = selRef.current;
+            if (shown?.kind === 'persona' && shown.id === personaId) {
+                setLastRunId(out.recordId ?? null);
+                setRating(null);
+            }
         } catch (e) {
             // D1: a thrown provider error fails the task with the real message.
             const durationMs = performance.now() - t0;

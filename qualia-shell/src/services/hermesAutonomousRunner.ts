@@ -58,7 +58,7 @@ export interface RunNextHermesTaskDeps {
     personas: Persona[];
     orchestratorDeps: OrchestratorDeps;
     claim?: () => ClaimedPersonaTask | null;
-    complete?: (personaId: string, taskId: string, result: string) => void;
+    complete?: (personaId: string, taskId: string, result: string, hermesRunId?: string) => void;
     fail?: (personaId: string, taskId: string, error: string) => void;
     remember?: (personaId: string, summary: string, durationMs: number, outcome: WorkOutcome) => void;
     wikiContext?: () => string;
@@ -123,7 +123,8 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
             remember(persona.id, `Autonomous task failed: ${claim.task.title}`, duration, 'fail');
             return { personaId: persona.id, taskId: claim.task.id, outcome: 'fail', error };
         }
-        complete(persona.id, claim.task.id, result.slice(0, 2_000));
+        // The Hermes run id lets the user 👍 this answer later (it has no Sources, so only a 👍 makes it reusable).
+        complete(persona.id, claim.task.id, result.slice(0, 2_000), output.recordId);
         // The task is done either way, but only an answer that passed its fact-check against
         // Sources is remembered as a success — a flagged or unchecked claim never enters memory.
         const outcome = workOutcome(output);
@@ -170,7 +171,7 @@ export function useHermesAutonomousRunner(): void {
                 return response?.text ?? null;
             },
             recall: prompt => formatFewShot(relevantPastRuns(prompt, 3)),
-            record: input => { recordHermesRun(input); },
+            record: input => recordHermesRun(input),
             runSkill: async (input, skillIds) => {
                 const catalog = AGENT_SKILLS.filter(skill => skillIds.includes(skill.id));
                 // PROVENANCE GATE: autonomous-task skill input is orchestrator/model-

@@ -30,6 +30,8 @@ export interface PersonaTask {
     result?: string;
     attempts?: number;
     lastError?: string;
+    /** the Hermes record the answer was logged under — what a 👍/👎 on this task rates. */
+    hermesRunId?: string;
 }
 export interface PersonaAuditEntry {
     id: string;
@@ -109,14 +111,14 @@ export function addTask(personaId: string, title: string, assignedBy: 'user' | '
 export function startTask(personaId: string, id: string): void {
     update(personaId, w => ({ ...w, tasks: w.tasks.map(t => (t.id === id ? { ...t, status: 'running', startedAt: Date.now(), attempts: (t.attempts ?? 0) + 1, lastError: undefined } : t)) }));
 }
-export function completeTask(personaId: string, id: string, result?: string): void {
+export function completeTask(personaId: string, id: string, result?: string, hermesRunId?: string): void {
     update(personaId, w => ({
         ...w,
         tasks: w.tasks.map(t => {
             if (t.id !== id) return t;
             const completedAt = Date.now();
             const durationMs = t.startedAt ? completedAt - t.startedAt : (t.durationMs ?? 0);
-            return { ...t, status: 'done', completedAt, durationMs, result };
+            return { ...t, status: 'done', completedAt, durationMs, result, ...(hermesRunId ? { hermesRunId } : {}) };
         }),
     }));
     logAudit(personaId, 'Task completed', id);

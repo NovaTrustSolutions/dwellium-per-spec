@@ -30,6 +30,13 @@ describe('personaWorkStore', () => {
         expect(done.completedAt).toBeTruthy();
     });
 
+    it('a completed task can carry the Hermes run id its answer was logged under', () => {
+        const id = addTask('hermes-labyrinth', 'Map the launch');
+        startTask('hermes-labyrinth', id);
+        completeTask('hermes-labyrinth', id, 'Launch map', 'hrun-9');
+        expect(getWork('hermes-labyrinth').tasks[0]).toMatchObject({ status: 'done', result: 'Launch map', hermesRunId: 'hrun-9' });
+    });
+
     it('accepts orchestrator-assigned tasks', () => {
         addTask('engineer', 'Refactor module', 'orchestrator');
         expect(getWork('engineer').tasks[0].assignedBy).toBe('orchestrator');

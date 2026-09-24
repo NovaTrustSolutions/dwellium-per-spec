@@ -213,6 +213,14 @@ describe('a flagged or unverifiable answer is never recorded as a success', () =
         expect(record.mock.calls[0][0].outcome).toBe('fail');
     });
 
+    it('runPersona returns the id of the Hermes record it wrote, so a 👍 elsewhere can target it', async () => {
+        const record = vi.fn(() => ({ id: 'hrun-task-1' }));
+        const out = await runPersona({ goal: 'Hours?', sources: '', persona: persona(), deps: { invoke: invokeWithVerify(null), record } });
+        expect(out.recordId).toBe('hrun-task-1');
+        const noStore = await runPersona({ goal: 'Hours?', sources: '', persona: persona(), deps: { invoke: invokeWithVerify(null) } });
+        expect(noStore.recordId).toBeUndefined();
+    });
+
     it('runPersona records success only when the check passes; no Sources is fail + unchecked', async () => {
         const passed = vi.fn();
         await runPersona({ goal: 'Hours?', sources: 'Open Saturdays.', persona: persona(),

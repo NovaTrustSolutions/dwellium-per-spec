@@ -52,7 +52,8 @@ export interface OrchestratorDeps {
     /** Few-shot context from Hermes (past successes for this discipline). */
     recall?: (prompt: string, taskType: TaskType) => string;
     /** Record a run into Hermes so the agent improves over time. */
-    record?: (input: RecordInput) => void;
+    /** Returns the stored record (its id lets a later 👍/👎 target this run). */
+    record?: (input: RecordInput) => { id: string } | void;
     /**
      * P11-5: execute one of the persona's EQUIPPED skills against a task
      * ("a Researcher actually web-searches"). Returns null when no equipped
@@ -104,6 +105,8 @@ export interface PersonaOutput {
     /** set when !ok: the provider error message, or the no-response message. */
     error?: string;
     verifyStatus: VerifyStatus;
+    /** id of the Hermes record this answer was logged under (when deps.record stores one). */
+    recordId?: string;
 }
 
 export interface TeamRunResult {
@@ -291,10 +294,10 @@ async function execute(
  * with no Sources as a fail marked `unchecked` — recall offers neither as a past
  * example (an unchecked one only after a user 👍).
  */
-function recordOutcome(deps: OrchestratorDeps, persona: Persona, goal: string, ok: boolean, verifyStatus: VerifyStatus, verified: string): void {
+function recordOutcome(deps: OrchestratorDeps, persona: Persona, goal: string, ok: boolean, verifyStatus: VerifyStatus, verified: string): string | undefined {
     const supported = isSupported(ok, verifyStatus);
     const unchecked = ok && verifyStatus === 'skipped';
-    deps.record?.({
+    const rec = deps.record?.({
         prompt: `[${persona.discipline}] ${goal}`,
         taskType: disciplineToTaskType[persona.discipline],
         outcome: supported ? 'success' : 'fail',
@@ -302,6 +305,7 @@ function recordOutcome(deps: OrchestratorDeps, persona: Persona, goal: string, o
         toolsUsed: [persona.id],
         ...(unchecked ? { unchecked: true } : {}),
     });
+    return rec ? rec.id : undefined;
 }
 
 /**
@@ -455,9 +459,9 @@ export async function runTeam(params: {
             warnings.push(`${persona.name}: ${error}`);
         }
         const supported = isSupported(ok, verifyStatus);
-        if (executed) recordOutcome(deps, persona, goal, ok, verifyStatus, verified);
+        const recordId = executed ? recordOutcome(deps, persona, goal, ok, verifyStatus, verified) : undefined;
         onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok, error, supported, verifyStatus });
-        outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported, ok, error, verifyStatus });
+        outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported, ok, error, verifyStatus, recordId });
     }
 
     const okOutputs = outputs.filter(o => o.ok);
@@ -513,9 +517,9 @@ export async function runPersona(params: {
         verifyStatus = v.verifyStatus;
     }
     const supported = isSupported(ex.ok, verifyStatus);
-    recordOutcome(deps, persona, goal, ex.ok, verifyStatus, verified);
+    const recordId = recordOutcome(deps, persona, goal, ex.ok, verifyStatus, verified);
     return {
         personaId: persona.id, personaName: persona.name, tasks: [goal],
-        output: ex.output, verified, supported, ok: ex.ok, error: ex.error, verifyStatus,
+        output: ex.output, verified, supported, ok: ex.ok, error: ex.error, verifyStatus, recordId,
     };
 }

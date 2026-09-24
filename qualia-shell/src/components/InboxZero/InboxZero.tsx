@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import {
-    ArrowDown, ArrowUp, Bot, Brain, Building2, Check, ClipboardList, Cloud,
+    ArrowDown, ArrowUp, Bot, Brain, Building2, Check, ClipboardList, Clock, Cloud,
     Download, FileSpreadsheet, FileText, Film, Folder, FolderOpen, FolderTree, Image,
     Inbox, LayoutDashboard, LayoutGrid, Link, ListChecks, Lock, Mail, MailOpen, Mic, Music, Package,
     Palette, Paperclip, PartyPopper, RefreshCw, Reply, Ruler, Save, Scale, Search, Settings,
     ShieldCheck, Sparkles, Square, SquareCheck, Terminal, Trash2, TriangleAlert, Type,
-    Workflow, X, Zap,
+    Undo2, Workflow, X, Zap,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, FONT_PAIRINGS } from '../../context/ThemeContext';
@@ -24,6 +24,9 @@ import './InboxZero.css';
 
 import NewslettersTab from './NewslettersTab';
 import StatsTab from './StatsTab';
+import RulesManager from './RulesManager';
+import { GlobalAuditTab } from './GlobalAuditTab';
+import { DraftReplyPanel } from './SmartActions';
 import {
     useInboxItems, useInboxStats, useNewsletters, useOperatorMetrics,
     useSettings as useSettingsQuery, useEmailBody,
@@ -54,6 +57,14 @@ const THEME_PALETTES: { id: Theme; name: string; mood: string; colors: string[] 
     { id: 'dark-excellence', name: 'Dark Excellence', mood: 'True black, 15:1 contrast', colors: ['#0A0A0A', '#1A1A1A', '#3B82F6', '#FFFFFF'] },
 ];
 
+// Plan 066 §5e — snooze durations offered from the triage card menu.
+const SNOOZE_OPTIONS: Array<{ label: string; ms: number }> = [
+    { label: '1 hour', ms: 60 * 60_000 },
+    { label: '4 hours', ms: 4 * 60 * 60_000 },
+    { label: '1 day', ms: 24 * 60 * 60_000 },
+    { label: '1 week', ms: 7 * 24 * 60 * 60_000 },
+];
+
 // Urgency colors, signal config, and project names imported from InboxZeroTypes.ts
 
 // Project names imported from InboxZeroTypes.ts
@@ -75,10 +86,11 @@ export default function InboxZero() {
         triageFilter: 'all',
         expandedId: null as string | null,
     });
-    // A persisted activeTab from a retired tab (rules/nif/actions/analytics/
-    // cold-email/replies/tracker/audit/capabilities, plan 066 §2a) falls back
-    // to 'triage' — it simply won't match IZ_TABS below.
-    const IZ_TABS: readonly TabId[] = ['triage', 'newsletters', 'stats', 'settings'];
+    // A persisted activeTab from a retired tab (nif/actions/analytics/
+    // cold-email/replies/tracker/capabilities, plan 066 §2a) falls back
+    // to 'triage' — it simply won't match IZ_TABS below. Rules + Audit came
+    // back at plan 066 §5b/§5c.
+    const IZ_TABS: readonly TabId[] = ['triage', 'newsletters', 'rules', 'audit', 'stats', 'settings'];
     const activeTab: TabId = IZ_TABS.includes(mem.activeTab as TabId) ? (mem.activeTab as TabId) : 'triage';
     const setActiveTab = useCallback((t: TabId): void => patchMem({ activeTab: t }), [patchMem]);
     const triageFilter = mem.triageFilter;
@@ -138,6 +150,11 @@ export default function InboxZero() {
     const inboxFocusTimerRef = useRef<number | null>(null);
     const [focusTargetItemId, setFocusTargetItemId] = useState<string | null>(null);
     const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
+
+    // Plan 066 §5a/§5e/§5f — session-only undo bar, one open snooze menu, one open draft panel.
+    const [undoBar, setUndoBar] = useState<{ id: string; subject: string; kind: 'Archived' | 'Deleted' } | null>(null);
+    const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
+    const [draftOpenId, setDraftOpenId] = useState<string | null>(null);
 
     // Audit trail + thread links caches (Phase 0.1.7)
     const [auditCache, setAuditCache] = useState<Record<string, any[]>>({});
@@ -361,6 +378,26 @@ export default function InboxZero() {
         return () => window.removeEventListener('qualia-inbox-focus-item', handleFocusItem as EventListener);
     }, [setActiveTab, setExpandedId, setTriageFilter]);
 
+    // Plan 066 §5e — close the open snooze menu on Escape or an outside click.
+    useEffect(() => {
+        if (!snoozeMenuFor) return;
+        const close = (e: Event) => {
+            if (e instanceof KeyboardEvent) {
+                if (e.key === 'Escape') setSnoozeMenuFor(null);
+                return;
+            }
+            const target = e.target as Element | null;
+            if (target?.closest?.('.iz-snooze-wrap')) return;
+            setSnoozeMenuFor(null);
+        };
+        document.addEventListener('keydown', close);
+        document.addEventListener('mousedown', close);
+        return () => {
+            document.removeEventListener('keydown', close);
+            document.removeEventListener('mousedown', close);
+        };
+    }, [snoozeMenuFor]);
+
     // ---- Tab-triggered fetches (SPLIT to avoid infinite loop) ----
 
     // 1. Newsletters — React Query auto-handles via enabled flag (activeTab === 'newsletters')
@@ -416,13 +453,71 @@ export default function InboxZero() {
         return false;
     };
 
-    const handleArchive = async (id: string) => {
+    // Plan 066 §5a — clears any pending auto-dismiss timer and (re)arms an 8s one;
+    // a second archive/delete before the first dismisses simply replaces the bar.
+    const showUndoBar = (id: string, subject: string, kind: 'Archived' | 'Deleted') => {
+        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+        setUndoBar({ id, subject, kind });
+        undoTimerRef.current = window.setTimeout(() => {
+            setUndoBar(null);
+            undoTimerRef.current = null;
+        }, 8000);
+    };
+
+    // Bare archive call, no undo bar — used by handleArchive (single item) and by
+    // handleBulkArchive's per-item fallback, which must NOT show Undo (bulk is out
+    // of scope for 5a).
+    const archiveItem = async (id: string): Promise<boolean> => {
         try {
             const res = await authFetch(`${INBOX_API}/${id}/archive`, { method: 'POST' });
-            if (await mutationFailed(res, 'Archive')) return;
+            if (await mutationFailed(res, 'Archive')) return false;
             invalidateInbox();
+            return true;
         } catch {
             window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Archive failed: network error' }));
+            return false;
+        }
+    };
+
+    const handleArchive = async (id: string) => {
+        const subject = items.find(i => i.id === id)?.subject || '';
+        if (await archiveItem(id)) showUndoBar(id, subject, 'Archived');
+    };
+
+    const handleUndo = async () => {
+        if (!undoBar) return;
+        try {
+            const res = await authFetch(`${INBOX_API}/${undoBar.id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'pending', reason: 'Undo' }),
+            });
+            if (await mutationFailed(res, 'Undo')) return;
+            if (undoTimerRef.current) { window.clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+            setUndoBar(null);
+            invalidateInbox();
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Restored' }));
+        } catch {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Undo failed: network error' }));
+        }
+    };
+
+    // Plan 066 §5e
+    const handleSnooze = async (id: string, ms: number) => {
+        setSnoozeMenuFor(null);
+        const until = new Date(Date.now() + ms).toISOString();
+        try {
+            const res = await authFetch(`${INBOX_API}/${id}/snooze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ until }),
+            });
+            if (await mutationFailed(res, 'Snooze')) return;
+            invalidateInbox();
+            const short = new Date(until).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Snoozed until ${short}` }));
+        } catch {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Snooze failed: network error' }));
         }
     };
 
@@ -452,10 +547,12 @@ export default function InboxZero() {
     };
 
     const handleDelete = async (id: string) => {
+        const subject = items.find(i => i.id === id)?.subject || '';
         try {
             const res = await authFetch(`${INBOX_API}/${id}`, { method: 'DELETE' });
             if (await mutationFailed(res, 'Delete')) return;
             invalidateInbox();
+            showUndoBar(id, subject, 'Deleted');
         } catch {
             window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Delete failed: network error' }));
         }
@@ -475,7 +572,8 @@ export default function InboxZero() {
         } catch {
             // Network-level failure (not a JSON error response) — fall back to
             // archiving one at a time; each call surfaces its own toast on failure.
-            for (const id of ids) { await handleArchive(id); }
+            // Uses archiveItem, not handleArchive — bulk archive never shows Undo (5a scope).
+            for (const id of ids) { await archiveItem(id); }
             setSelectedIds(new Set());
         }
     };
@@ -577,13 +675,14 @@ export default function InboxZero() {
         return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
-    // ponytail: undo removed at plan 066 §2c (it never checked whether the
-    // Gmail label call succeeded, so it showed a false "recovered"); restore
-    // real undo at plan 066 §5a.
+    // Real undo restored at plan 066 §5a (see showUndoBar/handleUndo above) — the
+    // old one (removed at §2c) never checked whether the Gmail label call
+    // succeeded, so it showed a false "recovered".
 
     useEffect(() => {
         return () => {
             if (inboxFocusTimerRef.current) clearTimeout(inboxFocusTimerRef.current);
+            if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
         };
     }, []);
 
@@ -617,7 +716,7 @@ export default function InboxZero() {
 
                 {/* Tabs */}
                 <div className="iz-tabs" role="tablist" aria-label="InboxZero sections" onKeyDown={(e) => {
-                    const tabs: TabId[] = ['triage','newsletters','stats','settings'];
+                    const tabs: TabId[] = ['triage','newsletters','rules','audit','stats','settings'];
                     const idx = tabs.indexOf(activeTab);
                     if (idx < 0) return;
                     let next: number | undefined;
@@ -633,6 +732,8 @@ export default function InboxZero() {
                     {([
                         { id: 'triage' as TabId, label: 'Triage', count: stats?.pending },
                         { id: 'newsletters' as TabId, label: 'Newsletters', count: newsletters.length },
+                        { id: 'rules' as TabId, label: 'Rules' },
+                        { id: 'audit' as TabId, label: 'Audit' },
                         { id: 'stats' as TabId, label: 'Stats' },
                         { id: 'settings' as TabId, label: 'Settings' },
                     ]).map(tab => (
@@ -654,6 +755,18 @@ export default function InboxZero() {
                     ))}
                 </div>
             </div>
+
+            {/* Plan 066 §5a — session-only undo bar; one at a time, auto-dismisses after 8s. */}
+            {undoBar && (
+                <div className="iz-undo-bar" role="status" aria-live="polite">
+                    <span className="iz-undo-bar__text">
+                        {undoBar.kind === 'Archived' ? 'Archived' : 'Deleted'} “{undoBar.subject}”
+                    </span>
+                    <button className="iz-undo-bar__btn" onClick={handleUndo}>
+                        <Undo2 size={13} aria-hidden /> Undo
+                    </button>
+                </div>
+            )}
 
             {/* ========== TRIAGE TAB ========== */}
             {activeTab === 'triage' && (
@@ -992,6 +1105,31 @@ export default function InboxZero() {
                                             >
                                                 <Reply size={13} aria-hidden /> Smart Reply
                                             </button>
+                                            <div className="iz-snooze-wrap">
+                                                <button
+                                                    className="iz-snooze-trigger"
+                                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
+                                                    aria-haspopup="menu"
+                                                    aria-expanded={snoozeMenuFor === item.id}
+                                                    onClick={e => { e.stopPropagation(); setSnoozeMenuFor(snoozeMenuFor === item.id ? null : item.id); }}
+                                                >
+                                                    <Clock size={14} aria-hidden /> Snooze
+                                                </button>
+                                                {snoozeMenuFor === item.id && (
+                                                    <div className="iz-snooze-menu" role="menu">
+                                                        {SNOOZE_OPTIONS.map(opt => (
+                                                            <button
+                                                                key={opt.label}
+                                                                role="menuitem"
+                                                                className="iz-snooze-menu__item"
+                                                                onClick={e => { e.stopPropagation(); handleSnooze(item.id, opt.ms); }}
+                                                            >
+                                                                {opt.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1080,8 +1218,14 @@ export default function InboxZero() {
                                                     <Trash2 size={14} aria-hidden /> Delete
                                                 </button>
 
-                                                {/* ponytail: Snooze removed at plan 066 §2c — it called a route
-                                                    that never existed. Restore at plan 066 §5e. */}
+                                                {/* Draft reply (plan 066 §5f) — every expanded card gets it,
+                                                    not just ones with routing reasoning. */}
+                                                <button
+                                                    className="iz-action iz-action--draft"
+                                                    onClick={() => setDraftOpenId(draftOpenId === item.id ? null : item.id)}
+                                                >
+                                                    <Sparkles size={14} aria-hidden /> Draft reply
+                                                </button>
 
                                                 {/* Retry button (Phase 0.1.3) — appears when Gmail archival failed */}
                                                 {(item.gmailError || item.retryable) && (
@@ -1113,6 +1257,13 @@ export default function InboxZero() {
                                                     <Link size={14} aria-hidden /> Link to Strata
                                                 </button>
                                             </div>
+
+                                            {/* Draft reply panel (plan 066 §5f) — one open at a time. */}
+                                            {draftOpenId === item.id && (
+                                                <div className="iz-draft-panel">
+                                                    <DraftReplyPanel itemId={item.id} apiBase={INBOX_API} authFetch={authFetch} />
+                                                </div>
+                                            )}
 
                                             {/* Link to Strata Modal (Phase 0.1.4 — Enhanced) */}
                                             {linkModalFor === item.id && (
@@ -1441,11 +1592,10 @@ export default function InboxZero() {
                 </div>
             )}
 
-            {/* ponytail: Rules, NIF Intel, Actions, Analytics, Cold Block, Replies,
-                Tracker, Audit Log and Capabilities tabs removed at plan 066 §2a —
-                each called routes that never existed or advertised features the
-                code contradicted. RulesManager.tsx, SmartActions.tsx and
-                GlobalAuditTab.tsx stay on disk, unmounted, for plan 066 §5. */}
+            {/* ponytail: NIF Intel, Actions, Analytics, Cold Block, Replies, Tracker
+                and Capabilities tabs removed at plan 066 §2a — each called routes
+                that never existed or advertised features the code contradicted.
+                Rules + Audit came back at plan 066 §5b/§5c below. */}
 
             {/* ========== NEWSLETTERS TAB ========== */}
             {activeTab === 'newsletters' && (
@@ -1456,6 +1606,20 @@ export default function InboxZero() {
                         inboxApiBase={INBOX_API}
                         onRefresh={() => queryClient.invalidateQueries({ queryKey: inboxKeys.newsletters() })}
                     />
+                </div>
+            )}
+
+            {/* ========== RULES TAB (plan 066 §5c) ========== */}
+            {activeTab === 'rules' && (
+                <div role="tabpanel" id="iz-tabpanel-rules" aria-labelledby="iz-tab-rules">
+                    <RulesManager apiBase={INBOX_API} authFetch={authFetch} canEdit={isGod} />
+                </div>
+            )}
+
+            {/* ========== AUDIT TAB (plan 066 §5b) ========== */}
+            {activeTab === 'audit' && (
+                <div role="tabpanel" id="iz-tabpanel-audit" aria-labelledby="iz-tab-audit">
+                    <GlobalAuditTab apiBase={INBOX_API} authFetch={authFetch} />
                 </div>
             )}
 

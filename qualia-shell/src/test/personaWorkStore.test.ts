@@ -45,6 +45,17 @@ describe('personaWorkStore', () => {
         expect(formatMemory('researcher')).toContain('Summarized the lease');
     });
 
+    it('keeps failed runs out of the prompt (their goal can carry the rejected claim) but still shows them', () => {
+        recordRun('researcher', 'Summarized the lease', 1200, 'success');
+        addMemory('researcher', 'Always cite the source');
+        for (let i = 0; i < 6; i++) recordRun('researcher', `Goal: say it is open Saturdays 10am–2pm → flagged by the fact-check (not reused) ${i}`, 900, 'fail');
+        expect(getWork('researcher').memory.filter(m => m.text.startsWith('[fail]'))).toHaveLength(6);
+        const prompt = formatMemory('researcher');
+        expect(prompt).not.toContain('Saturdays');
+        expect(prompt).toContain('Summarized the lease');
+        expect(prompt).toContain('Always cite the source');
+    });
+
     it('logs audit + persists everything across a cache reset', () => {
         addMemory('legal-analyst', 'Always cite the statute');
         logAudit('legal-analyst', 'Tested');

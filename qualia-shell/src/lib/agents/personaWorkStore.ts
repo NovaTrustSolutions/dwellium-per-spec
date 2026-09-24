@@ -238,7 +238,9 @@ export function recordRun(personaId: string, summary: string, durationMs: number
 
 /** Inject a persona's recent memory into its prompt (self-improvement). */
 export function formatMemory(personaId: string, limit = 6): string {
-    const mem = getWork(personaId).memory.slice(0, limit);
+    // A failed run's note repeats its goal, which can carry the claim the fact-check rejected;
+    // the model treats it as a source. It stays on the Memory tab but never reaches a prompt.
+    const mem = getWork(personaId).memory.filter(m => !(m.kind === 'learned' && m.text.startsWith('[fail]'))).slice(0, limit);
     if (mem.length === 0) return '';
     return `\n\n## Working memory (learned from past runs — apply what is relevant)\n${mem.map(m => `- ${m.text}`).join('\n')}`;
 }

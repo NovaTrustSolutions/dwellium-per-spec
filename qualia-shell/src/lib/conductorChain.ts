@@ -157,7 +157,9 @@ export function parseChain(input: string, origin: SkillOrigin = 'user'): Command
 /**
  * Execute a chain sequentially: commands fire their run(); skills run with
  * the supplied context, with "the result" references substituted from the
- * previous successful skill output. Outcomes stream via onStep.
+ * previous successful skill output. A failed step breaks the pipe — a later
+ * "the result" then has nothing to refer to (it never falls back to an older
+ * step's output). Outcomes stream via onStep.
  */
 export async function executeChain(
     chain: CommandChain,
@@ -207,6 +209,7 @@ export async function executeChain(
         } else {
             outcome = { step, ok: false, text: 'Unresolvable step.' };
         }
+        if (!outcome.ok) lastResult = ''; // "the result" meant THIS step's output — don't substitute an older one
         outcomes.push(outcome);
         onStep?.(i, outcome);
     }

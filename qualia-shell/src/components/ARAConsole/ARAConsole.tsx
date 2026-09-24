@@ -31,7 +31,7 @@ import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATT
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
 import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStore';
-import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
+import { runTeam, runPersona, describeLlmFailure, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
 import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun, type HermesRunRecord } from '../HonchoHermesPanel/hermesLearningStore';
@@ -1432,13 +1432,15 @@ export default function ARAConsole() {
                     onEvent: e => line(`\`${e.phase}\` ${e.message}`),
                 });
                 if (result.error) {
-                    line(`${result.error}`);
+                    line(`**${req.name} failed:** ${result.error}`);
                 } else {
                     const rec = recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
                     recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                     line(`---\n\n${result.final}`);
+                    // Member failures / a merge fallback are problems, not a clean finish — say so (Agent Lab shows these too).
+                    if (result.warnings.length) line(`**Finished with problems:** ${result.warnings.join('; ')}`);
                     attachRun(progress.id, rec);
-                    if (ttsEnabled) void speakText(`${req.name} has finished.`);
+                    if (ttsEnabled) void speakText(result.warnings.length ? `${req.name} finished with problems.` : `${req.name} has finished.`);
                 }
             } else {
                 const persona = findPersona(personas, req.id);
@@ -1448,14 +1450,19 @@ export default function ARAConsole() {
                 // D3 fix: record success/fail from out.ok, not output-text truthiness
                 // (the placeholder no-response text used to read as a truthy success).
                 const rec = recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
-                const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
-                if (text) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
-                line(text ? `---\n\n${text}` : 'No output — the model returned nothing.');
-                if (out.ok) attachRun(progress.id, rec);
-                if (text && ttsEnabled) void speakText(`${persona.name} has finished.`);
+                if (!out.ok) {
+                    // A failed run is not a deliverable: no artifact, no "has finished", no 👍 — say it failed.
+                    line(`**${persona.name} failed:** ${out.error || 'No output — the model returned nothing.'}`);
+                } else {
+                    const text = out.verified || out.output;
+                    recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
+                    line(`---\n\n${text}`);
+                    attachRun(progress.id, rec);
+                    if (ttsEnabled) void speakText(`${persona.name} has finished.`);
+                }
             }
         } catch (err) {
-            line(`Run failed — ${err instanceof Error ? err.message : String(err)}.`);
+            line(`**${req.name} failed:** ${describeLlmFailure(err)}`); // the provider's message, not its raw JSON
         } finally {
             setIsLoading(false);
         }
@@ -1536,7 +1543,8 @@ export default function ARAConsole() {
         // out.error in the returned text when the member failed.
         const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
         const run = recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
-        return { ok: !!text, text: text || 'No output — the model returned nothing.', run: out.ok ? run : undefined };
+        // ok is the run's own verdict — an error message is text too, and it must never count (or be piped on) as an answer.
+        return { ok: out.ok, text: text || 'No output — the model returned nothing.', run: out.ok ? run : undefined };
     }, [user, integrations.llm]);
 
     // ── Conductor tier dispatch (Phase-10 B2 refactor) ─────────────────────
@@ -1570,15 +1578,20 @@ export default function ARAConsole() {
             try {
                 const spawnRuns: HermesRunRecord[] = [];
                 const outcomes = await executeChain(chain, { llm: integrations.llm, search: integrations.search }, (i, o) => {
-                    const icon = o.ok ? '' : '';
-                    updateMessageContent(progress.id, c => `${c}\n\n${icon} **Step ${i + 1}** — ${o.text}`);
+                    // Words, not an icon: markdown can't carry the Lucide icons that replaced the old ✓/⚠.
+                    updateMessageContent(progress.id, c => `${c}\n\n${o.ok ? `**Step ${i + 1}** — ` : `**Step ${i + 1} — failed:** `}${o.text}`);
                 }, async (spawnReq) => { // P11-3: spawn steps run the orchestrator
-                    const r = await runSpawnForChain(spawnReq);
-                    if (r.run) spawnRuns.push(r.run);
-                    return r;
+                    try {
+                        const r = await runSpawnForChain(spawnReq);
+                        if (r.run) spawnRuns.push(r.run);
+                        return r;
+                    } catch (e) {
+                        return { ok: false, text: describeLlmFailure(e) }; // the provider's message, not its raw JSON
+                    }
                 });
                 const allOk = outcomes.every(o => o.ok);
-                updateMessageContent(progress.id, c => `${c}\n\n${allOk ? 'All done. What would you like me to do next?' : 'Finished with hiccups — see the flagged step above.'}`);
+                const failedSteps = outcomes.filter(o => !o.ok).length;
+                updateMessageContent(progress.id, c => `${c}\n\n${allOk ? 'All done. What would you like me to do next?' : `Finished with hiccups — ${failedSteps} ${failedSteps === 1 ? 'step' : 'steps'} failed (marked above).`}`);
                 // ponytail: one spawn step → its 👍 on this message; several spawns share one message, so no 👍 (ambiguous) —
                 // counted by steps, so a chain whose other spawn failed still gets none.
                 if (chain.steps.filter(st => st.kind === 'spawn').length === 1 && spawnRuns.length === 1) attachRun(progress.id, spawnRuns[0]);

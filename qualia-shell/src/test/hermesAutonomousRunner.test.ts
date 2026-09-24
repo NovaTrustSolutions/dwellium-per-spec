@@ -44,6 +44,34 @@ describe('runNextHermesTask', () => {
         expect(runPersonaFn.mock.calls[0][0].persona.systemPrompt).toContain('Shared Hermes memory');
     });
 
+    it.each([
+        ['flagged', 'flagged by the fact-check'],
+        ['unavailable', 'fact-check unavailable'],
+    ] as const)('a %s answer completes the task but is remembered as fail, without the claim text', async (verifyStatus, label) => {
+        const complete = vi.fn();
+        const remember = vi.fn();
+        const runPersonaFn = vi.fn(async ({ persona }: any) => ({
+            personaId: persona.id, personaName: persona.name, tasks: ['Check hours'],
+            output: 'The office is open Saturdays.', verified: '[UNVERIFIED] The office is open Saturdays.',
+            supported: false, ok: true, verifyStatus,
+        }));
+        const result = await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({ personaId: labyrinth.id, task: { id: 'task-9', title: 'Check hours', status: 'running', assignedBy: 'user', createdAt: 1 } }),
+            orchestratorDeps: { invoke: vi.fn(async () => 'unused') },
+            complete, fail: vi.fn(), remember,
+            wikiContext: () => '', personaMemory: () => '',
+            runPersonaFn: runPersonaFn as any,
+            now: vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(130),
+        });
+        expect(complete).toHaveBeenCalledWith(labyrinth.id, 'task-9', expect.any(String));
+        expect(result).toMatchObject({ outcome: 'success' });
+        const [, note, , outcome] = remember.mock.calls[0];
+        expect(outcome).toBe('fail');
+        expect(note).toContain(label);
+        expect(note).not.toContain('open Saturdays');
+    });
+
     it('marks a task failed when the persona run throws', async () => {
         const fail = vi.fn();
         const remember = vi.fn();

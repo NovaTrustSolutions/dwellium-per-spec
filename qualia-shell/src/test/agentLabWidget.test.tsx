@@ -287,6 +287,25 @@ describe('AgentLab — a flagged answer is not learned as a success', () => {
     });
 });
 
+describe('AgentLab — an unavailable fact-check is not called "flagged"', () => {
+    it('memory note says the check was unavailable, not that the claim was flagged', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        callLlmMock.mockImplementation(async (req: LlmReqLike) => (req.prompt?.includes('Check every factual claim')
+            ? { text: 'Looks fine to me.', provider: 'anthropic', model: 'x' }
+            : { text: 'The office is open Saturdays.', provider: 'anthropic', model: 'x' }));
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Office hours?' } });
+        fireEvent.change(screen.getByLabelText(/^Sources/), { target: { value: 'Closed on weekends.' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await screen.findByText(/verification unavailable/);
+        const memory = personaWorkStore.getSnapshot().researcher?.memory.map(m => m.text).join(' ') ?? '';
+        expect(memory).toMatch(/fact-check unavailable/);
+        expect(memory).not.toMatch(/flagged by the fact-check/);
+        expect(memory).not.toMatch(/open Saturdays/);
+    });
+});
+
 describe('AgentLab — D3 Hermes outcome honesty', () => {
     it('a team run where every member returns "" records outcome "fail"', async () => {
         saveIntegrations(activeLlm());

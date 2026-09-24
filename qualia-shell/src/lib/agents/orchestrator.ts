@@ -80,6 +80,8 @@ export interface MemberTaskEvent {
     error?: string;
     /** on phase 'done': the answer passed the fact-check or had nothing to check against. */
     supported?: boolean;
+    /** on phase 'done': how the fact-check went (flagged vs. could not run). */
+    verifyStatus?: VerifyStatus;
 }
 
 /** Outcome of STEP 3 (verify) for one member's output. */
@@ -111,6 +113,11 @@ export interface TeamRunResult {
     outcome: 'success' | 'partial' | 'fail';
     /** human-readable, e.g. "Engineer: [anthropic] 429 rate limited". */
     warnings: string[];
+}
+
+/** Why an answered-but-unsupported run is kept out of learning — honest about flagged vs. unchecked. */
+export function notReusedReason(status?: VerifyStatus): string {
+    return status === 'unavailable' ? 'fact-check unavailable (not reused)' : 'flagged by the fact-check (not reused)';
 }
 
 /** Friendly message when the model returns no text at all (null/blank invoke). */
@@ -426,7 +433,7 @@ export async function runTeam(params: {
         }
         const supported = ok && (verifyStatus === 'passed' || verifyStatus === 'skipped');
         if (executed) recordOutcome(deps, persona, goal, ok, supported, verified);
-        onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok, error, supported });
+        onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok, error, supported, verifyStatus });
         outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported, ok, error, verifyStatus });
     }
 

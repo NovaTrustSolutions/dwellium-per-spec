@@ -25,7 +25,7 @@ import {
 } from '../../lib/agents/personaWorkStore';
 import { personaStats } from '../../lib/agents/hermesStatus';
 import {
-    runTeam, runPersona, describeLlmFailure, NO_RESPONSE_MESSAGE,
+    runTeam, runPersona, describeLlmFailure, notReusedReason, NO_RESPONSE_MESSAGE,
     type OrchestratorDeps, type RunEvent, type TeamRunResult, type PersonaOutput,
 } from '../../lib/agents/orchestrator';
 import { AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
@@ -57,8 +57,8 @@ function Icon({ k, size = 16 }: { k: string; size?: number }) {
 
 /** Working-memory note for a finished run. A flagged/unverifiable answer is noted without its
  *  text — memory is fed back into later prompts, so an unsupported claim must not travel with it. */
-function learnedNote(label: string, out: Pick<PersonaOutput, 'ok' | 'supported' | 'verified'>, max: number): string {
-    return out.ok && !out.supported ? `${label} → flagged by the fact-check (not reused)` : `${label} → ${out.verified.slice(0, max)}`;
+function learnedNote(label: string, out: Pick<PersonaOutput, 'ok' | 'supported' | 'verified' | 'verifyStatus'>, max: number): string {
+    return out.ok && !out.supported ? `${label} → ${notReusedReason(out.verifyStatus)}` : `${label} → ${out.verified.slice(0, max)}`;
 }
 
 export default function AgentLab() {
@@ -154,7 +154,7 @@ export default function AgentLab() {
                                 else failTask(m.personaId, id, m.error ?? NO_RESPONSE_MESSAGE);
                             }
                             const supported = !!m.ok && m.supported !== false;
-                            recordPersonaRun(m.personaId, learnedNote(`Team task: ${m.title}`, { ok: !!m.ok, supported, verified: m.result ?? '' }, 140), m.durationMs ?? 0, supported ? 'success' : 'fail');
+                            recordPersonaRun(m.personaId, learnedNote(`Team task: ${m.title}`, { ok: !!m.ok, supported, verified: m.result ?? '', verifyStatus: m.verifyStatus ?? 'skipped' }, 140), m.durationMs ?? 0, supported ? 'success' : 'fail');
                         }
                     },
                 });

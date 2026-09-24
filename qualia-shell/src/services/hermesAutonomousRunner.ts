@@ -32,6 +32,7 @@ import {
 } from '../lib/agents/personas';
 import {
     runPersona,
+    notReusedReason,
     type OrchestratorDeps,
     type PersonaOutput,
 } from '../lib/agents/orchestrator';
@@ -121,7 +122,13 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
             return { personaId: persona.id, taskId: claim.task.id, outcome: 'fail', error };
         }
         complete(persona.id, claim.task.id, result.slice(0, 2_000));
-        remember(persona.id, `Autonomous task: ${claim.task.title} -> ${result.slice(0, 180)}`, duration, 'success');
+        // The task is done either way, but only an answer that passed its fact-check (or had
+        // nothing to check) is remembered as a success — and a flagged claim never enters memory.
+        if (output.supported === false) {
+            remember(persona.id, `Autonomous task: ${claim.task.title} -> ${notReusedReason(output.verifyStatus)}`, duration, 'fail');
+        } else {
+            remember(persona.id, `Autonomous task: ${claim.task.title} -> ${result.slice(0, 180)}`, duration, 'success');
+        }
         return { personaId: persona.id, taskId: claim.task.id, outcome: 'success', result };
     } catch (err: any) {
         const error = err?.message || String(err);

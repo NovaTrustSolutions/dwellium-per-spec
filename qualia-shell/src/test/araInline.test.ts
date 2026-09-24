@@ -47,8 +47,10 @@ describe('formatInline', () => {
     });
 
     it('the source uses escaped placeholder characters, never invisible raw ones', () => {
-        const src = readFileSync(resolve(process.cwd(), 'src/components/ARAConsole/araInline.ts'), 'utf8'); // same pattern as araConsoleCss.test.ts
-        expect(/[\uE000-\uF8FF]/.test(src)).toBe(false);
+        for (const f of ['src/components/ARAConsole/araInline.ts', 'src/lib/markdownText.ts']) {
+            const src = readFileSync(resolve(process.cwd(), f), 'utf8'); // same pattern as araConsoleCss.test.ts
+            expect(/[\uE000-\uF8FF]/.test(src), f).toBe(false);
+        }
     });
 });
 
@@ -117,6 +119,40 @@ describe('second review pass', () => {
     it('the chat renderer treats ```x``` as one code span (no stray backticks)', () => {
         expect(formatInline('```npm install``` fails')).toBe('<code>npm install</code> fails');
         expect(formatInline('``a `b` c``')).toBe('<code>a `b` c</code>');
+    });
+});
+
+describe('third round', () => {
+    it('only thousands groups are joined when speaking numbers', () => {
+        expect(toSpeechText('snapshot_2024_09_24')).toBe('snapshot 2024 09 24');
+        expect(toSpeechText('matrix_1_2')).toBe('matrix 1 2');
+        expect(toSpeechText('1_000_000 rows and 12_345')).toBe('1000000 rows and 12345');
+    });
+    it('a fence indented 4+ spaces under a list item is still a fence', () => {
+        const code = splitFences('- step:\n    ```bash\n    npm i\n    ```\n- next').filter(b => b.kind === 'code').map(b => b.lines.join('\n'));
+        expect(code).toEqual(['npm i']);
+    });
+});
+
+describe('third round, review fixes', () => {
+    const code = (md: string) => splitFences(md).filter(b => b.kind === 'code').map(b => b.lines.join('\n'));
+    it('an indented ``` inside the code (a docstring example) does not end the block', () => {
+        const md = 'Here is the helper:\n```python\ndef add(a, b):\n    """Add two numbers.\n\n    Example:\n    ```\n    add(1, 2)\n    ```\n    """\n    return a + b\n```\nCall it from main.';
+        expect(code(md)).toEqual(['def add(a, b):\n    """Add two numbers.\n\n    Example:\n    ```\n    add(1, 2)\n    ```\n    """\n    return a + b']);
+        expect(toSpeechText(md)).toBe('Here is the helper:\ncode block\nCall it from main.');
+    });
+    it('a stray indented ``` in text does not pair with a later top-level fence', () => {
+        const md = 'To start a fence, type three backticks:\n\n    ```\n\nThen write your code and close it:\n\n```js\nconsole.log(1)\n```\nThat is all.';
+        expect(code(md)).toEqual(['console.log(1)']);
+        expect(toSpeechText(md)).toContain('Then write your code and close it:');
+    });
+    it('an unclosed nested fence does not swallow the next list item', () => {
+        expect(code('1. Install:\n    ```bash\n    npm i\n2. Configure:\n```js\nexport default {}\n```\nDone.')).toEqual(['export default {}']);
+    });
+    it('only a whole grouped number is joined; a trailing _001 in a name stays separate', () => {
+        expect(toSpeechText('backup_2024_09_24_001.sql')).toBe('backup 2024 09 24 001.sql');
+        expect(toSpeechText('model_v2_001')).toBe('model v2 001');
+        expect(toSpeechText('$1_000.50 and 1_000_000 rows')).toBe('$1000.50 and 1000000 rows');
     });
 });
 

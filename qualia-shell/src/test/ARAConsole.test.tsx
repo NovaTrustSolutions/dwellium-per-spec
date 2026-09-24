@@ -556,6 +556,19 @@ describe('ARAConsole', () => {
         expect(document.querySelector('.ara-message-body pre.ara-code-block')?.textContent).toBe('npm i');
     });
 
+    it('a fence indented 4 spaces under a bullet renders as a code block', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: '- Install:\n    ```bash\n    npm i\n    ```\n- Done here.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Install?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/Done here\./);
+        expect(document.querySelector('.ara-message-body pre.ara-code-block')?.textContent).toBe('npm i');
+    });
+
     it('offline fallback uses single-shot callLlm when streamTokens is OFF', async () => {
         araPrefsStore.set('streamTokens', false);
         chatShouldThrow = true;

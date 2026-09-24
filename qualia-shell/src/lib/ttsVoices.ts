@@ -8,6 +8,8 @@
  * keyless fallback. Selection is persisted per-consumer (e.g. dwellium-stella-voice).
  */
 
+import { toSpeechText } from './markdownText';
+
 export interface TtsVoiceOption {
     id: string;
     label: string;
@@ -44,18 +46,13 @@ export const HUMANIZE_PREFIX =
 const OPENAI_TTS_ENDPOINT = 'https://api.openai.com/v1/audio/speech';
 const LEGACY_VOICE_MAP: Record<string, string> = { female: 'openai-alloy', male: 'openai-onyx' };
 
-/** Flatten Markdown to plain prose so the TTS reads it naturally. */
+/** Flatten Markdown to plain prose so the TTS reads it naturally — the same rules as ARA's speech
+ *  (lib/markdownText.ts), plus # > | dropped anywhere, as this helper always did. A line break becomes
+ *  a pause (a period unless the line already ends in punctuation), so list items don't run together. */
 export function stripMarkdownForSpeech(text: string): string {
-    return text
-        .replace(/```[\s\S]*?```/g, ' code block ')
-        .replace(/`([^`]+)`/g, '$1')
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/(?<=\p{N})_(?=\p{N})/gu, '') // 1_000_000 stays one number
-        .replace(/(?<=[\p{L}\p{M}\p{N}])_(?=[\p{L}\p{M}\p{N}])/gu, ' ') // user_id_map → "user id map", not "useridmap"
-        .replace(/[*_#>~|]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    return toSpeechText(text).replace(/[#>|]/g, ' ')
+        .replace(/([^\s.!?:;,])[ \t]*\n\s*/g, '$1. ')
+        .replace(/\s+/g, ' ').trim();
 }
 
 export interface SpeakHandle { stop: () => void; }

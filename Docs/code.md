@@ -349,6 +349,20 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Status:** not fixed. Worked around in the live test with an xref-stream PDF (binary offsets, no digit runs — what most modern PDFs use). Decision needed: text-extract before scanning, or exempt binary formats.
 - **Prevention:** scanners that run over bytes will find "PII" in any binary container; scan extracted text.
 
+## 2026-09-23 — One Save hydrate wrote the previous account's payload into the new account's key
+
+- **Error:** (found by the wiki-hardening adversarial review, proven with a runtime test) switching accounts while a store's hydrate GET was in flight left account A's remote payload in account B's localStorage.
+- **Root cause:** `makeSynced.hydrate()` issued the GET for the owner at call time, but after the `await` applied the payload through the dynamic-key base store, whose key now resolved to the NEW owner. Every `withSync` store had it; the new `merge` option made it worse by folding A's pages into B's local map.
+- **Fix:** `hydrate()` captures `ownerAtStart` before the await and returns if `ownerId()` changed (`src/lib/oneSaveStore.ts`). The bulk-prefetch path was already safe (it looks up the NEW owner's object id). Regression: `src/test/oneSaveOwnerRace.test.ts` (mutation-checked).
+- **Prevention:** anything applied after an `await` must re-check both "did local change" (`localWriteSeq`) and "is it still the same owner".
+
+## 2026-09-23 — Wiki widget: container query never fired; staleness judged cited sources
+
+- **Error:** at a 460px window the Wiki sidebar overflowed off the left edge; every page would have shown "Out of date".
+- **Root cause:** (1) `.wiki-root` was both the `container-type` element and the target of the `@container` rule — a container query cannot restyle its own container. (2) staleness compared the page's *cited* sources (the LLM may cite a subset) with the node's files.
+- **Fix:** outer `.wiki-host` is the query container; pages store `inputs` (every file compiled from) and staleness uses it; legacy pages without `inputs` are judged by modification time only.
+- **Prevention:** put `container-type` on a wrapper, never on the element the query restyles. Verify responsive CSS with a real render (the standalone harness), not jsdom — all unit tests were green through this bug.
+
 ## 2026-09-23 — Agent Lab: provider errors vanished, failures taught to Hermes as successes, "LLM ready" lied, dark-only colours (branch `fix/agent-lab-fix-now`)
 
 - **Error:** from the 2026-09-22 Agent Lab audit (`~/Desktop/Agent_Lab_Report_2026-09-22.md`, "Fix now" batch): a 429/500 from any team member silently ended the whole run (button reset, nothing shown, finished members discarded, task stuck "running"); a fact-check reply that wasn't clean JSON marked the draft *supported*; a team run where every member returned nothing was recorded in Hermes as `success` and replayed as a few-shot example; "LLM ready" showed when ANY provider had a key, not the active one; failed tasks were marked done; the planner answering with persona names ran nobody; built-ins' model was un-editable; solo runs couldn't be rated; 👎 runs kept being reused; team members got no working memory; one persona's task blocked every other persona; unlabeled fields / no live region / no tab semantics; the dossier invented metrics ("Facial Symmetry 89%") and was clipped in the widget window; new personas showed the word "bot"; on light themes the widget was near-black with dark text (1.39:1).

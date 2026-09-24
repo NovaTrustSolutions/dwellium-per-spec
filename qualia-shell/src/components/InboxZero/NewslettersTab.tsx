@@ -1,23 +1,56 @@
 /**
  * NewslettersTab — Newsletter management sub-view for InboxZero
- * 
+ *
  * Shows detected newsletter senders with read rate stats and unsubscribe controls.
- * Extracted from InboxZero.tsx monolith (Phase 2.1).
+ * Unsubscribe (plan 066 §5d): PATCH `${inboxApiBase}/newsletters/:sender/unsubscribe`.
  */
-
+import { useState } from 'react';
 import { Newspaper } from 'lucide-react';
 import type { NewsletterSender } from './InboxZeroTypes';
 
+type AuthFetch = (url: string, init?: RequestInit) => Promise<Response>;
+
 interface Props {
     newsletters: NewsletterSender[];
-    // authFetch/inboxApiBase/onRefresh are unused since the Unsubscribe button
-    // was removed (plan 066 §2c) — kept on the contract for plan 066 §5d.
-    authFetch: (url: string, init?: RequestInit) => Promise<Response>;
+    authFetch: AuthFetch;
     inboxApiBase: string;
     onRefresh: () => void;
 }
 
-export default function NewslettersTab({ newsletters }: Props) {
+function toast(detail: string) {
+    window.dispatchEvent(new CustomEvent('qualia-toast', { detail }));
+}
+
+export default function NewslettersTab({ newsletters, authFetch, inboxApiBase, onRefresh }: Props) {
+    const [busySender, setBusySender] = useState<string | null>(null);
+
+    const handleUnsubscribe = async (sender: string) => {
+        setBusySender(sender);
+        try {
+            const res = await authFetch(`${inboxApiBase}/newsletters/${encodeURIComponent(sender)}/unsubscribe`, { method: 'PATCH' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                toast(data.error || `Failed to unsubscribe (${res.status})`);
+                return;
+            }
+            const method = data.data?.method;
+            const target: string | undefined = data.data?.target;
+            if (method === 'one-click') {
+                toast('Unsubscribed');
+                onRefresh();
+            } else if ((method === 'url' || method === 'mailto') && typeof target === 'string' && (target.startsWith('https:') || target.startsWith('mailto:'))) {
+                window.open(target, '_blank', 'noopener,noreferrer');
+                toast('Open link to finish');
+            } else {
+                toast('No unsubscribe link');
+            }
+        } catch {
+            toast('Network error');
+        } finally {
+            setBusySender(null);
+        }
+    };
+
     return (
         <div className="iz-newsletters">
             {newsletters.length === 0 ? (
@@ -48,8 +81,23 @@ export default function NewslettersTab({ newsletters }: Props) {
                                 />
                             </div>
                         </div>
-                        {/* ponytail: Unsubscribe button removed at plan 066 §2c — it
-                            called a route that never existed. Restore at plan 066 §5d. */}
+                        {nl.unsubscribed ? (
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-default)' }}>
+                                Unsubscribed
+                            </span>
+                        ) : (
+                            <button
+                                onClick={() => handleUnsubscribe(nl.sender)}
+                                disabled={busySender === nl.sender}
+                                style={{
+                                    fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
+                                    border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-primary)',
+                                    cursor: 'pointer', opacity: busySender === nl.sender ? 0.6 : 1,
+                                }}
+                            >
+                                {busySender === nl.sender ? 'Unsubscribing…' : 'Unsubscribe'}
+                            </button>
+                        )}
                     </div>
                 ))
             )}

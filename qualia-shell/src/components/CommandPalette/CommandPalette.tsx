@@ -267,9 +267,11 @@ function buildInboxResults(items: InboxMessageItem[], query: string): CommandRes
         .map((item) => {
             const subjectTokens = tokenize(item.subject || '');
             const senderTokens = tokenize(item.sender || '');
+            // Plan 066 §4h: the list no longer carries `body` (fetched on-demand
+            // per item), so scoring reads subject/sender/snippet only — snippet
+            // via `summaryText`'s fallback below.
             const summaryText = item.summary || item.snippet || '';
             const summaryTokens = tokenize(summaryText);
-            const bodyTokens = tokenize(item.body || '');
             const signalTokens = tokenize(item.signalClass.replace(/_/g, ' '));
             const statusTokens = tokenize(item.status);
             const urgencyTokens = tokenize(item.urgency);
@@ -313,10 +315,6 @@ function buildInboxResults(items: InboxMessageItem[], query: string): CommandRes
                     }
                     if (includesToken(summaryTokens, token)) {
                         score += 7;
-                        continue;
-                    }
-                    if (includesToken(bodyTokens, token)) {
-                        score += 4;
                     }
                 }
 

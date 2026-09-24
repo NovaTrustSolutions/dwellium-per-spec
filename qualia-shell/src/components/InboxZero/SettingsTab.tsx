@@ -6,11 +6,12 @@
  * nothing here is shared with another tab. G4 is unanswered — this is a file
  * extraction only, not a move to Control Panel.
  *
- * The tab-triggered fetch effects this replaces were keyed on
- * `activeTab === 'settings'`; they become plain mount effects here because
- * InboxZero only mounts <SettingsTab /> while that tab is active, so the
- * old "reset the loaded-once refs when leaving settings" branch is now
- * implicit in unmount (a fresh mount gets fresh refs).
+ * InboxZero mounts <SettingsTab /> on the first visit to the tab and then only
+ * hides it, so unsaved edits (settingsDirty) survive a tab switch exactly as
+ * before the extraction. The tab-triggered fetch effects this replaces were
+ * keyed on `activeTab === 'settings'`; they are mount effects here, so Legal
+ * Shield health and the permissions user list load once per widget session
+ * instead of on every revisit.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -803,7 +804,7 @@ export default function SettingsTab() {
                                     </div>
                                     <div className="iz-safety__controls">
                                         <select
-                                            className="iz-safety__select"
+                                            className="iz-safety__select" aria-label="Filter by severity"
                                             value={llmSafetySeverityFilter}
                                             onChange={e => setLlmSafetySeverityFilter(e.target.value as 'all' | 'high' | 'medium' | 'low')}
                                         >

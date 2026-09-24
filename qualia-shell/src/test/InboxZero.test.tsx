@@ -257,6 +257,26 @@ describe('InboxZero', () => {
         expect(screen.getByRole('heading', { name: /Security & Guard/ })).toBeInTheDocument();
     });
 
+    // Plan 066 §6c review: unsaved Settings edits survived a tab switch while that state lived in
+    // InboxZero; the extracted SettingsTab must not drop them on unmount.
+    it('keeps unsaved Settings edits across a tab switch', async () => {
+        authFetch.mockImplementation((url: string) => {
+            if (typeof url === 'string' && (url.includes('/legal-shield-health') || url.includes('/api/security/status') || url.includes('/llm-safety-events/stats'))) {
+                return Promise.resolve(jsonResponse({ success: false }));
+            }
+            if (typeof url === 'string' && url.includes('/llm-safety-events')) return Promise.resolve(jsonResponse({ success: true, data: [] }));
+            return routeFetch(() => jsonResponse({ success: true, data: [], pagination: { hasMore: false } }))(url);
+        });
+        renderInbox();
+        fireEvent.click(await screen.findByRole('tab', { name: /Settings/ }));
+        fireEvent.click(await screen.findByRole('switch', { name: /Gmail Fetcher/ }));
+        expect(await screen.findByText('● Unsaved changes')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('tab', { name: /Triage/ }));
+        fireEvent.click(screen.getByRole('tab', { name: /Settings/ }));
+        expect(await screen.findByText('● Unsaved changes')).toBeInTheDocument();
+    });
+
     // Plan 066 §2a — a persisted tab that no longer exists (e.g. the deleted
     // NIF Intel tab) falls back to Triage instead of rendering nothing.
     it('falls back to the Triage tab when the persisted activeTab was removed', async () => {

@@ -139,6 +139,9 @@ export default function InboxZero() {
     // Plan 066 §5a/§5e/§5f — session-only undo bar, one open snooze menu, one open draft panel.
     const [undoBar, setUndoBar] = useState<{ id: string; subject: string; kind: 'Archived' | 'Deleted' } | null>(null);
     const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
+    // Settings stays mounted once opened (see the Settings tabpanel below). Render-phase update: derived, not an effect.
+    const [settingsMounted, setSettingsMounted] = useState(false);
+    if (activeTab === 'settings' && !settingsMounted) setSettingsMounted(true);
     const [draftOpenId, setDraftOpenId] = useState<string | null>(null);
 
     // Audit trail + thread links caches (Phase 0.1.7)
@@ -886,9 +889,9 @@ export default function InboxZero() {
                                                     {item.sourceAccount && (
                                                         <span title={`Received in your ${item.sourceAccount} mailbox`} style={{
                                                             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                                                            background: 'color-mix(in srgb, var(--accent, #6366f1) 14%, transparent)',
-                                                            color: 'var(--accent, #818cf8)',
-                                                            border: '1px solid color-mix(in srgb, var(--accent, #6366f1) 35%, transparent)',
+                                                            background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                                                            color: 'var(--accent-text)', // accent AS text — --accent missed 4.5:1 at 10px
+                                                            border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)',
                                                             display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200,
                                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                                         }}><Mail size={11} aria-hidden /> {item.sourceAccount}</span>
@@ -1476,8 +1479,10 @@ export default function InboxZero() {
             )}
 
             {/* ========== SETTINGS TAB ========== */}
-            {activeTab === 'settings' && (
-                <div role="tabpanel" id="iz-tabpanel-settings" aria-labelledby="iz-tab-settings">
+            {/* Mounted on first visit, then only hidden — unsaved Settings edits survive a tab switch,
+                as they did while this state lived in InboxZero (plan 066 §6c "no behavior change"). */}
+            {settingsMounted && (
+                <div role="tabpanel" id="iz-tabpanel-settings" aria-labelledby="iz-tab-settings" hidden={activeTab !== 'settings'}>
                     <SettingsTab />
                 </div>
             )}

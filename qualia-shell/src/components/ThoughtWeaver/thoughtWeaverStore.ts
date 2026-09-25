@@ -92,6 +92,35 @@ export function clearLocalCaptures(): void {
 }
 
 /**
+ * Import Supabase rows (plan 067 one-time import) into the local store in a
+ * SINGLE `set()` — not N appends, which would fire N notifications/writes.
+ * Rows whose id is already present are skipped (the caller — `planImport` —
+ * already filters these, but this is the last line of defense against a
+ * duplicate row). Result is re-sorted newest-first (stable for equal
+ * `createdAt`, per `Array.prototype.sort`'s ES2019+ stability guarantee) —
+ * imported rows are not necessarily newer than existing local ones. No-op
+ * (no `set()` call) when every row is already present. Returns the count
+ * actually added.
+ */
+export function importCaptures(rows: Array<Omit<LocalCapture, 'source'>>): number {
+    if (typeof window === 'undefined') return 0;
+    if (rows.length === 0) return 0;
+    const current = thoughtWeaverStore.getSnapshot();
+    const existingIds = new Set(current.map(c => c.id));
+    const toAdd: LocalCapture[] = rows
+        .filter(r => !existingIds.has(r.id))
+        .map(r => ({ ...r, source: 'local' as const }));
+    if (toAdd.length === 0) return 0;
+    const next = [...current, ...toAdd].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    thoughtWeaverStore.set(next, () => {
+        try { localStorage.setItem(resolveKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    });
+    return toAdd.length;
+}
+
+/**
  * Re-file a local capture into a user-chosen bucket — a user override of the
  * AI's guess. The original `text` is preserved verbatim (never re-interpreted);
  * only `filed_to` changes and `confidence` is set to 1 (user-confirmed). This is

@@ -50,7 +50,15 @@ export const twImportedStore = withSync(
         deserializer: deserialize,
         defaultValue: {},
     }),
-    { objectType: 'thought-weaver-imported', holder: twImportedUserIdHolder, resolveKey },
+    {
+        objectType: 'thought-weaver-imported',
+        holder: twImportedUserIdHolder,
+        resolveKey,
+        // "Seen" ids only ever grow — union, so an unsaved local id set can
+        // never hide ids another device recorded (that would re-import a
+        // capture the user deleted there).
+        merge: (local, remote) => ({ ...deserialize(JSON.stringify(remote ?? {})), ...local }),
+    },
 );
 
 /** Union `ids` into the imported set, stamped with `now`. No-op if nothing new. */

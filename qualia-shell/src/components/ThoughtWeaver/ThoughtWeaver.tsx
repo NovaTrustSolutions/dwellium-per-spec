@@ -31,7 +31,7 @@ import {
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { twSyncConfig, pushCapture, pullCaptures } from './thoughtWeaverSync';
+import { twSyncConfig, pullCaptures, planImport } from './thoughtWeaverSync';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { logActivity } from '../../lib/activityLogStore';
 import {
@@ -41,8 +41,10 @@ import {
     deleteLocalCapture,
     clearLocalCaptures,
     recategorizeLocalCapture,
+    importCaptures,
 } from './thoughtWeaverStore';
 import type { LocalCapture } from './thoughtWeaverStore';
+import { twImportedStore, twImportedUserIdHolder, markImported } from './twImportedStore';
 import {
     todoStore,
     todoUserIdHolder,
@@ -244,6 +246,7 @@ export default function ThoughtWeaver() {
     // Update holder DURING render BEFORE useSyncExternalStore reads — factory
     // cache invalidates automatically when the key resolver returns a fresh value.
     thoughtWeaverUserIdHolder.current = userId;
+    twImportedUserIdHolder.current = userId;
     todoUserIdHolder.current = userId;
     reportUserIdHolder.current = userId;
     const localCaptures: LocalCapture[] = useSyncExternalStore(
@@ -367,10 +370,9 @@ export default function ThoughtWeaver() {
             // (LLM / backend / local-fallback) won. Never log full thought
             // text — first 140 chars only.
             logActivity('thought-weaver', 'Thought Weaver', 'capture', { preview: thoughtText.slice(0, 140) });
-            // P11-13: write-through to the user's Supabase (best-effort,
-            // fire-and-forget — local is already the source of truth).
-            const cfg = twSyncConfig(integrations);
-            if (cfg && userId) void pushCapture(cfg, userId, { ...entry, source: 'local' });
+            // P11-13 revised 2026-09-25 (plan 067, G2): no more desktop writes
+            // to Supabase — a new capture is local-only. Supabase rows are a
+            // one-time IMPORT (see the effect below), never a write target.
         };
 
         // ── 1) Try user-configured LLM first ──
@@ -482,32 +484,53 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
 
     // ── Computed ─────────────────────────────────────────────────────
 
-    // Merge backend captures with local ones (local-first, dedupe by id).
-    // Local entries always carry source: 'local' so the delete button can
-    // be gated on user-owned records.
-    // P11-13: rows pulled from the user's Supabase (phone captures). Merged
-    // as NON-local records (no local delete handle — user-only-delete holds).
-    const [syncedCaptures, setSyncedCaptures] = useState<CaptureEntry[]>([]);
+    // P11-13 revised 2026-09-25 (plan 067 Phase 1, D2/G2/G3): Supabase rows
+    // are a ONE-TIME IMPORT into the local store, not a live non-local merge.
+    // The old `syncedCaptures` (undeletable "backend" rows re-pulled every
+    // load) is gone — a delete used to never reach Supabase, so the deleted
+    // row came right back next load. Now: hydrate the synced "already
+    // imported" id set FIRST (so a delete recorded on another device is known
+    // before deciding what's new — `twImportedStore` is itself One-Save-
+    // synced), pull this user's rows, let `planImport` (pure) decide which
+    // are genuinely new (not local, not previously imported/deleted), write
+    // them into the local store in one `importCaptures()` call, then record
+    // every pulled id via `markImported` so it is never re-imported even
+    // after the user deletes it locally. Imported rows are local from then on
+    // — they get the same delete/re-file handles as any other capture, which
+    // is what `mergedCaptures` below now assumes (no third "synced" source).
+    // `alive` + re-checking the user holder after every await guards against
+    // an unmount or an account switch mid-import (A's rows must never land
+    // in B's store); StrictMode's double-effect-mount is safe because
+    // `importCaptures` dedupes by id and `markImported` is a no-op when every
+    // id is already recorded.
     useEffect(() => {
         const cfg = twSyncConfig(integrations);
         if (!cfg || !userId) return;
         let alive = true;
-        void pullCaptures(cfg, userId).then(rows => {
-            if (!alive) return;
-            setSyncedCaptures(rows.map(r => ({
-                id: r.id,
-                original_text: r.text,
-                filed_to: r.filed_to,
-                confidence: r.confidence,
-                destination_name: r.destination_name,
-                status: r.filed_to === 'needs_review' ? 'needs_review' : 'filed',
-                createdAt: r.createdAt,
-                source: 'backend' as const,
-            })));
-        });
+        (async () => {
+            try {
+                await twImportedStore.hydrate();
+            } catch {
+                // One Save disabled/unreachable — the local imported-id
+                // snapshot is still authoritative for this device.
+            }
+            if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
+
+            const pulled = await pullCaptures(cfg, userId);
+            if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
+
+            const localIds = new Set(thoughtWeaverStore.getSnapshot().map(c => c.id));
+            const { toAppend, seenIds } = planImport(pulled, localIds, twImportedStore.getSnapshot());
+            if (toAppend.length > 0) importCaptures(toAppend);
+            if (seenIds.length > 0) markImported(seenIds);
+        })();
         return () => { alive = false; };
     }, [integrations, userId]);
 
+    // Merge backend captures with local ones (local-first, dedupe by id).
+    // Local entries always carry source: 'local' so the delete button can
+    // be gated on user-owned records. (Supabase rows are no longer a third
+    // merge source — the effect above imports them into `localCaptures`.)
     const mergedCaptures = useMemo<CaptureEntry[]>(() => {
         const local: CaptureEntry[] = localCaptures.map(c => ({
             id: c.id,
@@ -523,14 +546,14 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         const seen = new Set<string>();
         const out: CaptureEntry[] = [];
         // local first → a row that exists locally wins (keeps its delete handle)
-        for (const c of [...local, ...backend, ...syncedCaptures]) {
+        for (const c of [...local, ...backend]) {
             if (seen.has(c.id)) continue;
             seen.add(c.id);
             out.push(c);
         }
         // Most recent first
         return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [localCaptures, captures, syncedCaptures]);
+    }, [localCaptures, captures]);
 
     // Local delete handler — backend records can't be removed from here.
     const handleLocalDelete = useCallback((id: string) => {

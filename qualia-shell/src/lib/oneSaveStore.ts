@@ -289,6 +289,40 @@ if (ONE_SAVE_ENABLED) {
     });
 }
 
+/* ---------- dirty marker (unsaved-local-write survives a reload) ----------
+ * set() persists to localStorage SYNCHRONOUSLY but the durable write-through
+ * is debounced (800ms) and a failed flush only parks an in-memory replay
+ * closure (`failed`, above) — nothing durable survives a reload. Without this
+ * marker: user writes -> reloads inside the debounce window (or after a
+ * failed flush while the backend IS reachable) -> hydrate() fetches the STALE
+ * remote and applies it, silently discarding the unsaved edit. The marker is
+ * itself in localStorage so it survives the reload that loses the in-memory
+ * `failed` closure. */
+function dirtyMarkerKey(objectId: string): string {
+    return `onesave:dirty:${objectId}`;
+}
+
+function markDirty(objectId: string): void {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+        localStorage.setItem(dirtyMarkerKey(objectId), '1');
+    } catch { /* sandboxed */ }
+}
+
+function clearDirty(objectId: string): void {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+        localStorage.removeItem(dirtyMarkerKey(objectId));
+    } catch { /* sandboxed */ }
+}
+
+function isDirty(objectId: string): boolean {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
+        return localStorage.getItem(dirtyMarkerKey(objectId)) != null;
+    } catch { return false; }
+}
+
 /** Shared machinery for both wrappers. */
 function makeSynced<T>(
     base: LocalStorageStore<T>,
@@ -315,6 +349,7 @@ function makeSynced<T>(
         const scheduledOwnerId = ownerId();
         const scheduledObjectId = objectId();
         pending.add(scheduledObjectId);
+        markDirty(scheduledObjectId);
         emitSync();
         // Plan 060 phase 1: while the backend's Retry-After window hasn't opened
         // yet, arm the SHARED flush timer for the remaining pause instead of the
@@ -332,11 +367,13 @@ function makeSynced<T>(
             onSaved: () => {
                 pending.delete(scheduledObjectId);
                 failed.delete(scheduledObjectId);
+                clearDirty(scheduledObjectId);
                 lastSavedAt = Date.now();
                 emitSync();
             },
             onFailed: () => {
                 pending.delete(scheduledObjectId);
+                // Marker stays set on failure — see dirty-marker block above.
                 // Replay only while the SAME owner is still active — scheduleWriteThrough
                 // re-captures ownerId() at call time, so without this guard a switched
                 // account would inherit the previous user's payload.
@@ -373,6 +410,19 @@ function makeSynced<T>(
             // store now resolves to the NEW owner's key, so applying (or merging) the
             // old owner's payload would write it into the new account's storage.
             if (ownerId() !== ownerAtStart) return;
+            // A local write is still debounced or its flush already failed once
+            // (dirty marker set by scheduleWriteThrough, cleared only on a
+            // successful save) — local wins over whatever remote just answered,
+            // and we re-arm the write-through instead of losing the edit.
+            // Stores with a `merge` skip this: merge already keeps local-only
+            // data and re-arms the write-through below.
+            // ponytail: a write that keeps failing forever keeps this marker
+            // forever too, so this device stays local-wins until a save actually
+            // succeeds — no separate TTL/expiry on the marker.
+            if (!merge && isDirty(objectId())) {
+                scheduleWriteThrough(base.getSnapshot());
+                return;
+            }
             if (remote && remote.deletedAt == null) {
                 const remoteValue = remote.payload as T;
                 if (merge) {

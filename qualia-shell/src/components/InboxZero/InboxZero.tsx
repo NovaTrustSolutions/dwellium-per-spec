@@ -1,20 +1,17 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import {
-    ArrowDown, ArrowUp, Bot, Brain, Building2, Check, ClipboardList, Clock, Cloud,
-    Download, FileSpreadsheet, FileText, Film, Folder, FolderOpen, FolderTree, Image,
-    Inbox, LayoutDashboard, LayoutGrid, Link, ListChecks, Lock, Mail, MailOpen, Mic, Music, Package,
-    Palette, Paperclip, PartyPopper, RefreshCw, Reply, Ruler, Save, Scale, Search, Settings,
-    ShieldCheck, Sparkles, Square, SquareCheck, Terminal, Trash2, TriangleAlert, Type,
-    Undo2, Workflow, X, Zap,
+    ArrowDown, ArrowUp, Bot, Brain, Check, ClipboardList, Clock,
+    Download, Inbox,
+    Link, Mail, MailOpen,
+    Paperclip, PartyPopper, RefreshCw, Reply, Search,
+    Sparkles, Trash2, TriangleAlert,
+    Undo2, X, Zap,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTheme, FONT_PAIRINGS } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
-import { INBOX_API, SECURITY_API, API_BASE } from '../../config/api';
-import { Theme } from '../../data/types';
+import { INBOX_API } from '../../config/api';
 import type {
-    InboxItem, NewsletterSender, InboxStats, AgentSettings,
-    LlmSafetyEvent, LlmSafetyStats, SecurityStatusSnapshot,
+    InboxItem, NewsletterSender, InboxStats,
     TabId, AuditLogEntry, ThreadLink, OperatorMetrics,
     URGENCY_COLORS as URGENCY_COLORS_TYPE, SIGNAL_CONFIG as SIGNAL_CONFIG_TYPE, PROJECT_NAMES as PROJECT_NAMES_TYPE,
 } from './InboxZeroTypes';
@@ -27,9 +24,10 @@ import StatsTab from './StatsTab';
 import RulesManager from './RulesManager';
 import { GlobalAuditTab } from './GlobalAuditTab';
 import { DraftReplyPanel } from './SmartActions';
+import SettingsTab from './SettingsTab';
 import {
     useInboxItems, useInboxStats, useNewsletters, useOperatorMetrics,
-    useSettings as useSettingsQuery, useEmailBody,
+    useEmailBody,
     inboxKeys,
 } from './useInboxQueries';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
@@ -41,21 +39,6 @@ import { backendStatusStore } from '../../lib/backendStatusStore';
 // ============================================
 // Types are imported from ./InboxZeroTypes.ts
 // ============================================
-
-const API_INBOX = INBOX_API;
-const SECURITY_API_BASE = SECURITY_API;
-
-
-const THEME_PALETTES: { id: Theme; name: string; mood: string; colors: string[] }[] = [
-    { id: 'dark', name: 'Dwellium Dark', mood: 'Default dark interface', colors: ['#0d0f12', '#16191f', 'var(--accent)', '#e8eaed'] },
-    { id: 'light', name: 'Dwellium Light', mood: 'Default light interface', colors: ['#e8ecf1', '#ffffff', 'var(--accent)', '#1a1d24'] },
-    { id: 'trust', name: 'Trust & Professional', mood: 'Reliable, secure, established', colors: ['#0F172A', '#0369A1', '#F8FAFC', '#3B82F6'] },
-    { id: 'vibrant', name: 'Vibrant & Modern', mood: 'Innovative, energetic', colors: ['#6366F1', '#22c55e', '#FFFFFF', '#f59e0b'] },
-    { id: 'luxury', name: 'Luxury & Premium', mood: 'Sophisticated, exclusive', colors: ['#1C1917', '#CA8A04', '#FAFAF9', '#78716C'] },
-    { id: 'healthcare', name: 'Healthcare', mood: 'Calm, trustworthy, clean', colors: ['#0891B2', '#059669', '#FFFFFF', '#06B6D4'] },
-    { id: 'creative', name: 'Creative & Playful', mood: 'Fun, approachable', colors: ['#EC4899', '#8B5CF6', '#FEF3C7', '#f59e0b'] },
-    { id: 'dark-excellence', name: 'Dark Excellence', mood: 'True black, 15:1 contrast', colors: ['#0A0A0A', '#1A1A1A', '#3B82F6', '#FFFFFF'] },
-];
 
 // Plan 066 §5e — snooze durations offered from the triage card menu.
 const SNOOZE_OPTIONS: Array<{ label: string; ms: number }> = [
@@ -74,7 +57,6 @@ const SNOOZE_OPTIONS: Array<{ label: string; ms: number }> = [
 // ============================================
 
 export default function InboxZero() {
-    const { theme: currentTheme, setTheme, fontPairing: currentFont, setFontPairing, animationsEnabled, setAnimationsEnabled } = useTheme();
     const queryClient = useQueryClient();
     usePerUserIdentity();
     // Plan 055 phase 2 — tab, triage filter and the open message reopen where
@@ -102,11 +84,14 @@ export default function InboxZero() {
 
     // Full email viewer state
     // SECURITY: viewerEmail stores metadata only; body is fetched on-demand via /api/inbox/:id/body
+    // ponytail: no `attachments` field — GET /:id/body always returns
+    // attachments: [] today (no backend route to download one exists yet);
+    // the dead download-card UI that read it was removed at plan 066 §6.
     const [viewerEmail, setViewerEmail] = useState<(InboxItem & {
         body?: string;
-        attachments?: Array<{ attachmentId: string; filename: string; mimeType: string; size: number }>;
     }) | null>(null);
     const [viewerLoading, setViewerLoading] = useState(false);
+    const viewerOverlayRef = useRef<HTMLDivElement | null>(null);
 
     /**
      * Detect plain-text vs HTML email bodies and format accordingly.
@@ -154,6 +139,9 @@ export default function InboxZero() {
     // Plan 066 §5a/§5e/§5f — session-only undo bar, one open snooze menu, one open draft panel.
     const [undoBar, setUndoBar] = useState<{ id: string; subject: string; kind: 'Archived' | 'Deleted' } | null>(null);
     const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
+    // Settings stays mounted once opened (see the Settings tabpanel below). Render-phase update: derived, not an effect.
+    const [settingsMounted, setSettingsMounted] = useState(false);
+    if (activeTab === 'settings' && !settingsMounted) setSettingsMounted(true);
     const [draftOpenId, setDraftOpenId] = useState<string | null>(null);
 
     // Audit trail + thread links caches (Phase 0.1.7)
@@ -168,54 +156,12 @@ export default function InboxZero() {
     const [currentOffset, setCurrentOffset] = useState(0);
     const ITEMS_PER_PAGE = 50;
 
-    // Settings state
-    const [settings, setSettings] = useState<AgentSettings | null>(null);
-    const [settingsDirty, setSettingsDirty] = useState(false);
-    const [settingsSaving, setSettingsSaving] = useState(false);
-
-    // Permissions admin state (god only)
-    const { role: currentUserRole, token: authToken, authFetch, hasMinRole } = useUser();
+    // Plan 066 §6c — Settings/permissions/legal-shield/LLM-safety state, and
+    // their fetch effects, moved to SettingsTab.tsx (self-contained: it reads
+    // its own useUser()/useTheme()). isGod stays here — RulesManager (Rules
+    // tab) also needs it for canEdit.
+    const { role: currentUserRole, authFetch } = useUser();
     const isGod = currentUserRole === 'god';
-    const canViewLlmSafetyAudit = isGod || hasMinRole('management');
-    const [permUsers, setPermUsers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
-    const [permSelectedUser, setPermSelectedUser] = useState<string>('');
-    const [permMap, setPermMap] = useState<Record<string, boolean>>({});
-    const [permLoading, setPermLoading] = useState(false);
-    const [permSaving, setPermSaving] = useState(false);
-    const [permSaveMsg, setPermSaveMsg] = useState('');
-    const [settingsMsg, setSettingsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-    const [llmSafetyEvents, setLlmSafetyEvents] = useState<LlmSafetyEvent[]>([]);
-    const [llmSafetyStats, setLlmSafetyStats] = useState<LlmSafetyStats | null>(null);
-    const [securityStatus, setSecurityStatus] = useState<SecurityStatusSnapshot | null>(null);
-    const [llmSafetyLoading, setLlmSafetyLoading] = useState(false);
-    const [llmSafetyError, setLlmSafetyError] = useState<string | null>(null);
-    const [llmSafetySeverityFilter, setLlmSafetySeverityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
-    const [llmSafetyBlockedOnly, setLlmSafetyBlockedOnly] = useState(false);
-    const [llmSafetyLastLoadedAt, setLlmSafetyLastLoadedAt] = useState<number | null>(null);
-
-    // ---- LEGAL SHIELD STATUS ----
-    const [legalShieldHealth, setLegalShieldHealth] = useState<{
-        healthy: boolean; totalRecords: number; volumes: number; indices: number;
-        checks: { name: string; status: string; detail: string; ms?: number }[];
-        checkDurationMs: number; checkedAt: string;
-    } | null>(null);
-    const [legalShieldLoading, setLegalShieldLoading] = useState(false);
-    const legalShieldLoadedRef = useRef(false);
-
-    const fetchLegalShieldHealth = useCallback(async () => {
-        if (!authToken) return;
-        setLegalShieldLoading(true);
-        try {
-            const res = await authFetch(`${API_BASE}/api/georgia-code/legal-shield-health`);
-            const json = await res.json();
-            if (json.success) setLegalShieldHealth(json.data);
-        } catch { /* offline */ }
-        finally { setLegalShieldLoading(false); }
-    }, [authFetch, authToken]);
-
-    // Ref to prevent re-fetching on every render (breaks the loop)
-    const llmSafetyLoadedRef = useRef(false);
-    const permUsersLoadedRef = useRef(false);
 
     // ---- DATA FETCHING (React Query) ----
     // Bridge pattern: RQ hooks provide data; bridge variables preserve existing API surface
@@ -223,7 +169,6 @@ export default function InboxZero() {
     const statsQuery = useInboxStats(authFetch);
     const metricsQuery = useOperatorMetrics(authFetch);
     const newslettersQuery = useNewsletters(authFetch, activeTab === 'newsletters');
-    const settingsQuery = useSettingsQuery(authFetch, activeTab === 'settings');
     // Plan 066 §4h — triage card body: list items no longer carry `body`;
     // fetch it once per expanded id (RQ's 5 min staleTime means collapse +
     // re-expand does not refetch) and fall back to the snippet while it's
@@ -256,90 +201,10 @@ export default function InboxZero() {
         if (itemsQuery.data) setHasMore(itemsQuery.data.hasMore);
     }, [itemsQuery.data]);
 
-    // Sync settings from RQ into local state (needed for dirty tracking + save)
-    useEffect(() => {
-        if (settingsQuery.data && !settingsDirty) {
-            setSettings(settingsQuery.data);
-        }
-    }, [settingsQuery.data, settingsDirty]);
-
     // Convenience refetch alias — used by action handlers + SSE to invalidate cache
     const invalidateInbox = useCallback(() => {
         queryClient.invalidateQueries({ queryKey: inboxKeys.all });
     }, [queryClient]);
-
-    const fetchLlmSafetyAudit = useCallback(async () => {
-        if (!canViewLlmSafetyAudit || !authToken) return;
-
-        setLlmSafetyLoading(true);
-        setLlmSafetyError(null);
-
-        try {
-            const params = new URLSearchParams();
-            params.set('limit', '30');
-            if (llmSafetySeverityFilter !== 'all') params.set('severity', llmSafetySeverityFilter);
-            if (llmSafetyBlockedOnly) params.set('blocked', 'true');
-
-            const [statusRes, statsRes, eventsRes] = await Promise.all([
-                authFetch(`${SECURITY_API_BASE}/status`),
-                authFetch(`${SECURITY_API_BASE}/llm-safety-events/stats?hours=24`),
-                authFetch(`${SECURITY_API_BASE}/llm-safety-events?${params.toString()}`),
-            ]);
-
-            const [statusJson, statsJson, eventsJson] = await Promise.all([
-                statusRes.json().catch(() => null),
-                statsRes.json().catch(() => null),
-                eventsRes.json().catch(() => null),
-            ]);
-
-            if (!statusRes.ok || !statsRes.ok || !eventsRes.ok) {
-                const errorMsg = (eventsJson && eventsJson.error) || (statusJson && statusJson.error) || (statsJson && statsJson.error) || 'Unable to load LLM safety audit log';
-                throw new Error(errorMsg);
-            }
-
-            if (statusJson?.success) setSecurityStatus(statusJson.data as SecurityStatusSnapshot);
-            if (statsJson?.success) setLlmSafetyStats(statsJson.data as LlmSafetyStats);
-            if (eventsJson?.success && Array.isArray(eventsJson.data)) setLlmSafetyEvents(eventsJson.data as LlmSafetyEvent[]);
-            setLlmSafetyLastLoadedAt(Date.now());
-        } catch (err) {
-            setLlmSafetyError(err instanceof Error ? err.message : 'Failed to load LLM safety audit');
-        } finally {
-            setLlmSafetyLoading(false);
-        }
-    }, [authFetch, authToken, canViewLlmSafetyAudit, llmSafetyBlockedOnly, llmSafetySeverityFilter]);
-
-    const saveSettings = useCallback(async () => {
-        if (!settings) return;
-        setSettingsSaving(true);
-        setSettingsMsg(null);
-        try {
-            const res = await authFetch(`${API_BASE}/api/settings`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSettings(data.data);
-                setSettingsDirty(false);
-                setSettingsMsg({ type: 'success', text: 'Settings saved successfully!' });
-                setTimeout(() => setSettingsMsg(null), 4000);
-                // Invalidate settings query cache so next tab open gets fresh data
-                queryClient.invalidateQueries({ queryKey: inboxKeys.settings() });
-            } else {
-                setSettingsMsg({ type: 'error', text: data.error || 'Save failed' });
-            }
-        } catch {
-            setSettingsMsg({ type: 'error', text: 'Backend is offline — cannot save settings.' });
-        } finally {
-            setSettingsSaving(false);
-        }
-    }, [settings, authFetch, queryClient]);
-
-    const updateSetting = <K extends keyof AgentSettings>(key: K, value: AgentSettings[K]) => {
-        setSettings(prev => prev ? { ...prev, [key]: value } : prev);
-        setSettingsDirty(true);
-    };
 
     // Inbox updates via polling — no backend /stream route exists (plan 060 §8).
     useEffect(() => {
@@ -398,43 +263,32 @@ export default function InboxZero() {
         };
     }, [snoozeMenuFor]);
 
+    // Plan 066 §6b — close the full email viewer on Escape, or on a click on
+    // the backdrop itself (not one that bubbled up from inside the panel).
+    // Attached imperatively (not via JSX onClick) so neither the backdrop nor
+    // the panel needs a click handler jsx-a11y would flag.
+    useEffect(() => {
+        if (!viewerEmail && !viewerLoading) return;
+        const overlay = viewerOverlayRef.current;
+        const closeViewer = () => { setViewerEmail(null); setViewerLoading(false); };
+        const onOverlayClick = (e: MouseEvent) => { if (e.target === overlay) closeViewer(); };
+        const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') closeViewer(); };
+        overlay?.addEventListener('click', onOverlayClick);
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            overlay?.removeEventListener('click', onOverlayClick);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [viewerEmail, viewerLoading]);
+
     // ---- Tab-triggered fetches (SPLIT to avoid infinite loop) ----
 
     // 1. Newsletters — React Query auto-handles via enabled flag (activeTab === 'newsletters')
     // No manual trigger needed.
 
-    // 2. Settings + permissions — settings auto-fetched by RQ when enabled (activeTab === 'settings')
-    useEffect(() => {
-        if (activeTab !== 'settings') {
-            // Reset load refs when leaving settings so re-entering will re-fetch
-            llmSafetyLoadedRef.current = false;
-            permUsersLoadedRef.current = false;
-            return;
-        }
-
-        // Fetch Legal Shield health once
-        if (!legalShieldLoadedRef.current && authToken) {
-            legalShieldLoadedRef.current = true;
-            fetchLegalShieldHealth();
-        }
-
-        // Fetch user list for permissions panel (god only) — once
-        if (isGod && !permUsersLoadedRef.current && authToken) {
-            permUsersLoadedRef.current = true;
-            authFetch(`${API_BASE}/api/auth/users`, {
-                headers: { Authorization: `Bearer ${authToken}` },
-            })
-                .then(r => r.ok ? r.json() : [])
-                .then(data => { if (Array.isArray(data)) setPermUsers(data); })
-                .catch(() => { /* ignore */ });
-        }
-    }, [activeTab, isGod, authToken]);
-
-    // 3. LLM Safety Audit — separate so filter changes don't re-trigger settings fetch
-    useEffect(() => {
-        if (activeTab !== 'settings' || !canViewLlmSafetyAudit || !authToken) return;
-        fetchLlmSafetyAudit();
-    }, [activeTab, canViewLlmSafetyAudit, authToken, fetchLlmSafetyAudit]);
+    // 2. Settings + permissions + LLM safety audit — moved into SettingsTab.tsx
+    // (plan 066 §6c); it mounts only while activeTab === 'settings', so its own
+    // mount effects replace what used to live here.
 
     // ---- ACTIONS ----
     // Every mutation below checks res.ok AND the JSON success field (when the
@@ -715,7 +569,7 @@ export default function InboxZero() {
                 </div>
 
                 {/* Tabs */}
-                <div className="iz-tabs" role="tablist" aria-label="InboxZero sections" onKeyDown={(e) => {
+                <div className="iz-tabs" role="tablist" aria-label="InboxZero sections" tabIndex={-1} onKeyDown={(e) => {
                     const tabs: TabId[] = ['triage','newsletters','rules','audit','stats','settings'];
                     const idx = tabs.indexOf(activeTab);
                     if (idx < 0) return;
@@ -860,7 +714,7 @@ export default function InboxZero() {
                                         padding: '2px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
                                         fontFamily: 'inherit', fontWeight: sortField === s.id ? 600 : 400,
                                         background: sortField === s.id ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
-                                        color: sortField === s.id ? '#D6FE51' : '#64748b',
+                                        color: sortField === s.id ? 'var(--accent-text)' : 'var(--text-secondary)',
                                         border: sortField === s.id ? '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' : '1px solid transparent',
                                         transition: 'all 0.12s ease',
                                     }}
@@ -990,28 +844,40 @@ export default function InboxZero() {
                                     style={{ '--signal-color': sc?.color } as React.CSSProperties}
                                 >
                                     <div style={{ display: 'flex' }}>
-                                        {/* Left: main content */}
-                                        <div className="iz-card__main" style={{ flex: 1 }} onClick={() => {
-                                            const nextId = isExpanded ? null : item.id;
-                                            setExpandedId(nextId);
-                                            if (nextId && !item.isRead) handleMarkRead(item.id); // open only — collapse fired it twice
-                                            if (nextId && !auditCache[nextId]) {
-                                                authFetch(`${INBOX_API}/${nextId}/audit`).then(r => r.ok ? r.json() : { entries: [] }).then(d => {
-                                                    setAuditCache(prev => ({ ...prev, [nextId]: d.entries || [] }));
-                                                }).catch(() => {});
-                                                authFetch(`${INBOX_API}/${nextId}/links`).then(r => r.ok ? r.json() : { links: [] }).then(d => {
-                                                    setLinksCache(prev => ({ ...prev, [nextId]: d.links || [] }));
-                                                }).catch(() => {});
-                                            }
-                                        }}>
+                                        {/* Left: main content — a plain wrapper (no click handler of its own,
+                                            plan 066 §6b): it holds a checkbox and a dedicated expand/collapse
+                                            button as siblings, since a <button> cannot contain nested
+                                            interactive content like the checkbox. */}
+                                        <div className="iz-card__main" style={{ flex: 1 }}>
                                             <input
                                                 type="checkbox"
                                                 className="iz-card__check"
+                                                aria-label={`Select “${item.subject}”`}
                                                 checked={isSelected}
-                                                onChange={e => { e.stopPropagation(); toggleSelect(item.id); }}
-                                                onClick={e => e.stopPropagation()}
+                                                onChange={() => toggleSelect(item.id)}
                                             />
-                                            <div className="iz-card__content">
+                                            <button
+                                                type="button"
+                                                className="iz-card__content"
+                                                aria-expanded={isExpanded}
+                                                style={{
+                                                    background: 'none', border: 'none', padding: 0, margin: 0,
+                                                    textAlign: 'left', width: '100%', font: 'inherit', color: 'inherit', cursor: 'pointer',
+                                                }}
+                                                onClick={() => {
+                                                    const nextId = isExpanded ? null : item.id;
+                                                    setExpandedId(nextId);
+                                                    if (nextId && !item.isRead) handleMarkRead(item.id); // open only — collapse fired it twice
+                                                    if (nextId && !auditCache[nextId]) {
+                                                        authFetch(`${INBOX_API}/${nextId}/audit`).then(r => r.ok ? r.json() : { entries: [] }).then(d => {
+                                                            setAuditCache(prev => ({ ...prev, [nextId]: d.entries || [] }));
+                                                        }).catch(() => {});
+                                                        authFetch(`${INBOX_API}/${nextId}/links`).then(r => r.ok ? r.json() : { links: [] }).then(d => {
+                                                            setLinksCache(prev => ({ ...prev, [nextId]: d.links || [] }));
+                                                        }).catch(() => {});
+                                                    }
+                                                }}
+                                            >
                                                 {/* Sender line with badges */}
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -1023,9 +889,9 @@ export default function InboxZero() {
                                                     {item.sourceAccount && (
                                                         <span title={`Received in your ${item.sourceAccount} mailbox`} style={{
                                                             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                                                            background: 'color-mix(in srgb, var(--accent, #6366f1) 14%, transparent)',
-                                                            color: 'var(--accent, #818cf8)',
-                                                            border: '1px solid color-mix(in srgb, var(--accent, #6366f1) 35%, transparent)',
+                                                            background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                                                            color: 'var(--accent-text)', // accent AS text — --accent missed 4.5:1 at 10px
+                                                            border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)',
                                                             display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200,
                                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                                         }}><Mail size={11} aria-hidden /> {item.sourceAccount}</span>
@@ -1033,8 +899,9 @@ export default function InboxZero() {
                                                     {item.urgency === 'high' && (
                                                         <span style={{
                                                             fontSize: 10, fontWeight: 700, padding: '2px 8px',
-                                                            borderRadius: 4, background: 'rgba(239,68,68,0.15)',
-                                                            color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)',
+                                                            borderRadius: 4, background: 'color-mix(in srgb, var(--danger) 15%, transparent)',
+                                                            // mixed toward --text-primary: lighter on dark themes, darker on light ones — plain --danger missed 4.5:1 at 10px
+                                                            color: 'color-mix(in srgb, var(--danger) 70%, var(--text-primary))', border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
                                                             display: 'inline-flex', alignItems: 'center', gap: 4,
                                                         }}><Zap size={11} aria-hidden /> High Priority</span>
                                                     )}
@@ -1062,7 +929,7 @@ export default function InboxZero() {
                                                         )}
                                                     </div>
                                                 )}
-                                            </div>
+                                            </button>
                                         </div>
 
                                         {/* Right: always-visible actions */}
@@ -1094,7 +961,7 @@ export default function InboxZero() {
                                                         .then(r => r.ok ? r.json() : null)
                                                         .then(d => {
                                                             if (d?.success) {
-                                                                setViewerEmail({ ...item, body: d.data.body, attachments: d.data.attachments || [] });
+                                                                setViewerEmail({ ...item, body: d.data.body });
                                                             } else {
                                                                 setViewerEmail(item);
                                                             }
@@ -1132,8 +999,13 @@ export default function InboxZero() {
                                         </div>
                                     </div>
 
+                                    {/* No onClick on .iz-card__actions below (plan 066 §6b): it used to
+                                        stop clicks from bubbling to .iz-card__main's own handler, but that
+                                        handler moved onto the dedicated .iz-card__content button above (a
+                                        sibling of this element, not an ancestor), so there is nothing left
+                                        to stop. */}
                                     {isExpanded && (
-                                        <div className="iz-card__actions" onClick={e => e.stopPropagation()}>
+                                        <div className="iz-card__actions">
                                             {item.routingReasoning && (
                                                 <p className="iz-card__reasoning"><Bot size={13} aria-hidden /> {item.routingReasoning}</p>
                                             )}
@@ -1202,7 +1074,7 @@ export default function InboxZero() {
                                                             .then(r => r.ok ? r.json() : null)
                                                             .then(d => {
                                                                 if (d?.success) {
-                                                                    setViewerEmail({ ...item, body: d.data.body, attachments: d.data.attachments || [] });
+                                                                    setViewerEmail({ ...item, body: d.data.body });
                                                                 } else {
                                                                     setViewerEmail(item);
                                                                 }
@@ -1247,7 +1119,7 @@ export default function InboxZero() {
                                                 {/* Link to Strata (Phase 0.1.4) */}
                                                 <button
                                                     className="iz-action iz-action--link"
-                                                    style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}
+                                                    style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent-text)' }}
                                                     onClick={() => {
                                                         setLinkModalFor(linkModalFor === item.id ? null : item.id);
                                                         setLinkForm({ linkType: 'workitem', targetId: '', targetName: '' });
@@ -1447,9 +1319,20 @@ export default function InboxZero() {
                 </div>
 
                 {/* ========== EMAIL VIEWER OVERLAY ========== */}
+                {/* Plan 066 §6b: neither div below carries a JSX onClick — a static
+                    element with a click handler needs an interactive role to pass
+                    jsx-a11y, and there is no honest one for "backdrop that dismisses
+                    a dialog". Backdrop-click-to-close and Escape-to-close are wired
+                    imperatively in the effect below instead (same trick this file
+                    already uses for the snooze menu's outside-click close). */}
                 {(viewerEmail || viewerLoading) && (
-                    <div className="iz-viewer-overlay" onClick={() => { setViewerEmail(null); setViewerLoading(false); }}>
-                        <div className="iz-viewer" onClick={e => e.stopPropagation()}>
+                    <div className="iz-viewer-overlay" ref={viewerOverlayRef}>
+                        <div
+                            className="iz-viewer"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label={viewerEmail ? viewerEmail.subject : 'Loading email'}
+                        >
                             {viewerLoading ? (
                                 <div className="iz-viewer__loading">
                                     <div className="iz-viewer__spinner" />
@@ -1482,7 +1365,9 @@ export default function InboxZero() {
                                         </span>
                                         {viewerEmail.hasAttachments && (
                                             <span className="iz-viewer__badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
-                                                <Paperclip size={13} aria-hidden /> {viewerEmail.attachments?.length || ''} Attachment{(viewerEmail.attachments?.length || 0) !== 1 ? 's' : ''}
+                                                {/* ponytail: no count — GET /:id/body has no attachments route
+                                                    to back one yet (plan 066 §6); this just flags the email has some. */}
+                                                <Paperclip size={13} aria-hidden /> Attachments
                                             </span>
                                         )}
                                         {viewerEmail.routedToProject && (
@@ -1501,46 +1386,10 @@ export default function InboxZero() {
                                         </div>
                                     )}
 
-                                    {/* Attachments */}
-                                    {viewerEmail.attachments && viewerEmail.attachments.length > 0 && (
-                                        <div className="iz-viewer__attachments">
-                                            <span className="iz-viewer__attachments-label"><Paperclip size={14} aria-hidden /> Attachments</span>
-                                            <div className="iz-viewer__attachments-grid">
-                                                {viewerEmail.attachments.map((att, i) => {
-                                                    const ext = att.filename.split('.').pop()?.toLowerCase() || '';
-                                                    const AttIcon = ['pdf'].includes(ext) ? FileText
-                                                        : ['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext) ? Image
-                                                        : ['doc','docx'].includes(ext) ? FileText
-                                                        : ['xls','xlsx','csv'].includes(ext) ? FileSpreadsheet
-                                                        : ['zip','rar','7z','gz','tar'].includes(ext) ? Package
-                                                        : ['mp3','wav','m4a','ogg'].includes(ext) ? Music
-                                                        : ['mp4','mov','avi','mkv','webm'].includes(ext) ? Film
-                                                        : Paperclip;
-                                                    const sizeStr = att.size < 1024 ? `${att.size} B`
-                                                        : att.size < 1048576 ? `${(att.size / 1024).toFixed(1)} KB`
-                                                        : `${(att.size / 1048576).toFixed(1)} MB`;
-                                                    return (
-                                                        <a
-                                                            key={i}
-                                                            className="iz-viewer__attachment-card"
-                                                            href={`${INBOX_API}/${viewerEmail.id}/attachments/${att.attachmentId}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            download={att.filename}
-                                                            title={`Download: ${att.filename} (${sizeStr})`}
-                                                        >
-                                                            <span className="iz-viewer__attachment-icon"><AttIcon size={16} aria-hidden /></span>
-                                                            <div className="iz-viewer__attachment-info">
-                                                                <span className="iz-viewer__attachment-name">{att.filename}</span>
-                                                                <span className="iz-viewer__attachment-size">{sizeStr}</span>
-                                                            </div>
-                                                            <span className="iz-viewer__attachment-dl"><Download size={14} /></span>
-                                                        </a>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* ponytail: attachment download cards removed at plan 066 §6 — they
+                                        linked to `${INBOX_API}/:id/attachments/:attachmentId`, a route that
+                                        does not exist, and GET /:id/body always returns attachments: [].
+                                        Add them back once a real download route exists. */}
 
                                     {/* Email Body — auto-resizing iframe */}
                                     <div className="iz-viewer__body" style={{ background: 'var(--bg-surface)', borderRadius: 8, overflow: 'hidden' }}>
@@ -1630,716 +1479,11 @@ export default function InboxZero() {
             )}
 
             {/* ========== SETTINGS TAB ========== */}
-            {activeTab === 'settings' && (
-                <div className="iz-settings">
-                    {!settings ? (
-                        <div className="iz-loading">Loading settings…</div>
-                    ) : (
-                        <>
-                            {/* Save bar */}
-                            <div className="iz-settings__bar">
-                                <span className="iz-settings__bar-label">
-                                    {settingsDirty ? '● Unsaved changes' : 'Agent Configuration'}
-                                </span>
-                                <button
-                                    className={`iz-settings__save ${settingsDirty ? 'iz-settings__save--active' : ''}`}
-                                    onClick={saveSettings}
-                                    disabled={settingsSaving || !settingsDirty}
-                                >
-                                    {settingsSaving ? 'Saving…' : <><Save size={14} aria-hidden /> Save Settings</>}
-                                </button>
-                            </div>
-
-                            {settingsMsg && (
-                                <div className={`iz-settings__msg iz-settings__msg--${settingsMsg.type}`}>
-                                    {settingsMsg.type === 'success' ? <Check size={14} aria-hidden /> : <X size={14} aria-hidden />} {settingsMsg.text}
-                                </div>
-                            )}
-
-                            {/* ponytail: capability toggles removed at plan 066 §2b — the
-                                Capabilities tab they controlled is gone too. */}
-
-                            {/* Legal Shield Status */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Scale size={16} aria-hidden /> Legal Shield — Georgia Code</h3>
-                                <p className="iz-settings__section-desc">
-                                    Real-time compliance scanner powered by LanceDB vector search across the full Georgia Code (O.C.G.A.).
-                                </p>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {legalShieldHealth ? (
-                                        <>
-                                            <div style={{
-                                                display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px',
-                                                background: legalShieldHealth.healthy ? 'rgba(52,211,153,0.10)' : 'rgba(239,68,68,0.10)',
-                                                border: `1px solid ${legalShieldHealth.healthy ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                                                borderRadius: '8px',
-                                            }}>
-                                                <span style={{ fontSize: '20px', display: 'inline-flex' }}>{legalShieldHealth.healthy ? <Check size={20} aria-hidden /> : <TriangleAlert size={20} aria-hidden />}</span>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 600, color: legalShieldHealth.healthy ? '#22c55e' : '#ef4444' }}>
-                                                        {legalShieldHealth.healthy ? 'HEALTHY' : 'DEGRADED'}
-                                                    </div>
-                                                    <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                                                        Last checked: {new Date(legalShieldHealth.checkedAt).toLocaleString()} ({legalShieldHealth.checkDurationMs}ms)
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    className="iz-settings__save iz-settings__save--active"
-                                                    style={{ fontSize: '12px', padding: '6px 12px' }}
-                                                    onClick={() => { legalShieldLoadedRef.current = false; fetchLegalShieldHealth(); }}
-                                                    disabled={legalShieldLoading}
-                                                >
-                                                    {legalShieldLoading ? 'Checking…' : <><RefreshCw size={12} aria-hidden /> Run Health Check</>}
-                                                </button>
-                                            </div>
-                                            <div style={{
-                                                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
-                                            }}>
-                                                <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '18px', fontWeight: 700 }}>{legalShieldHealth.totalRecords.toLocaleString()}</div>
-                                                    <div style={{ fontSize: '11px', opacity: 0.6 }}>Records</div>
-                                                </div>
-                                                <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '18px', fontWeight: 700 }}>{legalShieldHealth.volumes}</div>
-                                                    <div style={{ fontSize: '11px', opacity: 0.6 }}>Volumes</div>
-                                                </div>
-                                                <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '18px', fontWeight: 700 }}>{legalShieldHealth.indices}</div>
-                                                    <div style={{ fontSize: '11px', opacity: 0.6 }}>Indices</div>
-                                                </div>
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                {legalShieldHealth.checks.map((c, i) => (
-                                                    <div key={i} style={{
-                                                        display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px',
-                                                        padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px',
-                                                    }}>
-                                                        <span style={{ display: 'inline-flex' }}>{c.status === 'pass' ? <Check size={13} aria-hidden /> : c.status === 'warn' ? <TriangleAlert size={13} aria-hidden /> : <X size={13} aria-hidden />}</span>
-                                                        <span style={{ fontFamily: 'monospace', minWidth: '160px' }}>{c.name}</span>
-                                                        <span style={{ opacity: 0.7 }}>{c.detail}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>
-                                            {legalShieldLoading ? 'Loading Legal Shield status…' : 'Legal Shield status unavailable'}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Themes */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Palette size={16} aria-hidden /> Themes</h3>
-                                <p className="iz-settings__section-desc">Choose a color palette — applies universally to every widget and section.</p>
-                                <div className="iz-themes">
-                                    {THEME_PALETTES.map(tp => (
-                                        <button
-                                            key={tp.id}
-                                            className={`iz-theme-card ${currentTheme === tp.id ? 'iz-theme-card--active' : ''}`}
-                                            onClick={() => setTheme(tp.id)}
-                                        >
-                                            <div className="iz-theme-card__swatches">
-                                                {tp.colors.map((c, i) => (
-                                                    <div key={i} className="iz-theme-card__swatch" style={{ background: c }} />
-                                                ))}
-                                            </div>
-                                            <div className="iz-theme-card__info">
-                                                <span className="iz-theme-card__name">{tp.name}</span>
-                                                <span className="iz-theme-card__mood">{tp.mood}</span>
-                                            </div>
-                                            {currentTheme === tp.id && <span className="iz-theme-card__check"><Check size={14} /></span>}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Typography */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Type size={16} aria-hidden /> Typography</h3>
-                                <p className="iz-settings__section-desc">Choose a font pairing — applies to all headings, body text, and monospace across Qualia.</p>
-                                <div className="iz-fonts">
-                                    {FONT_PAIRINGS.map(fp => (
-                                        <button
-                                            key={fp.id}
-                                            className={`iz-font-card ${currentFont === fp.id ? 'iz-font-card--active' : ''}`}
-                                            onClick={() => setFontPairing(fp.id)}
-                                        >
-                                            <div className="iz-font-card__preview">
-                                                <span className="iz-font-card__sample-heading" style={{ fontFamily: fp.headingStack }}>Aa</span>
-                                                <span className="iz-font-card__sample-body" style={{ fontFamily: fp.bodyStack }}>The quick brown fox</span>
-                                            </div>
-                                            <div className="iz-font-card__info">
-                                                <span className="iz-font-card__name">{fp.name}</span>
-                                                <span className="iz-font-card__fonts">{fp.headings} + {fp.body}</span>
-                                                <span className="iz-font-card__personality">{fp.personality}</span>
-                                            </div>
-                                            <div className="iz-font-card__weights">{fp.weights}</div>
-                                            {currentFont === fp.id && <span className="iz-font-card__check"><Check size={14} /></span>}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Animations & Interactions */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Sparkles size={16} aria-hidden /> Animations & Interactions</h3>
-                                <p className="iz-settings__section-desc">Pro Max micro-interactions, scroll reveals, skeleton loaders, glassmorphism, and border beams. Disable to reduce motion.</p>
-                                <div className="iz-settings__group">
-                                    <label className="iz-settings__label iz-settings__label--toggle">
-                                        <div>
-                                            <span className="iz-settings__name">Enable Animations</span>
-                                            <span className="iz-settings__hint">Toggle all micro-interactions, transitions, and scroll effects. Respects system prefers-reduced-motion.</span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className={`iz-settings__toggle ${animationsEnabled ? 'iz-settings__toggle--on' : ''}`}
-                                            onClick={() => setAnimationsEnabled(!animationsEnabled)}
-                                        >
-                                            <span className="iz-settings__toggle-knob" />
-                                        </button>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Permissions (god only) */}
-                            {isGod && (
-                                <div className="iz-settings__section">
-                                    <h3 className="iz-settings__section-title"><Lock size={16} aria-hidden /> Permissions</h3>
-                                    <p className="iz-settings__section-desc">Assign widget and section visibility per user. Only you (Andy) can manage these.</p>
-
-                                    {/* User Selector */}
-                                    <div className="iz-settings__group">
-                                        <label className="iz-settings__label">
-                                            <span className="iz-settings__name">Select User</span>
-                                            <select
-                                                className="iz-settings__input iz-perms__user-select"
-                                                value={permSelectedUser}
-                                                onChange={async (e) => {
-                                                    const uid = e.target.value;
-                                                    setPermSelectedUser(uid);
-                                                    if (!uid) { setPermMap({}); return; }
-                                                    setPermLoading(true);
-                                                    try {
-                                                        const res = await authFetch(`${API_BASE}/api/auth/permissions/${uid}`, {
-                                                            headers: { Authorization: `Bearer ${authToken}` },
-                                                        });
-                                                        if (res.ok) {
-                                                            const data = await res.json();
-                                                            setPermMap(data.permissions || {});
-                                                        }
-                                                    } catch { /* ignore */ }
-                                                    setPermLoading(false);
-                                                }}
-                                            >
-                                                <option value="">— Choose a user —</option>
-                                                {permUsers.filter(u => u.role !== 'god').map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                                                ))}
-                                            </select>
-                                        </label>
-                                    </div>
-
-                                    {permSelectedUser && !permLoading && (
-                                        <>
-                                            {/* Bulk Toggle */}
-                                            <div className="iz-perms__bulk">
-                                                <button
-                                                    className="iz-perms__bulk-btn"
-                                                    onClick={() => {
-                                                        const allOn = Object.values(permMap).every(v => v);
-                                                        const toggled: Record<string, boolean> = {};
-                                                        for (const k of Object.keys(permMap)) toggled[k] = !allOn;
-                                                        setPermMap(toggled);
-                                                    }}
-                                                >
-                                                    {Object.values(permMap).every(v => v) ? <><Square size={13} aria-hidden /> Deselect All</> : <><SquareCheck size={13} aria-hidden /> Select All</>}
-                                                </button>
-                                            </div>
-
-                                            {/* Widget Permissions */}
-                                            <div className="iz-perms__category">
-                                                <h4 className="iz-perms__category-title"><LayoutGrid size={14} aria-hidden /> Widgets</h4>
-                                                <div className="iz-perms__grid">
-                                                    {[
-                                                        { key: 'widget:astra-dashboard', icon: LayoutDashboard, label: 'Astra' },
-                                                        { key: 'widget:strata-dashboard', icon: Building2, label: 'Strata' },
-                                                        { key: 'widget:thought-weaver', icon: Workflow, label: 'Thought Weaver' },
-                                                        { key: 'widget:inbox', icon: Mail, label: 'Inbox' },
-                                                        { key: 'widget:tasks', icon: ListChecks, label: 'Tasks' },
-                                                        { key: 'widget:ara-console', icon: Brain, label: 'ARA' },
-                                                        { key: 'widget:transcription', icon: Mic, label: 'Transcribe' },
-                                                        { key: 'widget:fact-check-log', icon: Search, label: 'Fact Check' },
-                                                        { key: 'widget:hierarchy-browser', icon: FolderTree, label: 'Explorer' },
-                                                        { key: 'widget:file-manager', icon: Folder, label: 'Files' },
-                                                        { key: 'widget:notepad', icon: FileText, label: 'Notepad' },
-                                                        { key: 'widget:doc-viewer', icon: FileText, label: 'Docs' },
-                                                        { key: 'widget:terminal', icon: Terminal, label: 'Terminal' },
-                                                        { key: 'widget:trello-board', icon: ClipboardList, label: 'Trello' },
-                                                        { key: 'widget:control-panel', icon: Settings, label: 'Settings' },
-                                                    ].map(w => {
-                                                        const WidgetIcon = w.icon;
-                                                        return (
-                                                        <label key={w.key} className={`iz-perms__item ${permMap[w.key] ? 'iz-perms__item--on' : ''}`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={!!permMap[w.key]}
-                                                                onChange={(e) => setPermMap(prev => ({ ...prev, [w.key]: e.target.checked }))}
-                                                            />
-                                                            <span className="iz-perms__item-icon"><WidgetIcon size={16} aria-hidden /></span>
-                                                            <span className="iz-perms__item-label">{w.label}</span>
-                                                        </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            {/* Section Permissions */}
-                                            <div className="iz-perms__category">
-                                                <h4 className="iz-perms__category-title"><Ruler size={14} aria-hidden /> Sections</h4>
-                                                <div className="iz-perms__grid iz-perms__grid--sections">
-                                                    {[
-                                                        { key: 'section:domains', icon: FolderOpen, label: 'Domain Tree' },
-                                                        { key: 'section:settings-admin', icon: ShieldCheck, label: 'Admin Settings' },
-                                                    ].map(s => {
-                                                        const SectionIcon = s.icon;
-                                                        return (
-                                                        <label key={s.key} className={`iz-perms__item ${permMap[s.key] ? 'iz-perms__item--on' : ''}`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={!!permMap[s.key]}
-                                                                onChange={(e) => setPermMap(prev => ({ ...prev, [s.key]: e.target.checked }))}
-                                                            />
-                                                            <span className="iz-perms__item-icon"><SectionIcon size={16} aria-hidden /></span>
-                                                            <span className="iz-perms__item-label">{s.label}</span>
-                                                        </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            {/* Save */}
-                                            <div className="iz-perms__save-row">
-                                                <button
-                                                    className="iz-perms__save-btn"
-                                                    disabled={permSaving}
-                                                    onClick={async () => {
-                                                        setPermSaving(true);
-                                                        setPermSaveMsg('');
-                                                        try {
-                                                            const res = await authFetch(`${API_BASE}/api/auth/permissions/${permSelectedUser}`, {
-                                                                method: 'PUT',
-                                                                headers: {
-                                                                    'Content-Type': 'application/json',
-                                                                    Authorization: `Bearer ${authToken}`,
-                                                                },
-                                                                body: JSON.stringify({ permissions: permMap }),
-                                                            });
-                                                            if (res.ok) {
-                                                                setPermSaveMsg('Permissions saved');
-                                                            } else {
-                                                                const err = await res.json().catch(() => ({ error: 'Save failed' }));
-                                                                setPermSaveMsg(`${err.error}`);
-                                                            }
-                                                        } catch {
-                                                            setPermSaveMsg('Network error');
-                                                        }
-                                                        setPermSaving(false);
-                                                        setTimeout(() => setPermSaveMsg(''), 4000);
-                                                    }}
-                                                >
-                                                    {permSaving ? 'Saving…' : <><Save size={14} aria-hidden /> Save Permissions</>}
-                                                </button>
-                                                {permSaveMsg && <span className="iz-perms__save-msg">{permSaveMsg}</span>}
-                                            </div>
-                                        </>
-                                    )}
-
-                                    {permLoading && (
-                                        <div className="iz-perms__loading">Loading permissions…</div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* AI & Routing */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Bot size={16} aria-hidden /> AI & Routing</h3>
-                                <div className="iz-settings__group">
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">OpenAI API Key</span>
-                                        <span className="iz-settings__hint">Used for LLM-powered routing (Pass 2)</span>
-                                        <input
-                                            type="password"
-                                            className="iz-settings__input"
-                                            value={settings.openaiApiKey}
-                                            onChange={e => updateSetting('openaiApiKey', e.target.value)}
-                                            placeholder="sk-…"
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">OpenAI Model</span>
-                                        <span className="iz-settings__hint">Model for email analysis and routing</span>
-                                        <select
-                                            className="iz-settings__select"
-                                            value={settings.openaiModel}
-                                            onChange={e => updateSetting('openaiModel', e.target.value)}
-                                        >
-                                            <option value="gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
-                                            <option value="gpt-4o">GPT-4o (best quality)</option>
-                                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (fastest)</option>
-                                        </select>
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Signal Domains</span>
-                                        <span className="iz-settings__hint">Comma-separated list of high-priority sender domains</span>
-                                        <textarea
-                                            className="iz-settings__textarea"
-                                            value={settings.signalDomains}
-                                            onChange={e => updateSetting('signalDomains', e.target.value)}
-                                            placeholder="example.com, client.io"
-                                            rows={2}
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Noise Domains</span>
-                                        <span className="iz-settings__hint">Comma-separated list of known spam/noise domains</span>
-                                        <textarea
-                                            className="iz-settings__textarea"
-                                            value={settings.noiseDomains}
-                                            onChange={e => updateSetting('noiseDomains', e.target.value)}
-                                            placeholder="marketing.co, spam.io"
-                                            rows={2}
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Routing Rules File</span>
-                                        <span className="iz-settings__hint">Path to JSON file with declarative routing rules</span>
-                                        <input
-                                            type="text"
-                                            className="iz-settings__input"
-                                            value={settings.routingRulesFile}
-                                            onChange={e => updateSetting('routingRulesFile', e.target.value)}
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Gmail */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Mail size={16} aria-hidden /> Gmail Integration</h3>
-                                <div className="iz-settings__group">
-                                    <label className="iz-settings__label iz-settings__label--toggle">
-                                        <div>
-                                            <span className="iz-settings__name">Gmail Fetcher</span>
-                                            <span className="iz-settings__hint">Automatically poll for new unread emails</span>
-                                        </div>
-                                        <button
-                                            className={`iz-settings__toggle ${settings.gmailFetcherEnabled ? 'iz-settings__toggle--on' : ''}`}
-                                            onClick={() => updateSetting('gmailFetcherEnabled', !settings.gmailFetcherEnabled)}
-                                        >
-                                            <span className="iz-settings__toggle-knob" />
-                                        </button>
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Poll Interval (ms)</span>
-                                        <span className="iz-settings__hint">How often to check for new emails (default: 900000 = 15 min)</span>
-                                        <input
-                                            type="number"
-                                            className="iz-settings__input"
-                                            value={settings.gmailPollIntervalMs}
-                                            onChange={e => updateSetting('gmailPollIntervalMs', parseInt(e.target.value) || 900000)}
-                                            min={30000}
-                                            step={60000}
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Watch Email</span>
-                                        <span className="iz-settings__hint">The Gmail address being monitored</span>
-                                        <input
-                                            type="email"
-                                            className="iz-settings__input"
-                                            value={settings.gmailWatchEmail}
-                                            onChange={e => updateSetting('gmailWatchEmail', e.target.value)}
-                                            placeholder="you@example.com"
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Trello */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><ClipboardList size={16} aria-hidden /> Trello Integration</h3>
-                                <div className="iz-settings__group">
-                                    <label className="iz-settings__label iz-settings__label--toggle">
-                                        <div>
-                                            <span className="iz-settings__name">Trello Integration</span>
-                                            <span className="iz-settings__hint">Create Trello cards for triaged items</span>
-                                        </div>
-                                        <button
-                                            className={`iz-settings__toggle ${settings.trelloEnabled ? 'iz-settings__toggle--on' : ''}`}
-                                            onClick={() => updateSetting('trelloEnabled', !settings.trelloEnabled)}
-                                        >
-                                            <span className="iz-settings__toggle-knob" />
-                                        </button>
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Trello API Key</span>
-                                        <input
-                                            type="password"
-                                            className="iz-settings__input"
-                                            value={settings.trelloApiKey}
-                                            onChange={e => updateSetting('trelloApiKey', e.target.value)}
-                                            placeholder="API key"
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Trello Token</span>
-                                        <input
-                                            type="password"
-                                            className="iz-settings__input"
-                                            value={settings.trelloToken}
-                                            onChange={e => updateSetting('trelloToken', e.target.value)}
-                                            placeholder="Token"
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Board ID</span>
-                                        <input
-                                            type="text"
-                                            className="iz-settings__input"
-                                            value={settings.trelloBoardId}
-                                            onChange={e => updateSetting('trelloBoardId', e.target.value)}
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">List ID</span>
-                                        <span className="iz-settings__hint">Target Trello list for new cards</span>
-                                        <input
-                                            type="text"
-                                            className="iz-settings__input"
-                                            value={settings.trelloListId}
-                                            onChange={e => updateSetting('trelloListId', e.target.value)}
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Google Drive & Sharing */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><Cloud size={16} aria-hidden /> Google Drive & Sharing</h3>
-                                <div className="iz-settings__group">
-                                    <label className="iz-settings__label iz-settings__label--toggle">
-                                        <div>
-                                            <span className="iz-settings__name">Google Drive Sync</span>
-                                            <span className="iz-settings__hint">Enable Google Drive file sharing in triage</span>
-                                        </div>
-                                        <button
-                                            className={`iz-settings__toggle ${settings.googleDriveEnabled ? 'iz-settings__toggle--on' : ''}`}
-                                            onClick={() => updateSetting('googleDriveEnabled', !settings.googleDriveEnabled)}
-                                        >
-                                            <span className="iz-settings__toggle-knob" />
-                                        </button>
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Team Share Emails</span>
-                                        <span className="iz-settings__hint">Comma-separated emails to auto-share uploaded files with</span>
-                                        <textarea
-                                            className="iz-settings__textarea"
-                                            value={settings.teamShareEmails}
-                                            onChange={e => updateSetting('teamShareEmails', e.target.value)}
-                                            placeholder="team@example.com, lead@example.com"
-                                            rows={2}
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Security */}
-                            <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title"><ShieldCheck size={16} aria-hidden /> Security & Guard</h3>
-                                <div className="iz-settings__group">
-                                    <label className="iz-settings__label iz-settings__label--toggle">
-                                        <div>
-                                            <span className="iz-settings__name">Entity Guardian</span>
-                                            <span className="iz-settings__hint">Pre-upload file scanning and validation</span>
-                                        </div>
-                                        <button
-                                            className={`iz-settings__toggle ${settings.entityGuardianEnabled ? 'iz-settings__toggle--on' : ''}`}
-                                            onClick={() => updateSetting('entityGuardianEnabled', !settings.entityGuardianEnabled)}
-                                        >
-                                            <span className="iz-settings__toggle-knob" />
-                                        </button>
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Max File Size (MB)</span>
-                                        <span className="iz-settings__hint">Maximum allowed file upload size</span>
-                                        <input
-                                            type="number"
-                                            className="iz-settings__input"
-                                            value={settings.maxFileSizeMb}
-                                            onChange={e => updateSetting('maxFileSizeMb', parseInt(e.target.value) || 100)}
-                                            min={1}
-                                            max={2048}
-                                        />
-                                    </label>
-                                    <label className="iz-settings__label">
-                                        <span className="iz-settings__name">Blocked Extensions</span>
-                                        <span className="iz-settings__hint">Comma-separated file extensions to reject</span>
-                                        <textarea
-                                            className="iz-settings__textarea"
-                                            value={settings.blockedExtensions}
-                                            onChange={e => updateSetting('blockedExtensions', e.target.value)}
-                                            placeholder="exe, bat, cmd, scr"
-                                            rows={2}
-                                        />
-                                    </label>
-                                </div>
-
-                                {canViewLlmSafetyAudit && (
-                                    <div className="iz-settings__group iz-safety">
-                                        <div className="iz-safety__header">
-                                            <div>
-                                                <span className="iz-settings__name">LLM Safety Audit (Prompt Injection Alerts)</span>
-                                                <span className="iz-settings__hint">
-                                                    Persistent event log for flagged prompt-injection attempts across agents and automations.
-                                                    {llmSafetyLastLoadedAt ? ` Last refreshed ${new Date(llmSafetyLastLoadedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : ''}
-                                                </span>
-                                            </div>
-                                            <div className="iz-safety__controls">
-                                                <select
-                                                    className="iz-safety__select"
-                                                    value={llmSafetySeverityFilter}
-                                                    onChange={e => setLlmSafetySeverityFilter(e.target.value as 'all' | 'high' | 'medium' | 'low')}
-                                                >
-                                                    <option value="all">All severities</option>
-                                                    <option value="high">High</option>
-                                                    <option value="medium">Medium</option>
-                                                    <option value="low">Low</option>
-                                                </select>
-                                                <label className="iz-safety__checkbox">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={llmSafetyBlockedOnly}
-                                                        onChange={e => setLlmSafetyBlockedOnly(e.target.checked)}
-                                                    />
-                                                    Blocked only
-                                                </label>
-                                                <button
-                                                    type="button"
-                                                    className="iz-safety__refresh"
-                                                    onClick={fetchLlmSafetyAudit}
-                                                    disabled={llmSafetyLoading}
-                                                >
-                                                    {llmSafetyLoading ? 'Loading…' : <><RefreshCw size={14} aria-hidden /> Refresh</>}
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {securityStatus && (
-                                            <div className="iz-safety__status-grid">
-                                                <div className="iz-safety__status-card">
-                                                    <div className="iz-safety__status-label">Audit Persistence</div>
-                                                    <div className="iz-safety__status-value">
-                                                        {securityStatus.llmSafetyAudit.persistentLogEnabled ? 'Enabled' : 'Disabled'}
-                                                    </div>
-                                                    <div className="iz-safety__status-meta">Max rows: {securityStatus.llmSafetyAudit.maxRows}</div>
-                                                </div>
-                                                <div className={`iz-safety__status-card ${securityStatus.domainEncryption.astra.enabled ? 'is-enabled' : 'is-disabled'}`}>
-                                                    <div className="iz-safety__status-label">Astra Encryption</div>
-                                                    <div className="iz-safety__status-value">{securityStatus.domainEncryption.astra.enabled ? 'Enabled' : 'Disabled'}</div>
-                                                    <div className="iz-safety__status-meta">Source: {securityStatus.domainEncryption.astra.source}</div>
-                                                </div>
-                                                <div className={`iz-safety__status-card ${securityStatus.domainEncryption.strata.enabled ? 'is-enabled' : 'is-disabled'}`}>
-                                                    <div className="iz-safety__status-label">Strata Encryption</div>
-                                                    <div className="iz-safety__status-value">{securityStatus.domainEncryption.strata.enabled ? 'Enabled' : 'Disabled'}</div>
-                                                    <div className="iz-safety__status-meta">Source: {securityStatus.domainEncryption.strata.source}</div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {llmSafetyStats && (
-                                            <div className="iz-safety__stats">
-                                                <div className="iz-safety__stat">
-                                                    <span className="iz-safety__stat-label">24h Events</span>
-                                                    <span className="iz-safety__stat-value">{llmSafetyStats.total}</span>
-                                                </div>
-                                                <div className="iz-safety__stat">
-                                                    <span className="iz-safety__stat-label">Blocked</span>
-                                                    <span className="iz-safety__stat-value">{llmSafetyStats.blocked}</span>
-                                                </div>
-                                                <div className="iz-safety__stat">
-                                                    <span className="iz-safety__stat-label">High</span>
-                                                    <span className="iz-safety__stat-value">{llmSafetyStats.bySeverity.high || 0}</span>
-                                                </div>
-                                                <div className="iz-safety__stat">
-                                                    <span className="iz-safety__stat-label">Medium</span>
-                                                    <span className="iz-safety__stat-value">{llmSafetyStats.bySeverity.medium || 0}</span>
-                                                </div>
-                                                <div className="iz-safety__stat">
-                                                    <span className="iz-safety__stat-label">Low</span>
-                                                    <span className="iz-safety__stat-value">{llmSafetyStats.bySeverity.low || 0}</span>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {llmSafetyError && (
-                                            <div className="iz-safety__error" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><X size={14} aria-hidden /> {llmSafetyError}</div>
-                                        )}
-
-                                        <div className="iz-safety__events">
-                                            {llmSafetyLoading && llmSafetyEvents.length === 0 && (
-                                                <div className="iz-safety__empty">Loading LLM safety events…</div>
-                                            )}
-
-                                            {!llmSafetyLoading && llmSafetyEvents.length === 0 && !llmSafetyError && (
-                                                <div className="iz-safety__empty">No matching LLM safety events found.</div>
-                                            )}
-
-                                            {llmSafetyEvents.map(event => {
-                                                const metaEntries = Object.entries(event.meta || {}).slice(0, 3);
-                                                return (
-                                                    <div key={event.id} className={`iz-safety__event iz-safety__event--${event.severity}`}>
-                                                        <div className="iz-safety__event-top">
-                                                            <span className={`iz-safety__badge iz-safety__badge--${event.severity}`}>
-                                                                {event.severity.toUpperCase()}
-                                                            </span>
-                                                            {event.blocked && (
-                                                                <span className="iz-safety__badge iz-safety__badge--blocked">BLOCKED</span>
-                                                            )}
-                                                            <span className="iz-safety__scope">{event.scope}</span>
-                                                            <span className="iz-safety__score">score {event.score}</span>
-                                                            <span className="iz-safety__time">
-                                                                {new Date(event.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                            </span>
-                                                        </div>
-                                                        <div className="iz-safety__signals">
-                                                            {event.signals.map((signal, idx) => (
-                                                                <span key={`${event.id}-${signal.label}-${idx}`} className={`iz-safety__signal iz-safety__signal--${signal.severity}`}>
-                                                                    {signal.label}
-                                                                    {signal.match ? `: ${signal.match}` : ''}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                        {metaEntries.length > 0 && (
-                                                            <div className="iz-safety__meta">
-                                                                {metaEntries.map(([key, value]) => (
-                                                                    <span key={`${event.id}-${key}`} className="iz-safety__meta-item">
-                                                                        <strong>{key}</strong>: {String(value)}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
+            {/* Mounted on first visit, then only hidden — unsaved Settings edits survive a tab switch,
+                as they did while this state lived in InboxZero (plan 066 §6c "no behavior change"). */}
+            {settingsMounted && (
+                <div role="tabpanel" id="iz-tabpanel-settings" aria-labelledby="iz-tab-settings" hidden={activeTab !== 'settings'}>
+                    <SettingsTab />
                 </div>
             )}
 

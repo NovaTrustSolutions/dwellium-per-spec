@@ -122,6 +122,35 @@ describe('GlobalAuditTab', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
+    // Plan 066 §6b — backdrop-click-to-close is wired imperatively (checking
+    // e.target === the backdrop node), not via JSX onClick + stopPropagation
+    // on the inner panel, so a click that bubbles up from inside the panel
+    // must not close it.
+    it('the preview closes on a backdrop click but not on a click inside the panel', async () => {
+        const authFetch = vi.fn().mockImplementation((url: string) => {
+            if (url.includes('/audit/global')) return Promise.resolve(jsonResponse({ success: true, data: [{ id: 'a1', inbox_item_id: 'mail-1', action: 'archive', actor: null, reason: null, details: '{}', created_at: '2026-09-01 00:00:00', subject: 'Viewable' }], pagination: { total: 1, limit: 50, offset: 0, hasMore: false } }));
+            if (url.endsWith('/body')) return Promise.resolve(jsonResponse({ success: true, data: { body: 'hi' } }));
+            return Promise.resolve(jsonResponse({ success: true, data: { subject: 'Viewable', sender: 's@example.invalid' } }));
+        });
+        render(<GlobalAuditTab apiBase="/api/inbox" authFetch={authFetch} />);
+        await waitFor(() => expect(screen.getByText('Viewable')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: /View/ }));
+        const dialog = await screen.findByRole('dialog');
+        const backdrop = dialog.parentElement!;
+        // The backdrop/Escape listeners attach in the same effect that moves
+        // focus, after the dialog commits — wait for it rather than racing it
+        // (same idiom as the Escape test above).
+        await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close preview' })));
+
+        // A click on the panel itself (bubbles from inside) must not close it.
+        fireEvent.click(dialog);
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+        // A click on the backdrop itself closes it.
+        fireEvent.click(backdrop);
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
     it('renders the server error via toast on a 500', async () => {
         const { onToast, cleanup } = collectToasts();
         try {

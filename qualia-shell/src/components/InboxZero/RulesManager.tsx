@@ -173,9 +173,9 @@ export default function RulesManager({ apiBase, authFetch, canEdit }: RulesManag
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <ClipboardList size={16} aria-hidden /> Routing Rules <span style={{ opacity: 0.7 }}>({rules.length})</span>
-                </h4>
+                <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <ClipboardList size={16} aria-hidden /> Routing Rules <span style={{ color: 'var(--text-secondary)' }}>({rules.length})</span>
+                </h3>
                 {canEdit && view === 'list' && (
                     <button
                         onClick={startAdd}
@@ -198,7 +198,6 @@ export default function RulesManager({ apiBase, authFetch, canEdit }: RulesManag
                                 display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem',
                                 background: rule.enabled ? 'var(--bg-surface)' : 'var(--bg-surface-hover)',
                                 border: '1px solid var(--border-default)', borderRadius: '8px',
-                                opacity: rule.enabled ? 1 : 0.55,
                             }}>
                                 <div style={{
                                     width: '28px', height: '28px', borderRadius: '50%',
@@ -209,6 +208,7 @@ export default function RulesManager({ apiBase, authFetch, canEdit }: RulesManag
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.15rem' }}>
                                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{rule.name}</span>
+                                        {!rule.enabled && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', border: '1px solid var(--border-default)', borderRadius: '4px', padding: '0 5px' }}>Disabled</span>}
                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-surface-elevated)', padding: '1px 6px', borderRadius: '4px' }}>{rule.field}</span>
                                         <span style={{ width: 10, height: 10, borderRadius: '50%', background: urgencyColor[rule.urgency], display: 'inline-block' }} aria-hidden />
                                     </div>
@@ -240,7 +240,7 @@ export default function RulesManager({ apiBase, authFetch, canEdit }: RulesManag
 
             {canEdit && view === 'form' && (
                 <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '1.25rem' }}>
-                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)' }}>{editingId ? 'Edit Rule' : 'New Routing Rule'}</h4>
+                    <h3 style={{ margin: '0 0 1rem 0', fontSize: '14px', color: 'var(--text-primary)' }}>{editingId ? 'Edit Rule' : 'New Routing Rule'}</h3>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                         <div>

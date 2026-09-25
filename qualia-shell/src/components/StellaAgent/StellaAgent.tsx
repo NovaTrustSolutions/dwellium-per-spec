@@ -1380,7 +1380,8 @@ export default function StellaAgent() {
                     // 3. Capture recent inbox items
                     let recentInbox = '';
                     try {
-                        const inRes = await fetch('/api/v1/inbox?limit=3', { headers });
+                        // plan 066: was /api/v1/inbox (never existed). Owner-scoped, so only the caller's own mail; 403 without widget:inbox → skipped.
+                        const inRes = await fetch('/api/inbox?limit=3', { headers });
                         const inData = await inRes.json();
                         if (inData.success && inData.data) {
                             recentInbox = inData.data.slice(0, 3).map((i: any) => `${i.subject} (${i.sender})`).join('; ');

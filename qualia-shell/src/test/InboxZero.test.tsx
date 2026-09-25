@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, beforeEach, expect } from 'vitest';
 import type { ReactNode } from 'react';
@@ -220,6 +221,62 @@ describe('InboxZero', () => {
         expect(tabs.map(t => t.textContent?.trim())).toEqual(['Triage', 'Newsletters', 'Rules', 'Audit', 'Stats', 'Settings']);
     });
 
+    // Plan 066 §6c — Settings tab extracted into SettingsTab.tsx with no
+    // behavior change; it still renders its major sections when opened.
+    it('renders the Settings tab sections after the §6c SettingsTab.tsx extraction', async () => {
+        authFetch.mockImplementation((url: string) => {
+            // routeFetch's catch-all `{success:true, data:{}}` is fine for most
+            // "everything else" endpoints, but the Legal Shield and LLM Safety
+            // Audit panels expect a full shape when success is true — say no
+            // data for those here rather than let them render on `{}`.
+            if (typeof url === 'string' && url.includes('/legal-shield-health')) {
+                return Promise.resolve(jsonResponse({ success: false }));
+            }
+            if (typeof url === 'string' && (url.includes('/api/security/status') || url.includes('/llm-safety-events/stats'))) {
+                return Promise.resolve(jsonResponse({ success: false }));
+            }
+            if (typeof url === 'string' && url.includes('/llm-safety-events')) {
+                return Promise.resolve(jsonResponse({ success: true, data: [] }));
+            }
+            return routeFetch(() => jsonResponse({ success: true, data: [], pagination: { hasMore: false } }))(url);
+        });
+
+        renderInbox();
+
+        fireEvent.click(await screen.findByRole('tab', { name: /Settings/ }));
+
+        expect(await screen.findByRole('heading', { name: /Legal Shield/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Themes/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Typography/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Animations & Interactions/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Permissions/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /AI & Routing/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Gmail Integration/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Trello Integration/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Google Drive & Sharing/ })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Security & Guard/ })).toBeInTheDocument();
+    });
+
+    // Plan 066 §6c review: unsaved Settings edits survived a tab switch while that state lived in
+    // InboxZero; the extracted SettingsTab must not drop them on unmount.
+    it('keeps unsaved Settings edits across a tab switch', async () => {
+        authFetch.mockImplementation((url: string) => {
+            if (typeof url === 'string' && (url.includes('/legal-shield-health') || url.includes('/api/security/status') || url.includes('/llm-safety-events/stats'))) {
+                return Promise.resolve(jsonResponse({ success: false }));
+            }
+            if (typeof url === 'string' && url.includes('/llm-safety-events')) return Promise.resolve(jsonResponse({ success: true, data: [] }));
+            return routeFetch(() => jsonResponse({ success: true, data: [], pagination: { hasMore: false } }))(url);
+        });
+        renderInbox();
+        fireEvent.click(await screen.findByRole('tab', { name: /Settings/ }));
+        fireEvent.click(await screen.findByRole('switch', { name: /Gmail Fetcher/ }));
+        expect(await screen.findByText('● Unsaved changes')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('tab', { name: /Triage/ }));
+        fireEvent.click(screen.getByRole('tab', { name: /Settings/ }));
+        expect(await screen.findByText('● Unsaved changes')).toBeInTheDocument();
+    });
+
     // Plan 066 §2a — a persisted tab that no longer exists (e.g. the deleted
     // NIF Intel tab) falls back to Triage instead of rendering nothing.
     it('falls back to the Triage tab when the persisted activeTab was removed', async () => {
@@ -285,11 +342,49 @@ describe('InboxZero', () => {
         authFetch.mockImplementation(routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } })));
         renderInbox();
         await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
-        const card = screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__main')!;
+        const card = screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__content')!;
         fireEvent.click(card); // expand
         fireEvent.click(card); // collapse
         const reads = authFetch.mock.calls.filter(([u]) => typeof u === 'string' && /\/read$/.test(u));
         expect(reads).toHaveLength(1);
+    });
+
+    // Plan 066 §6b — the triage card's expand toggle is a real <button> now
+    // (not a div with an onClick), so Enter/Space on the focused button must
+    // expand/collapse it exactly like a click does.
+    it('keyboard: Enter/Space on the focused expand button expands and collapses the triage card', async () => {
+        const user = userEvent.setup();
+        authFetch.mockImplementation(routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } })));
+        renderInbox();
+        await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+        const expandButton = screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__content') as HTMLElement;
+        expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+
+        expandButton.focus();
+        await user.keyboard('{Enter}');
+        expect(expandButton).toHaveAttribute('aria-expanded', 'true');
+
+        await user.keyboard(' ');
+        expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // Plan 066 §6b — a document-level Escape handler closes the full email
+    // viewer while it is open (wired imperatively, not via JSX onClick).
+    it('Escape closes the full email viewer', async () => {
+        authFetch.mockImplementation((url: string) => {
+            if (typeof url === 'string' && /\/mail-1\/body$/.test(url)) {
+                return Promise.resolve(jsonResponse({ success: true, data: { body: 'Full body text' } }));
+            }
+            return routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))(url);
+        });
+        renderInbox();
+        await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+        fireEvent.click(screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__content')!); // expand
+        fireEvent.click(await screen.findByRole('button', { name: /View Full Email/i }));
+
+        await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+        fireEvent.keyDown(document, { key: 'Escape' });
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
     it('shows an error toast and keeps the item when archive fails', async () => {
@@ -478,7 +573,7 @@ describe('InboxZero', () => {
 
         renderInbox();
         await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
-        fireEvent.click(screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__main')!); // expand
+        fireEvent.click(screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__content')!); // expand
 
         fireEvent.click(await screen.findByRole('button', { name: /Draft reply/i }));
         fireEvent.click(await screen.findByRole('button', { name: /Generate Draft/i }));
@@ -505,7 +600,7 @@ describe('InboxZero', () => {
 
         renderInbox();
         await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
-        const card = screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__main')!;
+        const card = screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__content')!;
 
         fireEvent.click(card); // expand
         await waitFor(() => expect(bodyCalls).toBe(1));
@@ -528,7 +623,7 @@ describe('InboxZero', () => {
 
         renderInbox();
         await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
-        fireEvent.click(screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__main')!);
+        fireEvent.click(screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__content')!);
 
         const frame = await screen.findByTitle('email-body-inline');
         await waitFor(() => expect(frame.getAttribute('srcdoc')).toContain('would like to renew my lease'));

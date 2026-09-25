@@ -71,13 +71,25 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
     const [viewItem, setViewItem] = useState<ViewedItem | null>(null);
 
     const closeRef = useRef<HTMLButtonElement | null>(null);
-    // Preview dialog: focus the close button on open; Escape closes it.
+    const backdropRef = useRef<HTMLDivElement | null>(null);
+    // Preview dialog: focus the close button on open; Escape closes it, and so
+    // does a click on the backdrop itself (checked via e.target === the
+    // backdrop node, not a bubbled click from inside the panel). Wired
+    // imperatively rather than JSX onClick (plan 066 §6b) — a static element
+    // needs an interactive role to carry a click handler past jsx-a11y, and
+    // there is no honest role for "backdrop that dismisses a dialog".
     useEffect(() => {
         if (!viewItem) return;
         closeRef.current?.focus();
+        const backdrop = backdropRef.current;
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setViewItem(null); };
+        const onBackdropClick = (e: MouseEvent) => { if (e.target === backdrop) setViewItem(null); };
         document.addEventListener('keydown', onKey);
-        return () => document.removeEventListener('keydown', onKey);
+        backdrop?.addEventListener('click', onBackdropClick);
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            backdrop?.removeEventListener('click', onBackdropClick);
+        };
     }, [viewItem]);
 
     const fetchPage = useCallback(async (offset: number, append: boolean) => {
@@ -194,7 +206,8 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                             </span>
                             <span style={{
                                 fontWeight: 600,
-                                color: ACTION_COLORS[entry.action] || 'var(--text-secondary)',
+                                // status hues mixed toward --text-primary so they clear 4.5:1 on light AND dark themes
+                                color: ACTION_COLORS[entry.action] ? `color-mix(in srgb, ${ACTION_COLORS[entry.action]} 50%, var(--text-primary))` : 'var(--text-secondary)',
                                 fontSize: '11px',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.4px',
@@ -229,7 +242,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                                         onClick={() => handleRecover(entry.inbox_item_id)}
                                         style={{
                                             padding: '4px 8px', borderRadius: '4px', border: '1px solid color-mix(in srgb, var(--danger) 40%, transparent)',
-                                            background: 'transparent', color: 'var(--danger)', fontSize: '10px', cursor: 'pointer',
+                                            background: 'transparent', color: 'color-mix(in srgb, var(--danger) 60%, var(--text-primary))', fontSize: '10px', cursor: 'pointer',
                                             display: 'inline-flex', alignItems: 'center', gap: 4,
                                         }}
                                     >
@@ -253,14 +266,14 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
 
             {/* Email Viewer Modal */}
             {viewItem && (
-                <div style={{
+                <div ref={backdropRef} style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                     background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999
-                }} onClick={() => setViewItem(null)}>
+                }}>
                     <div role="dialog" aria-modal="true" aria-label={viewItem.subject || 'Email preview'} style={{
                         width: '800px', maxWidth: '90vw', height: '80vh', background: 'var(--bg-surface-elevated)',
                         borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden'
-                    }} onClick={e => e.stopPropagation()}>
+                    }}>
                         <div style={{ padding: '16px', background: 'var(--bg-surface-hover)', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                                 <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{viewItem.subject}</div>

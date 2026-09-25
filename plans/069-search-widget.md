@@ -23,6 +23,12 @@
   The orchestrator re-ran the snippet and multi-word probes and refuted two agent claims
   (see "Refuted / dropped").
 
+## Execution log
+
+- Phase 1 — `ba0631c` (2026-09-25). Gate green (364 files). Reviewer: 0 defects; orchestrator fixed the registry description (> 100 chars) and a test type error.
+- Phase 2 — `e68a296`. Gate green (365). Orchestrator: filter-before-cap, mark contrast (3 themes < 4.5:1). Reviewer: 4 defects + 2 weak tests, all fixed.
+- Phase 3 — gate green (367 files, 3304 tests; one run hit a Wiki deep-link timing flake, untouched code, separate task). Orchestrator: stale remote hits, SSR-unsafe init, deep links lost when the target widget is closed (`lib/pendingDeepLink.ts`). Reviewer: focus re-fetch, selection clamp, pending-link TTL, same-tab transcript refresh — all fixed. Found: backend notes have no owner (separate task).
+
 ## What the widget is today (capabilities)
 
 | Area | What it does | Where |

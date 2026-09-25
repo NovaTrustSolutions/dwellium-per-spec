@@ -12,7 +12,7 @@ import {
     SPEAKER_RENAMED_EVENT,
 } from '../components/TranscriptionHub/speakerLibraryStore';
 import { identifyWithConfidence } from '../components/TranscriptionHub/speakerLibrary';
-import { searchTranscriptions } from '../lib/transcriptSearch';
+import { searchTranscriptions, readTranscriptLog } from '../lib/transcriptSearch';
 
 beforeEach(() => {
     speakerLibraryUserIdHolder.current = 'test-user';
@@ -99,5 +99,38 @@ describe('searchTranscriptions (⌘K source)', () => {
     it('garbage/absent logs return []', () => {
         expect(searchTranscriptions('andy', 5, 'not json')).toEqual([]);
         expect(searchTranscriptions('andy', 5, null)).toEqual([]);
+    });
+});
+
+describe('readTranscriptLog', () => {
+    const LOG = JSON.stringify([
+        { id: 'log-1', title: 'Vendor call', createdAt: 200, segments: [{ text: 'roof estimate is 12k', speaker: 'Andy' }] },
+        { id: 'log-2', title: 'Standup', createdAt: 100, segments: [{ text: 'shipping friday', speaker: 'Unknown Speaker 1' }] },
+    ]);
+
+    it('parses valid JSON into entries', () => {
+        const entries = readTranscriptLog(LOG);
+        expect(entries).toHaveLength(2);
+        expect(entries[0]).toMatchObject({ id: 'log-1', title: 'Vendor call' });
+    });
+
+    it('garbage JSON returns []', () => {
+        expect(readTranscriptLog('not json')).toEqual([]);
+    });
+
+    it('non-array JSON returns []', () => {
+        expect(readTranscriptLog(JSON.stringify({ id: 'not-an-array' }))).toEqual([]);
+    });
+
+    it('sanitizes malformed segments (null, number, missing text) instead of crashing', () => {
+        const log = JSON.stringify([{
+            id: 'entry-1', title: 'Weird', createdAt: 1,
+            segments: [null, 42, { speaker: 'Andy' }, { text: 'hi', speaker: 'Andy' }, { text: 99 }],
+        }]);
+        const entries = readTranscriptLog(log);
+        expect(entries).toHaveLength(1);
+        expect(entries[0].segments).toEqual([{ text: 'hi', speaker: 'Andy' }]);
+        // A consumer mapping segments (e.g. Array.isArray check today) must not crash on any entry.
+        expect(() => entries.flatMap(e => e.segments.map(s => s.text.toUpperCase()))).not.toThrow();
     });
 });

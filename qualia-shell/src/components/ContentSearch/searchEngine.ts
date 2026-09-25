@@ -11,7 +11,7 @@
  * index — surfaced honestly in the UI.)
  */
 
-export type SearchDocType = 'file' | 'dump' | 'synthesis' | 'wiki' | 'foundry' | 'memory';
+export type SearchDocType = 'file' | 'dump' | 'synthesis' | 'wiki' | 'foundry' | 'memory' | 'note' | 'transcript';
 
 export interface SearchDoc {
     id: string;
@@ -20,6 +20,8 @@ export interface SearchDoc {
     body: string;
     /** widget id to open on click. */
     widget: string;
+    /** Item id inside the target widget, for deep links (note id, transcription log id). */
+    ref?: string;
 }
 
 export interface SearchHit extends SearchDoc {

@@ -6,6 +6,7 @@ import { TagInput } from '../Tags/TagInput';
 import './Notepad.css';
 import { API_BASE } from '../../config';
 import { WIDGET_ACTION_EVENT, consumePendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
+import { takePendingDeepLink } from '../../lib/pendingDeepLink';
 
 // ============================================
 // TYPES
@@ -248,7 +249,7 @@ export default function Notepad() {
     const openNoteFromPalette = useCallback(async (detail: { noteId?: string; title?: string }) => {
         if (detail.noteId) {
             try {
-                const res = await fetch(`${API_BASE}/notes/${detail.noteId}`);
+                const res = await fetch(`${API_BASE}/notes/${encodeURIComponent(detail.noteId)}`);
                 const json = await res.json();
                 if (json?.success && json.data) {
                     const note = json.data as Note;
@@ -270,11 +271,15 @@ export default function Notepad() {
         }
     }, [selectNote]);
 
-    // Command Palette deep-link: open a selected note
+    // Command Palette / Search deep-link: open a selected note. A link fired
+    // before this chunk mounted waits in the pending slot (plan 069).
     useEffect(() => {
+        const pendingId = takePendingDeepLink('notepad');
+        if (pendingId) void openNoteFromPalette({ noteId: pendingId });
         const onOpenNote = (event: Event) => {
             const detail = (event as CustomEvent<{ noteId?: string; title?: string }>).detail;
             if (!detail?.noteId && !detail?.title) return;
+            takePendingDeepLink('notepad');
             void openNoteFromPalette(detail);
         };
 

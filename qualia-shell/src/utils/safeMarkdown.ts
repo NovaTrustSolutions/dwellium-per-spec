@@ -8,6 +8,7 @@
  */
 
 import DOMPurify from 'dompurify';
+import { splitFences, eachCodeSpan, OPEN, CLOSE, TOKEN, type MdBlock } from '../lib/markdownText';
 
 // Configure DOMPurify: allow safe HTML elements, strip everything dangerous
 const PURIFY_CONFIG = {
@@ -48,27 +49,46 @@ export function sanitizeHtml(dirtyHtml: string): string {
   return DOMPurify.sanitize(dirtyHtml, PURIFY_CONFIG);
 }
 
+const escapeHtml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 /**
  * Lightweight markdown → HTML converter with XSS protection.
- * For widgets that don't use react-markdown (ARA, Stella, Hydra, Astra).
+ * For widgets that don't use react-markdown (Stella, Hydra, Antigravity, Knowledge Graph, Scribe export).
+ * Fences and code spans come from the shared scanner (lib/markdownText.ts) — the same rules as ARA and
+ * as speech, so a code block is shown exactly where speech says "code block" — and code is never run
+ * through the markdown passes below.
  *
  * ALWAYS sanitized — safe for dangerouslySetInnerHTML.
  */
 export function renderSafeMarkdown(text: string): string {
-  // Escape raw HTML in the source text first
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  const html = splitFences(text)
+    .map(b => (b.kind === 'code' ? codeBlockHtml(b) : textHtml(b.lines.join('\n'))))
+    .join('');
+  // SANITIZE: final security gate
+  return DOMPurify.sanitize(html, PURIFY_CONFIG);
+}
 
-  // Fenced code blocks with language + copy support
-  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (_match, lang, code) => {
-    const langLabel = lang ? `<span class="code-lang">${lang}</span>` : '';
-    return `<div class="code-block">${langLabel}<button class="code-copy-btn" type="button" data-copy="${encodeURIComponent(code.trim())}">Copy</button><pre><code>${code.trim()}</code></pre></div>`;
-  });
+/** encodeURIComponent throws on a lone surrogate (an emoji cut in half), so replace those with U+FFFD. */
+const wellFormed = (t: string) =>
+  Array.from(t, ch => (ch.length === 1 && (ch.charCodeAt(0) & 0xf800) === 0xd800 ? String.fromCharCode(0xfffd) : ch)).join('');
 
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+/** Fenced code block with language label + copy button (the payload is the raw code; see main.tsx).
+ *  Blank lines just inside the fence are dropped — a copied command ending in a newline runs on paste. */
+function codeBlockHtml(b: MdBlock): string {
+  const blank = (l: string) => /^[ \t]*$/.test(l);
+  let from = 0, to = b.lines.length; // trim on the line array: a regex for this is quadratic on long blank runs
+  while (from < to && blank(b.lines[from])) from++;
+  while (to > from && blank(b.lines[to - 1])) to--;
+  const code = wellFormed(b.lines.slice(from, to).join('\n'));
+  const lang = b.info?.split(/\s+/)[0];
+  const langLabel = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '';
+  return `<div class="code-block">${langLabel}<button class="code-copy-btn" type="button" data-copy="${encodeURIComponent(code)}">Copy</button><pre><code>${escapeHtml(code)}</code></pre></div>`;
+}
+
+function textHtml(text: string): string {
+  // Escape raw HTML in the source text first; inline code (per line) is swapped for placeholders so nothing inside is formatted
+  const spans: string[] = [];
+  let html = eachCodeSpan(escapeHtml(text), c => `${OPEN}${spans.push(`<code class="inline-code">${c}</code>`) - 1}${CLOSE}`);
 
   // Bold + italic
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
@@ -103,8 +123,7 @@ export function renderSafeMarkdown(text: string): string {
   html = html.replace(/<br\/>(<\/?(?:h[2-5]|ul|li|table|tr|div|pre))/g, '$1');
   html = html.replace(/(<\/(?:h[2-5]|ul|li|table|tr|div|pre)>)<br\/>/g, '$1');
 
-  // SANITIZE: final security gate
-  return DOMPurify.sanitize(html, PURIFY_CONFIG);
+  return html.replace(TOKEN, (m, i: string) => spans[Number(i)] ?? m);
 }
 
 /**

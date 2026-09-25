@@ -291,4 +291,51 @@ describe('InboxZero', () => {
             expect(screen.queryByRole('button', { name: pattern })).not.toBeInTheDocument();
         }
     });
+
+    // Plan 066 §4h — the list endpoint no longer carries `body` (ITEM above has
+    // none); the expanded card fetches it on demand, once, and renders it into
+    // the inline iframe. Collapsing and re-expanding must not refetch.
+    it('fetches the body once on expand and renders it in the card iframe; re-expanding after collapse does not refetch', async () => {
+        let bodyCalls = 0;
+        authFetch.mockImplementation((url: string) => {
+            if (typeof url === 'string' && /\/mail-1\/body$/.test(url)) {
+                bodyCalls++;
+                return Promise.resolve(jsonResponse({
+                    success: true,
+                    data: { body: 'The full lease terms are attached for your review.', subject: ITEM.subject, sender: ITEM.sender },
+                }));
+            }
+            return routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))(url);
+        });
+
+        renderInbox();
+        await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+        const card = screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__main')!;
+
+        fireEvent.click(card); // expand
+        await waitFor(() => expect(bodyCalls).toBe(1));
+        const frame = await screen.findByTitle('email-body-inline');
+        await waitFor(() => expect(frame.getAttribute('srcdoc')).toContain('The full lease terms are attached for your review.'));
+
+        fireEvent.click(card); // collapse
+        fireEvent.click(card); // re-expand
+        await screen.findByTitle('email-body-inline');
+        expect(bodyCalls).toBe(1); // cached — no second network call
+    });
+
+    it('renders the snippet in the card iframe when the body fetch fails', async () => {
+        authFetch.mockImplementation((url: string) => {
+            if (typeof url === 'string' && /\/mail-1\/body$/.test(url)) {
+                return Promise.resolve(jsonResponse({ success: false, error: 'boom' }, false, 500));
+            }
+            return routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))(url);
+        });
+
+        renderInbox();
+        await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+        fireEvent.click(screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__main')!);
+
+        const frame = await screen.findByTitle('email-body-inline');
+        await waitFor(() => expect(frame.getAttribute('srcdoc')).toContain('would like to renew my lease'));
+    });
 });

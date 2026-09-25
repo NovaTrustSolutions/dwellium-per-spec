@@ -207,6 +207,11 @@ export default function InboxZero() {
     const metricsQuery = useOperatorMetrics(authFetch);
     const newslettersQuery = useNewsletters(authFetch, activeTab === 'newsletters');
     const settingsQuery = useSettingsQuery(authFetch, activeTab === 'settings');
+    // Plan 066 §4h — triage card body: list items no longer carry `body`;
+    // fetch it once per expanded id (RQ's 5 min staleTime means collapse +
+    // re-expand does not refetch) and fall back to the snippet while it's
+    // loading or the fetch failed.
+    const expandedBodyQuery = useEmailBody(authFetch, expandedId);
 
     // Bridge variables — existing JSX reads these; RQ provides data behind the scenes
     const items = itemsQuery.data?.items ?? [];
@@ -857,6 +862,12 @@ export default function InboxZero() {
                             const sc = SIGNAL_CONFIG[item.signalClass];
                             const isExpanded = expandedId === item.id;
                             const isSelected = selectedIds.has(item.id);
+                            // Plan 066 §4h — the list no longer carries `body`; the expanded
+                            // card shows the fetched body once available, the snippet otherwise
+                            // (loading or fetch failure), through the same sanitize/format path.
+                            const inlineBody = isExpanded && expandedBodyQuery.data?.body
+                                ? expandedBodyQuery.data.body
+                                : item.snippet || '';
 
                             return (
                                 <div
@@ -990,15 +1001,17 @@ export default function InboxZero() {
                                                 <p className="iz-card__reasoning"><Bot size={13} aria-hidden /> {item.routingReasoning}</p>
                                             )}
 
-                                    {/* GAP-09: Full email body expandable section */}
-                                    {item.body && (
+                                    {/* GAP-09: Full email body expandable section — plan 066 §4h:
+                                        fetched once per expanded id via useEmailBody; the snippet
+                                        covers the loading/error window (see `inlineBody` above). */}
+                                    {inlineBody && (
                                         <div style={{
                                             marginTop: 8, borderRadius: 8,
                                             overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)',
                                             background: 'var(--bg-surface)', minHeight: 120, maxHeight: 400,
                                         }}>
                                             <iframe
-                                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:20px 24px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.7;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0}a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{padding:8px 12px;border:1px solid var(--border-default);text-align:left;font-size:13px}th{background:#f8fafc;font-weight:600}blockquote{margin:12px 0;padding:12px 20px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 6px 6px 0}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:14px 18px;overflow-x:auto}hr{border:none;border-top:1px solid var(--border-default);margin:16px 0}h1,h2,h3{color:#0f172a;margin:16px 0 8px}ul,ol{padding-left:24px}li{margin:4px 0}p{margin:8px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:24px;padding-top:16px;border-top:1px solid var(--border-default)}</style></head><body>${sanitizeHtml(formatEmailBody(item.body))}</body></html>`}
+                                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:20px 24px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.7;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0}a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{padding:8px 12px;border:1px solid var(--border-default);text-align:left;font-size:13px}th{background:#f8fafc;font-weight:600}blockquote{margin:12px 0;padding:12px 20px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 6px 6px 0}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:14px 18px;overflow-x:auto}hr{border:none;border-top:1px solid var(--border-default);margin:16px 0}h1,h2,h3{color:#0f172a;margin:16px 0 8px}ul,ol{padding-left:24px}li{margin:4px 0}p{margin:8px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:24px;padding-top:16px;border-top:1px solid var(--border-default)}</style></head><body>${sanitizeHtml(formatEmailBody(inlineBody))}</body></html>`}
                                                 style={{ width: '100%', height: '100%', minHeight: 120, border: 'none', display: 'block' }}
                                                 title="email-body-inline"
                                                 sandbox=""

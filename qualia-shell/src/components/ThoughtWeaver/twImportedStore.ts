@@ -17,12 +17,13 @@
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { twImportedUserIdHolder } from '../../lib/perUserIdentity';
 
 /** id -> ISO timestamp the row was imported. */
 export type TwImported = Record<string, string>;
 
-/** Holder updated by the ThoughtWeaver render path BEFORE useSyncExternalStore reads. */
-export const twImportedUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { twImportedUserIdHolder };
 
 function resolveKey(): string {
     const uid = twImportedUserIdHolder.current;

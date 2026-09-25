@@ -21,6 +21,7 @@
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { thoughtWeaverUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface LocalCapture {
     id: string;
@@ -32,8 +33,8 @@ export interface LocalCapture {
     createdAt: string;                      // ISO
 }
 
-/** Holder updated by the ThoughtWeaver render path BEFORE useSyncExternalStore reads. */
-export const thoughtWeaverUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { thoughtWeaverUserIdHolder };
 
 function resolveKey(): string {
     const uid = thoughtWeaverUserIdHolder.current;

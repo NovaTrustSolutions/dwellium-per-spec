@@ -1,3 +1,4 @@
+// ponytail: unmounted until plan 066 §5f wires its backend (draft handoff)
 /**
  * SmartActions.tsx — Phase 3 Frontend Component
  *

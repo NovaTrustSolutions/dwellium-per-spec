@@ -63,12 +63,6 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
         contexts: ['research and verification', 'knowledge organization', 'memory', 'graph retrieval'],
         aliases: ['cognitive memory network', 'memory graph', 'graph rag', 'graphrag', 'memory core']
     },
-    'inbox-zero': {
-        summary: 'Email triage and approval flow for sorting signal vs noise and routing work.',
-        keywords: ['inbox', 'email', 'triage', 'routing', 'approval', 'messages'],
-        contexts: ['email operations', 'communications triage', 'task intake'],
-        aliases: ['inbox zero', 'mail triage']
-    },
     'transcription': {
         summary: 'Transcription and audio analysis workspace for calls, interviews, and recordings.',
         keywords: ['transcribe', 'transcription', 'audio', 'voice', 'meeting', 'recording'],
@@ -119,9 +113,11 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
     },
     'inbox': {
         summary: 'Inbox view for incoming items and operational triage.',
-        keywords: ['inbox', 'messages', 'intake', 'incoming', 'queue'],
+        // plan 066 phase 3: keywords/aliases merged in from the retired
+        // 'inbox-zero' profile so search recall does not drop.
+        keywords: ['inbox', 'messages', 'intake', 'incoming', 'queue', 'email', 'triage', 'routing', 'approval'],
         contexts: ['task intake', 'communications inbox', 'triage queue'],
-        aliases: ['inbox queue']
+        aliases: ['inbox queue', 'inbox zero', 'mail triage']
     },
     'file-manager': {
         summary: 'File manager for uploads, documents, indexing, and storage operations.',
@@ -164,7 +160,7 @@ const INTENT_BOOSTS: Array<{ label: string; terms: string[]; components: string[
     {
         label: 'email triage',
         terms: ['email', 'inbox', 'mail', 'triage', 'message', 'routing'],
-        components: ['inbox-zero', 'inbox', 'tasks']
+        components: ['inbox', 'tasks']
     },
     {
         label: 'automation workflow',

@@ -23,6 +23,8 @@ vi.mock('../registry/widgetRegistry', () => {
             delta: { id: 'delta', label: 'Delta', icon: 'layout-grid', category: 'core' },
             'advisory-board': { id: 'advisory-board', label: 'Advisory Board', icon: 'scale', category: 'ai' },
         },
+        // plan 066: registry now also exports resolveWidgetId (retired id → live id); identity suffices for these ids.
+        resolveWidgetId: (id: string) => id,
         WINDOW_COMPONENTS: {
             alpha: AlphaWidget,
             beta: BetaWidget,

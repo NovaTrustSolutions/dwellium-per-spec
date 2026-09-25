@@ -289,26 +289,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 460,
         category: 'tools',
     },
-    // ─────────────────────────────────────────────────────────────────
-    //  DEPRECATED as of 2026-04-19 (Phase 3-H §3 Table 1 R2, C-1).
-    //  The 'inbox-zero' widget is superseded by the headless routing
-    //  engine in `src/services/emailRouter.ts`. Kept registered to
-    //  avoid breaking any saved-window / dock references, but marked
-    //  @deprecated in metadata so QA can track removal. Final deletion
-    //  gated on the C-1 migration window closing.
-    // ─────────────────────────────────────────────────────────────────
-    'inbox-zero': {
-        id: 'inbox-zero',
-        label: 'Inbox Zero (deprecated)',
-        description: 'Email triage (legacy entry — same Inbox Zero; kept so saved layouts keep opening).',
-        tip: { tryThis: 'Use Inbox Zero instead — this entry only keeps old layouts opening.', related: ['inbox'] },
-        icon: 'mail-open',
-        component: lazyWithReload(() => import('../components/InboxZero/InboxZero')),
-        minWidth: 700,
-        minHeight: 500,
-        category: 'core',
-        tier: 'labs', // plan 046 D4: deprecated entry — ⌘K "labs:" only
-    },
     'tasks': {
         id: 'tasks',
         label: 'Task Menu',
@@ -969,7 +949,21 @@ export const WINDOW_COMPONENTS: Record<string, React.LazyExoticComponent<Compone
 
 /** Get widget metadata by key */
 export function getWidgetMeta(key: string): WidgetRegistration | undefined {
-    return WIDGET_REGISTRY[key];
+    return WIDGET_REGISTRY[resolveWidgetId(key)]; // plan 066: retired ids read as their live widget
+}
+
+/**
+ * Retired registry ids → their live id. Plan 066 phase 3: 'inbox-zero' was a
+ * second registry entry for the same 'inbox' widget, kept only so old saved
+ * layouts / sessions kept opening. Read-time only — persisted layouts and
+ * sessions are never rewritten; every read site resolves through this first.
+ */
+export const LEGACY_WIDGET_IDS: Readonly<Record<string, string>> = { 'inbox-zero': 'inbox' };
+
+/** Resolve a possibly-retired widget id to its live registry id (identity for unknown/live ids). */
+export function resolveWidgetId(id: string): string {
+    // Own keys only: a plain `[id]` read would hand back Object.prototype members ('constructor', …).
+    return Object.prototype.hasOwnProperty.call(LEGACY_WIDGET_IDS, id) ? LEGACY_WIDGET_IDS[id] : id;
 }
 
 /** Get all widget keys */

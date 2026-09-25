@@ -281,6 +281,12 @@ function ThoughtWeaverWorkspace({ userId }: { userId: string }) {
     const [genMsg, setGenMsg] = useState<string | null>(null);
     const [handoffMsg, setHandoffMsg] = useState<string | null>(null);
     const [syncMsg, setSyncMsg] = useState<string | null>(null);
+    // Clear the "Sync from captures" note after a few seconds so it never reads as current.
+    useEffect(() => {
+        if (!syncMsg) return;
+        const t = setTimeout(() => setSyncMsg(null), 5000);
+        return () => clearTimeout(t);
+    }, [syncMsg]);
     const didCatchUp = useRef(false);
     const llmReady = hasActiveLlm(integrations.llm);
 

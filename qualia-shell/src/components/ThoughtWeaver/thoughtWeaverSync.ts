@@ -69,7 +69,7 @@ export async function pullCaptures(
                 filed_to: r.filed_to ?? 'needs_review',
                 confidence: typeof r.confidence === 'number' ? r.confidence : 0,
                 destination_name: r.destination_name ?? null,
-                createdAt: r.created_at ?? new Date().toISOString(),
+                createdAt: typeof r.created_at === 'string' && !Number.isNaN(Date.parse(r.created_at)) ? r.created_at : new Date().toISOString(),
             }));
     } catch {
         return [];

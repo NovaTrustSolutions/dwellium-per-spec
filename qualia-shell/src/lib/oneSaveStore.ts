@@ -316,6 +316,28 @@ function clearDirty(objectId: string): void {
     } catch { /* sandboxed */ }
 }
 
+/* withSyncStatic stores share ONE physical localStorage slot across every
+ * account on the device, so a dirty marker for user A only means "A's unsaved
+ * edit is in the slot" while A still owns the slot — once B's hydrate fills it,
+ * A's marker must not make B's data win into A's remote (plan 067 review). */
+function slotOwnerKey(objectType: string): string {
+    return `onesave:slot:${objectType}`;
+}
+
+function setSlotOwner(objectType: string, owner: string): void {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+        localStorage.setItem(slotOwnerKey(objectType), owner);
+    } catch { /* sandboxed */ }
+}
+
+function getSlotOwner(objectType: string): string | null {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+        return localStorage.getItem(slotOwnerKey(objectType));
+    } catch { return null; }
+}
+
 function isDirty(objectId: string): boolean {
     try {
         if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
@@ -332,6 +354,7 @@ function makeSynced<T>(
     debounceMs: number,
     setOwner: (userId: string | null) => void,
     merge?: (local: T, remote: T) => T,
+    sharedSlot = false,
 ): SyncedStore<T> {
     const objectId = (): string => `${objectType}_${ownerId()}`;
     // Set by the most recent hydrate() this session; lets migrate() skip its
@@ -350,6 +373,7 @@ function makeSynced<T>(
         const scheduledObjectId = objectId();
         pending.add(scheduledObjectId);
         markDirty(scheduledObjectId);
+        if (sharedSlot) setSlotOwner(objectType, scheduledOwnerId);
         emitSync();
         // Plan 060 phase 1: while the backend's Retry-After window hasn't opened
         // yet, arm the SHARED flush timer for the remaining pause instead of the
@@ -419,6 +443,11 @@ function makeSynced<T>(
             // ponytail: a write that keeps failing forever keeps this marker
             // forever too, so this device stays local-wins until a save actually
             // succeeds — no separate TTL/expiry on the marker.
+            // A shared slot filled by another account since the marker was set
+            // no longer holds this owner's edit — drop the marker, apply remote.
+            if (sharedSlot && isDirty(objectId()) && getSlotOwner(objectType) !== ownerId()) {
+                clearDirty(objectId());
+            }
             if (!merge && isDirty(objectId())) {
                 scheduleWriteThrough(base.getSnapshot());
                 return;
@@ -437,6 +466,7 @@ function makeSynced<T>(
                 } else {
                     base.set(remoteValue, () => persistLocal(remoteValue));
                 }
+                if (sharedSlot) setSlotOwner(objectType, ownerId());
             }
         },
 
@@ -482,7 +512,7 @@ export function withSyncStatic<T>(base: LocalStorageStore<T>, opts: StaticSyncOp
         try { localStorage.setItem(opts.storageKey, serialize(value)); } catch { /* sandboxed */ }
     });
     // No holder to set — owner is resolved from the shared currentUserId.
-    return makeSynced(base, opts.objectType, ownerId, persistLocal, opts.debounceMs ?? 800, () => { /* shared owner */ });
+    return makeSynced(base, opts.objectType, ownerId, persistLocal, opts.debounceMs ?? 800, () => { /* shared owner */ }, undefined, true);
 }
 
 export const oneSaveSync = {

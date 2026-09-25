@@ -8,7 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { withSync, syncStatusStore } from '../lib/oneSaveStore';
+import { withSync, withSyncStatic, oneSaveSync, syncStatusStore } from '../lib/oneSaveStore';
 import { oneSaveClient } from '../lib/oneSaveClient';
 import type { DwelliumObject } from '../lib/oneSaveClient';
 
@@ -177,4 +177,52 @@ describe('oneSaveStore dirty marker', () => {
         // The last write actually persisted is v2's.
         expect(localStorage.getItem(resolveKey())).toBe('v2');
     });
+
+    it('e) shared-slot (static) store: A\'s stale marker never pushes B\'s data into A\'s remote', async () => {
+        await oneSaveSync.bootstrap(null);
+        const store = withSyncStatic(
+            createLocalStorageStore<string>({ key: 'slot-test', deserializer: (raw) => raw ?? '', defaultValue: '' }),
+            { objectType: 'slot-test', storageKey: 'slot-test', debounceMs: 10_000, serialize: (v: string) => v },
+        );
+        const remoteFor = (payloads: Record<string, string | null>) => vi.mocked(oneSaveClient.get).mockImplementation(async (id: string) => {
+            const p = payloads[id];
+            return p == null ? null : savedObject(id, id.split('_')[1], p);
+        });
+
+        remoteFor({});
+        await oneSaveSync.bootstrap('A');
+        store.set('A edit', () => localStorage.setItem('slot-test', 'A edit')); // unsaved → marker for slot-test_A
+        expect(localStorage.getItem(dirtyKey('slot-test_A'))).toBe('1');
+
+        remoteFor({ 'slot-test_B': 'B theme' });
+        await oneSaveSync.bootstrap('B'); // B's remote fills the shared slot
+        expect(store.getSnapshot()).toBe('B theme');
+
+        remoteFor({ 'slot-test_A': 'A remote' });
+        await oneSaveSync.bootstrap('A');
+        expect(store.getSnapshot()).toBe('A remote');
+        expect(localStorage.getItem(dirtyKey('slot-test_A'))).toBeNull();
+
+        await vi.advanceTimersByTimeAsync(30_000);
+        const pushedIntoA = vi.mocked(oneSaveClient.put).mock.calls.filter(([o]) => o.id === 'slot-test_A' && o.payload === 'B theme');
+        expect(pushedIntoA).toHaveLength(0);
+        await oneSaveSync.bootstrap(null);
+    });
+
+    it('f) shared-slot store, same owner reload: the unsaved edit still wins', async () => {
+        await oneSaveSync.bootstrap(null);
+        vi.mocked(oneSaveClient.get).mockResolvedValue(null);
+        await oneSaveSync.bootstrap('A');
+        const mk = () => withSyncStatic(
+            createLocalStorageStore<string>({ key: 'slot-test2', deserializer: (raw) => raw ?? '', defaultValue: '' }),
+            { objectType: 'slot-test2', storageKey: 'slot-test2', debounceMs: 10_000, serialize: (v: string) => v },
+        );
+        mk().set('A edit', () => localStorage.setItem('slot-test2', 'A edit'));
+        const reloaded = mk();
+        vi.mocked(oneSaveClient.get).mockResolvedValue(savedObject('slot-test2_A', 'A', 'stale remote'));
+        await reloaded.hydrate();
+        expect(reloaded.getSnapshot()).toBe('A edit');
+        await oneSaveSync.bootstrap(null);
+    });
 });
+

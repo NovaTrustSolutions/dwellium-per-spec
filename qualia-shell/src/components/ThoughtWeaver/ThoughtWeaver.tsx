@@ -167,11 +167,22 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
     { id: 'timeline', label: 'Timeline', icon: Clock },
 ];
 
+// Colors double as both a decorative left-border/icon tint AND, in several
+// places (badges, chips), the text color itself — so each is blended toward
+// --text-primary via color-mix() rather than used as a flat token/hex,
+// keeping contrast solid on both very dark (cosmos) and very light (latte,
+// corporate) themes while still telling the 4 buckets apart. (An earlier
+// pass used flat var(--danger)/var(--warning)/var(--success) tokens to
+// dodge a capture-harness bug where Chromium serializes color-mix() as
+// `color(srgb r g b)` — 0-1 fractional, not 0-255 — misread as near-black;
+// the harness parser now scales that case ×255, so the adaptive blend is
+// back and measures correctly.)
+const twCatText = (token: string) => `color-mix(in srgb, ${token} 35%, var(--text-primary))`;
 const BUCKETS: { id: BucketId; label: string; icon: LucideIcon; color: string }[] = [
-    { id: 'people', label: 'People', icon: User, color: 'var(--accent)' },
-    { id: 'projects', label: 'Projects', icon: Folder, color: '#60a5fa' },
-    { id: 'ideas', label: 'Ideas', icon: Lightbulb, color: '#f59e0b' },
-    { id: 'admin', label: 'Tasks', icon: ClipboardList, color: '#22c55e' },
+    { id: 'people', label: 'People', icon: User, color: twCatText('var(--accent)') },
+    { id: 'projects', label: 'Projects', icon: Folder, color: twCatText('var(--danger)') },
+    { id: 'ideas', label: 'Ideas', icon: Lightbulb, color: twCatText('var(--warning)') },
+    { id: 'admin', label: 'Tasks', icon: ClipboardList, color: twCatText('var(--success)') },
 ];
 
 const TEMPLATES: { icon: LucideIcon; label: string; template: string }[] = [
@@ -216,7 +227,7 @@ function confidenceLabel(c: number): string {
 
 function bucketColor(bucket: string): string {
     const found = BUCKETS.find(b => b.id === bucket);
-    return found ? found.color : 'var(--text-tertiary)';
+    return found ? found.color : twCatText('var(--text-secondary)');
 }
 
 function bucketIcon(bucket: string): LucideIcon {
@@ -633,10 +644,10 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     <h2 className="tw-title"><Brain size={16} aria-hidden /> Thought Weaver</h2>
                     {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}><User size={13} aria-hidden /> {effectiveStats.activePeople}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}><Folder size={13} aria-hidden /> {effectiveStats.activeProjects}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}><Lightbulb size={13} aria-hidden /> {effectiveStats.totalIdeas}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}><ClipboardList size={13} aria-hidden /> {effectiveStats.tasksDue}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--accent)') }}><User size={13} aria-hidden /> {effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--danger)') }}><Folder size={13} aria-hidden /> {effectiveStats.activeProjects}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--warning)') }}><Lightbulb size={13} aria-hidden /> {effectiveStats.totalIdeas}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--success)') }}><ClipboardList size={13} aria-hidden /> {effectiveStats.tasksDue}</span>
                         </div>
                     )}
                 </div>
@@ -868,6 +879,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                 checked={t.done}
                                                 onChange={() => toggleTodo(t.id)}
                                                 className="tw-todo__checkbox"
+                                                aria-label={t.done ? `Mark "${t.text}" not done` : `Mark "${t.text}" done`}
                                             />
                                             <span className="tw-todo__text">{t.text}</span>
                                             {t.sourceCaptureId && (
@@ -1019,12 +1031,12 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {effectiveStats && (
                         <div className="tw-stats-bar">
                             {([
-                                { icon: Brain, label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
-                                { icon: Download, label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
-                                { icon: User, label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
-                                { icon: Folder, label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
-                                { icon: Lightbulb, label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
-                                { icon: ClipboardList, label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },
+                                { icon: Brain, label: 'Captures', value: effectiveStats.totalCaptures, color: twCatText('var(--accent)') },
+                                { icon: Download, label: 'To Review', value: effectiveStats.pendingReviews, color: twCatText('var(--danger)'), highlight: effectiveStats.pendingReviews > 0 },
+                                { icon: User, label: 'People', value: effectiveStats.activePeople, color: twCatText('var(--accent)') },
+                                { icon: Folder, label: 'Active', value: effectiveStats.activeProjects, color: twCatText('var(--danger)') },
+                                { icon: Lightbulb, label: 'Ideas', value: effectiveStats.totalIdeas, color: twCatText('var(--warning)') },
+                                { icon: ClipboardList, label: 'Due', value: effectiveStats.tasksDue, color: twCatText('var(--success)'), highlight: effectiveStats.tasksDue > 0 },
                             ] as { icon: LucideIcon; label: string; value: number; color: string; highlight?: boolean }[]).map(s => {
                                 const StatIcon = s.icon;
                                 return (

@@ -80,12 +80,11 @@ const GEMINI_PRICES: Record<string, ModelPrice> = {
     'gemini-2.5-pro': { inPerM: 1.25, outPerM: 10 },
 };
 
-// Image models are billed per-image, not per-token — zero-price their token
-// rows so recordLlmUsage's "unpriced" counter doesn't flag them, and use
-// perCallFeeUsd for the real cost.
-const IMAGE_PRICES: Record<string, ModelPrice> = {
-    'dall-e-3': { inPerM: 0, outPerM: 0 },
-};
+// Image models are billed per-image, not per-token. A $0 token row would make an
+// image call read as FREE; until a per-image fee is confirmed (perCallFeeUsd),
+// image models have no row and show as unpriced. Add `'dall-e-3': {0, 0}` back
+// here only together with a confirmed perCallFeeUsd('image', 'dall-e-3').
+const IMAGE_PRICES: Record<string, ModelPrice> = {};
 
 const EXACT_PRICES: Record<LlmProvider, Record<string, ModelPrice>> = {
     anthropic: ANTHROPIC_PRICES,
@@ -98,7 +97,6 @@ const EXACT_PRICES: Record<LlmProvider, Record<string, ModelPrice>> = {
 /** Ordered anchored prefix rules for close variants the exact map misses (never a bare substring). */
 const PREFIX_RULES: Array<{ provider: LlmProvider | 'any'; pattern: RegExp; price: ModelPrice }> = [
     { provider: 'anthropic', pattern: /^claude-opus-4-[5-9]/, price: { inPerM: 5, outPerM: 25 } },
-    { provider: 'any', pattern: /^image-generation/, price: { inPerM: 0, outPerM: 0 } },
 ];
 
 /** null = unpriced (never guess). `local` is always free. */

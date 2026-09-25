@@ -57,9 +57,9 @@ describe('priceFor — anchored table', () => {
         expect(priceFor('anything-goes', 'local')).toEqual({ inPerM: 0, outPerM: 0 });
     });
 
-    it('image models are token-zero-priced (billed via perCallFeeUsd instead)', () => {
-        expect(priceFor('dall-e-3', 'openai')).toEqual({ inPerM: 0, outPerM: 0 });
-        expect(priceFor('image-generation-001', 'gemini')).toEqual({ inPerM: 0, outPerM: 0 });
+    it('image models with no confirmed per-image fee are unpriced, never "free"', () => {
+        expect(priceFor('dall-e-3', 'openai')).toBeNull();
+        expect(priceFor('image-generation-001', 'gemini')).toBeNull();
     });
 
     it('strips vendor/ prefix, -latest, and a trailing -YYYYMMDD date', () => {

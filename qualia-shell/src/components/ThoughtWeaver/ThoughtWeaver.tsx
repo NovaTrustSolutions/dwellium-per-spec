@@ -29,6 +29,7 @@ import {
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { twSyncConfig, pullCaptures, planImport } from './thoughtWeaverSync';
 import { pullInbox } from './twInbox';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
@@ -43,10 +44,9 @@ import {
     importCaptures,
 } from './thoughtWeaverStore';
 import type { LocalCapture } from './thoughtWeaverStore';
-import { twImportedStore, twImportedUserIdHolder, markImported } from './twImportedStore';
+import { twImportedStore, markImported } from './twImportedStore';
 import {
     todoStore,
-    todoUserIdHolder,
     addTodo,
     syncTodosFromCaptures,
     toggleTodo,
@@ -56,7 +56,6 @@ import {
 import type { TodoItem } from './todoStore';
 import {
     reportStore,
-    reportUserIdHolder,
     addDailyReport,
     addWeeklySummary,
     setInsights,
@@ -233,20 +232,35 @@ function BucketIcon({ bucket, size = 14 }: { bucket: string; size?: number }) {
 
 // ── Component ────────────────────────────────────────────────────────
 
+/**
+ * Thoughts belong to the signed-in account (plan 067): with nobody signed in
+ * there is no workspace at all — never the shared `_anonymous` bucket, which
+ * every visitor of this browser would read and write. Anonymous thoughts
+ * captured before this change stay in that bucket untouched.
+ */
 export default function ThoughtWeaver() {
+    const userCtx = useContext(UserContext);
+    const userId = userCtx?.user?.id ?? null;
+    if (!userId) {
+        return (
+            <div className="tw">
+                <p className="tw-empty" role="status">
+                    Sign in to use Thought Weaver — your thoughts are saved to your own account.
+                </p>
+            </div>
+        );
+    }
+    return <ThoughtWeaverWorkspace userId={userId} />;
+}
+
+function ThoughtWeaverWorkspace({ userId }: { userId: string }) {
     const { integrations } = useIntegrations();
 
     // ── Per-user local persistence (Phase-8+ Task 8.10 Option β dynamic-key) ──
-    // Read UserContext directly (NOT useUser()) so anonymous/test envs degrade
-    // gracefully to the `_anonymous` namespace — matches useIntegrations pattern.
-    const userCtx = useContext(UserContext);
-    const userId = userCtx?.user?.id ?? null;
-    // Update holder DURING render BEFORE useSyncExternalStore reads — factory
-    // cache invalidates automatically when the key resolver returns a fresh value.
-    thoughtWeaverUserIdHolder.current = userId;
-    twImportedUserIdHolder.current = userId;
-    todoUserIdHolder.current = userId;
-    reportUserIdHolder.current = userId;
+    // The single identity writer points every per-user holder (captures,
+    // imported ids, to-dos, reports — plan 067) at this user BEFORE the
+    // useSyncExternalStore reads below.
+    usePerUserIdentity();
     const localCaptures: LocalCapture[] = useSyncExternalStore(
         thoughtWeaverStore.subscribe,
         thoughtWeaverStore.getSnapshot,

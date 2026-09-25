@@ -30,12 +30,24 @@ export interface LlmRequest {
     maxTokens?: number;          // default 1024
     temperature?: number;        // default 0.3
     responseFormat?: 'text' | 'json';   // hint for providers that support it
+    /** Plan 068: which feature made the call ('ara' | 'persona' | 'honcho' | 'test' ...) — AI Spend "by feature". */
+    source?: string;
+}
+
+/** Plan 068: provider-reported token usage (measured, not estimated). */
+export interface LlmUsage {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
 }
 
 export interface LlmResponse {
     text: string;
     provider: LlmProvider;
     model: string;
+    /** Plan 068: real usage when the provider reported it. */
+    usage?: LlmUsage;
 }
 
 export class LlmError extends Error {

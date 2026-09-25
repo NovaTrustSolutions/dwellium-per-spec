@@ -20,6 +20,7 @@ import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { llmUsageUserIdHolder } from './perUserIdentity';
 import type { LlmProvider } from '../types/integrations';
+import type { LlmUsage } from './llmClient';
 
 export interface UsageEntry {
     ts: number;
@@ -39,6 +40,13 @@ export interface DailyRollup {
     estOut: number;
     estCost: number;
     byProvider: Partial<Record<LlmProvider, { calls: number; estCost: number }>>;
+    /** Plan 068: calls whose model had no known price (their cost is NOT in estCost). */
+    unpriced?: number;
+    /** Plan 068: calls priced from provider-reported tokens (vs chars/4 estimate). */
+    measuredCalls?: number;
+    /** Plan 068: per-model and per-feature breakdowns. */
+    byModel?: Record<string, { calls: number; estCost: number }>;
+    bySource?: Record<string, { calls: number; estCost: number }>;
 }
 
 export interface UsageLedger {
@@ -119,8 +127,33 @@ function localDate(ts: number): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Plan 068 contract. `userId` is REQUIRED: capture it with currentUsageUserId()
+ * BEFORE the provider `await`, so a logout / account switch mid-call can't land
+ * usage in the wrong ledger.
+ */
+export interface UsageInput {
+    provider: LlmProvider;
+    model: string;
+    /** Fallback estimate inputs (chars/4) — used only when `usage` is absent. */
+    promptChars: number;
+    responseChars: number;
+    /** Provider-reported tokens; preferred when present. */
+    usage?: LlmUsage;
+    /** Flat per-call fees (web search, image generation), USD. */
+    extraCostUsd?: number;
+    /** Feature that made the call ('ara' | 'persona' | 'research' | 'skill:web_search' | 'honcho' | 'test' ...). */
+    source?: string;
+    userId: string | null;
+}
+
+/** The ledger owner right now — call BEFORE awaiting the provider. */
+export function currentUsageUserId(): string | null {
+    return llmUsageUserIdHolder.current;
+}
+
 /** Record one completion. NEVER throws (called from inside callLlm). */
-export function recordLlmUsage(input: { provider: LlmProvider; model: string; promptChars: number; responseChars: number }): void {
+export function recordLlmUsage(input: UsageInput): void {
     try {
         const estIn = Math.ceil(input.promptChars / 4);
         const estOut = Math.ceil(input.responseChars / 4);

@@ -41,7 +41,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import {
     ChevronLeft, ChevronRight, ExternalLink, Package, Plus, RotateCw, Settings as SettingsIcon, Wrench, X,
 } from 'lucide-react';
-import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
+import { WIDGET_REGISTRY, WINDOW_COMPONENTS, resolveWidgetId } from '../../registry/widgetRegistry';
 import { tierOf, type WidgetTier } from '../../lib/onboardingStore';
 import { getIcon } from '../Sidebar/iconMap';
 import { fluidOsStore } from '../../lib/fluidOsStore';
@@ -135,8 +135,8 @@ function restoredCockpitTabs(): { tabs: NavWidget[]; active: string } {
     const slice = restoreOsTabs(snap.fluid, 'fluid');
     const tabs: NavWidget[] = slice.tabs.map((id) => ({
         id,
-        label: WIDGET_REGISTRY[id]?.label ?? id,
-        icon: WIDGET_REGISTRY[id]?.icon ?? '',
+        label: WIDGET_REGISTRY[resolveWidgetId(id)]?.label ?? id,
+        icon: WIDGET_REGISTRY[resolveWidgetId(id)]?.icon ?? '',
     }));
     return { tabs, active: slice.active ?? 'ara-console' };
 }

@@ -21,6 +21,8 @@ vi.mock('../registry/widgetRegistry', () => ({
         alpha: { id: 'alpha', label: 'Alpha', icon: 'layout-grid', minWidth: 720, minHeight: 460 },
         tiny: { id: 'tiny', label: 'Tiny', icon: 'layout-grid' },
     },
+    // plan 066: registry now also exports resolveWidgetId (retired id → live id); identity suffices for these ids.
+    resolveWidgetId: (id: string) => id,
     WINDOW_COMPONENTS: {},
 }));
 

@@ -53,7 +53,9 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + token-saver (token-saver skill status + estimated savings ring) → 68.
         //   + research-lab (labs-tier free-LLM sandbox, data-firewalled — see
         //     researchLabImportGuard.test.ts) → 69.
-        expect(ids.length).toBe(69);
+        //   − inbox-zero (plan 066 phase 3: retired alias entry deleted;
+        //     resolveWidgetId('inbox-zero') now maps read-time to 'inbox') → 68.
+        expect(ids.length).toBe(68);
     });
 
     // Plan 047: every widget carries a first-open tip whose related ids resolve.

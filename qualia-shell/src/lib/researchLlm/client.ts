@@ -52,7 +52,12 @@ export interface ResearchRunResult extends ResearchLogResponse {
     corsBlocked?: boolean;
     /** HTTP status when the provider answered at all. */
     status?: number;
+    /** UI-only: this slot hasn't settled yet (seeded placeholder, never persisted). */
+    pending?: boolean;
 }
+
+/** Default per-run timeout (plan 062 phase 1) — one hanging provider must not hang the widget. */
+export const RESEARCH_TIMEOUT_MS = 60_000;
 
 interface ChatCompletionBody {
     choices?: { message?: { content?: string } }[];
@@ -82,13 +87,18 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
     // already ends in /openai — and send NO Authorization header.
     const url = provider.keyless ? provider.baseUrl : chatCompletionsUrl(provider.baseUrl);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (!provider.keyless) headers.Authorization = `Bearer ${req.apiKey}`;
+    // Empty key ⇒ no header (keyOptional providers' anonymous tier); keyed
+    // providers never reach here without a key — the widget gates them.
+    if (!provider.keyless && req.apiKey) headers.Authorization = `Bearer ${req.apiKey}`;
+    // Compose the caller's signal (Cancel button) with a hard default timeout
+    // so one hanging free provider can never hang the widget forever.
+    const signal = AbortSignal.any([req.signal, AbortSignal.timeout(RESEARCH_TIMEOUT_MS)].filter(Boolean) as AbortSignal[]);
     try {
         const res = await fetch(url, {
             method: 'POST',
             headers,
             body: JSON.stringify({ model: req.model, messages, stream: false }),
-            signal: req.signal,
+            signal,
         });
         const latencyMs = Date.now() - started;
         const raw = await res.text();
@@ -114,7 +124,64 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
         if (err instanceof TypeError) {
             return { ...base, latencyMs, corsBlocked: true, error: 'This provider stopped allowing browser calls (it passed the 2026-08-29 CORS audit) — report it so it can be re-audited.' };
         }
+        // Check TimeoutError before AbortError — AbortSignal.timeout's own abort
+        // reason carries the more specific name; a caller Cancel is a plain AbortError.
+        if ((err as Error)?.name === 'TimeoutError') return { ...base, latencyMs, error: `Timed out after ${RESEARCH_TIMEOUT_MS / 1000}s.` };
         if ((err as Error)?.name === 'AbortError') return { ...base, latencyMs, error: 'Cancelled.' };
         return { ...base, latencyMs, error: String(err) };
+    }
+}
+
+export interface ListModelsResult {
+    /** Sorted, de-duplicated model ids. Present only on success. */
+    models?: string[];
+    error?: string;
+    corsBlocked?: boolean;
+}
+
+interface ModelsListBody {
+    data?: { id?: string }[];
+}
+
+export function modelsUrl(baseUrl: string): string {
+    return `${baseUrl.replace(/\/+$/, '')}/models`;
+}
+
+/**
+ * GET {base}/models — same keyless/Authorization branching as
+ * runResearchChat, plus one usability deviation (plan 062 phase 4, Ilya gate
+ * G1 default): an EMPTY apiKey sends NO Authorization header rather than
+ * "Bearer " — most providers' /models endpoint (OpenRouter included) is
+ * public, so the picker can populate before the user has pasted a key.
+ * Never throws — errors are data.
+ */
+export async function listModels(providerId: string, apiKey: string, signal?: AbortSignal): Promise<ListModelsResult> {
+    const provider = getResearchProvider(providerId);
+    if (!provider) return { error: `Unknown provider "${providerId}"` };
+    if (provider.unusable) return { error: provider.note ?? 'Provider is not usable browser-direct.' };
+    if (provider.needsAccountId && provider.baseUrl.includes('{account_id}')) {
+        return { error: 'Cloudflare needs your account id in the base URL before it can be called.' };
+    }
+    const url = provider.keyless ? provider.baseUrl : modelsUrl(provider.baseUrl);
+    const headers: Record<string, string> = {};
+    if (!provider.keyless && apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const composedSignal = AbortSignal.any([signal, AbortSignal.timeout(RESEARCH_TIMEOUT_MS)].filter(Boolean) as AbortSignal[]);
+    try {
+        const res = await fetch(url, { method: 'GET', headers, signal: composedSignal });
+        const raw = await res.text();
+        if (!res.ok) return { error: `HTTP ${res.status}: ${raw.slice(0, 500)}` };
+        let body: ModelsListBody;
+        try { body = JSON.parse(raw) as ModelsListBody; } catch {
+            return { error: `Non-JSON response: ${raw.slice(0, 300)}` };
+        }
+        const ids = (body.data ?? [])
+            .map(m => m.id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0);
+        return { models: [...new Set(ids)].sort() };
+    } catch (err) {
+        if (err instanceof TypeError) return { error: 'CORS-blocked fetching the model list.', corsBlocked: true };
+        if ((err as Error)?.name === 'TimeoutError') return { error: `Timed out after ${RESEARCH_TIMEOUT_MS / 1000}s.` };
+        if ((err as Error)?.name === 'AbortError') return { error: 'Cancelled.' };
+        return { error: String(err) };
     }
 }

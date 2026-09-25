@@ -1,7 +1,7 @@
 /**
  * Research Lab DATA FIREWALL — the enforcement.
  *
- * The Research Lab sends user-typed text to 31 FREE third-party LLM providers
+ * The Research Lab sends user-typed text to 22 FREE third-party LLM providers
  * that may train on it. "These providers can never receive financial or
  * customer/tenant data" must be a property of the codebase, not a promise —
  * so this suite statically walks the import graph of src/lib/researchLlm/**

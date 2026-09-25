@@ -1,5 +1,5 @@
 /**
- * ResearchLab — sandboxed playground over the 31 free LLM API providers from
+ * ResearchLab — sandboxed playground over the 22 free LLM API providers from
  * github.com/NovaTrustSolutions/awesome-freellm-apis (labs tier, ⌘K "labs:").
  *
  * THE DATA FIREWALL: this widget and src/lib/researchLlm/** import NOTHING
@@ -17,21 +17,29 @@
  * (backend deploys are blocked); streaming is also deliberately out (v1 is
  * stream:false).
  */
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { ExternalLink, FlaskConical, KeyRound, Play, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { ChevronDown, ChevronRight, Copy, ExternalLink, FlaskConical, KeyRound, Play, Trash2, X } from 'lucide-react';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, useWidgetMemory } from '../../lib/widgetMemory';
 import { RESEARCH_PROVIDERS, RESEARCH_PROVIDERS_UPDATED, ResearchProvider } from '../../data/researchProviders';
 import { guardOutbound } from '../../lib/researchLlm/guard';
-import { RESEARCH_PRESETS, ResearchRunResult, runResearchChat } from '../../lib/researchLlm/client';
+import { RESEARCH_PRESETS, ResearchRunResult, listModels, runResearchChat } from '../../lib/researchLlm/client';
 import { getResearchKey, researchKeysStore, setResearchKey } from '../../lib/researchLlm/researchKeysStore';
-import { addLogEntry, removeLogEntry, researchLogStore } from '../../lib/researchLlm/researchLogStore';
+import { ResearchLogEntry, addLogEntry, removeLogEntry, researchLogStore } from '../../lib/researchLlm/researchLogStore';
 import './ResearchLab.css';
 
 type Tab = 'playground' | 'providers' | 'keys' | 'history';
 type CorsStatus = 'unknown' | 'ok' | 'blocked';
+interface CorsEntry { status: CorsStatus; checkedAt: number; }
 
 const MAX_SELECTED = 4;
+/** Plan 062 phase 2 — a verdict this old is stale: retry it instead of blocklisting forever. */
+const CORS_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function effectiveCorsStatus(entry: CorsEntry | undefined): CorsStatus {
+    if (!entry || Date.now() - entry.checkedAt > CORS_STALE_MS) return 'unknown';
+    return entry.status;
+}
 
 export default function ResearchLab() {
     usePerUserIdentity();
@@ -46,6 +54,14 @@ export default function ResearchLab() {
         prompt: '',
         presetId: RESEARCH_PRESETS[0].id,
         selected: {} as Record<string, string>,
+        // Plan 062 phase 2 — CORS verdicts ride One Save like the rest of the
+        // slice, so a reload doesn't re-enable a provider that stopped
+        // allowing browser calls. A verdict older than CORS_STALE_MS reads as
+        // 'unknown' (see effectiveCorsStatus) instead of blocking forever.
+        cors: {} as Record<string, CorsEntry>,
+        // Plan 062 phase 4 — last model picked per provider (NOT the model
+        // catalog itself — that's session-only, see modelCacheRef below).
+        lastModel: {} as Record<string, string>,
     });
     const tab: Tab = (['playground', 'providers', 'keys', 'history'] as const).includes(mem.tab as Tab) ? (mem.tab as Tab) : 'playground';
     const setTab = (t: Tab): void => patchMem({ tab: t });
@@ -57,54 +73,148 @@ export default function ResearchLab() {
     const selected = mem.selected;
     const setSelected = (updater: (prev: Record<string, string>) => Record<string, string>): void =>
         patchMem({ selected: updater(mem.selected) });
-    useEffect(() => flushWidgetMemory, []); // flush the draft on unmount
+    const setCors = (updater: (prev: Record<string, CorsEntry>) => Record<string, CorsEntry>): void =>
+        patchMem({ cors: updater(mem.cors) });
+    const corsStatus = (id: string): CorsStatus => effectiveCorsStatus(mem.cors[id]);
+    /** Plan 062 phase 1 — one AbortController per run; aborted by Cancel and on unmount. */
+    const controllerRef = useRef<AbortController | null>(null);
+    const unmountedRef = useRef(false);
+    useEffect(() => {
+        // StrictMode dev double-invokes this effect (mount → cleanup → mount);
+        // without this reset the cleanup's `true` would stick and every
+        // post-await state update below would be silently skipped.
+        unmountedRef.current = false;
+        return () => {
+            unmountedRef.current = true;
+            flushWidgetMemory(); // flush the draft on unmount
+            controllerRef.current?.abort();
+        };
+    }, []);
     const [results, setResults] = useState<ResearchRunResult[] | null>(null);
     const [running, setRunning] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
     const [pendingWarn, setPendingWarn] = useState<string | null>(null);
-    /** Session-only CORS probe results (first real call per provider decides). */
-    const [cors, setCors] = useState<Record<string, CorsStatus>>({});
+    /** Plan 062 phase 3 — History entries expand in place; view-only, not persisted. */
+    const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(new Set());
+    const toggleExpanded = (id: string) => setExpandedLogIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+    /** Re-run: load a past entry's prompt + preset back into the Playground and switch to it. */
+    const rerunEntry = (entry: ResearchLogEntry) => patchMem({ prompt: entry.prompt, presetId: entry.systemPreset, tab: 'playground' });
+
+    // Plan 062 phase 4 — model catalogs are session-only and deliberately NOT
+    // synced (they change server-side; a stale synced list would mislead).
+    // Cached in a ref, keyed by providerId, fetched once per provider for as
+    // long as this component instance stays mounted; a tick state forces the
+    // re-render the ref mutation itself can't trigger.
+    const modelCacheRef = useRef<Record<string, { status: 'loading' | 'ready' | 'error'; models: string[] }>>({});
+    const [, bumpModelCacheTick] = useState(0);
+    /** Per-provider "type a model id instead" override — view-only, not persisted. */
+    const [freeTextOverride, setFreeTextOverride] = useState<Set<string>>(new Set());
+    const toggleFreeText = (id: string) => setFreeTextOverride(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+
+    const fetchModels = (providerId: string) => {
+        if (modelCacheRef.current[providerId]) return; // already fetched (or in flight) this mount
+        modelCacheRef.current[providerId] = { status: 'loading', models: [] };
+        void listModels(providerId, getResearchKey(providerId)).then(r => {
+            modelCacheRef.current[providerId] = { status: r.models?.length ? 'ready' : 'error', models: r.models ?? [] };
+            if (!unmountedRef.current) bumpModelCacheTick(v => v + 1);
+        });
+    };
+
+    // Selections restored from widgetMemory never went through toggleProvider,
+    // so fetch their model lists on mount too (cache ref dedupes StrictMode's
+    // double-invoke).
+    useEffect(() => {
+        for (const id of Object.keys(selected)) if (!isKeyless(id)) fetchModels(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+    }, []);
+
+    const setModelFor = (id: string, value: string): void => {
+        setSelected(prev => ({ ...prev, [id]: value }));
+        patchMem({ lastModel: { ...mem.lastModel, [id]: value } });
+    };
 
     const toggleProvider = (p: ResearchProvider) => {
-        if (p.unusable || cors[p.id] === 'blocked') return;
+        if (p.unusable || corsStatus(p.id) === 'blocked') return;
+        if (!(p.id in selected) && Object.keys(selected).length >= MAX_SELECTED) {
+            setNotice(`Pick at most ${MAX_SELECTED} providers — deselect one first.`);
+            return;
+        }
+        const wasSelected = p.id in selected;
         setSelected(prev => {
             if (p.id in prev) {
                 const next = { ...prev };
                 delete next[p.id];
                 return next;
             }
-            if (Object.keys(prev).length >= MAX_SELECTED) return prev;
-            // Keyless providers ship a fixed model menu — default to the first.
-            return { ...prev, [p.id]: p.keyless && p.models?.length ? p.models[0].id : '' };
+            // Keyless providers ship a fixed model menu — default to the
+            // first; otherwise reopen on whatever model was used last time.
+            return { ...prev, [p.id]: p.keyless && p.models?.length ? p.models[0].id : (mem.lastModel[p.id] ?? '') };
         });
+        // Fetch the model list on select regardless of whether a key is set
+        // yet — most /models endpoints are public (see client.ts). Keyless
+        // providers keep their fixed menu untouched.
+        if (!wasSelected && !p.keyless) fetchModels(p.id);
     };
 
     const execute = async () => {
         const entries = Object.entries(selected);
         setNotice(null);
         setRunning(true);
-        setResults(null);
-        const runs = await Promise.all(entries.map(([providerId, model]) =>
-            runResearchChat({ providerId, model: model.trim(), apiKey: getResearchKey(providerId), presetId, prompt })));
-        setCors(prev => {
-            const next = { ...prev };
-            for (const r of runs) next[r.providerId] = r.corsBlocked ? 'blocked' : (next[r.providerId] === 'blocked' ? 'blocked' : (r.error && !r.status ? next[r.providerId] ?? 'unknown' : 'ok'));
-            return next;
-        });
-        setResults(runs);
-        setRunning(false);
-        addLogEntry({
-            prompt,
-            systemPreset: presetId,
-            responses: runs.map(({ providerId, model, text, latencyMs, error, usage }) => ({ providerId, model, text, latencyMs, error, usage })),
-        });
+        // Seed a pending placeholder per slot — cards fill in independently as
+        // each provider settles, instead of everything waiting on the slowest.
+        setResults(entries.map(([providerId, model]) => ({ providerId, model: model.trim(), text: '', latencyMs: 0, pending: true })));
+        const controller = new AbortController();
+        controllerRef.current = controller;
+        const settled: ResearchRunResult[] = new Array(entries.length);
+        await Promise.all(entries.map(([providerId, model], i) =>
+            runResearchChat({ providerId, model: model.trim(), apiKey: getResearchKey(providerId), presetId, prompt, signal: controller.signal })
+                .then(r => {
+                    settled[i] = r;
+                    if (!unmountedRef.current) setResults(prev => prev && prev.map((x, xi) => (xi === i ? r : x)));
+                })));
+        controllerRef.current = null;
+        if (!unmountedRef.current) {
+            setCors(prev => {
+                const now = Date.now();
+                const next = { ...prev };
+                for (const r of settled) {
+                    const priorStatus = effectiveCorsStatus(next[r.providerId]);
+                    const status: CorsStatus = r.corsBlocked
+                        ? 'blocked'
+                        : priorStatus === 'blocked'
+                            ? 'blocked'
+                            : (r.error && !r.status ? priorStatus : 'ok');
+                    next[r.providerId] = { status, checkedAt: now };
+                }
+                return next;
+            });
+            setRunning(false);
+        }
+        // Plan 062 phase 3 — an all-errors run (every response failed with no
+        // text) burns no slot in the 50-entry log cap; it wasn't an experiment.
+        const allFailed = settled.every(r => !!r.error && !r.text);
+        if (!allFailed) {
+            addLogEntry({
+                prompt,
+                systemPreset: presetId,
+                responses: settled.map(({ providerId, model, text, latencyMs, error, usage }) => ({ providerId, model, text, latencyMs, error, usage })),
+            });
+        }
     };
 
     const run = (confirmed = false) => {
         const entries = Object.entries(selected);
         if (!prompt.trim()) { setNotice('Type a prompt first.'); return; }
         if (entries.length === 0) { setNotice('Pick 1–4 providers below.'); return; }
-        const missingKey = entries.find(([id]) => !isKeyless(id) && !getResearchKey(id));
+        const missingKey = entries.find(([id]) => !isKeyless(id) && !isKeyOptional(id) && !getResearchKey(id));
         if (missingKey) { setNotice(`No API key set for ${providerName(missingKey[0])} — add it in the Keys tab.`); return; }
         const missingModel = entries.find(([, m]) => !m.trim());
         if (missingModel) { setNotice(`Enter a model id for ${providerName(missingModel[0])}.`); return; }
@@ -152,12 +262,13 @@ export default function ResearchLab() {
                             <button
                                 key={p.id}
                                 className={p.id in selected ? 'rl-chip active' : 'rl-chip'}
-                                disabled={cors[p.id] === 'blocked'}
-                                title={cors[p.id] === 'blocked' ? (p.keyless ? 'temporarily unreachable — try again later' : 'provider stopped allowing browser calls — re-audit needed') : p.name}
+                                disabled={corsStatus(p.id) === 'blocked'}
+                                title={corsStatus(p.id) === 'blocked' ? (p.keyless ? 'temporarily unreachable — try again later' : 'provider stopped allowing browser calls — re-audit needed') : p.name}
                                 onClick={() => toggleProvider(p)}
                             >
-                                {p.name}{p.keyless ? '' : keys[p.id] ? '' : ' (no key)'}
+                                {p.name}{p.keyless || keys[p.id] ? '' : p.keyOptional ? ' (key optional)' : ' (no key)'}
                                 {p.keyless && <span className="rl-chip-badge">no key needed</span>}
+                                {p.keyOptional && !keys[p.id] && <span className="rl-chip-badge">works without a key</span>}
                             </button>
                         ))}
                     </div>
@@ -165,29 +276,46 @@ export default function ResearchLab() {
                         <div className="rl-models">
                             {Object.entries(selected).map(([id, model]) => {
                                 const p = RESEARCH_PROVIDERS.find(x => x.id === id);
+                                // Keyless providers keep their fixed menu untouched; otherwise
+                                // use the fetched catalog once it lands (≥1 id), unless the
+                                // user asked for free text instead.
+                                const fixedMenu = p?.keyless && p.models ? p.models : null;
+                                const cache = modelCacheRef.current[id];
+                                const fetchedIds = cache?.status === 'ready' && cache.models.length > 0 ? cache.models : null;
+                                const dropdownOptions: { id: string; label: string }[] | null =
+                                    fixedMenu ?? (!freeTextOverride.has(id) && fetchedIds ? fetchedIds.map(m => ({ id: m, label: m })) : null);
                                 return (
                                     <label key={id} className="rl-label">
                                         {providerName(id)} model
-                                        {p?.keyless && p.models
+                                        {dropdownOptions
                                             ? (
                                                 <>
                                                     <select
                                                         value={model}
-                                                        onChange={e => setSelected(prev => ({ ...prev, [id]: e.target.value }))}
+                                                        onChange={e => setModelFor(id, e.target.value)}
                                                         aria-label={`${providerName(id)} model`}
                                                     >
-                                                        {p.models.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                                                        {dropdownOptions.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
                                                     </select>
-                                                    {p.note && <span className="rl-hint rl-note">{p.note}</span>}
+                                                    {p?.note && <span className="rl-hint rl-note">{p.note}</span>}
+                                                    {!fixedMenu && (
+                                                        <button type="button" className="rl-icon-btn" onClick={() => toggleFreeText(id)}>type a model id instead</button>
+                                                    )}
                                                 </>
                                             )
                                             : (
-                                                <input
-                                                    value={model}
-                                                    placeholder="model id, e.g. llama-3.3-70b-versatile"
-                                                    onChange={e => setSelected(prev => ({ ...prev, [id]: e.target.value }))}
-                                                    aria-label={`${providerName(id)} model id`}
-                                                />
+                                                <>
+                                                    <input
+                                                        value={model}
+                                                        placeholder="model id, e.g. llama-3.3-70b-versatile"
+                                                        onChange={e => setModelFor(id, e.target.value)}
+                                                        aria-label={`${providerName(id)} model id`}
+                                                    />
+                                                    {cache?.status === 'loading' && <span className="rl-hint">Loading models…</span>}
+                                                    {fetchedIds && (
+                                                        <button type="button" className="rl-icon-btn" onClick={() => toggleFreeText(id)}>use the model list</button>
+                                                    )}
+                                                </>
                                             )}
                                     </label>
                                 );
@@ -204,25 +332,13 @@ export default function ResearchLab() {
                             </div>
                         </div>
                     )}
-                    <button className="rl-run" disabled={running} onClick={() => run()}>
-                        <Play size={14} aria-hidden /> {running ? 'Running…' : 'Run'}
+                    <button className="rl-run" onClick={() => (running ? controllerRef.current?.abort() : run())}>
+                        {running ? <><X size={14} aria-hidden /> Cancel</> : <><Play size={14} aria-hidden /> Run</>}
                     </button>
 
                     {results && (
                         <div className="rl-results">
-                            {results.map((r, i) => (
-                                <div key={`${r.providerId}-${i}`} className="rl-result">
-                                    <div className="rl-result-head">
-                                        <strong>{providerName(r.providerId)}</strong> · {r.model || '(no model)'} · {r.latencyMs} ms
-                                        {r.usage && ` · ${r.usage.promptTokens ?? '?'}→${r.usage.completionTokens ?? '?'} tok`}
-                                    </div>
-                                    {r.error
-                                        ? <pre className="rl-error">{r.error}</pre>
-                                        : r.text
-                                            ? <pre className="rl-text">{r.text}</pre>
-                                            : <div className="rl-empty">Empty response.</div>}
-                                </div>
-                            ))}
+                            {results.map((r, i) => <ResultCard key={`${r.providerId}-${i}`} result={r} />)}
                         </div>
                     )}
                     {!results && !running && <div className="rl-empty">No runs yet — pick providers, type a prompt, hit Run.</div>}
@@ -243,14 +359,14 @@ export default function ResearchLab() {
                             <div className="rl-provider-side">
                                 {p.unusable
                                     ? <span className="rl-badge rl-badge-bad">unusable</span>
-                                    : cors[p.id] === 'blocked'
+                                    : corsStatus(p.id) === 'blocked'
                                         ? <span className="rl-badge rl-badge-bad">{p.keyless ? 'temporarily unreachable' : 'stopped allowing browser calls'}</span>
-                                        : cors[p.id] === 'ok'
+                                        : corsStatus(p.id) === 'ok'
                                             ? <span className="rl-badge rl-badge-ok">browser-direct ok</span>
                                             : <span className="rl-badge">CORS untested</span>}
                                 {p.keyless
                                     ? <span className="rl-badge rl-badge-ok">no key needed</span>
-                                    : <span className={keys[p.id] ? 'rl-badge rl-badge-ok' : 'rl-badge'}>{keys[p.id] ? 'key set' : 'no key'}</span>}
+                                    : <span className={keys[p.id] || p.keyOptional ? 'rl-badge rl-badge-ok' : 'rl-badge'}>{keys[p.id] ? 'key set' : p.keyOptional ? 'key optional' : 'no key'}</span>}
                                 {p.getKeyUrl && (
                                     <a href={p.getKeyUrl} target="_blank" rel="noopener noreferrer">
                                         Get key <ExternalLink size={12} aria-hidden />
@@ -265,7 +381,7 @@ export default function ResearchLab() {
             {tab === 'keys' && (
                 <div className="rl-pane">
                     <div className="rl-hint">
-                        <KeyRound size={13} aria-hidden /> Keys are stored per-account like the app's other keys and sync encrypted with your account. The main app's AI never sees them.
+                        <KeyRound size={13} aria-hidden /> Keys are stored per-account and sync encrypted with your account; on this device they sit in plain browser storage. Use free-tier keys only. The main app's AI never sees them.
                     </div>
                     {RESEARCH_PROVIDERS.filter(p => !p.unusable && !p.keyless).map(p => (
                         <KeyRow key={p.id} provider={p} hasKey={!!keys[p.id]} />
@@ -276,25 +392,78 @@ export default function ResearchLab() {
             {tab === 'history' && (
                 <div className="rl-pane">
                     {log.length === 0 && <div className="rl-empty">No experiments logged yet.</div>}
-                    {log.map(e => (
-                        <div key={e.id} className="rl-log-entry">
-                            <div className="rl-result-head">
-                                {new Date(e.createdAt).toLocaleString()} · {e.responses.map(r => providerName(r.providerId)).join(', ')}
-                                <button className="rl-icon-btn" aria-label={`Delete log entry from ${new Date(e.createdAt).toLocaleString()}`} onClick={() => removeLogEntry(e.id)}>
-                                    <Trash2 size={13} aria-hidden />
-                                </button>
+                    {log.map(e => {
+                        const isOpen = expandedLogIds.has(e.id);
+                        const when = new Date(e.createdAt).toLocaleString();
+                        return (
+                            <div key={e.id} className="rl-log-entry">
+                                <div className="rl-result-head">
+                                    <button className="rl-icon-btn" aria-label={isOpen ? `Collapse log entry from ${when}` : `Expand log entry from ${when}`} onClick={() => toggleExpanded(e.id)}>
+                                        {isOpen ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
+                                    </button>
+                                    {when} · {e.responses.map(r => providerName(r.providerId)).join(', ')}
+                                    <button className="rl-icon-btn" aria-label="Re-run this prompt" onClick={() => rerunEntry(e)}>Re-run</button>
+                                    <button className="rl-icon-btn" aria-label={`Delete log entry from ${when}`} onClick={() => removeLogEntry(e.id)}>
+                                        <Trash2 size={13} aria-hidden />
+                                    </button>
+                                </div>
+                                <pre className="rl-text">{e.prompt}</pre>
+                                {isOpen && (
+                                    <div className="rl-results">
+                                        {e.responses.map((r, i) => <ResultCard key={`${r.providerId}-${i}`} result={r} />)}
+                                    </div>
+                                )}
                             </div>
-                            <pre className="rl-text">{e.prompt}</pre>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
     );
 }
 
+/** Plan 062 phase 3 — one result card, shared by Playground runs and expanded History entries. */
+function ResultCard({ result }: { result: ResearchRunResult }) {
+    const [copied, setCopied] = useState(false);
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(result.text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // Clipboard API throws in a non-secure context or without permission — not fatal.
+        }
+    };
+    return (
+        <div className="rl-result">
+            <div className="rl-result-head">
+                <strong>{providerName(result.providerId)}</strong> · {result.model || '(no model)'}
+                {!result.pending && ` · ${result.latencyMs} ms`}
+                {result.usage && ` · ${result.usage.promptTokens ?? '?'}→${result.usage.completionTokens ?? '?'} tok`}
+                {!result.pending && result.text && (
+                    <button className="rl-icon-btn" aria-label={`Copy ${providerName(result.providerId)} response`} onClick={() => void copy()}>
+                        <Copy size={13} aria-hidden />
+                    </button>
+                )}
+            </div>
+            {result.pending
+                ? <div className="rl-empty">waiting…</div>
+                : result.error
+                    ? <pre className="rl-error">{result.error}</pre>
+                    : result.text
+                        ? <pre className="rl-text">{result.text}</pre>
+                        : <div className="rl-empty">Empty response.</div>}
+            {copied && <span className="rl-hint">Copied.</span>}
+        </div>
+    );
+}
+
 function providerName(id: string): string {
     return RESEARCH_PROVIDERS.find(p => p.id === id)?.name ?? id;
+}
+
+function isKeyOptional(id: string): boolean {
+    return !!RESEARCH_PROVIDERS.find(p => p.id === id)?.keyOptional;
 }
 
 function isKeyless(id: string): boolean {

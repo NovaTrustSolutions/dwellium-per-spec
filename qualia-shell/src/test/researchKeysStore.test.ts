@@ -1,9 +1,16 @@
 /**
  * researchKeysStore + researchLogStore — per-user namespace isolation
  * (Andy ≠ Lisa), log cap/truncation, and separation from the main
- * integrations key bundle.
+ * integrations key bundle. Also holds the ResearchLab skip-logging rule
+ * (plan 062 phase 3) since it's a log-store behavior exercised through the
+ * component's run loop.
  */
-import { beforeEach, describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import ResearchLab from '../components/ResearchLab/ResearchLab';
+import { resetGuardSession } from '../lib/researchLlm/guard';
+import { resetWidgetMemory } from '../lib/widgetMemory';
 import {
     getResearchKey,
     researchKeysStore,
@@ -23,10 +30,12 @@ import {
 
 beforeEach(() => {
     localStorage.clear();
+    resetWidgetMemory();
     researchKeysUserIdHolder.current = null;
     researchLogUserIdHolder.current = null;
     resetResearchKeys(); // v2.72.1 standing convention
     resetResearchLog();
+    resetGuardSession();
 });
 
 describe('key isolation', () => {
@@ -85,5 +94,51 @@ describe('experiments log', () => {
         const log = researchLogStore.getSnapshot();
         expect(log).toHaveLength(RESEARCH_LOG_CAP);
         expect(log[0].prompt).toBe(`p${RESEARCH_LOG_CAP + 4}`); // newest first
+    });
+});
+
+// Plan 062 phase 3 — an all-errors run wasn't an experiment; it burns no slot.
+describe('ResearchLab run loop — skip-logging rule', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    const typePrompt = (text: string) =>
+        fireEvent.change(screen.getByLabelText('Research prompt'), { target: { value: text } });
+
+    it('an all-error run (every response failed, no text) adds no log entry', async () => {
+        setResearchKey('groq', 'gsk-1');
+        // A fresh Response per call — mockResolvedValue would hand back the
+        // SAME instance to both the model-list probe (chip select, plan 062
+        // phase 4) and the chat-completion call, and a Response body can only
+        // be read once.
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{"error":{"message":"nope"}}', { status: 500 }));
+        render(createElement(ResearchLab));
+        typePrompt('will fail');
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        fireEvent.change(screen.getByLabelText('Groq model id'), { target: { value: 'm' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+
+        await screen.findByText(/HTTP 500/);
+        expect(researchLogStore.getSnapshot()).toEqual([]);
+    });
+
+    it('a mixed run (at least one response lands text) adds a log entry', async () => {
+        setResearchKey('groq', 'gsk-1');
+        setResearchKey('mistral', 'msk-1');
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+            if (String(url).includes('groq')) {
+                return new Response(JSON.stringify({ choices: [{ message: { content: 'ok answer' } }] }), { status: 200 });
+            }
+            return new Response('{"error":{"message":"nope"}}', { status: 500 });
+        });
+        render(createElement(ResearchLab));
+        typePrompt('mixed run');
+        fireEvent.click(screen.getByRole('button', { name: 'Groq' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Mistral AI' }));
+        fireEvent.change(screen.getByLabelText('Groq model id'), { target: { value: 'm1' } });
+        fireEvent.change(screen.getByLabelText('Mistral AI model id'), { target: { value: 'm2' } });
+        fireEvent.click(screen.getByRole('button', { name: /Run/ }));
+
+        await screen.findByText('ok answer');
+        expect(researchLogStore.getSnapshot()).toHaveLength(1);
     });
 });

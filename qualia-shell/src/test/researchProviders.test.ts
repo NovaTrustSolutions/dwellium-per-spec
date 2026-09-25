@@ -20,6 +20,15 @@ describe('provider registry', () => {
         expect(keyed.filter(p => p.tier === 'permanent')).toHaveLength(20);
         expect(keyed.filter(p => p.tier === 'renewable').map(p => p.id)).toEqual(['openrouter']);
     });
+    it('LLM7.io and OVHcloud are keyOptional (anonymous tiers in the upstream per-model table, probed 2026-09-19) — still keyed, never keyless', () => {
+        expect(RESEARCH_PROVIDERS.filter(p => p.keyOptional).map(p => p.id)).toEqual(['llm7-io', 'ovhcloud']);
+        for (const id of ['llm7-io', 'ovhcloud']) {
+            const p = getResearchProvider(id)!;
+            expect(p.keyless).toBeUndefined();
+            expect(p.models).toBeUndefined(); // dynamic /models list, not a fixed menu
+            expect(p.note).toMatch(/no key/);
+        }
+    });
     it('the keyless Pollinations provider sits at the top, is keyless, POSTs to a /openai base, and ships EXACTLY the 2 probe-verified models (2026-08-31)', () => {
         expect(RESEARCH_PROVIDERS[0].id).toBe('pollinations');
         const p = getResearchProvider('pollinations')!;
@@ -77,5 +86,14 @@ describe('research-lab labs-tier wiring', () => {
     it('gets NO dock row (labs convention) and NO email restriction', () => {
         expect(defaultDockItems.some(d => d.component === 'research-lab')).toBe(false);
         expect(w.restrictedToEmails).toBeUndefined();
+    });
+    // Plan 062 phase 2 — the description's provider count must never go
+    // stale again: parse the number out of the description text itself and
+    // compare it against the live registry length, instead of pinning a
+    // literal like 22.
+    it('the description states the SAME provider count as RESEARCH_PROVIDERS.length (computed, never hand-pinned)', () => {
+        const match = /Try (\d+) free LLM APIs/.exec(w.description);
+        expect(match).not.toBeNull();
+        expect(Number(match![1])).toBe(RESEARCH_PROVIDERS.length);
     });
 });

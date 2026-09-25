@@ -27,6 +27,7 @@ import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } fro
 import { API_BASE } from '../../config';
 import { getAuthHeaders } from '../../context/UserContext';
 import { recordArtifact } from '../artifactStore';
+import { captureOwner } from '../perUserIdentity';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -323,6 +324,7 @@ const imageGenSkill: AgentSkill = {
         /^(?:generate|create|make|draw|render|paint)\s+(?:me\s+)?(?:an?\s+)?(.+?)\s+(?:image|picture|photo|illustration|logo|drawing)$/i,
     ],
     run: async (prompt, ctx) => {
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-await
         const openaiKey = ctx.llm.openai?.apiKey;
         const geminiKey = ctx.llm.gemini?.apiKey;
         if (!openaiKey && !geminiKey) {
@@ -343,7 +345,7 @@ const imageGenSkill: AgentSkill = {
                 const b64 = data?.data?.[0]?.b64_json;
                 if (!b64) throw new Error('no image in response');
                 // P12-3: generated images land in the Artifact Gallery.
-                recordArtifact({ content: `data:image/png;base64,${b64}`, source: 'skill', title: prompt.slice(0, 60), type: 'image' });
+                if (stillOwner()) recordArtifact({ content: `data:image/png;base64,${b64}`, source: 'skill', title: prompt.slice(0, 60), type: 'image' });
                 recordLlmUsage({
                     provider: 'openai',
                     model: 'dall-e-3',
@@ -480,6 +482,7 @@ const composeIntoWidgetSkill: AgentSkill = {
         /^(?:draft|write|compose)\s+(.+\s+in(?:to)?\s+(?:the\s+)?(?:it|notepad))\.?$/i,
     ],
     run: async (input, ctx) => {
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-await
         const m = input.match(/^(.*?)\s+in(?:to)?\s+(?:the\s+)?(it|notepad)\.?$/i);
         const what = (m?.[1] ?? input).trim();
         const explicit = m?.[2]?.toLowerCase() ?? null;
@@ -493,7 +496,7 @@ const composeIntoWidgetSkill: AgentSkill = {
         if (!res?.text) {
             return { ok: false, text: 'Drafting needs an LLM key — add one in Control Panel → API Keys.', via: 'compose-widget' };
         }
-        recordArtifact({ content: res.text, source: 'skill', title: what.slice(0, 60) }); // P12-3
+        if (stillOwner()) recordArtifact({ content: res.text, source: 'skill', title: what.slice(0, 60) }); // P12-3
         const delivered = performWidgetAction(target, 'insert-text', { text: res.text });
         return delivered
             ? { ok: true, text: `Drafted into ${target}:\n\n${res.text.slice(0, 400)}${res.text.length > 400 ? '…' : ''}`, via: 'compose-widget' }

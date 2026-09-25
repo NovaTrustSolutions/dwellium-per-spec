@@ -15,7 +15,7 @@
     padding: 12px;
     border-radius: 10px;
     border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
-    background: var(--bg-surface-elevated, rgba(255, 255, 255, 0.03));
+    background: rgba(255, 255, 255, 0.03);
 }
 .cadv__kpi-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-secondary); }
 .cadv__kpi-label svg { color: var(--accent, #D6FE51); }
@@ -41,7 +41,7 @@
     display: flex; flex-direction: column; gap: 5px;
     padding: 9px 10px; border-radius: 9px;
     border: 1px solid var(--border-default, rgba(255, 255, 255, 0.07));
-    background: var(--bg-surface-elevated, rgba(255, 255, 255, 0.02));
+    background: rgba(255, 255, 255, 0.02);
 }
 .cadv__item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .cadv__item-title { color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

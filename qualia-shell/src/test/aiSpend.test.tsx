@@ -45,10 +45,11 @@ function makeDays(overrides: Partial<DailyRollup> = {}): DailyRollup[] {
 }
 
 let mockDays: DailyRollup[] = makeDays();
+let mockEntries: Array<{ ts: number; provider: string; model: string; estCost: number | null }> = [];
 let clearLlmUsageMock = vi.fn();
 
 vi.mock('../lib/llmUsageStore', () => ({
-    useLlmUsage: () => ({ entries: [], days: {} }),
+    useLlmUsage: () => ({ entries: mockEntries, days: {} }),
     lastNDays: () => mockDays,
     planAdvice: () => 'Pace ≈ $1.00/mo (est.) — test advice line.',
     clearLlmUsage: (...args: unknown[]) => clearLlmUsageMock(...args),
@@ -57,6 +58,7 @@ vi.mock('../lib/llmUsageStore', () => ({
 afterEach(() => {
     vi.useRealTimers();
     mockDays = makeDays();
+    mockEntries = [];
     clearLlmUsageMock = vi.fn();
     vi.clearAllMocks();
 });
@@ -125,5 +127,21 @@ describe('AiSpend — accessible chart', () => {
         render(<AiSpend />);
         const chart = screen.getByRole('img', { name: /Estimated cost per day, last 14 days, total/ });
         expect(chart).toBeInTheDocument();
+    });
+});
+
+describe('AiSpend — unpriced provider rows', () => {
+    it('a provider whose calls are all unpriced reads "unpriced", not "$0.0000"; a mixed one says so', () => {
+        const today = new Date(`${mockDays[13].date}T12:00:00`).getTime();
+        mockDays = makeDays({ calls: 3, estCost: 0.5, unpriced: 2, byProvider: { custom: { calls: 1, estCost: 0 }, openai: { calls: 2, estCost: 0.5 } } });
+        mockEntries = [
+            { ts: today, provider: 'custom', model: 'mystery', estCost: null },
+            { ts: today, provider: 'openai', model: 'gpt-4o', estCost: 0.5 },
+            { ts: today, provider: 'openai', model: 'mystery-2', estCost: null },
+        ];
+        render(<AiSpend />);
+        expect(screen.getByText('unpriced')).toBeInTheDocument();
+        expect(screen.getByText('$0.5000 + 1 unpriced')).toBeInTheDocument();
+        expect(screen.queryByText('$0.0000', { selector: '.spend__prov-cost' })).not.toBeInTheDocument();
     });
 });

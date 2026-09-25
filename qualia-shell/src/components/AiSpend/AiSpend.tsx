@@ -48,6 +48,13 @@ export default function AiSpend() {
         }
         return Object.entries(agg).sort((a, b) => b[1].estCost - a[1].estCost);
     }, [week]);
+    // Unpriced calls per provider (7 days): their cost isn't in estCost, so a row must not read "$0".
+    const unpricedByProvider = useMemo(() => {
+        const since = new Date(`${week[0].date}T00:00:00`).getTime();
+        const out: Record<string, number> = {};
+        for (const e of ledger.entries) if (e.ts >= since && e.estCost == null) out[e.provider] = (out[e.provider] ?? 0) + 1;
+        return out;
+    }, [ledger, week]);
 
     const handleClear = () => {
         if (confirmClear) {
@@ -139,7 +146,11 @@ export default function AiSpend() {
                     <div key={prov} className="spend__prov-row">
                         <span className="spend__prov-name">{prov}</span>
                         <span className="spend__prov-calls">{v.calls} calls</span>
-                        <span className="spend__prov-cost">{fmt$(v.estCost)}</span>
+                        <span className="spend__prov-cost">
+                            {unpricedByProvider[prov] === v.calls ? 'unpriced'
+                                : unpricedByProvider[prov] ? `${fmt$(v.estCost)} + ${unpricedByProvider[prov]} unpriced`
+                                : fmt$(v.estCost)}
+                        </span>
                     </div>
                 ))}
             </section>

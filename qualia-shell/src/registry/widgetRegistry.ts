@@ -222,7 +222,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'content-search': {
         id: 'content-search',
         label: 'Search',
-        description: 'Full-text search across notes, syntheses, wiki pages, intake items and file names.',
+        description: 'Keyword search across brain dumps, syntheses, wiki pages, Foundry items, AI memory and file names.',
         tip: { tryThis: 'Search a word you know is in a note.', related: ['wiki', 'notepad'] },
         tier: 'labs',
         icon: 'search-check',

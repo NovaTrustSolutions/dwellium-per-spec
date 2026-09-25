@@ -1,8 +1,8 @@
 /**
  * ContentSearch — system-wide content search (spec §2.5). Searches across the
- * local corpus (brain dumps, syntheses, wiki pages, foundry items, CoPaw memory)
- * + file names, ranked, with snippets and click-to-open. Backend-free; full
- * file-content + semantic search is surfaced as a "needs backend index" note.
+ * local corpus (brain dumps, syntheses, wiki pages, foundry items, CoPaw
+ * memory) + file names, ranked, with snippets and click-to-open. Backend-free:
+ * this widget itself never calls a search endpoint.
  */
 import { useState, useEffect, useMemo, useContext, useSyncExternalStore } from 'react';
 import { Search, FileText, Brain, Layers, Inbox, BookOpen, Cpu } from 'lucide-react';
@@ -15,6 +15,8 @@ import { wikiStore, wikiUserIdHolder, type WikiMap } from '../Wiki/wikiStore';
 import { foundryStore, foundryUserIdHolder, type FoundryItem } from '../Foundry/foundryStore';
 import { copawStore, copawUserIdHolder, type MemoryFact } from '../Hive/copawStore';
 import { searchCorpus, type SearchDoc, type SearchDocType } from './searchEngine';
+import { getWidgetMeta } from '../../registry/widgetRegistry';
+import './ContentSearch.css';
 
 const ACCENT = '#D6FE51';
 const TYPE_META: Record<SearchDocType, { icon: typeof FileText; label: string }> = {
@@ -46,11 +48,14 @@ export default function ContentSearch() {
     const memory: MemoryFact[] = useSyncExternalStore(copawStore.subscribe, copawStore.getSnapshot, copawStore.getServerSnapshot);
 
     const [files, setFiles] = useState<string[]>([]);
+    const [filesUnavailable, setFilesUnavailable] = useState(false);
     const [query, setQuery] = useState('');
 
     useEffect(() => {
         let cancelled = false;
-        fetchTree().then((t) => { if (!cancelled) setFiles(allFilePaths(t)); }).catch(() => { /* offline → no files */ });
+        fetchTree()
+            .then((t) => { if (!cancelled) setFiles(allFilePaths(t)); })
+            .catch(() => { if (!cancelled) setFilesUnavailable(true); });
         return () => { cancelled = true; };
     }, []);
 
@@ -65,8 +70,14 @@ export default function ContentSearch() {
         return d;
     }, [dumps, syntheses, wiki, foundry, memory, files]);
 
-    const hits = useMemo(() => searchCorpus(query, docs), [query, docs]);
-    const open = (widget: string) => window.dispatchEvent(new CustomEvent('qualia-open-widget', { detail: widget }));
+    const { hits, total } = useMemo(() => searchCorpus(query, docs), [query, docs]);
+
+    const open = (widgetId: string) => {
+        const meta = getWidgetMeta(widgetId);
+        window.dispatchEvent(new CustomEvent('dwellium:open-widget', {
+            detail: { widgetId, label: meta?.label ?? widgetId, icon: meta?.icon ?? '' },
+        }));
+    };
     // Wiki hits deep-link to the specific page: stash the path for a not-yet-mounted
     // widget, then dispatch the live event for an already-mounted one (Wiki.tsx listens
     // for both — same pattern as its own pending-path handling).
@@ -79,37 +90,41 @@ export default function ContentSearch() {
         }
     };
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid #222', flexShrink: 0 }}>
-                <Search size={16} style={{ color: ACCENT }} />
-                <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search all content — notes, dumps, syntheses, wiki, foundry, files…"
-                    style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 15, outline: 'none', fontFamily: 'inherit' }} />
-                <span style={{ fontSize: 11, color: '#666' }}>{query ? `${hits.length} result${hits.length === 1 ? '' : 's'}` : `${docs.length} indexed`}</span>
-            </div>
+    const counterText = !query
+        ? `${docs.length} indexed`
+        : total > hits.length
+            ? `showing ${hits.length} of ${total}`
+            : `${total} result${total === 1 ? '' : 's'}`;
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
+    return (
+        <div className="cs-root">
+            <div className="cs-header">
+                <Search size={16} style={{ color: ACCENT }} />
+                <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search all content — brain dumps, syntheses, wiki, foundry, memory, files…"
+                    className="cs-input" />
+                <span className="cs-count">{counterText}</span>
+            </div>
+            {filesUnavailable && <div className="cs-warning">Files unavailable — searching local content only.</div>}
+
+            <div className="cs-body">
                 {!query && (
-                    <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.7 }}>
-                        Type to search across your local corpus. Full file-content + semantic search additionally uses the backend index when connected.
+                    <div className="cs-empty">
+                        Searches brain dumps, syntheses, wiki pages, Foundry items, AI memory, and file names.
                     </div>
                 )}
-                {query && hits.length === 0 && <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>No results for “{query}”.</div>}
+                {query && hits.length === 0 && <div className="cs-no-results">No results for “{query}”.</div>}
                 {hits.map((h) => {
                     const M = TYPE_META[h.type];
                     const Icon = M.icon;
                     return (
-                        <button key={h.id} onClick={() => openHit(h)}
-                            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 5, background: 'var(--bg-desktop)', border: '1px solid #1c1c1c', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
-                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#111'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1c1c1c'; e.currentTarget.style.background = '#0a0a0a'; }}>
+                        <button key={h.id} className="cs-row" onClick={() => openHit(h)}>
                             <Icon size={15} style={{ color: ACCENT, flexShrink: 0, marginTop: 1 }} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.title}</span>
-                                    <span style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>{M.label}</span>
+                            <div className="cs-row-main">
+                                <div className="cs-row-title-line">
+                                    <span className="cs-row-title">{h.title}</span>
+                                    <span className="cs-row-type">{M.label}</span>
                                 </div>
-                                <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.snippet}</div>
+                                <div className="cs-row-snippet">{h.snippet}</div>
                             </div>
                         </button>
                     );

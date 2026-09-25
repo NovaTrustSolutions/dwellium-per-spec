@@ -42,7 +42,7 @@ Standing rules (from CLAUDE.md, memory and prior plans):
 | G3 | Email body retention? | Keep everything; no pruning code is written |
 | G4 | Move app-wide settings (AI keys, theme, RBAC) out of the Inbox Zero Settings tab into Control Panel? | Extract to its own file only (6c); no move |
 | G5 | Upstream elie222/inbox-zero: is Dwellium sold/licensed, or used by 5+ business users? (LICENSE rider, lines 9-38) | **Answered 2026-09-24: under 5 business users, not sold/licensed** — the rider's exemption applies; Phase 7 option (c) (proxy the unmodified upstream API/MCP) may proceed after the read-only check. Re-ask if Dwellium is ever sold or reaches 5 business users. |
-| G6 | Stop or rebind the idle `inbox-zero-services-web-1` container (`0.0.0.0:3000`)? | Left as is |
+| G6 | Stop or rebind the idle `inbox-zero-services-web-1` container (`0.0.0.0:3000`)? | **Answered 2026-09-25: keep it LAN-reachable** — Ilya uses it from several machines. On the Mac itself `localhost`/`MacBook-Pro.local:3000` is the Dwellium backend; only the LAN IP reaches the container, so `INBOX_ZERO_API_URL` needs the LAN IP (DHCP reservation) or an extra `127.0.0.1:<port>` mapping. |
 
 Phases 1–3 are direction-independent and can start now.
 

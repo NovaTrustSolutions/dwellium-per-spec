@@ -14,6 +14,7 @@
 ## Status
 
 - **Priority**: P0 (Phase 1–2), P1 (Phase 3), P2 (Phase 4–5)
+- **Progress (2026-09-25)**: Phase 1 + Phase 2 DONE on `feat/067-thoughtweaver-phase1` (frontend) and backend `feat/067-thoughtweaver-p2` @ `0dc4646` — not pushed. Phases 3–5 TODO.
 - **Effort**: L overall (5 phases, each S–M)
 - **Planned at**: frontend `706233b` (main), 2026-09-25
 - **Source**: read-only audit — 4 mappers by file ownership + 1 refute-first reviewer

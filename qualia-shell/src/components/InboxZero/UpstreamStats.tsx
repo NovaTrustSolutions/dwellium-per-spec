@@ -101,8 +101,14 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
                 });
                 return;
             }
-            const [responseTime, byPeriod] = await Promise.all([rtRes.json(), bpRes.json()]);
-            setState({ kind: 'stats', responseTime, byPeriod });
+            // Every /api/inbox route answers { success, data } — unwrap it (the stats are in .data).
+            const [rtBody, bpBody] = await Promise.all([rtRes.json(), bpRes.json()]);
+            const bad = rtBody?.success === false ? rtBody : bpBody?.success === false ? bpBody : null;
+            if (bad || !rtBody?.data || !bpBody?.data) {
+                setState({ kind: 'error', message: bad?.error || 'Upstream stats response was empty', canReplaceKey: false });
+                return;
+            }
+            setState({ kind: 'stats', responseTime: rtBody.data, byPeriod: bpBody.data });
         } catch (e: any) {
             setState({ kind: 'error', message: e?.message || 'Network error', canReplaceKey: false });
         }
@@ -119,7 +125,12 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
                 setState({ kind: 'error', message: body.error || `Could not check upstream status (${res.status})`, canReplaceKey: false });
                 return;
             }
-            const data = await res.json().catch(() => ({}));
+            const body = await res.json().catch(() => ({}));
+            if (body.success === false) {
+                setState({ kind: 'error', message: body.error || 'Could not check upstream status', canReplaceKey: false });
+                return;
+            }
+            const data = body.data ?? {};
             if (!data.configured) { setState({ kind: 'not-configured' }); return; }
             if (!data.hasKey) { setState({ kind: 'no-key' }); return; }
             await loadStats();
@@ -256,7 +267,7 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
             </p>
 
             <div>
-                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Response time distribution</h4>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Response time distribution</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                     {DISTRIBUTION_LABELS.map(([key, label]) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem' }}>
@@ -271,7 +282,7 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
             </div>
 
             <div>
-                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>By period (last {rows.length})</h4>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>By period (last {rows.length})</h3>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--border-default)' }}>

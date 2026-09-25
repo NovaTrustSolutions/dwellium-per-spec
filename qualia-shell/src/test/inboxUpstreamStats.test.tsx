@@ -14,6 +14,10 @@ import UpstreamStats from '../components/InboxZero/UpstreamStats';
 function jsonResponse(data: unknown, ok = true, status = 200): Response {
     return { ok, status, json: async () => data, headers: new Headers() } as Response;
 }
+/** The backend's real envelope for a 2xx on every /api/inbox route: { success: true, data }. */
+function okEnvelope(data: unknown): Response {
+    return jsonResponse({ success: true, data });
+}
 
 function collectToasts(): { onToast: ReturnType<typeof vi.fn>; cleanup: () => void } {
     const onToast = vi.fn();
@@ -49,9 +53,9 @@ const BY_PERIOD_FIXTURE = { result: Array.from({ length: 10 }, (_, i) => byPerio
 function statsRouter(overrides: Record<string, () => Response> = {}) {
     return (url: string) => {
         if (overrides[url]) return Promise.resolve(overrides[url]());
-        if (url.includes('/upstream/status')) return Promise.resolve(jsonResponse({ configured: true, hasKey: true }));
-        if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse(RESPONSE_TIME_FIXTURE));
-        if (url.includes('/upstream/stats/by-period')) return Promise.resolve(jsonResponse(BY_PERIOD_FIXTURE));
+        if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
+        if (url.includes('/upstream/stats/response-time')) return Promise.resolve(okEnvelope(RESPONSE_TIME_FIXTURE));
+        if (url.includes('/upstream/stats/by-period')) return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
         return Promise.resolve(jsonResponse({}, false, 500));
     };
 }
@@ -60,7 +64,7 @@ describe('UpstreamStats', () => {
     afterEach(() => vi.restoreAllMocks());
 
     it('not configured (configured:false) shows the quiet message and no input', async () => {
-        const authFetch = vi.fn().mockResolvedValue(jsonResponse({ configured: false, hasKey: false }));
+        const authFetch = vi.fn().mockResolvedValue(okEnvelope({ configured: false, hasKey: false }));
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         await waitFor(() => expect(screen.getByText(/isn't connected on this server/)).toBeInTheDocument());
         expect(screen.getByText(/INBOX_ZERO_API_URL/)).toBeInTheDocument();
@@ -75,7 +79,7 @@ describe('UpstreamStats', () => {
     });
 
     it('configured, no key (hasKey:false) shows the labelled password input and Save', async () => {
-        const authFetch = vi.fn().mockResolvedValue(jsonResponse({ configured: true, hasKey: false }));
+        const authFetch = vi.fn().mockResolvedValue(okEnvelope({ configured: true, hasKey: false }));
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         const input = await screen.findByLabelText(/Inbox Zero API key/i);
         expect(input).toHaveAttribute('type', 'password');
@@ -99,7 +103,7 @@ describe('UpstreamStats', () => {
             }
             if (url.includes('/upstream/status')) {
                 statusCalls++;
-                return Promise.resolve(jsonResponse({ configured: true, hasKey: statusCalls > 1 }));
+                return Promise.resolve(okEnvelope({ configured: true, hasKey: statusCalls > 1 }));
             }
             return statsRouter()(url);
         });
@@ -128,7 +132,7 @@ describe('UpstreamStats', () => {
             if (url.includes('/upstream/key') && init?.method === 'PUT') {
                 return Promise.resolve(jsonResponse({ error: 'Key must be 10-512 characters' }, false, 400));
             }
-            return Promise.resolve(jsonResponse({ configured: true, hasKey: false }));
+            return Promise.resolve(okEnvelope({ configured: true, hasKey: false }));
         });
         const { container } = render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         const input = await screen.findByLabelText(/Inbox Zero API key/i);
@@ -167,7 +171,7 @@ describe('UpstreamStats', () => {
 
     it('shows the emailsAnalyzed cap note when emailsAnalyzed >= maxEmailsCap', async () => {
         const authFetch = vi.fn().mockImplementation(statsRouter({
-            '/api/inbox/upstream/stats/response-time': () => jsonResponse({ ...RESPONSE_TIME_FIXTURE, emailsAnalyzed: 500, maxEmailsCap: 500 }),
+            '/api/inbox/upstream/stats/response-time': () => okEnvelope({ ...RESPONSE_TIME_FIXTURE, emailsAnalyzed: 500, maxEmailsCap: 500 }),
         }));
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         expect(await screen.findByText(/capped at 500/)).toBeInTheDocument();
@@ -181,7 +185,7 @@ describe('UpstreamStats', () => {
                 removed = true;
                 return Promise.resolve(jsonResponse({}, true));
             }
-            if (url.includes('/upstream/status')) return Promise.resolve(jsonResponse({ configured: true, hasKey: !removed }));
+            if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: !removed }));
             return statsRouter()(url);
         });
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
@@ -220,9 +224,9 @@ describe('UpstreamStats', () => {
 
     it('502 on a stats call shows the error and a Replace key button', async () => {
         const authFetch = vi.fn().mockImplementation((url: string) => {
-            if (url.includes('/upstream/status')) return Promise.resolve(jsonResponse({ configured: true, hasKey: true }));
+            if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
             if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ error: 'Upstream rejected your API key' }, false, 502));
-            return Promise.resolve(jsonResponse(BY_PERIOD_FIXTURE));
+            return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
         });
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         await waitFor(() => expect(screen.getByText('Upstream rejected your API key')).toBeInTheDocument());
@@ -231,9 +235,9 @@ describe('UpstreamStats', () => {
 
     it('504 on a stats call shows the error and a Retry button (no Replace key)', async () => {
         const authFetch = vi.fn().mockImplementation((url: string) => {
-            if (url.includes('/upstream/status')) return Promise.resolve(jsonResponse({ configured: true, hasKey: true }));
+            if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
             if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ error: 'Upstream timed out' }, false, 504));
-            return Promise.resolve(jsonResponse(BY_PERIOD_FIXTURE));
+            return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
         });
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         await waitFor(() => expect(screen.getByText('Upstream timed out')).toBeInTheDocument());
@@ -243,9 +247,9 @@ describe('UpstreamStats', () => {
 
     it('Replace key on a 502 error goes back to the no-key input state', async () => {
         const authFetch = vi.fn().mockImplementation((url: string) => {
-            if (url.includes('/upstream/status')) return Promise.resolve(jsonResponse({ configured: true, hasKey: true }));
+            if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
             if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ error: 'Upstream rejected your API key' }, false, 502));
-            return Promise.resolve(jsonResponse(BY_PERIOD_FIXTURE));
+            return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
         });
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         const replaceBtn = await screen.findByRole('button', { name: /Replace key/i });
@@ -256,14 +260,14 @@ describe('UpstreamStats', () => {
     it('Retry on a 504 error re-runs the status/stats fetch', async () => {
         let attempt = 0;
         const authFetch = vi.fn().mockImplementation((url: string) => {
-            if (url.includes('/upstream/status')) return Promise.resolve(jsonResponse({ configured: true, hasKey: true }));
+            if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
             if (url.includes('/upstream/stats/response-time')) {
                 attempt++;
                 return attempt === 1
                     ? Promise.resolve(jsonResponse({ error: 'Upstream timed out' }, false, 504))
-                    : Promise.resolve(jsonResponse(RESPONSE_TIME_FIXTURE));
+                    : Promise.resolve(okEnvelope(RESPONSE_TIME_FIXTURE));
             }
-            return Promise.resolve(jsonResponse(BY_PERIOD_FIXTURE));
+            return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
         });
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         const retryBtn = await screen.findByRole('button', { name: /^Retry$/i });

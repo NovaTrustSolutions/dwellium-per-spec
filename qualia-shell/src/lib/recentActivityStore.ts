@@ -15,7 +15,7 @@
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { recentActivityUserIdHolder } from './perUserIdentity';
-import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
+import { WIDGET_REGISTRY, resolveWidgetId } from '../registry/widgetRegistry';
 
 export interface RecentActivityEntry {
     kind: 'widget' | 'scribe-doc';
@@ -85,6 +85,7 @@ if (typeof window !== 'undefined') {
     window.addEventListener('dwellium:open-widget', (e) => {
         const d = (e as CustomEvent).detail as { widgetId?: string; label?: string } | undefined;
         if (!d?.widgetId) return;
-        recordActivity('widget', d.widgetId, d.label ?? WIDGET_REGISTRY[d.widgetId]?.label ?? d.widgetId);
+        const id = resolveWidgetId(d.widgetId); // plan 066: never record a retired id
+        recordActivity('widget', id, d.label ?? WIDGET_REGISTRY[id]?.label ?? id);
     });
 }

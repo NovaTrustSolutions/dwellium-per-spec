@@ -18,7 +18,7 @@
  */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, createElement, type ReactNode } from 'react';
 import { Brain, ChevronLeft, ChevronRight, Columns2, Columns3, Grid2X2, Maximize2, Moon, PanelLeftClose, PanelLeftOpen, Pin, Settings, Sparkles, Square, Star, X } from 'lucide-react';
-import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
+import { WIDGET_REGISTRY, WINDOW_COMPONENTS, resolveWidgetId } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import { halocronOsStore, type HalocronOsState } from '../../lib/halocronOsStore';
 import { fluidOsStore } from '../../lib/fluidOsStore';
@@ -112,7 +112,7 @@ function restoredHosTabs(): { tabs: HosTab[]; active: string | null } {
         key: `w:${id}`,
         kind: 'widget',
         id,
-        label: WIDGET_REGISTRY[id]?.label ?? id,
+        label: WIDGET_REGISTRY[resolveWidgetId(id)]?.label ?? id,
         lastActiveAt: Date.now() * 1000 + (++seq),
     }));
     return { tabs, active: slice.active ? `w:${slice.active}` : null };
@@ -359,7 +359,8 @@ export default function HalocronOS() {
     // until reload. (setTabs/setActiveKey are stable; safe to register always.)
     useEffect(() => {
         const onOpen = (e: Event) => {
-            const id = (e as CustomEvent).detail?.widgetId;
+            const rawId = (e as CustomEvent).detail?.widgetId;
+            const id = rawId ? resolveWidgetId(rawId) : rawId;
             if (!id || !WINDOW_COMPONENTS[id]) return;
             if (!halocronOsStore.getSnapshot().enabled) return;
             const key = `w:${id}`;

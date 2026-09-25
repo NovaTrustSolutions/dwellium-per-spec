@@ -132,7 +132,9 @@ describe('tierOf', () => {
         expect(tierOf('georgia-code')).toBe('labs');
         expect(tierOf('audit-log')).toBe('labs');
         // plan 046 D4: Labs membership reconciled onto the 047 tier system.
-        expect(tierOf('inbox-zero')).toBe('labs');
+        // plan 066 phase 3: 'inbox-zero' registry entry retired (tierOf needs
+        // a registry entry — its live id 'inbox' is pinned → 'core', not
+        // 'labs', so this assertion has no equivalent replacement; dropped).
         expect(tierOf('time-travel')).toBe('labs');
         expect(tierOf('holocron-library')).toBe('labs');
         expect(tierOf('autonomous-runs')).toBe('labs');

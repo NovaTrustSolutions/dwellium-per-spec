@@ -14,7 +14,7 @@
 ## Status
 
 - **Priority**: P0 (Phase 1–2), P1 (Phase 3), P2 (Phase 4–5)
-- **Progress (2026-09-25)**: Phases 1–3 DONE + per-user tie-in (holders in perUserIdentity, sign-in required, brief owner check) on `feat/067-thoughtweaver-phase1` (frontend) and backend `feat/067-thoughtweaver-p2` @ `e5eaae3` — not pushed. Phases 4–5 TODO.
+- **Progress (2026-09-25)**: Phases 1–5 DONE + per-account isolation (holders, sign-in gate, owner-bound object ids, brief owner check). Frontend `feat/067-thoughtweaver-phase1`, backend `feat/067-thoughtweaver-p2` @ `e00caf2` — not pushed. Harness: before 44/68 → after 68/68.
 - **Effort**: L overall (5 phases, each S–M)
 - **Planned at**: frontend `706233b` (main), 2026-09-25
 - **Source**: read-only audit — 4 mappers by file ownership + 1 refute-first reviewer

@@ -19,10 +19,8 @@ import {
     Save,
     Satellite,
     Sparkles,
-    Sprout,
     Trash2,
     TrendingUp,
-    TriangleAlert,
     User,
     X,
     Zap,
@@ -32,6 +30,7 @@ import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { twSyncConfig, pullCaptures, planImport } from './thoughtWeaverSync';
+import { pullInbox } from './twInbox';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { logActivity } from '../../lib/activityLogStore';
 import {
@@ -81,7 +80,6 @@ import {
 } from './thoughtWeaverLinkage';
 import { localCategorize } from './localCategorizer';
 import { deriveStats, deriveBuckets, deriveTimeline } from './localViews';
-import { friendlyLoadError, isBackendDownError } from '../../lib/backendStatus';
 import './ThoughtWeaver.css';
 
 // ── Daily to-do synthesis ────────────────────────────────────────────
@@ -142,8 +140,8 @@ interface CaptureEntry {
     destination_name: string | null;
     status: string;
     createdAt: string;
-    /** 'local' = persisted in this browser (user-only-delete). 'backend' = server-side. */
-    source?: 'local' | 'backend';
+    /** Every capture is local now (plan 067 Phase 2 — the backend stores nothing). */
+    source: 'local';
 }
 
 interface BucketItem {
@@ -274,77 +272,14 @@ export default function ThoughtWeaver() {
     const [activeTab, setActiveTab] = useState<TabId>('capture');
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
-    const [captures, setCaptures] = useState<CaptureEntry[]>([]);
-    const [stats, setStats] = useState<Stats | null>(null);
-    const [bucketItems, setBucketItems] = useState<Record<BucketId, BucketItem[]>>({ people: [], projects: [], ideas: [], admin: [] });
     const [activeBucket, setActiveBucket] = useState<BucketId | 'all'>('all');
-    const [timeline, setTimeline] = useState<BucketItem[]>([]);
     const [timelineFilter, setTimelineFilter] = useState<BucketId | 'all'>('all');
     const [lastResult, setLastResult] = useState<{ filed_to: string; confidence: number; destination_name: string | null } | null>(null);
-    const [seeded, setSeeded] = useState(false);
-    const [resolveId, setResolveId] = useState<string | null>(null);
     // How the most recent capture was sorted — surfaced honestly in the toast
     // instead of silently swallowing where the result came from.
     const [captureSource, setCaptureSource] = useState<'llm' | 'backend' | 'local' | null>(null);
-    // Backend reachability — drives the honest "backend offline" banner instead
-    // of silently showing empty panels when the Dwellium backend isn't running.
-    const [backendOffline, setBackendOffline] = useState(false);
     // Which local capture is being re-filed by the user (category override).
     const [refileId, setRefileId] = useState<string | null>(null);
-
-    // ── Data fetching ────────────────────────────────────────────────
-
-    const fetchCaptures = useCallback(async () => {
-        try {
-            const res = await fetch(`${API}/captures?limit=20`);
-            const json = await res.json();
-            if (json.success) setCaptures(json.data);
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    const fetchStats = useCallback(async () => {
-        try {
-            const res = await fetch(`${API}/stats`);
-            const json = await res.json();
-            if (json.success) setStats(json.data);
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    const fetchBucketItems = useCallback(async () => {
-        try {
-            const [p, pr, i, a] = await Promise.all(
-                (['people', 'projects', 'ideas', 'admin'] as BucketId[]).map(t => fetch(`${API}/${t}`).then(r => r.json()))
-            );
-            setBucketItems({
-                people: p.success ? p.data : [],
-                projects: pr.success ? pr.data : [],
-                ideas: i.success ? i.data : [],
-                admin: a.success ? a.data : [],
-            });
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    const fetchTimeline = useCallback(async () => {
-        try {
-            const res = await fetch(`${API}/timeline`);
-            const json = await res.json();
-            if (json.success) setTimeline(json.data);
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    useEffect(() => {
-        fetchCaptures();
-        fetchStats();
-    }, [fetchCaptures, fetchStats]);
-
-    useEffect(() => {
-        if (activeTab === 'dashboard') { fetchBucketItems(); fetchStats(); }
-        if (activeTab === 'timeline') fetchTimeline();
-    }, [activeTab, fetchBucketItems, fetchStats, fetchTimeline]);
 
     // ── Actions ──────────────────────────────────────────────────────
 
@@ -405,11 +340,6 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     persistLocally(filed_to, confidence, destination_name);
                     setText('');
                     setLoading(false);
-                    // Best-effort: also POST to backend so other consumers stay in sync.
-                    fetch(`${API}/capture`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: thoughtText }),
-                    }).then(() => { fetchCaptures(); fetchStats(); }).catch(() => { /* backend down — local copy is canonical */ });
                     return;
                 }
             } catch {
@@ -425,12 +355,13 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             });
             const json = await res.json();
             if (json.success) {
+                // Plan 067 Phase 2 (G1): POST /capture is now a stateless classifier —
+                // `{ filed_to, confidence, destination_name }` — nothing is stored
+                // server-side, so persisting locally (below) is the only write.
                 setLastResult({ filed_to: json.data.filed_to, confidence: json.data.confidence, destination_name: json.data.destination_name });
                 setCaptureSource('backend');
                 persistLocally(json.data.filed_to, json.data.confidence, json.data.destination_name);
                 setText('');
-                fetchCaptures();
-                fetchStats();
                 setLoading(false);
                 return;
             }
@@ -449,33 +380,6 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         setLoading(false);
     };
 
-    const handleSeed = async () => {
-        await fetch(`${API}/seed`, { method: 'POST' });
-        setSeeded(true);
-        fetchCaptures();
-        fetchStats();
-        fetchBucketItems();
-        fetchTimeline();
-    };
-
-    const handleDelete = async (table: string, id: string) => {
-        await fetch(`${API}/${table}/${id}`, { method: 'DELETE' });
-        fetchBucketItems();
-        fetchStats();
-        fetchTimeline();
-    };
-
-    const handleResolve = async (logId: string, destination: BucketId) => {
-        await fetch(`${API}/resolve/${logId}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ destination }),
-        });
-        setResolveId(null);
-        fetchCaptures();
-        fetchStats();
-        fetchBucketItems();
-    };
-
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); handleCapture(); }
     };
@@ -484,28 +388,32 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
 
     // ── Computed ─────────────────────────────────────────────────────
 
-    // P11-13 revised 2026-09-25 (plan 067 Phase 1, D2/G2/G3): Supabase rows
-    // are a ONE-TIME IMPORT into the local store, not a live non-local merge.
-    // The old `syncedCaptures` (undeletable "backend" rows re-pulled every
-    // load) is gone — a delete used to never reach Supabase, so the deleted
-    // row came right back next load. Now: hydrate the synced "already
-    // imported" id set FIRST (so a delete recorded on another device is known
-    // before deciding what's new — `twImportedStore` is itself One-Save-
-    // synced), pull this user's rows, let `planImport` (pure) decide which
-    // are genuinely new (not local, not previously imported/deleted), write
-    // them into the local store in one `importCaptures()` call, then record
-    // every pulled id via `markImported` so it is never re-imported even
-    // after the user deletes it locally. Imported rows are local from then on
-    // — they get the same delete/re-file handles as any other capture, which
-    // is what `mergedCaptures` below now assumes (no third "synced" source).
+    // P11-13 revised 2026-09-25 (plan 067 Phase 2, D2/D3/D4/G1/G2/G3): every
+    // capture view comes from the LOCAL store only — the shared in-memory
+    // backend Maps (D3, cross-user leak) and the Supabase phone-sync writes
+    // (D4, anon-key-in-URL leak) are both retired. Two READ-ONLY sources are
+    // still a ONE-TIME IMPORT into the local store, never a live merge: the
+    // user's Supabase rows (Phase 1, unchanged) and the backend's per-user
+    // `thought-weaver-inbox_<uid>` One Save object (Phase 2 — phone captures
+    // land here now, server-classified, never stored in a shared Map).
+    // Hydrate the synced "already imported" id set FIRST (so a delete
+    // recorded on another device is known before deciding what's new —
+    // `twImportedStore` is itself One-Save-synced), pull both sources, let
+    // `planImport` (pure) decide which rows are genuinely new (not local, not
+    // previously imported/deleted), write them into the local store in one
+    // `importCaptures()` call, then record every pulled id via `markImported`
+    // so it is never re-imported even after the user deletes it locally.
+    // Imported rows are local from then on — same delete/re-file handles as
+    // any other capture (`mergedCaptures` below assumes only one source).
     // `alive` + re-checking the user holder after every await guards against
     // an unmount or an account switch mid-import (A's rows must never land
     // in B's store); StrictMode's double-effect-mount is safe because
     // `importCaptures` dedupes by id and `markImported` is a no-op when every
-    // id is already recorded.
+    // id is already recorded. The Supabase pull stays optional (only when the
+    // user has Supabase configured); the inbox pull always runs once a user
+    // is signed in.
     useEffect(() => {
-        const cfg = twSyncConfig(integrations);
-        if (!cfg || !userId) return;
+        if (!userId) return;
         let alive = true;
         (async () => {
             try {
@@ -516,72 +424,50 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             }
             if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
 
-            const pulled = await pullCaptures(cfg, userId);
+            const cfg = twSyncConfig(integrations);
+            const supabaseRows = cfg ? await pullCaptures(cfg, userId) : [];
+            if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
+
+            const inboxRows = await pullInbox(userId);
             if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
 
             const localIds = new Set(thoughtWeaverStore.getSnapshot().map(c => c.id));
-            const { toAppend, seenIds } = planImport(pulled, localIds, twImportedStore.getSnapshot());
+            const { toAppend, seenIds } = planImport([...supabaseRows, ...inboxRows], localIds, twImportedStore.getSnapshot());
             if (toAppend.length > 0) importCaptures(toAppend);
             if (seenIds.length > 0) markImported(seenIds);
         })();
         return () => { alive = false; };
     }, [integrations, userId]);
 
-    // Merge backend captures with local ones (local-first, dedupe by id).
-    // Local entries always carry source: 'local' so the delete button can
-    // be gated on user-owned records. (Supabase rows are no longer a third
-    // merge source — the effect above imports them into `localCaptures`.)
+    // Every capture is local now — no backend/synced source left to merge.
     const mergedCaptures = useMemo<CaptureEntry[]>(() => {
-        const local: CaptureEntry[] = localCaptures.map(c => ({
-            id: c.id,
-            original_text: c.text,
-            filed_to: c.filed_to,
-            confidence: c.confidence,
-            destination_name: c.destination_name,
-            status: c.filed_to === 'needs_review' ? 'needs_review' : 'filed',
-            createdAt: c.createdAt,
-            source: 'local' as const,
-        }));
-        const backend: CaptureEntry[] = captures.map(c => ({ ...c, source: 'backend' as const }));
-        const seen = new Set<string>();
-        const out: CaptureEntry[] = [];
-        // local first → a row that exists locally wins (keeps its delete handle)
-        for (const c of [...local, ...backend]) {
-            if (seen.has(c.id)) continue;
-            seen.add(c.id);
-            out.push(c);
-        }
-        // Most recent first
-        return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [localCaptures, captures]);
+        return localCaptures
+            .map((c): CaptureEntry => ({
+                id: c.id,
+                original_text: c.text,
+                filed_to: c.filed_to,
+                confidence: c.confidence,
+                destination_name: c.destination_name,
+                status: c.filed_to === 'needs_review' ? 'needs_review' : 'filed',
+                createdAt: c.createdAt,
+                source: 'local',
+            }))
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [localCaptures]);
 
-    // Local delete handler — backend records can't be removed from here.
     const handleLocalDelete = useCallback((id: string) => {
         deleteLocalCapture(id);
     }, []);
 
-    // ── Glanceable views from the LOCAL trusted store ────────────────────
-    // The header counts, Dashboard, and Timeline must reflect what's stored on
-    // THIS device even with no backend. Derive them from localCaptures and merge
-    // backend data on top when present, so the views are never blank offline.
-    const effectiveStats = useMemo<Stats>(() => {
-        return stats ?? deriveStats(localCaptures);
-    }, [stats, localCaptures]);
-
-    const effectiveBuckets = useMemo<Record<BucketId, BucketItem[]>>(() => {
-        const local = deriveBuckets(localCaptures);
-        return {
-            people: [...bucketItems.people, ...local.people],
-            projects: [...bucketItems.projects, ...local.projects],
-            ideas: [...bucketItems.ideas, ...local.ideas],
-            admin: [...bucketItems.admin, ...local.admin],
-        };
-    }, [bucketItems, localCaptures]);
-
-    const effectiveTimeline = useMemo<BucketItem[]>(() => {
-        const merged = [...timeline, ...deriveTimeline(localCaptures)];
-        return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [timeline, localCaptures]);
+    // ── Glanceable views from the LOCAL trusted store (D5) ────────────────
+    // The header counts, Dashboard, and Timeline reflect ONLY what's stored on
+    // this device — there is no backend source left to merge on top of.
+    const effectiveStats = useMemo<Stats>(() => deriveStats(localCaptures), [localCaptures]);
+    const effectiveBuckets = useMemo<Record<BucketId, BucketItem[]>>(
+        () => deriveBuckets(localCaptures),
+        [localCaptures],
+    );
+    const effectiveTimeline = useMemo<BucketItem[]>(() => deriveTimeline(localCaptures), [localCaptures]);
 
     // User override of the AI's category on a local capture (never-misinterpreted).
     const handleRefile = useCallback((id: string, bucket: BucketId) => {
@@ -592,7 +478,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
     const handleClearAllLocal = useCallback(() => {
         if (localCaptures.length === 0) return;
         const ok = typeof window !== 'undefined' && window.confirm(
-            `Delete all ${localCaptures.length} of YOUR captures from this browser? Backend records will remain.`
+            `Delete all ${localCaptures.length} of YOUR captures from this browser? This cannot be undone.`
         );
         if (ok) clearLocalCaptures();
     }, [localCaptures.length]);
@@ -737,24 +623,6 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                 </div>
             </div>
 
-            {/* Honest backend-offline banner — shown when a backend fetch fails
-                because the Dwellium server isn't reachable (your "show the error
-                if the backend isn't up" ask). The local store remains the source
-                of truth, so the views above still work. */}
-            {backendOffline && (
-                <div
-                    className="tw-offline-banner"
-                    role="status"
-                    style={{
-                        margin: '8px 12px 0', padding: '8px 12px', borderRadius: 8,
-                        background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)',
-                        color: '#fdba74', fontSize: 12.5, lineHeight: 1.4,
-                    }}
-                >
-                    <TriangleAlert size={14} aria-hidden /> <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
-                </div>
-            )}
-
             {/* ─── CAPTURE TAB ─── */}
             {activeTab === 'capture' && (
                 <div className="tw-capture">
@@ -805,12 +673,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                         </div>
                     )}
 
-                    {/* Seed button */}
-                    {captures.length === 0 && !seeded && (
-                        <button className="tw-seed-btn" onClick={handleSeed}><Sprout size={14} aria-hidden /> Seed demo thoughts</button>
-                    )}
-
-                    {/* Recent captures (merged: local + backend) */}
+                    {/* Recent captures — local store only (plan 067 Phase 2) */}
                     <div className="tw-recent">
                         <div className="tw-recent__header">
                             <h3 className="tw-section-title">Recent Captures</h3>
@@ -839,55 +702,44 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                 <BucketIcon bucket={c.filed_to} /> {c.filed_to === 'needs_review' ? 'Review' : c.filed_to}
                                             </span>
                                             <span className="tw-confidence-mini">{Math.round(c.confidence * 100)}%</span>
-                                            {c.source === 'local' && (
-                                                <span className="tw-local-badge" title="Stored in this browser — only you can delete it"><Save size={12} aria-hidden /> local</span>
-                                            )}
-                                            {/* User override of the AI's category — you always have the final say. */}
-                                            {c.source === 'local' && (
-                                                refileId === c.id ? (
-                                                    <div className="tw-resolve-picker">
-                                                        {BUCKETS.map(b => {
-                                                            const BIcon = b.icon;
-                                                            return (
-                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`} aria-label={`File under ${b.label}`}>
-                                                                <BIcon size={14} aria-hidden />
-                                                            </button>
-                                                            );
-                                                        })}
-                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)} aria-label="Cancel re-file"><X size={16} /></button>
-                                                    </div>
-                                                ) : (
-                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought"><Pencil size={14} aria-hidden /> Re-file</button>
-                                                )
-                                            )}
-                                            {c.status === 'needs_review' && c.source !== 'local' && (
-                                                resolveId === c.id ? (
-                                                    <div className="tw-resolve-picker">
-                                                        {BUCKETS.map(b => {
-                                                            const BIcon = b.icon;
-                                                            return (
-                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleResolve(c.id, b.id)} title={b.label} aria-label={`File under ${b.label}`}>
-                                                                <BIcon size={14} aria-hidden />
-                                                            </button>
-                                                            );
-                                                        })}
-                                                        <button className="tw-resolve-cancel" onClick={() => setResolveId(null)} aria-label="Cancel categorize"><X size={16} /></button>
-                                                    </div>
-                                                ) : (
-                                                    <button className="tw-categorize-btn" onClick={() => setResolveId(c.id)}>Categorize</button>
-                                                )
-                                            )}
-                                            <span className="tw-time">{timeAgo(c.createdAt)}</span>
-                                            {c.source === 'local' && (
+                                            <span className="tw-local-badge" title="Stored in this browser — only you can delete it"><Save size={12} aria-hidden /> local</span>
+                                            {/* User override of the AI's category — you always have the final say.
+                                                This also covers needs_review items (plan 067 Phase 2, D3): every
+                                                capture is local now, so re-filing via `recategorizeLocalCapture`
+                                                is the one categorize path — the old backend `/resolve/:id` picker
+                                                (only reachable for non-local rows) is gone with it. */}
+                                            {refileId === c.id ? (
+                                                <div className="tw-resolve-picker">
+                                                    {BUCKETS.map(b => {
+                                                        const BIcon = b.icon;
+                                                        return (
+                                                        <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`} aria-label={`File under ${b.label}`}>
+                                                            <BIcon size={14} aria-hidden />
+                                                        </button>
+                                                        );
+                                                    })}
+                                                    <button className="tw-resolve-cancel" onClick={() => setRefileId(null)} aria-label="Cancel re-file"><X size={16} /></button>
+                                                </div>
+                                            ) : (
                                                 <button
-                                                    className="tw-delete-btn"
-                                                    onClick={() => handleLocalDelete(c.id)}
-                                                    title="Delete this capture (local only — backend records can't be removed from here)"
-                                                    aria-label="Delete capture"
+                                                    className="tw-categorize-btn"
+                                                    onClick={() => setRefileId(c.id)}
+                                                    title={c.status === 'needs_review'
+                                                        ? 'Categorize — you decide the category; the AI never has the final say on your stored thought'
+                                                        : 'Re-file — you decide the category; the AI never has the final say on your stored thought'}
                                                 >
-                                                    <Trash2 size={14} aria-hidden />
+                                                    <Pencil size={14} aria-hidden /> {c.status === 'needs_review' ? 'Categorize' : 'Re-file'}
                                                 </button>
                                             )}
+                                            <span className="tw-time">{timeAgo(c.createdAt)}</span>
+                                            <button
+                                                className="tw-delete-btn"
+                                                onClick={() => handleLocalDelete(c.id)}
+                                                title="Delete this capture"
+                                                aria-label="Delete capture"
+                                            >
+                                                <Trash2 size={14} aria-hidden />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -1186,7 +1038,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         </div>
                                         <div className="tw-item-card__actions">
                                             <span className="tw-time">{timeAgo(item.createdAt)}</span>
-                                            <button className="tw-delete-btn" onClick={() => (item as { source?: string }).source === 'local' ? deleteLocalCapture(item.id) : handleDelete(item.type || '', item.id)} title="Delete"><Trash2 size={16} /></button>
+                                            <button className="tw-delete-btn" onClick={() => deleteLocalCapture(item.id)} title="Delete"><Trash2 size={16} /></button>
                                         </div>
                                     </div>
                                 </div>

@@ -79,9 +79,21 @@ Stella and the backend (Morning Brief, KG) — so no shape change. Instead:
 - **Acceptance** (mutation-checked): stale-remote hydrate after a "reload" keeps an unsaved
   capture; delete an imported capture → next import does not bring it back; StrictMode mount.
 
-### Phase 2 — Per-user isolation (D3, D4) · P0 · M · needs G1 + G2
-- **W1**: coder A (backend) routes + store per G1, plus a 20 KB text cap on `/capture`; coder B (frontend) `capture.tsx` + `thoughtWeaverSync.ts` per G2 (strip key/user from URL, `history.replaceState` immediately if present); coder C `ThoughtWeaver.tsx` removes/limits shared-endpoint reads and fixes D5 (`stats` = local-derived + own-backend only).
-- **Acceptance**: backend test — two users, A's capture never in B's responses; frontend test — no network URL contains `key=`; supertest that `/seed` and deletes remain role-gated.
+### Phase 2 — Per-user isolation (D3, D4, D5) · P0 · M  *(G1/G2 = recommended options, approved 2026-09-25)*
+**CONTRACT (shared by all three coders):**
+- Backend `POST /api/thought-weaver/capture` `{ text }` → `{ success, data: { filed_to, confidence, destination_name, classification } }` — classify only, store NOTHING. 400 if empty, 413 if text > 20 000 chars.
+- Backend `POST /api/thought-weaver/inbox` `{ text }` → classifies server-side and appends
+  `InboxItem = { id: string; text: string; filed_to: string; confidence: number; destination_name: string | null; createdAt: string }`
+  to One Save object id `thought-weaver-inbox_<req.user.id>`, type `thought-weaver-inbox`, owner = req.user.id,
+  payload `{ items: InboxItem[] }` (newest first, capped at the newest 500). Returns `{ success, data: InboxItem }`.
+  Auth: same `authenticate` + `requirePermission('widget:thought-weaver')` as the router. Id prefix `inbox-`.
+- Removed routes (in-memory, shared across users): `GET /stats|/timeline|/captures|/:table`, `POST /resolve/:id|/seed`, `DELETE /:table/:id`. No stored rows exist to delete (Maps were in memory).
+- Desktop reads the inbox with `oneSaveClient.get('thought-weaver-inbox_' + uid)` and imports items once by id through `planImport` + `twImportedStore` (same as Supabase rows). The desktop NEVER writes the inbox object.
+- Phone `/capture`: no Supabase; uses the normal Dwellium session (bare `/api/*` fetch → `installApiAuthFetch` adds the Bearer). Not signed in / 401 → "Sign in to Dwellium on this phone first" + link to `/`. Legacy `?url=&key=&user=` params are stripped with `history.replaceState` and never stored; the legacy `tw-capture-config` localStorage entry (a config holding the anon key, not user content) is removed.
+- Supabase stays READ-only for a one-time import of existing rows (Phase 1); no code writes or deletes Supabase rows.
+
+Waves: W1 = backend coder (backend worktree `~/dwellium-backend/worktrees/067-thoughtweaver`) ∥ widget coder (`ThoughtWeaver.tsx`, new `twInbox.ts`) ∥ phone coder (`app/routes/capture.tsx`). W2 = orchestrator read + full gates. D5: header stats come from `deriveStats(localCaptures)` only.
+- **Acceptance**: backend supertest — user A's inbox never readable/writable as B; removed routes 404; 413 on oversize; `/capture` leaves no state. Frontend — no request URL contains `key=`; phone capture shows sign-in on 401; desktop imports an inbox item once and a deleted one stays deleted.
 
 ### Phase 3 — Safety UX (D6, D9) · P1 · S
 - Confirm on backend delete (reuse the `window.confirm` pattern at `:571`); `aria-live="polite"` on the result toast, `aria-busy` on Capture; toast for "Sync from captures (N added)".

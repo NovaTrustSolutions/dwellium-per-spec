@@ -70,9 +70,44 @@
     font-family: inherit;
 }
 
-.cs-row:hover {
+.cs-row:hover,
+.cs-row[aria-selected="true"] {
     border-color: var(--border-strong);
     background: var(--bg-surface-hover);
+}
+
+.cs-mark {
+    /* text-primary, not accent-text: accent-text on accent-subtle is < 4.5:1 in light/luxury/creative */
+    background: var(--accent-subtle);
+    color: var(--text-primary);
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 0 1px;
+}
+
+.cs-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 16px 0;
+    flex-shrink: 0;
+}
+
+.cs-chip {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+}
+
+.cs-chip[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+    color: var(--text-primary);
 }
 
 .cs-row-main {

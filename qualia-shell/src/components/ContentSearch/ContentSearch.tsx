@@ -4,7 +4,7 @@
  * memory) + file names, ranked, with snippets and click-to-open. Backend-free:
  * this widget itself never calls a search endpoint.
  */
-import { useState, useEffect, useMemo, useContext, useSyncExternalStore } from 'react';
+import { useState, useEffect, useMemo, useContext, useSyncExternalStore, useId, type KeyboardEvent, type ReactNode } from 'react';
 import { Search, FileText, Brain, Layers, Inbox, BookOpen, Cpu } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { fetchTree } from '../FileExplorer/fileExplorerApi';
@@ -14,11 +14,12 @@ import { synthesisStore, synthesisUserIdHolder, type Synthesis } from '../Synthe
 import { wikiStore, wikiUserIdHolder, type WikiMap } from '../Wiki/wikiStore';
 import { foundryStore, foundryUserIdHolder, type FoundryItem } from '../Foundry/foundryStore';
 import { copawStore, copawUserIdHolder, type MemoryFact } from '../Hive/copawStore';
-import { searchCorpus, type SearchDoc, type SearchDocType } from './searchEngine';
+import { searchCorpus, highlightParts, type SearchDoc, type SearchDocType } from './searchEngine';
 import { getWidgetMeta } from '../../registry/widgetRegistry';
 import './ContentSearch.css';
 
 const ACCENT = '#D6FE51';
+const MAX_SHOWN = 50;
 const TYPE_META: Record<SearchDocType, { icon: typeof FileText; label: string }> = {
     file: { icon: FileText, label: 'File' },
     dump: { icon: Brain, label: 'Brain Dump' },
@@ -33,6 +34,13 @@ function allFilePaths(tree: FileEntry[]): string[] {
     const walk = (e: FileEntry) => { if (e.tier === 'file') out.push(e.path); e.children?.forEach(walk); };
     tree.forEach(walk);
     return out;
+}
+
+/** Renders `text` with query-token matches wrapped in <mark> (Phase 2 highlighting). */
+function Highlighted({ text, query }: { text: string; query: string }): ReactNode {
+    return highlightParts(text, query).map((p, i) =>
+        p.match ? <mark key={i} className="cs-mark">{p.text}</mark> : <span key={i}>{p.text}</span>,
+    );
 }
 
 export default function ContentSearch() {
@@ -50,13 +58,20 @@ export default function ContentSearch() {
     const [files, setFiles] = useState<string[]>([]);
     const [filesUnavailable, setFilesUnavailable] = useState(false);
     const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState<'all' | SearchDocType>('all');
+    const [selected, setSelected] = useState(0);
+    const listId = useId();
 
     useEffect(() => {
         let cancelled = false;
-        fetchTree()
-            .then((t) => { if (!cancelled) setFiles(allFilePaths(t)); })
-            .catch(() => { if (!cancelled) setFilesUnavailable(true); });
-        return () => { cancelled = true; };
+        const loadFiles = () => {
+            fetchTree()
+                .then((t) => { if (!cancelled) { setFiles(allFilePaths(t)); setFilesUnavailable(false); } })
+                .catch(() => { if (!cancelled) setFilesUnavailable(true); });
+        };
+        loadFiles();
+        window.addEventListener('focus', loadFiles);
+        return () => { cancelled = true; window.removeEventListener('focus', loadFiles); };
     }, []);
 
     const docs: SearchDoc[] = useMemo(() => {
@@ -70,7 +85,36 @@ export default function ContentSearch() {
         return d;
     }, [dumps, syntheses, wiki, foundry, memory, files]);
 
-    const { hits, total } = useMemo(() => searchCorpus(query, docs), [query, docs]);
+    // Rank everything, filter by type, THEN cap — so chip counts and the filtered
+    // list cover every match, not just the global top 50 (6 ms for 2,000 docs).
+    const { hits } = useMemo(() => searchCorpus(query, docs, Infinity), [query, docs]);
+    const total = hits.length;
+
+    // Reset filter/selection in the handlers (not effects) so no render pairs a new
+    // query with a stale filter or an out-of-range selection.
+    const changeQuery = (q: string) => { setQuery(q); setFilter('all'); setSelected(0); };
+    const changeFilter = (f: 'all' | SearchDocType) => { setFilter(f); setSelected(0); };
+    // Option ids from the list id + row index: hit ids are paths and may contain spaces.
+    const optionId = (i: number) => `${listId}-opt-${i}`;
+
+    const typesPresent = useMemo(() => {
+        const seen = new Set<SearchDocType>();
+        const out: SearchDocType[] = [];
+        for (const h of hits) if (!seen.has(h.type)) { seen.add(h.type); out.push(h.type); }
+        return out;
+    }, [hits]);
+
+    const matching = useMemo(
+        () => (filter === 'all' ? hits : hits.filter((h) => h.type === filter)),
+        [hits, filter],
+    );
+    const filteredHits = useMemo(() => matching.slice(0, MAX_SHOWN), [matching]);
+
+    // Keep the selected row in view (guarded — jsdom has no scrollIntoView).
+    useEffect(() => {
+        const el = filteredHits[selected] && document.getElementById(optionId(selected));
+        el?.scrollIntoView?.({ block: 'nearest' });
+    }, [selected, filteredHits]);
 
     const open = (widgetId: string) => {
         const meta = getWidgetMeta(widgetId);
@@ -90,21 +134,62 @@ export default function ContentSearch() {
         }
     };
 
+    const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSelected((i) => Math.min(i + 1, Math.max(filteredHits.length - 1, 0)));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelected((i) => Math.max(i - 1, 0));
+        } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            const h = filteredHits[selected];
+            if (h) openHit(h);
+        } else if (e.key === 'Escape' && query) {
+            changeQuery('');
+        }
+    };
+
     const counterText = !query
         ? `${docs.length} indexed`
-        : total > hits.length
-            ? `showing ${hits.length} of ${total}`
-            : `${total} result${total === 1 ? '' : 's'}`;
+        : matching.length > filteredHits.length
+            ? `showing ${filteredHits.length} of ${matching.length}`
+            : `${matching.length} result${matching.length === 1 ? '' : 's'}`;
 
     return (
         <div className="cs-root">
             <div className="cs-header">
                 <Search size={16} style={{ color: ACCENT }} />
-                <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search all content — brain dumps, syntheses, wiki, foundry, memory, files…"
-                    className="cs-input" />
-                <span className="cs-count">{counterText}</span>
+                <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => changeQuery(e.target.value)}
+                    onKeyDown={onKeyDown}
+                    placeholder="Search all content — brain dumps, syntheses, wiki, foundry, memory, files…"
+                    className="cs-input"
+                    aria-label="Search all content"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={hits.length > 0}
+                    aria-controls={listId}
+                    aria-activedescendant={filteredHits[selected] ? optionId(selected) : undefined}
+                />
+                <span className="cs-count" aria-live="polite">{counterText}</span>
             </div>
             {filesUnavailable && <div className="cs-warning">Files unavailable — searching local content only.</div>}
+
+            {query && hits.length > 0 && (
+                <div className="cs-filters">
+                    <button type="button" className="cs-chip" aria-pressed={filter === 'all'} onClick={() => changeFilter('all')}>
+                        All ({total})
+                    </button>
+                    {typesPresent.map((t) => (
+                        <button key={t} type="button" className="cs-chip" aria-pressed={filter === t} onClick={() => changeFilter(t)}>
+                            {TYPE_META[t].label} ({hits.filter((h) => h.type === t).length})
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="cs-body">
                 {!query && (
@@ -113,22 +198,31 @@ export default function ContentSearch() {
                     </div>
                 )}
                 {query && hits.length === 0 && <div className="cs-no-results">No results for “{query}”.</div>}
-                {hits.map((h) => {
+                <div id={listId} role="listbox" aria-label="Search results">
+                {filteredHits.map((h, i) => {
                     const M = TYPE_META[h.type];
                     const Icon = M.icon;
                     return (
-                        <button key={h.id} className="cs-row" onClick={() => openHit(h)}>
+                        <div
+                            key={h.id}
+                            id={optionId(i)}
+                            role="option"
+                            aria-selected={i === selected}
+                            className="cs-row"
+                            onClick={() => openHit(h)}
+                        >
                             <Icon size={15} style={{ color: ACCENT, flexShrink: 0, marginTop: 1 }} />
                             <div className="cs-row-main">
                                 <div className="cs-row-title-line">
-                                    <span className="cs-row-title">{h.title}</span>
+                                    <span className="cs-row-title"><Highlighted text={h.title} query={query} /></span>
                                     <span className="cs-row-type">{M.label}</span>
                                 </div>
-                                <div className="cs-row-snippet">{h.snippet}</div>
+                                <div className="cs-row-snippet"><Highlighted text={h.snippet} query={query} /></div>
                             </div>
-                        </button>
+                        </div>
                     );
                 })}
+                </div>
             </div>
         </div>
     );

@@ -279,7 +279,7 @@ export default function CognitiveHarness() {
                     >
                         &lsaquo;
                     </button>
-                    <div className="ch-bar-list" ref={listRef} role="tablist" aria-label="Harness subsystems">
+                    <div className="ch-bar-list" ref={listRef} role="tablist" aria-label="Harness subsystems" onFocus={() => setIsPlaying(false)}>
                         {SUBSYSTEMS.map((system, idx) => {
                             const isActive = idx === activeIndex;
                             return (
@@ -290,7 +290,7 @@ export default function CognitiveHarness() {
                                     id={`ch-tab-${system.id}`}
                                     role="tab"
                                     aria-selected={isActive}
-                                    aria-controls={`ch-panel-${system.id}`}
+                                    aria-controls={isActive ? `ch-panel-${system.id}` : undefined}
                                     tabIndex={isActive ? 0 : -1}
                                     className={`ch-bar-item${isActive ? ' ch-bar-item--active' : ''}`}
                                     onClick={() => focusTab(idx)}
@@ -331,7 +331,7 @@ export default function CognitiveHarness() {
                                 <h3>{activeSystem.name}</h3>
                                 <span className="ch-panel-subtitle">{activeSystem.sub}</span>
                             </div>
-                            <div role="status" className={`ch-panel-status-indicator ch-panel-status-indicator--${card.status.state}`}>
+                            <div className={`ch-panel-status-indicator ch-panel-status-indicator--${card.status.state}`}>
                                 <span className="ch-status-ping" aria-hidden="true" />
                                 <span>{card.status.label}</span>
                             </div>

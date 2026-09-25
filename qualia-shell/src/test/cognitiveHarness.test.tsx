@@ -21,6 +21,9 @@ function stubMatchMedia(matches: boolean) {
     });
 }
 
+/** The pill is intentionally NOT a live region (it would re-announce on every auto-cycle step). */
+const pill = () => document.querySelector('.ch-panel-status-indicator') as HTMLElement;
+
 describe('CognitiveHarness', () => {
     beforeEach(() => {
         resetCmnForTests();
@@ -44,7 +47,22 @@ describe('CognitiveHarness', () => {
 
     it('shows Connected on the RAG pill', () => {
         render(<CognitiveHarness />);
-        expect(screen.getByRole('status')).toHaveTextContent('Connected');
+        expect(pill()).toHaveTextContent('Connected');
+    });
+
+    it('only the selected tab points aria-controls at the rendered panel', () => {
+        render(<CognitiveHarness />);
+        const withControls = screen.getAllByRole('tab').filter((t) => t.hasAttribute('aria-controls'));
+        expect(withControls).toHaveLength(1);
+        expect(document.getElementById(withControls[0].getAttribute('aria-controls')!)).toHaveAttribute('role', 'tabpanel');
+        expect(pill()).not.toHaveAttribute('role');
+    });
+
+    it('focusing into the tablist pauses the auto-cycle', () => {
+        render(<CognitiveHarness />);
+        expect(screen.getByRole('button', { name: 'Pause auto-cycle' })).toHaveAttribute('aria-pressed', 'true');
+        act(() => { screen.getAllByRole('tab')[0].focus(); });
+        expect(screen.getByRole('button', { name: 'Start auto-cycle' })).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('ArrowRight moves selection to the 2nd tab and focuses it', () => {
@@ -69,12 +87,12 @@ describe('CognitiveHarness', () => {
     it('clicking Prompt Optimization shows "No activity yet" with no runs, then "Live" after a recorded run', () => {
         render(<CognitiveHarness />);
         fireEvent.click(screen.getByRole('tab', { name: /PROMPT OPTIMIZATION/ }));
-        expect(screen.getByRole('status')).toHaveTextContent('No activity yet');
+        expect(pill()).toHaveTextContent('No activity yet');
 
         act(() => {
             recordRun({ prompt: 'x', outcome: 'success', toolsUsed: ['ara-chat'] });
         });
-        expect(screen.getByRole('status')).toHaveTextContent('Live');
+        expect(pill()).toHaveTextContent('Live');
     });
 
     it('shows "—" for last latency before any query', () => {

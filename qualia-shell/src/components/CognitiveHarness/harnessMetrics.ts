@@ -183,11 +183,12 @@ function evaluationCard(input: HarnessInputs): HarnessCard {
 function extKnowledgeCard(input: HarnessInputs): HarnessCard {
     return {
         metrics: [
-            metric('Available documents', String(input.availableDocs)),
-            metric('In memory', String(input.cmn.documents)),
+            // Not a subset: "ingested" also counts pastes, uploads and transcripts fed via the CMN widget.
+            metric('Local sources', String(input.availableDocs)),
+            metric('Ingested (all sources)', String(input.cmn.documents)),
         ],
         status: activityStatus(input.availableDocs > 0 || input.cmn.documents > 0),
-        source: 'Local documents available to feed the memory network.',
+        source: 'Tag, Scribe, capture and synthesis documents in this browser; ingested also counts pastes, uploads and transcripts.',
     };
 }
 

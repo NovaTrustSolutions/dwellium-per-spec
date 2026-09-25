@@ -128,6 +128,8 @@ export class CognitiveMemoryNetwork {
         } catch {
             // Corrupt payload: keep it on disk (never auto-delete user data), start empty in memory.
             this.log('hydrate', 'Saved memory could not be read; starting empty (saved copy left untouched)');
+            // A failure after the rebuild await lands post-render — bump the version so readers see it.
+            this.emit();
         }
     }
 

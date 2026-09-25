@@ -42,7 +42,8 @@
 
     /* Canvas — read by harnessCanvas.ts via getComputedStyle on this element. */
     --ch-canvas-bg: var(--ch-bg-surface-elevated);
-    --ch-canvas-grid: color-mix(in srgb, var(--ch-text-primary) 8%, transparent);
+    /* Redrawn every frame under a 0.15 fade, so it accumulates to ~alpha/0.15 — keep it tiny. */
+    --ch-canvas-grid: color-mix(in srgb, var(--ch-text-primary) 1.5%, transparent);
     --ch-canvas-ring-a: color-mix(in srgb, var(--ch-accent) 40%, transparent);
     --ch-canvas-ring-b: color-mix(in srgb, var(--ch-accent-text) 22%, transparent);
     --ch-canvas-particle-a: var(--ch-accent);

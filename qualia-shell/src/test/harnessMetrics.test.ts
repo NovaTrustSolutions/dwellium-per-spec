@@ -247,8 +247,8 @@ describe('harnessCard: ext-knowledge', () => {
     it('reads availableDocs and cmn.documents', () => {
         const card = harnessCard('ext-knowledge', makeInputs({ availableDocs: 5, cmn: makeCmn({ documents: 2 }) }));
         expect(card.metrics).toEqual([
-            { label: 'Available documents', value: '5' },
-            { label: 'In memory', value: '2' },
+            { label: 'Local sources', value: '5' },
+            { label: 'Ingested (all sources)', value: '2' },
         ]);
         expect(card.status).toEqual({ state: 'ok', label: 'Live' });
     });

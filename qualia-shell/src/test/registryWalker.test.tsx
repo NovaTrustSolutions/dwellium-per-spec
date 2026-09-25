@@ -53,7 +53,29 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + token-saver (token-saver skill status + estimated savings ring) → 68.
         //   + research-lab (labs-tier free-LLM sandbox, data-firewalled — see
         //     researchLabImportGuard.test.ts) → 69.
-        expect(ids.length).toBe(69);
+        //   token-saver is DEV-only (2026-09-24) → 68 in production builds;
+        //   counted separately below so this guard does not depend on mode.
+        expect(ids.filter(id => id !== 'token-saver').length).toBe(68);
+    });
+
+    it('token-saver is registered only when import.meta.env.DEV is true', async () => {
+        try {
+            vi.stubEnv('DEV', false);
+            vi.resetModules();
+            const prod = await import('../registry/widgetRegistry');
+            expect(prod.WIDGET_REGISTRY['token-saver']).toBeUndefined();
+            expect(prod.WINDOW_COMPONENTS['token-saver']).toBeUndefined();
+            expect(Object.keys(prod.WIDGET_REGISTRY).length).toBe(68);
+
+            vi.stubEnv('DEV', true);
+            vi.resetModules();
+            const dev = await import('../registry/widgetRegistry');
+            expect(dev.WIDGET_REGISTRY['token-saver']).toBeDefined();
+            expect(Object.keys(dev.WIDGET_REGISTRY).length).toBe(69);
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
     });
 
     // Plan 047: every widget carries a first-open tip whose related ids resolve.

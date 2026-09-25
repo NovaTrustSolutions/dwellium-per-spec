@@ -213,6 +213,132 @@ D11/D12 (global kill switch default OFF, per-rule threshold, undo) designed firs
 frontend test that the remounted tab calls the new path and renders the server's error on 500.
 **Verify per step:** gates; local curl of the new GET routes on `[::1]:3000`; preview click-through.
 
+### Phase 5 execution contract (2026-09-24; G1 unanswered → default 5a–5f, 5g deferred)
+
+Branches: backend `feat/066-inbox-backend-p5` (stacked on p4), frontend `feat/066-inbox-zero-p5`.
+Owner-only (G2) applies to every new route: resolve `inboxViewerFor(req.user)` first; an item the
+viewer cannot see is a 404, never a leak. Pre-seeded (orchestrator, already in the tree): backend
+`InboxStatus` gains `'snoozed'`; `InboxItem` gains `snoozedUntil?`, `listUnsubscribe?`,
+`listUnsubscribePost?`, `unsubscribedAt?` (all ISO strings / raw header strings); `EmailMessage`
+gains `listUnsubscribe?`, `listUnsubscribePost?`; frontend `TabId` gains `'rules' | 'audit'`.
+
+Decisions taken here (defaults, flagged in the PR):
+- **Rules are global config** (one rule set routes everyone's mail). Reads: any inbox user. Writes
+  (POST/PUT/DELETE): `requireRole('god')`, so one user cannot re-route another user's mail.
+- **Rules persist in SQLite**, not `./data/routing-rules.json` (that file is outside the plan-061
+  snapshot, so production edits were lost on every deploy). Stored as ONE row in the existing
+  `inbox_settings` table, key `routing_rules`, value = JSON array. Row absent → first boot imports
+  `ROUTING_RULES_FILE` if it exists, else `DEFAULT_RULES`, then writes the row. Row present (even
+  `[]`) → use it; deleting every rule never resurrects the defaults.
+- **Undo is Gmail-first**: if re-adding the `INBOX` label fails, the status does NOT change and the
+  route returns 502 (the UI shows the failure). No half-restored state.
+- **Unsubscribe one-click POST** goes through a DNS-pinned `https.request` whose `lookup` rejects
+  private/loopback/link-local/CGNAT/metadata addresses (`net.BlockList`), port 443 only, no
+  redirects followed, 10 s timeout, no cookies/auth. The URI comes from an email header — it is
+  attacker-controlled.
+- **Draft** uses `OPENAI_API_KEY` + `openaiChatParams` (same leg as `/api/llm/route`); no key → 503
+  with a plain message. Never sends. The handoff copies the draft to the clipboard, then opens the
+  target widget (the bus carries no payload), and says so in the toast.
+
+**Backend module contracts**
+```ts
+// src/stores/inboxStore.ts  (B1)
+export function restoreItem(viewer: InboxViewer, id: string): InboxItem | undefined;   // any status → 'pending', clears snoozedUntil; upsert
+export function snoozeItem(viewer: InboxViewer, id: string, until: Date): InboxItem | undefined; // status 'snoozed', snoozedUntil = until.toISOString(); upsert
+export function resurfaceDueSnoozes(now?: Date): number;  // every 'snoozed' item with snoozedUntil <= now → 'pending'; upsert each; returns count
+//   called at the top of getInboxItems, getInboxStats and getInboxItem (read paths always run; the Gmail fetcher may not)
+export function getGlobalAuditLog(viewer: InboxViewer, opts: { limit: number; offset: number }):
+    { entries: Array<{ id: string; inbox_item_id: string; action: string; actor: string | null; reason: string | null;
+                        details: string; created_at: string; subject: string | null }>; total: number };
+//   inbox_audit_log LEFT JOIN inbox_items; non-god sees only rows whose item.owner_user_id = viewer.userId;
+//   ORDER BY created_at DESC, rowid DESC; subject = json_extract(i.data, '$.subject')
+export function findUnsubscribeSource(viewer: InboxViewer, sender: string): InboxItem | undefined; // newest visible item from `sender` with listUnsubscribe set
+export function markSenderUnsubscribed(viewer: InboxViewer, sender: string, at?: Date): number;     // sets unsubscribedAt on every visible item from sender; upsert; returns count
+// getNewsletterSenders: unsubscribed = some visible item from that sender has unsubscribedAt
+// getInboxStats: add `snoozed: number`; `pending` excludes snoozed (it already counts status === 'pending' only)
+// processIncomingEmails: copy email.listUnsubscribe / listUnsubscribePost onto the item (both paths)
+// logInboxAction action union adds: 'restore' | 'snooze' | 'unsubscribe' | 'draft' | 'rule_create' | 'rule_update' | 'rule_delete'
+//   (rule_* rows use inboxItemId = the rule id)
+
+// src/services/gmailService.ts  (B1, parse only)
+//   listUnsubscribe: getHeader('List-Unsubscribe') || undefined; listUnsubscribePost: getHeader('List-Unsubscribe-Post') || undefined
+
+// src/agents/routingRules.ts  (B2)
+export type RuleInput = Omit<RoutingRule, 'id'>;
+export function validateRule(input: unknown, partial: boolean): { ok: true; value: Partial<RuleInput> } | { ok: false; error: string };
+//   name 1–100 chars; field ∈ subject|sender|body|any; pattern 1–500 chars AND `new RegExp(pattern, 'i')` compiles;
+//   targetProjectId 1–100 chars; urgency ∈ high|medium|low; priority integer 0–1000; enabled boolean;
+//   partial=false → all fields required; unknown keys ignored; `id` never accepted from input
+// class RoutingRulesEngine: getRules(); addRule(input: RuleInput): RoutingRule (id = `rule-${uuid}`);
+//   updateRule(id, updates: Partial<RuleInput>): RoutingRule | undefined; removeRule(id): boolean;
+//   evaluate(): a rule whose pattern throws is SKIPPED (console.warn once per rule id), never crashes routing.
+//   Persistence per the decision above (import { database } from '../services/database').
+
+// src/services/listUnsubscribe.ts  (B2, new)
+export function parseListUnsubscribe(header: string | undefined): { https: string[]; mailto: string[] };
+//   RFC 2369: comma-separated <…> URIs; keep only https: and mailto: (drop http:, javascript:, anything else)
+export function isOneClick(postHeader: string | undefined): boolean; // /^\s*List-Unsubscribe=One-Click\s*$/i
+export async function oneClickUnsubscribe(url: string, deps?: { request?: typeof import('https').request }):
+    Promise<{ ok: true; status: number } | { ok: false; error: string }>;
+//   POST, body exactly 'List-Unsubscribe=One-Click', Content-Type application/x-www-form-urlencoded,
+//   https only, port 443 only, DNS-pinned lookup rejecting non-public addresses, 10 s timeout,
+//   3xx = failure (not followed), 2xx = ok.
+export async function unsubscribe(item: Pick<InboxItem, 'listUnsubscribe' | 'listUnsubscribePost'>):
+    Promise<{ method: 'one-click'; ok: true } | { method: 'url' | 'mailto'; target: string } | { method: 'none' }>;
+//   one-click when isOneClick && an https URI exists AND the POST succeeds; otherwise first https → 'url',
+//   else first mailto → 'mailto', else 'none'. Never sends email.
+
+// src/services/inboxDraft.ts  (B2, new)
+export async function draftReply(item: Pick<InboxItem, 'subject' | 'sender' | 'body' | 'snippet'>, instruction?: string):
+    Promise<{ ok: true; draft: { subject: string; body: string; confidence: number } } | { ok: false; status: 502 | 503; error: string }>;
+//   no OPENAI_API_KEY → 503 'AI drafting needs an OpenAI key on the server'; body → plain text (strip tags), max 8000 chars;
+//   instruction max 500 chars; json response; confidence clamped 0–1; malformed output or HTTP error → 502; 30 s timeout.
+```
+
+**Backend routes** (`src/routes/inboxRoutes.ts`, B3; literal paths registered BEFORE `router.get('/:id')`)
+| Route | Behavior |
+|---|---|
+| `GET /rules` | `{ success, data: RoutingRule[] }` |
+| `POST /rules` (god) | `validateRule(body, false)` → 400 `{error}` or 201 `{data: rule}`; audit `rule_create` |
+| `PUT /rules/:id` (god) | `validateRule(body, true)` → 400 / 404 / 200 `{data: rule}`; audit `rule_update` |
+| `DELETE /rules/:id` (god) | 404 / 200; audit `rule_delete` |
+| `GET /audit/global?limit&offset` | limit: positive int, default 50, max 200; offset ≥ 0; `{ success, data: entries, pagination: {total, limit, offset, hasMore} }` |
+| `PATCH /newsletters/:sender/unsubscribe` | `:sender` is URL-encoded; no visible item from sender → 404; no header → `{ success, data: {method:'none'} }`; one-click ok → `markSenderUnsubscribed`, audit `unsubscribe`, `{method:'one-click'}`; else `{method:'url'|'mailto', target}` |
+| `PUT /:id/status` | body `{status:'pending', reason?}` — any other status → 400; 404 unseen; already pending → 200 no-op; previous status archived/deleted AND gmail source → `modifyLabels(item.sourceId, ['INBOX'], [], item.sourceAccount, item.ownerUserId)` FIRST, failure → 502 + audit `restore {success:false}`, status unchanged; then `restoreItem`, audit `restore {from}`; `{ data: withoutBody(item) }` |
+| `POST /:id/snooze` | body `{until}` ISO, must parse, be in the future, ≤ 366 days out → else 400; 404 unseen; `snoozeItem`; audit `snooze`; `{ data: withoutBody(item) }` |
+| `POST /:id/draft` | body `{instruction?}`; 404 unseen; `draftReply` → 200 `{data:{subject,body,confidence}}` / 502 / 503; audit `draft {confidence}` on success (never the text) |
+
+**Frontend contracts**
+```tsx
+// GlobalAuditTab.tsx (F5) — props unchanged: { apiBase: string; authFetch?: AuthFetch }
+//   GET `${apiBase}/audit/global?limit=50&offset=N`, "Load more" while hasMore; shows subject;
+//   View → GET `${apiBase}/${id}` + `${apiBase}/${id}/body`; Recover only for action ∈ archive|bulk_archive|delete|snooze,
+//   PUT `${apiBase}/${id}/status {status:'pending', reason:'Recovered from audit log'}`; non-2xx or success:false → error toast with server error
+// RulesManager.tsx (F5) — export default function RulesManager(props: { apiBase: string; authFetch: AuthFetch; canEdit: boolean })
+//   CRUD only against `${apiBase}/rules` (list / add / edit / delete / enable toggle via PUT {enabled});
+//   prompt-to-rule, stats, knowledge and AI-provider panels DELETED; canEdit=false → read-only list, no write buttons;
+//   the server's 400 `error` is shown inline
+// SmartActions.tsx (F5) — reduced to: export function DraftReplyPanel(props: { itemId: string; apiBase: string; authFetch: AuthFetch })
+//   POST `${apiBase}/${itemId}/draft {instruction?}`; renders subject/body as TEXT (never HTML) + confidence;
+//   503/502 → the server's error inline; handoff buttons = getDraftHandoffs(draft) → copy body to clipboard, then openWidgetHandoff,
+//   toast "Draft copied — paste it into <label target>"; templates/batch/extract/workitem code DELETED
+// NewslettersTab.tsx (F5) — props unchanged; restores an Unsubscribe button per sender (hidden when nl.unsubscribed → "Unsubscribed" badge)
+//   PATCH `${inboxApiBase}/newsletters/${encodeURIComponent(sender)}/unsubscribe`;
+//   one-click → toast "Unsubscribed", onRefresh(); url|mailto → window.open(target,'_blank','noopener,noreferrer') ONLY if target starts
+//   with https: or mailto:, toast "Open link to finish"; none → toast "No unsubscribe link"; failure → error toast
+// InboxZero.tsx (F4) — IZ_TABS/tab list gain 'rules' (label "Rules") and 'audit' (label "Audit");
+//   <RulesManager apiBase={INBOX_API} authFetch={authFetch} canEdit={isGod} />, <GlobalAuditTab apiBase={INBOX_API} authFetch={authFetch} />;
+//   5a: after a successful archive or delete, one session-only toast bar "Archived “subject” · Undo" (8 s; one at a time) →
+//       PUT `${INBOX_API}/${id}/status`; mutationFailed() on failure; success → refetch items/stats;
+//   5e: Snooze control on each triage card (1h / 4h / 1 day / 1 week) → POST `${INBOX_API}/${id}/snooze {until}`; mutationFailed(); refetch;
+//   5f: expanded card gets "Draft reply" → mounts <DraftReplyPanel itemId apiBase={INBOX_API} authFetch />
+```
+Tests: backend `tests/inboxPhase5Store.test.ts` (B1), `tests/routingRulesStore.test.ts`,
+`tests/listUnsubscribe.test.ts`, `tests/inboxDraft.test.ts` (B2), `tests/inboxPhase5Routes.test.ts`
+(B3: every route's happy path, 404 for another owner's item, 403 without `widget:inbox`, 403 rule write
+as non-god); frontend `src/test/inboxPhase5Tabs.test.tsx` (F5), `src/test/InboxZero.test.tsx` (F4).
+Mutation-check each security test (remove the guard → the test fails).
+
 ---
 
 ## Phase 6 — Stop the drift (both repos)

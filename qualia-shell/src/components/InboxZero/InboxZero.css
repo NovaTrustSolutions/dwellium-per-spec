@@ -619,6 +619,99 @@
     background: rgba(239, 68, 68, 0.15);
 }
 
+/* Draft reply toggle (plan 066 §5f) */
+.iz-action--draft {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+    color: var(--accent);
+}
+
+.iz-action--draft:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.iz-draft-panel {
+    margin-top: 10px;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    background: var(--bg-surface);
+}
+
+/* Snooze menu (plan 066 §5e) */
+.iz-snooze-wrap {
+    position: relative;
+}
+
+.iz-snooze-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 20;
+    margin-top: 4px;
+    min-width: 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+}
+
+.iz-snooze-menu__item {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.iz-snooze-menu__item:hover {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+}
+
+/* Undo bar (plan 066 §5a) */
+.iz-undo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 16px 12px;
+    padding: 8px 14px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.iz-undo-bar__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.iz-undo-bar__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--text-inverse);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
 /* Route picker */
 .iz-picker {
     margin-top: 10px;
@@ -2176,7 +2269,10 @@
 .iz-toolbar__search-clear:focus-visible,
 .iz-viewer__close:focus-visible,
 .iz-batch__btn:focus-visible,
-.iz-batch__select-all:focus-visible {
+.iz-batch__select-all:focus-visible,
+.iz-snooze-trigger:focus-visible,
+.iz-snooze-menu__item:focus-visible,
+.iz-undo-bar__btn:focus-visible {
     outline: 2px solid var(--accent, #60a5fa);
     outline-offset: 2px;
 }

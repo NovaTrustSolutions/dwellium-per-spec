@@ -19,7 +19,7 @@
 
 import type { IntegrationsBundle, LlmProvider } from '../types/integrations';
 import { recordAiFailure, recordAiSuccess } from './aiHealthStore';
-import { recordLlmUsage } from './llmUsageStore';
+import { recordLlmUsage, currentUsageUserId } from './llmUsageStore';
 import { DEFAULT_MODELS } from '../types/integrations';
 
 // ── Request / response types ─────────────────────────────────────────
@@ -48,6 +48,40 @@ export interface LlmResponse {
     model: string;
     /** Plan 068: real usage when the provider reported it. */
     usage?: LlmUsage;
+    /**
+     * Plan 068 (A5): internal retry-accounting hint, NOT for UI consumption.
+     * Number of billed attempts folded into this response. >1 means a
+     * truncated-thinking retry happened; when `usage` is undefined here,
+     * callLlm doubles its chars/4 fallback estimate to approximate the
+     * second billed call.
+     */
+    attempts?: number;
+}
+
+/** Sum two measured-usage objects field-by-field (used to fold retry attempts into one). */
+function sumUsage(a: LlmUsage, b: LlmUsage): LlmUsage {
+    const cacheRead = (a.cacheReadTokens ?? 0) + (b.cacheReadTokens ?? 0);
+    const cacheWrite = (a.cacheWriteTokens ?? 0) + (b.cacheWriteTokens ?? 0);
+    return {
+        inputTokens: a.inputTokens + b.inputTokens,
+        outputTokens: a.outputTokens + b.outputTokens,
+        ...(cacheRead > 0 ? { cacheReadTokens: cacheRead } : {}),
+        ...(cacheWrite > 0 ? { cacheWriteTokens: cacheWrite } : {}),
+    };
+}
+
+/**
+ * Fold this attempt's usage into the running total across retries (A5).
+ * First attempt (`priorAttempts === 0`) just returns its own usage (may be
+ * undefined). A later attempt only produces a combined total when BOTH the
+ * prior total and this attempt reported usage — otherwise undefined, so
+ * callLlm's fallback char-count (doubled via `attempts`) takes over instead
+ * of silently under-counting.
+ */
+function foldRetryUsage(priorUsage: LlmUsage | undefined, priorAttempts: number, thisUsage: LlmUsage | undefined): LlmUsage | undefined {
+    if (priorAttempts === 0) return thisUsage;
+    if (!priorUsage || !thisUsage) return undefined;
+    return sumUsage(priorUsage, thisUsage);
 }
 
 export class LlmError extends Error {
@@ -67,6 +101,10 @@ export async function callLlm(
     req: LlmRequest,
     llm: IntegrationsBundle['llm'],
 ): Promise<LlmResponse | null> {
+    // Plan 068 (C4): capture the ledger owner BEFORE dispatch/await — a
+    // logout or account switch mid-call must not land usage in the wrong
+    // (or anonymous) ledger.
+    const userId = currentUsageUserId();
     let res: LlmResponse | null;
     try {
         res = await dispatchLlm(req, llm);
@@ -79,15 +117,23 @@ export async function callLlm(
         else recordAiFailure(llm.active ?? 'unknown', 0);
         throw err;
     }
-    // P12-1 AI-spend ledger: one chokepoint records ESTIMATED usage for every
+    // P12-1 AI-spend ledger: one chokepoint records usage for every
     // completion (recordLlmUsage never throws — the ledger can't break calls).
     if (res) {
         recordAiSuccess();
+        const promptChars = (req.prompt?.length ?? 0) + (req.systemPrompt?.length ?? 0);
+        // A5: when a truncated-thinking retry happened AND we still ended up
+        // without measured usage, the char/4 fallback must count the prompt
+        // for BOTH billed attempts, not just the last one.
+        const fallbackMultiplier = !res.usage && res.attempts && res.attempts > 1 ? res.attempts : 1;
         recordLlmUsage({
             provider: res.provider,
             model: res.model,
-            promptChars: (req.prompt?.length ?? 0) + (req.systemPrompt?.length ?? 0),
+            promptChars: promptChars * fallbackMultiplier,
             responseChars: res.text?.length ?? 0,
+            usage: res.usage,
+            source: req.source,
+            userId,
         });
     }
     return res;
@@ -169,7 +215,7 @@ export async function testProvider(
     const llmWithOverride = { ...llm, active: provider };
     try {
         const res = await callLlm(
-            { prompt: 'Say "ok"', maxTokens: 16, temperature: 0 },
+            { prompt: 'Say "ok"', maxTokens: 16, temperature: 0, source: 'test' },
             llmWithOverride,
         );
         if (!res) return { ok: false, error: `Provider ${provider} not configured or not enabled` };
@@ -359,12 +405,33 @@ export function parseOpenAiText(json: any): { text: string; truncated: boolean }
     return { text, truncated: choice?.finish_reason === 'length' };
 }
 
+/** Real usage from an OpenAI-compatible chat-completions response. Missing/garbage → undefined. */
+export function parseOpenAiUsage(json: any): LlmUsage | undefined {
+    const u = json?.usage;
+    if (!u || typeof u.prompt_tokens !== 'number' || typeof u.completion_tokens !== 'number') return undefined;
+    const cached = typeof u.prompt_tokens_details?.cached_tokens === 'number' ? u.prompt_tokens_details.cached_tokens : 0;
+    const usage: LlmUsage = { inputTokens: Math.max(0, u.prompt_tokens - cached), outputTokens: u.completion_tokens };
+    if (cached > 0) usage.cacheReadTokens = cached;
+    return usage;
+}
+
 /** Text from a Gemini generateContent response — joins all non-thought parts. */
 export function parseGeminiText(json: any): { text: string; truncated: boolean } {
     const cand = json?.candidates?.[0];
     const parts: any[] = Array.isArray(cand?.content?.parts) ? cand.content.parts : [];
     const text = parts.filter((p) => p && !p.thought && typeof p.text === 'string').map((p) => p.text).join('');
     return { text, truncated: cand?.finishReason === 'MAX_TOKENS' };
+}
+
+/** Real usage from a Gemini generateContent response. Thinking is billed as output. Missing/garbage → undefined. */
+export function parseGeminiUsage(json: any): LlmUsage | undefined {
+    const u = json?.usageMetadata;
+    if (!u || typeof u.promptTokenCount !== 'number') return undefined;
+    const candidatesTokens = typeof u.candidatesTokenCount === 'number' ? u.candidatesTokenCount : 0;
+    const thoughtsTokens = typeof u.thoughtsTokenCount === 'number' ? u.thoughtsTokenCount : 0;
+    const usage: LlmUsage = { inputTokens: u.promptTokenCount, outputTokens: candidatesTokens + thoughtsTokens };
+    if (typeof u.cachedContentTokenCount === 'number' && u.cachedContentTokenCount > 0) usage.cacheReadTokens = u.cachedContentTokenCount;
+    return usage;
 }
 
 /** Budget used for the one automatic retry after an empty, truncated reply. */
@@ -406,9 +473,19 @@ export function parseAnthropicText(json: any): { text: string; truncated: boolea
     return { text, truncated: json?.stop_reason === 'max_tokens', refused: json?.stop_reason === 'refusal' };
 }
 
+/** Real usage from an Anthropic /v1/messages response. Missing/garbage → undefined. */
+export function parseAnthropicUsage(json: any): LlmUsage | undefined {
+    const u = json?.usage;
+    if (!u || typeof u.input_tokens !== 'number' || typeof u.output_tokens !== 'number') return undefined;
+    const usage: LlmUsage = { inputTokens: u.input_tokens, outputTokens: u.output_tokens };
+    if (typeof u.cache_read_input_tokens === 'number') usage.cacheReadTokens = u.cache_read_input_tokens;
+    if (typeof u.cache_creation_input_tokens === 'number') usage.cacheWriteTokens = u.cache_creation_input_tokens;
+    return usage;
+}
+
 // ── Provider implementations ──────────────────────────────────────────
 
-async function callAnthropic(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, forceNoSampling = false): Promise<LlmResponse> {
+async function callAnthropic(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, forceNoSampling = false, priorUsage?: LlmUsage, priorAttempts = 0): Promise<LlmResponse> {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -422,27 +499,30 @@ async function callAnthropic(req: LlmRequest, apiKey: string, model: string, max
     if (!res.ok) {
         const errText = await res.text().catch(() => '');
         // A model id we did not recognise as "no sampling" (future release) → retry once without temperature.
+        // This attempt failed before generating any tokens, so it is NOT billed — don't fold it into usage/attempts.
         if (res.status === 400 && !forceNoSampling && /temperature/i.test(errText)) {
-            return callAnthropic(req, apiKey, model, maxTokensOverride, true);
+            return callAnthropic(req, apiKey, model, maxTokensOverride, true, priorUsage, priorAttempts);
         }
         throw new LlmError('anthropic', res.status, errText || `HTTP ${res.status}`);
     }
     const json = await res.json();
     const { text, truncated, refused } = parseAnthropicText(json);
+    const attempts = priorAttempts + 1;
+    const usage = foldRetryUsage(priorUsage, priorAttempts, parseAnthropicUsage(json));
     if (refused && !text) {
         throw new LlmError('anthropic', 200, `${model} declined this request (stop_reason: refusal${json?.stop_details?.category ? `, ${json.stop_details.category}` : ''})`);
     }
-    // Thinking spent the whole budget → retry ONCE with a real budget.
+    // Thinking spent the whole budget → retry ONCE with a real budget. Both attempts are billed (A5).
     if (!text && truncated && maxTokensOverride === undefined) {
-        return callAnthropic(req, apiKey, model, retryBudget(req.maxTokens), forceNoSampling);
+        return callAnthropic(req, apiKey, model, retryBudget(req.maxTokens), forceNoSampling, usage, attempts);
     }
     if (!text && truncated) {
         throw new LlmError('anthropic', 200, `${model} returned no text (token budget exhausted by thinking) — raise maxTokens`);
     }
-    return { text, provider: 'anthropic', model };
+    return { text, provider: 'anthropic', model, usage, attempts: attempts > 1 ? attempts : undefined };
 }
 
-async function callOpenAI(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number): Promise<LlmResponse> {
+async function callOpenAI(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, priorUsage?: LlmUsage, priorAttempts = 0): Promise<LlmResponse> {
     const body = buildOpenAiBody(req, model, maxTokensOverride);
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -455,17 +535,19 @@ async function callOpenAI(req: LlmRequest, apiKey: string, model: string, maxTok
     }
     const json = await res.json();
     const { text, truncated } = parseOpenAiText(json);
-    // Reasoning model spent the whole budget thinking → retry ONCE with a real budget.
+    const attempts = priorAttempts + 1;
+    const usage = foldRetryUsage(priorUsage, priorAttempts, parseOpenAiUsage(json));
+    // Reasoning model spent the whole budget thinking → retry ONCE with a real budget. Both attempts are billed (A5).
     if (!text && truncated && maxTokensOverride === undefined) {
-        return callOpenAI(req, apiKey, model, retryBudget(req.maxTokens));
+        return callOpenAI(req, apiKey, model, retryBudget(req.maxTokens), usage, attempts);
     }
     if (!text && truncated) {
         throw new LlmError('openai', 200, `${model} returned no text (token budget exhausted by reasoning) — raise maxTokens or pick a non-reasoning model`);
     }
-    return { text, provider: 'openai', model };
+    return { text, provider: 'openai', model, usage, attempts: attempts > 1 ? attempts : undefined };
 }
 
-async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number): Promise<LlmResponse> {
+async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, priorUsage?: LlmUsage, priorAttempts = 0): Promise<LlmResponse> {
     // Gemini uses ?key=<apiKey> in URL. Combined system+user via instructions
     // field if systemPrompt provided.
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -491,14 +573,16 @@ async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTok
     }
     const json = await res.json();
     const { text, truncated } = parseGeminiText(json);
-    // Gemini 2.5 thinking shares maxOutputTokens → empty on small budgets; retry once bigger.
+    const attempts = priorAttempts + 1;
+    const usage = foldRetryUsage(priorUsage, priorAttempts, parseGeminiUsage(json));
+    // Gemini 2.5 thinking shares maxOutputTokens → empty on small budgets; retry once bigger. Both attempts are billed (A5).
     if (!text && truncated && maxTokensOverride === undefined) {
-        return callGemini(req, apiKey, model, retryBudget(req.maxTokens));
+        return callGemini(req, apiKey, model, retryBudget(req.maxTokens), usage, attempts);
     }
     if (!text && truncated) {
         throw new LlmError('gemini', 200, `${model} returned no text (output budget consumed by thinking) — raise maxTokens`);
     }
-    return { text, provider: 'gemini', model };
+    return { text, provider: 'gemini', model, usage, attempts: attempts > 1 ? attempts : undefined };
 }
 
 /**
@@ -530,7 +614,7 @@ async function callLocal(req: LlmRequest, baseUrl: string, model: string): Promi
     }
     const json = await res.json();
     const text = json?.choices?.[0]?.message?.content ?? '';
-    return { text, provider: 'local', model };
+    return { text, provider: 'local', model, usage: parseOpenAiUsage(json) };
 }
 
 /**
@@ -561,5 +645,5 @@ async function callCustom(req: LlmRequest, baseUrl: string, apiKey: string, mode
     }
     const json = await res.json();
     const text = json?.choices?.[0]?.message?.content ?? '';
-    return { text, provider: 'custom', model };
+    return { text, provider: 'custom', model, usage: parseOpenAiUsage(json) };
 }

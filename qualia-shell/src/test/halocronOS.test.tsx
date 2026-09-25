@@ -73,7 +73,11 @@ vi.mock('../lib/subscriptionsStore', () => ({
     useSubscriptions: () => [],
     monthlyTotal: () => 0,
     saveSubscriptions: vi.fn(),
-    subscriptionsStore: { set: vi.fn() },
+    withoutUnconfirmedDefaults: (l: unknown) => l,
+    subscriptionsStore: { set: vi.fn(), getSnapshot: () => [] },
+    prorateMonthly: (monthly: number, days: number) => (monthly * days) / 30,
+    applyPlanEdits: (list: unknown[]) => list,
+    parseNewSubscription: () => null,
 }));
 
 vi.mock('../hooks/useIntegrations', () => ({

@@ -46,7 +46,7 @@ describe('subscriptionsStore follows the login', () => {
         saveSubscriptions(SEED);
         expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual(SEED);
         setPerUserIdentity('u-lisa');
-        expect(subscriptionsStore.getSnapshot().map((s) => s.id)).toContain('claude-max'); // shipped defaults, not Andy's list
+        expect(subscriptionsStore.getSnapshot()).toEqual([]); // empty defaults, not Andy's list — no sample data
         expect(subscriptionsStore.getSnapshot()).not.toEqual(SEED);
         setPerUserIdentity(ANDY);
         expect(subscriptionsStore.getSnapshot()).toEqual(SEED);

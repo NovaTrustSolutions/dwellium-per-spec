@@ -4,7 +4,7 @@
  * plan-advice line ("you're paying for more than you use"). All figures are
  * ESTIMATES (chars/4 tokens × rough $/MTok table) and labeled as such.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Coins, Trash2 } from 'lucide-react';
 import { useLlmUsage, lastNDays, planAdvice, clearLlmUsage } from '../../lib/llmUsageStore';
 import CostAdvisorPanel from './CostAdvisorPanel';
@@ -12,17 +12,31 @@ import './AiSpend.css';
 
 const fmt$ = (n: number) => (n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(4)}`);
 const fmtK = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+const CONFIRM_CLEAR_MS = 4000;
 
 export default function AiSpend() {
     const ledger = useLlmUsage();
     const [confirmClear, setConfirmClear] = useState(false);
 
+    // Plan 068 E1: a stray click minutes later must not wipe the ledger.
+    useEffect(() => {
+        if (!confirmClear) return;
+        const t = setTimeout(() => setConfirmClear(false), CONFIRM_CLEAR_MS);
+        return () => clearTimeout(t);
+    }, [confirmClear]);
+
     const days = useMemo(() => lastNDays(14, ledger), [ledger]);
     const today = days[days.length - 1];
-    const week = days.slice(-7);
+    // Plan 068 E3: memoize so `providers` doesn't rebuild off a fresh array every render.
+    const week = useMemo(() => days.slice(-7), [days]);
     const weekCost = week.reduce((s, d) => s + d.estCost, 0);
     const weekCalls = week.reduce((s, d) => s + d.calls, 0);
+    const weekMeasured = week.reduce((s, d) => s + (d.measuredCalls ?? 0), 0);
+    const weekUnpriced = week.reduce((s, d) => s + (d.unpriced ?? 0), 0);
+    const measuredPct = weekCalls > 0 ? Math.round((weekMeasured / weekCalls) * 100) : null;
     const maxCost = Math.max(0.0001, ...days.map(d => d.estCost));
+    const chartTotal = days.reduce((s, d) => s + d.estCost, 0);
+    const peakDay = days.reduce((best, d) => (d.estCost > best.estCost ? d : best), days[0]);
 
     const providers = useMemo(() => {
         const agg: Record<string, { calls: number; estCost: number }> = {};
@@ -35,16 +49,37 @@ export default function AiSpend() {
         return Object.entries(agg).sort((a, b) => b[1].estCost - a[1].estCost);
     }, [week]);
 
+    const handleClear = () => {
+        if (confirmClear) {
+            clearLlmUsage();
+            setConfirmClear(false);
+        } else {
+            setConfirmClear(true);
+        }
+    };
+
     return (
         <div className="spend">
             <header className="spend__head">
                 <div className="spend__title"><Coins size={15} aria-hidden /> AI Spend <span className="spend__est">all figures estimated</span></div>
+                <div className="spend__quality">
+                    {measuredPct !== null && (
+                        <span className="spend__chip" title="Share of the last 7 days' calls priced from real provider-reported tokens rather than the chars/4 estimate">
+                            {measuredPct}% measured
+                        </span>
+                    )}
+                    {weekUnpriced > 0 && (
+                        <span className="spend__chip spend__chip--warn" title="These calls used a model with no known price, so their cost is not included in the totals above">
+                            {weekUnpriced} unpriced
+                        </span>
+                    )}
+                </div>
                 <button
                     className="spend__clear"
-                    onClick={() => { if (confirmClear) { clearLlmUsage(); setConfirmClear(false); } else setConfirmClear(true); }}
+                    onClick={handleClear}
                     title="Clear the usage ledger"
                 >
-                    <Trash2 size={12} aria-hidden /> {confirmClear ? 'Really clear?' : 'Clear'}
+                    <Trash2 size={12} aria-hidden /> {confirmClear ? 'Click again to clear all devices' : 'Clear'}
                 </button>
             </header>
 
@@ -65,7 +100,15 @@ export default function AiSpend() {
                 </div>
             </div>
 
-            <section className="spend__chart" aria-label="Estimated cost per day, last 14 days">
+            <p className="spend__coverage-note">
+                Not tracked yet: server-side calls, voice (TTS/STT), avatar.
+            </p>
+
+            <section
+                className="spend__chart"
+                role="img"
+                aria-label={`Estimated cost per day, last 14 days, total ${fmt$(chartTotal)}, peak ${fmt$(peakDay.estCost)} on ${peakDay.date}`}
+            >
                 {days.map(d => (
                     <div key={d.date} className="spend__bar-col" title={`${d.date}: ${fmt$(d.estCost)} · ${d.calls} calls`}>
                         <div className="spend__bar" style={{ height: `${Math.max(2, (d.estCost / maxCost) * 100)}%` }} />
@@ -73,10 +116,25 @@ export default function AiSpend() {
                     </div>
                 ))}
             </section>
+            <table className="spend__sr-only">
+                <caption>Estimated cost per day, last 14 days</caption>
+                <thead>
+                    <tr><th scope="col">Date</th><th scope="col">Calls</th><th scope="col">Cost</th></tr>
+                </thead>
+                <tbody>
+                    {days.map(d => (
+                        <tr key={d.date}>
+                            <td>{d.date}</td>
+                            <td>{d.calls}</td>
+                            <td>{fmt$(d.estCost)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
 
             <section className="spend__providers" aria-label="Spend by provider (7 days)">
                 <h3>By provider (7 days)</h3>
-                {providers.length === 0 && <p className="spend__empty">No usage recorded yet — every ARA/skill/agent LLM call lands here automatically.</p>}
+                {providers.length === 0 && <p className="spend__empty">No usage recorded yet — AI calls made in this browser will show up here.</p>}
                 {providers.map(([prov, v]) => (
                     <div key={prov} className="spend__prov-row">
                         <span className="spend__prov-name">{prov}</span>
@@ -91,7 +149,7 @@ export default function AiSpend() {
             </section>
 
             <footer className="spend__foot">
-                Recorded at the callLlm chokepoint (browser-direct keys) · tokens ≈ chars/4 · prices ≈ public $/MTok tables · local models = $0
+                Recorded in the browser · measured tokens when the provider reports them, otherwise ≈ chars/4 · prices from public price tables · local models = $0
             </footer>
         </div>
     );

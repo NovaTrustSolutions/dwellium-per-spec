@@ -84,28 +84,82 @@ const CAP_STOPWORDS = new Set([
     'Caught', 'Intro', 'Introduced', 'Chatted', 'Sync', 'Connected', 'Reached', 'One',
 ]);
 
-function countPhraseHits(haystack: string, phrases: string[]): number {
+// ponytail: word-boundary phrase matching. One RegExp per phrase, built once
+// at module load (not per-classify-call) — that's the whole fix for
+// 'due ' matching "residue" / 'concept' matching "conceptual", etc.
+function escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildPhraseRegex(phrase: string): RegExp {
+    // Trailing/leading whitespace in a phrase entry (e.g. 'due ', 'met ') was
+    // there to force a word boundary — the boundary lookaround below makes
+    // that unnecessary and also covers end-of-string, so just trim it.
+    const trimmed = phrase.trim();
+    return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(trimmed)}(?![\\p{L}\\p{N}])`, 'u');
+}
+
+function compilePhrases(phrases: string[]): RegExp[] {
+    return phrases.map(buildPhraseRegex);
+}
+
+const PROJECT_WORD_REGEXES = compilePhrases(PROJECT_WORDS);
+const IDEA_PHRASE_REGEXES = compilePhrases(IDEA_PHRASES);
+const SOCIAL_PHRASE_REGEXES = compilePhrases(SOCIAL_PHRASES);
+const ADMIN_PHRASE_REGEXES = compilePhrases(ADMIN_PHRASES);
+
+function countPhraseHits(haystack: string, regexes: RegExp[]): number {
     let n = 0;
-    for (const p of phrases) if (haystack.includes(p)) n++;
+    for (const r of regexes) if (r.test(haystack)) n++;
     return n;
+}
+
+// Verbs/prepositions that, immediately before a capitalized name, indicate
+// the sentence is about that person ("Call Mark Chen", "Lunch with Sarah").
+const PEOPLE_CONTEXT_WORDS = new Set([
+    'call', 'email', 'text', 'ask', 'with', 'meet', 'met', 'to', 'from',
+]);
+
+// Nouns that mean a following-capitalized-word pair was a place/thing, not a
+// person's surname ("Silver Lake project", "Riverside street").
+const PLACE_OR_THING_WORDS = new Set([
+    'project', 'street', 'st', 'ave', 'avenue', 'road', 'lake', 'park',
+    'building', 'tower', 'plaza', 'center', 'hall', 'apartments', 'unit',
+]);
+
+interface NameCandidate {
+    name: string;
+    /** Index of the candidate's first token — used to detect "Verb Name…". */
+    tokenIndex: number;
+    /** True if a people-context verb/preposition immediately precedes the name. */
+    hasPeopleContext: boolean;
 }
 
 /**
  * Find a likely personal name: a capitalized token (optionally two in a row,
  * e.g. "Mark Chen") that isn't a sentence-initial common word, day, month, etc.
+ * Rejects a candidate immediately followed by a place/thing noun ("Silver Lake
+ * project"). Reports whether a people-context word precedes it, since a name
+ * alone is not enough signal on its own (see localCategorize).
  */
-function detectName(raw: string): string | null {
+function detectName(raw: string): NameCandidate | null {
     const tokens = raw.split(/\s+/);
     for (let i = 0; i < tokens.length; i++) {
         const cleaned = tokens[i].replace(/[^A-Za-z'-]/g, '');
         if (!/^[A-Z][a-z]{1,}$/.test(cleaned)) continue;
         if (CAP_STOPWORDS.has(cleaned)) continue;
+
         // Found a candidate. Greedily attach a following capitalized surname.
         const next = (tokens[i + 1] || '').replace(/[^A-Za-z'-]/g, '');
-        if (/^[A-Z][a-z]{1,}$/.test(next) && !CAP_STOPWORDS.has(next)) {
-            return `${cleaned} ${next}`;
-        }
-        return cleaned;
+        const isTwoWord = /^[A-Z][a-z]{1,}$/.test(next) && !CAP_STOPWORDS.has(next);
+        const name = isTwoWord ? `${cleaned} ${next}` : cleaned;
+
+        const afterIdx = isTwoWord ? i + 2 : i + 1;
+        const afterWord = (tokens[afterIdx] || '').toLowerCase().replace(/[^a-z]/g, '');
+        if (PLACE_OR_THING_WORDS.has(afterWord)) continue; // e.g. "Silver Lake project"
+
+        const beforeWord = (tokens[i - 1] || '').toLowerCase().replace(/[^a-z]/g, '');
+        return { name, tokenIndex: i, hasPeopleContext: PEOPLE_CONTEXT_WORDS.has(beforeWord) };
     }
     return null;
 }
@@ -134,27 +188,36 @@ export function localCategorize(rawInput: string): LocalCategoryResult {
 
     const lower = raw.toLowerCase();
     const firstWord = lower.split(/\s+/)[0].replace(/[^a-z]/g, '');
-    const name = detectName(raw);
+    const nameCandidate = detectName(raw);
+    const socialHits = countPhraseHits(lower, SOCIAL_PHRASE_REGEXES);
+    // A capitalized name alone isn't enough — only count it toward "people"
+    // when a social phrase is also present, or the name directly follows a
+    // people verb/preposition ("Call Mark Chen", "Lunch with Sarah"). Without
+    // this, "Silver Lake project needs a new roof" reads as a person.
+    const nameEligible = !!nameCandidate && (socialHits > 0 || nameCandidate.hasPeopleContext);
+    // "Call Mark Chen…" — the verb is about contacting a person, not a task;
+    // don't also award it the plain admin action-verb bonus.
+    const verbFollowedByName = nameEligible && nameCandidate!.tokenIndex === 1 && nameCandidate!.hasPeopleContext;
 
     const score: Record<Bucket, number> = {
         admin: 0, people: 0, projects: 0, ideas: 0, needs_review: 0,
     };
 
     // ── admin (tasks) ──
-    if (ACTION_VERBS.has(firstWord)) score.admin += 3;
-    score.admin += 2 * countPhraseHits(lower, ADMIN_PHRASES);
+    if (ACTION_VERBS.has(firstWord) && !verbFollowedByName) score.admin += 3;
+    score.admin += 2 * countPhraseHits(lower, ADMIN_PHRASE_REGEXES);
     // a trailing question mark with no idea cue is usually not a task; leave as-is.
 
     // ── people ──
-    score.people += 3 * countPhraseHits(lower, SOCIAL_PHRASES);
-    if (name) score.people += 2;
+    score.people += 3 * socialHits;
+    if (nameEligible) score.people += 2;
 
     // ── projects ──
-    for (const w of PROJECT_WORDS) if (lower.includes(w)) score.projects += 2;
-    if (/\bproject\b/.test(lower)) score.projects += 1; // extra weight for explicit "project"
+    for (const r of PROJECT_WORD_REGEXES) if (r.test(lower)) score.projects += 2;
+    if (/\bproject\b/u.test(lower)) score.projects += 1; // extra weight for explicit "project"
 
     // ── ideas ──
-    score.ideas += 3 * countPhraseHits(lower, IDEA_PHRASES);
+    score.ideas += 3 * countPhraseHits(lower, IDEA_PHRASE_REGEXES);
 
     // Pick the winner. Tie-break order favors the most actionable read.
     const order: Bucket[] = ['admin', 'people', 'projects', 'ideas'];
@@ -165,18 +228,31 @@ export function localCategorize(rawInput: string): LocalCategoryResult {
     }
 
     if (bestScore <= 0) {
-        // No signal at all — keep it, but be honest that it's unsorted.
+        // No signal at all — keep it, but be honest that it's unsorted. If the
+        // text is mostly non-English (this offline heuristic is English-only)
+        // or has no letters at all (emoji/symbols), say so instead of
+        // guessing a label from words the classifier can't read.
+        const letters = raw.match(/\p{L}/gu) || [];
+        let destination_name: string;
+        if (letters.length === 0) {
+            destination_name = 'Untitled thought';
+        } else {
+            const nonAsciiRatio = letters.filter(ch => !/[A-Za-z]/.test(ch)).length / letters.length;
+            destination_name = nonAsciiRatio > 0.3
+                ? 'Unsorted — offline sorter is English-only'
+                : summaryLabel(raw);
+        }
         return {
             filed_to: 'needs_review',
             confidence: 0.3,
-            destination_name: summaryLabel(raw),
+            destination_name,
             source: 'local-heuristic',
         };
     }
 
     const confidence = Math.min(0.92, 0.45 + 0.12 * bestScore);
     const destination_name =
-        best === 'people' && name ? name : summaryLabel(raw);
+        best === 'people' && nameEligible && nameCandidate ? nameCandidate.name : summaryLabel(raw);
 
     return { filed_to: best, confidence, destination_name, source: 'local-heuristic' };
 }

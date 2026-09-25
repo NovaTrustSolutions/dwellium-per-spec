@@ -254,7 +254,7 @@
 
 .iz-filter--active {
     background: color-mix(in srgb, var(--accent) 10%, transparent);
-    color: var(--accent);
+    color: var(--accent-text); /* accent AS text — --accent itself missed 4.5:1 at 11px */
     border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
@@ -612,11 +612,104 @@
 .iz-action--delete {
     background: rgba(239, 68, 68, 0.08);
     border-color: rgba(239, 68, 68, 0.2);
-    color: var(--danger);
+    color: color-mix(in srgb, var(--danger) 70%, var(--text-primary)); /* plain --danger missed 4.5:1 at 11px */
 }
 
 .iz-action--delete:hover {
     background: rgba(239, 68, 68, 0.15);
+}
+
+/* Draft reply toggle (plan 066 §5f) */
+.iz-action--draft {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+    color: var(--accent-text); /* accent AS text */
+}
+
+.iz-action--draft:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.iz-draft-panel {
+    margin-top: 10px;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    background: var(--bg-surface);
+}
+
+/* Snooze menu (plan 066 §5e) */
+.iz-snooze-wrap {
+    position: relative;
+}
+
+.iz-snooze-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 20;
+    margin-top: 4px;
+    min-width: 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+}
+
+.iz-snooze-menu__item {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.iz-snooze-menu__item:hover {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+}
+
+/* Undo bar (plan 066 §5a) */
+.iz-undo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 16px 12px;
+    padding: 8px 14px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.iz-undo-bar__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.iz-undo-bar__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--text-inverse);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
 }
 
 /* Route picker */
@@ -753,17 +846,6 @@
     transition: width 0.4s ease;
 }
 
-.iz-nl__status {
-    font-size: 10px;
-    color: var(--success);
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.iz-nl__status--off {
-    color: var(--text-tertiary);
-}
-
 /* ========== STATS TAB ========== */
 .iz-stats-tab {
     flex: 1;
@@ -883,54 +965,6 @@
     height: 100%;
     border-radius: 2px;
     transition: width 0.5s ease;
-}
-
-/* ========== UNDO TOAST ========== */
-.iz-undo {
-    position: absolute;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(22, 22, 35, 0.95);
-    backdrop-filter: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    animation: iz-toast-in 0.2s ease-out;
-    z-index: 10;
-}
-
-@keyframes iz-toast-in {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-}
-
-.iz-undo__btn {
-    background: none;
-    border: none;
-    color: var(--accent);
-    font-weight: 700;
-    font-size: 12px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: color 0.2s;
-}
-
-.iz-undo__btn:hover {
-    color: var(--accent);
 }
 
 /* ========== SETTINGS TAB ========== */
@@ -1852,354 +1886,6 @@
 }
 
 /* ========================================
-   CAPABILITIES TAB
-   ======================================== */
-
-.iz-cap {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-}
-
-.iz-cap::-webkit-scrollbar {
-    width: 5px;
-}
-
-.iz-cap::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
-}
-
-/* Summary banner */
-.iz-cap__banner {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent) 0%, color-mix(in srgb, var(--accent) 4%, transparent) 100%);
-    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 14px;
-}
-
-.iz-cap__banner-stats {
-    display: flex;
-    justify-content: space-around;
-    gap: 12px;
-}
-
-.iz-cap__stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-}
-
-.iz-cap__stat-value {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--text-primary);
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
-}
-
-.iz-cap__stat-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-}
-
-/* Category cards */
-.iz-cap__list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.iz-cap__card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-left: 3px solid var(--cap-color, #6b7280);
-    border-radius: 10px;
-    overflow: hidden;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    animation: iz-card-in 0.2s ease-out;
-}
-
-.iz-cap__card:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.iz-cap__card--expanded {
-    border-color: rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.03);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.iz-cap__card--disabled {
-    opacity: 0.5;
-    border-left-color: #374151;
-}
-
-.iz-cap__card--disabled:hover {
-    opacity: 0.65;
-}
-
-/* Card header */
-.iz-cap__header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.iz-cap__header:hover {
-    background: rgba(255, 255, 255, 0.02);
-}
-
-.iz-cap__icon {
-    font-size: 20px;
-    flex-shrink: 0;
-    width: 28px;
-    text-align: center;
-}
-
-.iz-cap__title-area {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-}
-
-.iz-cap__title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.2px;
-}
-
-.iz-cap__desc {
-    font-size: 10.5px;
-    color: var(--text-tertiary);
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.iz-cap__meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
-
-.iz-cap__count {
-    font-size: 10px;
-    font-weight: 800;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.2px;
-}
-
-.iz-cap__disabled-badge {
-    font-size: 9px;
-    font-weight: 700;
-    padding: 1px 5px;
-    border-radius: 4px;
-    background: rgba(239, 68, 68, 0.12);
-    color: var(--danger);
-    letter-spacing: 0.5px;
-}
-
-.iz-cap__chevron {
-    font-size: 11px;
-    color: var(--text-tertiary);
-    transition: color 0.2s;
-}
-
-.iz-cap__card:hover .iz-cap__chevron {
-    color: var(--text-secondary);
-}
-
-/* Feature list */
-.iz-cap__features {
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-    padding: 8px 14px 12px 52px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    animation: iz-slide-in 0.2s ease-out;
-}
-
-.iz-cap__feature {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 4px 0;
-}
-
-.iz-cap__feature-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    margin-top: 5px;
-    transition: background 0.3s;
-}
-
-.iz-cap__feature-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0px;
-    min-width: 0;
-}
-
-.iz-cap__feature-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-.iz-cap__feature-desc {
-    font-size: 10.5px;
-    color: var(--text-tertiary);
-    line-height: 1.3;
-}
-
-/* ========================================
-   CAPABILITIES SETTINGS
-   ======================================== */
-
-.iz-cap-settings {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px 16px 16px;
-}
-
-.iz-cap-settings__item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.iz-cap-settings__item:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.iz-cap-settings__item--on {
-    border-color: rgba(34, 197, 94, 0.15);
-    background: rgba(34, 197, 94, 0.03);
-}
-
-.iz-cap-settings__info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    flex: 1;
-}
-
-.iz-cap-settings__icon {
-    font-size: 18px;
-    flex-shrink: 0;
-}
-
-.iz-cap-settings__text {
-    display: flex;
-    flex-direction: column;
-    gap: 0px;
-    min-width: 0;
-}
-
-.iz-cap-settings__name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.iz-cap-settings__count {
-    font-size: 10px;
-    color: var(--text-tertiary);
-}
-/* ============================================
-   PREMIUM UI POLISH — 5 Enhancements
-   ============================================ */
-
-/* [P1] Email row hover with slide-in accent */
-.iz-email-row, .iz-mail-row {
-    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-    position: relative;
-}
-.iz-email-row:hover, .iz-mail-row:hover {
-    background: color-mix(in srgb, var(--accent) 4%, transparent) !important;
-    transform: translateX(3px);
-    box-shadow: inset 3px 0 0 var(--accent, var(--accent));
-}
-
-/* [P2] Priority badge pulsing animation */
-.iz-priority-high, .iz-badge-urgent {
-    animation: izPriorityPulse 2s ease-in-out infinite;
-}
-@keyframes izPriorityPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    50% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
-}
-
-/* [P3] Unread indicator glow dot */
-.iz-unread-dot, .iz-new-indicator {
-    box-shadow: 0 0 6px var(--accent, var(--accent)), 0 0 12px color-mix(in srgb, var(--accent) 20%, transparent);
-    animation: izUnreadGlow 2s ease-in-out infinite alternate;
-}
-@keyframes izUnreadGlow {
-    from { box-shadow: 0 0 4px var(--accent, var(--accent)); }
-    to { box-shadow: 0 0 10px var(--accent, var(--accent)), 0 0 20px color-mix(in srgb, var(--accent) 15%, transparent); }
-}
-
-/* [P4] Filter tab switch animation */
-.iz-tab-active, .iz-filter-active {
-    position: relative;
-}
-.iz-tab-active::after, .iz-filter-active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 10%;
-    right: 10%;
-    height: 2px;
-    background: var(--accent, var(--accent));
-    border-radius: 1px;
-    animation: izTabSlide 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes izTabSlide {
-    from { transform: scaleX(0); }
-    to { transform: scaleX(1); }
-}
-
-/* [P5] Email body preview fade gradient */
-.iz-email-preview, .iz-mail-snippet {
-    -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
-    mask-image: linear-gradient(to right, black 80%, transparent 100%);
-}
-
-/* ========================================
    Open email button on card row
    ======================================== */
 
@@ -2434,90 +2120,8 @@
     color: #c4c9d2;
 }
 
-/* ========== ATTACHMENTS ========== */
-.iz-viewer__attachments {
-    margin: 0 28px 12px;
-    padding: 14px;
-    background: rgba(245, 158, 11, 0.04);
-    border: 1px solid rgba(245, 158, 11, 0.1);
-    border-radius: 10px;
-}
-
-.iz-viewer__attachments-label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    color: var(--warning);
-    display: block;
-    margin-bottom: 10px;
-}
-
-.iz-viewer__attachments-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px;
-}
-
-.iz-viewer__attachment-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    color: inherit;
-}
-
-.iz-viewer__attachment-card:hover {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.25);
-    transform: translateY(-1px);
-    text-decoration: none;
-}
-
-.iz-viewer__attachment-icon {
-    font-size: 22px;
-    flex-shrink: 0;
-    line-height: 1;
-}
-
-.iz-viewer__attachment-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.iz-viewer__attachment-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.iz-viewer__attachment-size {
-    font-size: 10px;
-    color: var(--text-tertiary);
-}
-
-.iz-viewer__attachment-dl {
-    font-size: 14px;
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-    transition: color 0.15s, transform 0.15s;
-}
-
-.iz-viewer__attachment-card:hover .iz-viewer__attachment-dl {
-    color: var(--warning);
-    transform: translateY(1px);
-}
+/* ponytail: .iz-viewer__attachment* rules removed at plan 066 §6 along with
+   the dead attachment-download-card markup — no backend route exists yet. */
 
 /* Body — no max-height, the viewer itself scrolls */
 .iz-viewer__body {
@@ -2583,7 +2187,10 @@
 .iz-toolbar__search-clear:focus-visible,
 .iz-viewer__close:focus-visible,
 .iz-batch__btn:focus-visible,
-.iz-batch__select-all:focus-visible {
+.iz-batch__select-all:focus-visible,
+.iz-snooze-trigger:focus-visible,
+.iz-snooze-menu__item:focus-visible,
+.iz-undo-bar__btn:focus-visible {
     outline: 2px solid var(--accent, #60a5fa);
     outline-offset: 2px;
 }

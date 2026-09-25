@@ -21,6 +21,7 @@
  * `typeof window` in the mutators (mirrors thoughtWeaverStore / todoStore);
  * the factory's getServerSnapshot returns the documented default.
  */
+import { reportUserIdHolder } from '../../lib/perUserIdentity';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
 
@@ -68,7 +69,7 @@ const EMPTY: ReportData = {
 };
 
 /** Holder updated by the ThoughtWeaver render path BEFORE useSyncExternalStore reads. */
-export const reportUserIdHolder: { current: string | null } = { current: null };
+export { reportUserIdHolder }; // set by setPerUserIdentity (plan 067) — tied to the signed-in user
 
 function resolveKey(): string {
     const uid = reportUserIdHolder.current;

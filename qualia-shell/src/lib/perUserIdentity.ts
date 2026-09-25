@@ -102,6 +102,15 @@ export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 058 — per-user Universal Shell nav persistence (universalShellStore). */
 export const universalShellUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 067 — ThoughtWeaver captures / imported ids / to-dos / reports. Were
+ *  set only when the widget rendered, so readers outside it (unifiedMemory,
+ *  dailySynthesis, ConnectionsPanel) could read the PREVIOUS account's
+ *  thoughts after a switch until the widget was opened. */
+export const thoughtWeaverUserIdHolder: UserIdHolder = makeHolder();
+export const twImportedUserIdHolder: UserIdHolder = makeHolder();
+export const todoUserIdHolder: UserIdHolder = makeHolder();
+export const reportUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -135,6 +144,10 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     gridLockUserIdHolder,
     stellaPrefsUserIdHolder,
     universalShellUserIdHolder,
+    thoughtWeaverUserIdHolder,
+    twImportedUserIdHolder,
+    todoUserIdHolder,
+    reportUserIdHolder,
 ];
 
 /**

@@ -2,9 +2,10 @@
  * emailBodySanitize — security-hardening regression guard.
  *
  * Defensive maintenance: the email-body iframe `srcDoc` sinks in
- * InboxWidget / InboxZero / GlobalAuditTab render attacker-controlled email
- * HTML. All of them now route the body through the central `sanitizeHtml`
- * (DOMPurify) gate BEFORE injection. These tests assert that the sanitizer
+ * InboxZero / GlobalAuditTab render attacker-controlled email HTML
+ * (InboxWidget was deleted at plan 066 §2e). All of them now route the body
+ * through the central `sanitizeHtml` (DOMPurify) gate BEFORE injection.
+ * These tests assert that the sanitizer
  * strips the script-injection vectors an email body could carry, so a
  * regression that re-introduces a raw sink (or weakens the allowlist) fails
  * here instead of shipping an XSS.

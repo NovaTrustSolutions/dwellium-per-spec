@@ -27,7 +27,6 @@ import { dreamStore, dreamUserIdHolder, appendDream } from '../components/Stella
 // P12-5/6 (gap items 3+4): wide dream corpus + nightly deep cycle + brief.
 import { buildDreamCorpus, parseDeepDream, DEEP_DREAM_SYSTEM, dayKey } from '../lib/dailySynthesis';
 import { hermesLearningUserIdHolder } from '../components/HonchoHermesPanel/hermesLearningStore';
-import { thoughtWeaverUserIdHolder } from '../components/ThoughtWeaver/thoughtWeaverStore';
 import { upsertBrief, todaysBrief } from '../lib/morningBriefStore';
 import { goalsStore, goalProgress } from '../lib/goalsStore';
 import { artifactStore } from '../lib/artifactStore';
@@ -71,7 +70,6 @@ export function useHonchoBackgroundRunner(): void {
         // P12-5: the wide corpus reads these too (goals/artifacts/usage ride
         // integrationsUserIdHolder, already set by UserProvider).
         hermesLearningUserIdHolder.current = uid;
-        thoughtWeaverUserIdHolder.current = uid;
         // Cost advisor reads the user's Hermes/Honcho tasks; KPI rides
         // integrationsUserIdHolder (already set by UserProvider).
         personaWorkUserIdHolder.current = uid;

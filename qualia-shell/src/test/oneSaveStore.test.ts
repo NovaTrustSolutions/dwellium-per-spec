@@ -457,7 +457,9 @@ describe('oneSaveStore bootstrap isolation', () => {
 
         expect(store.getSnapshot()).toBe('typed locally');
 
-        // Control: with no local edit in flight, the remote value IS applied.
+        // Control: once the local edit is durably saved (the flush clears the
+        // plan-067 dirty marker), the remote value IS applied.
+        localStorage.removeItem('onesave:dirty:race_user-1');
         vi.mocked(oneSaveClient.get).mockResolvedValue(savedObject('race_user-1', 'user-1', 'fresh remote'));
         await store.hydrate();
         expect(store.getSnapshot()).toBe('fresh remote');

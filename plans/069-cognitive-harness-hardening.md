@@ -108,11 +108,18 @@ Rules for every agent: no git writes; don't edit files you don't own; ignore typ
 
 ## 5. Acceptance checklist
 
-- [ ] All 10 cards read real stores; none says "Not connected"; idle cards say "No activity yet".
-- [ ] Storage-full degrades only the Memory card.
-- [ ] Probe/metrics computed once per engine version.
-- [ ] Canvas: no reseed on tab change, DPR-sharp, resizes with its container, stops when hidden, static under reduced motion.
-- [ ] Keyboard-operable tabs; labelled buttons; canvas hidden from AT; live log.
-- [ ] Theme tokens; text ≥ 4.5:1 in dark and latte (excluding the app-wide latte `--text-secondary` token issue, if hit — reported, not patched here).
-- [ ] Copy matches behaviour (registry, HalocronOS, title, play button, canvas label).
-- [ ] New vitest suites green; full gate green on final commit; e2e spec updated (run noted separately).
+- [x] All 10 cards read real stores; none says "Not connected"; idle cards say "No activity yet".
+- [x] Storage-full degrades only the Memory card.
+- [x] Probe/metrics computed once per engine version.
+- [x] Canvas: no reseed on tab change, DPR-sharp, resizes with its container, stops when hidden, static under reduced motion.
+- [x] Keyboard-operable tabs; labelled buttons; canvas hidden from AT; live log.
+- [x] Theme tokens; text ≥ 4.5:1 in dark and latte (excluding the app-wide latte `--text-secondary` token issue, if hit — reported, not patched here).
+- [x] Copy matches behaviour (registry, HalocronOS, title, play button, canvas label).
+- [x] New vitest suites green; full gate green on final commit; e2e spec updated (run noted separately).
+
+## 6. Execution record (2026-09-25)
+
+Commits: `72de68a` contract · `4e38e40` W1 (3 coders) · `53f7871` W2 (integrator) · `20eb7eb` W3 review fixes. ruflo swarm `swarm-1790365666445-946v0y` registered the agents; the work ran as Claude Code subagents (ruflo-core:coder / reviewer).
+Orchestrator catches beyond agent reports: persona `tasks` unguarded on load; canvas colours could throw in `addColorStop`; HalocronOS 7 px override; latte log contrast (fixed-black tint); accumulating grid; three over-claiming descriptions.
+Reviewer (W3): hydrate post-await failure without emit (fixed + test); `aria-controls` on absent panels (fixed + test); status pill live-region spam + focus desync (pill no longer a live region; focus pauses cycle, tested); ext-knowledge labels (renamed). Rated by-design: router/tool double counting, mount-time particle seed.
+Harness (standalone real-browser render, before vs after): after 16/16, before 3/16. e2e `cmn-057.spec.ts` updated, not run (needs the live shell login).

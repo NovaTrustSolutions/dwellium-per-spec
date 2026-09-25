@@ -266,6 +266,7 @@ export default function ThoughtWeaver() {
     const [generating, setGenerating] = useState(false);
     const [genMsg, setGenMsg] = useState<string | null>(null);
     const [handoffMsg, setHandoffMsg] = useState<string | null>(null);
+    const [syncMsg, setSyncMsg] = useState<string | null>(null);
     const didCatchUp = useRef(false);
     const llmReady = hasActiveLlm(integrations.llm);
 
@@ -455,8 +456,16 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [localCaptures]);
 
-    const handleLocalDelete = useCallback((id: string) => {
-        deleteLocalCapture(id);
+    // Shared delete confirm (plan 067 Phase 3, D6) — used by both the Recent
+    // list and the Dashboard item delete. Deleting a local capture is
+    // irreversible (Phase 2 removed the backend copy), so name the thought
+    // (first ~60 chars, verbatim) in the confirm and bail out on Cancel.
+    const handleDeleteCapture = useCallback((id: string, text: string) => {
+        const preview = text.length > 60 ? text.slice(0, 60) + '…' : text;
+        const ok = typeof window !== 'undefined' && window.confirm(
+            `Delete this thought — "${preview}"? This cannot be undone.`
+        );
+        if (ok) deleteLocalCapture(id);
     }, []);
 
     // ── Glanceable views from the LOCAL trusted store (D5) ────────────────
@@ -646,32 +655,38 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                     );
                                 })}
                             </div>
-                            <button className="tw-capture__btn" onClick={handleCapture} disabled={!text.trim() || loading}>
+                            <button className="tw-capture__btn" onClick={handleCapture} disabled={!text.trim() || loading} aria-busy={loading}>
                                 {loading ? 'Classifying...' : 'Capture'}
                             </button>
                         </div>
                     </div>
 
-                    {/* Classification result toast */}
-                    {lastResult && (
-                        <div className="tw-result" style={{ borderLeftColor: bucketColor(lastResult.filed_to) }}>
-                            <span className="tw-result__icon"><BucketIcon bucket={lastResult.filed_to} size={16} /></span>
-                            <div className="tw-result__text">
-                                <strong>{lastResult.filed_to === 'needs_review' ? 'Needs Review' : `Filed → ${lastResult.destination_name}`}</strong>
-                                <span className={`tw-confidence tw-confidence--${confidenceLabel(lastResult.confidence).toLowerCase()}`}>
-                                    {confidenceLabel(lastResult.confidence)} ({Math.round(lastResult.confidence * 100)}%)
-                                </span>
-                                {captureSource && (
-                                    <span className="tw-source-badge" title="How this thought was sorted">
-                                        {captureSource === 'llm' ? <><Sparkles size={12} aria-hidden /> via your LLM</>
-                                            : captureSource === 'backend' ? <><Satellite size={12} aria-hidden /> via backend</>
-                                            : <><Save size={12} aria-hidden /> sorted locally · offline</>}
+                    {/* Classification result toast — the region is ALWAYS rendered
+                        (plan 067 Phase 3, D9) so a screen reader has already
+                        registered it as a live region before the content inside
+                        changes; a region mounted together with its first content
+                        is often not announced. */}
+                    <div role="status" aria-live="polite">
+                        {lastResult && (
+                            <div className="tw-result" style={{ borderLeftColor: bucketColor(lastResult.filed_to) }}>
+                                <span className="tw-result__icon"><BucketIcon bucket={lastResult.filed_to} size={16} /></span>
+                                <div className="tw-result__text">
+                                    <strong>{lastResult.filed_to === 'needs_review' ? 'Needs Review' : `Filed → ${lastResult.destination_name}`}</strong>
+                                    <span className={`tw-confidence tw-confidence--${confidenceLabel(lastResult.confidence).toLowerCase()}`}>
+                                        {confidenceLabel(lastResult.confidence)} ({Math.round(lastResult.confidence * 100)}%)
                                     </span>
-                                )}
+                                    {captureSource && (
+                                        <span className="tw-source-badge" title="How this thought was sorted">
+                                            {captureSource === 'llm' ? <><Sparkles size={12} aria-hidden /> via your LLM</>
+                                                : captureSource === 'backend' ? <><Satellite size={12} aria-hidden /> via backend</>
+                                                : <><Save size={12} aria-hidden /> sorted locally · offline</>}
+                                        </span>
+                                    )}
+                                </div>
+                                <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }} aria-label="Dismiss result"><X size={16} /></button>
                             </div>
-                            <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }}><X size={16} /></button>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {/* Recent captures — local store only (plan 067 Phase 2) */}
                     <div className="tw-recent">
@@ -734,9 +749,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                             <span className="tw-time">{timeAgo(c.createdAt)}</span>
                                             <button
                                                 className="tw-delete-btn"
-                                                onClick={() => handleLocalDelete(c.id)}
+                                                onClick={() => handleDeleteCapture(c.id, c.original_text)}
                                                 title="Delete this capture"
-                                                aria-label="Delete capture"
+                                                aria-label={`Delete "${c.original_text.length > 60 ? c.original_text.slice(0, 60) + '…' : c.original_text}"`}
                                             >
                                                 <Trash2 size={14} aria-hidden />
                                             </button>
@@ -760,12 +775,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 onClick={() => {
                                     const generated = synthesizeTodosFromCaptures(mergedCaptures);
                                     const added = syncTodosFromCaptures(generated);
-                                    if (typeof window !== 'undefined') {
-                                        // light feedback through lastResult-style banner reuse
-                                        setLastResult(null);
-                                    }
-                                    // eslint-disable-next-line no-console
-                                    console.log(`[ThoughtWeaver] Synced ${added} new to-do(s) from captures`);
+                                    setSyncMsg(added > 0
+                                        ? `Added ${added} to-do${added === 1 ? '' : 's'} from captures`
+                                        : 'No new to-dos — everything is already on your list');
                                 }}
                                 title="Pull actionable items from your captures"
                             >
@@ -777,6 +789,13 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 </button>
                             )}
                         </div>
+                    </div>
+
+                    {/* Always-rendered live region (plan 067 Phase 3, D9) so the
+                        "Sync from captures" result is actually announced instead
+                        of only landing in the console. */}
+                    <div role="status" aria-live="polite">
+                        {syncMsg && <p className="tw-reports__msg">{syncMsg}</p>}
                     </div>
 
                     {/* Quick-add */}
@@ -1038,7 +1057,14 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         </div>
                                         <div className="tw-item-card__actions">
                                             <span className="tw-time">{timeAgo(item.createdAt)}</span>
-                                            <button className="tw-delete-btn" onClick={() => deleteLocalCapture(item.id)} title="Delete"><Trash2 size={16} /></button>
+                                            <button
+                                                className="tw-delete-btn"
+                                                onClick={() => handleDeleteCapture(item.id, item.notes || item.name)}
+                                                title="Delete"
+                                                aria-label={`Delete "${(item.notes || item.name || '').length > 60 ? (item.notes || item.name).slice(0, 60) + '…' : (item.notes || item.name)}"`}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

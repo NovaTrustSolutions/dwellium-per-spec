@@ -119,6 +119,8 @@ describe('ThoughtWeaver inbox import (plan 067 Phase 2)', () => {
         const deleteBtnA = cardA.querySelector('.tw-delete-btn') as HTMLButtonElement;
         expect(deleteBtnA).toBeTruthy();
 
+        // Plan 067 Phase 3 (D6): delete now confirms first.
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
         await act(async () => { deleteBtnA.click(); });
         await waitFor(() => expect(screen.queryByText(ITEM_A.text)).not.toBeInTheDocument());
 

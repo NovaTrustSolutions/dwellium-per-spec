@@ -388,8 +388,10 @@ export async function fetchUpstreamStats(userId: string, kind: 'by-period' | 're
     query: { period?: 'day' | 'week' | 'month' | 'year'; fromDate?: number; toDate?: number }):
     Promise<{ ok: true; data: unknown } | { ok: false; status: 400 | 409 | 502 | 503 | 504; error: string; needsSetup?: true; needsKey?: true }>;
 //   no base URL → 503 needsSetup; no key → 409 needsKey; GET `${base}/api/v1/stats/${kind}?…` with API-Key, 10 s timeout,
-//   redirect:'manual' (3xx → 502); upstream 400 → 400; upstream 401/403 → 502 'Upstream rejected your API key'
-//   (NEVER 401/403 from Dwellium — the app treats those as "sign out"); other failure → 502; timeout → 504; body cap 1 MB.
+//   redirect:'manual' (3xx → 502); upstream 400 → 400; upstream 401/403 → 502 'Upstream rejected your API key' + keyRejected:true
+//   (NEVER 401/403 from Dwellium — the app treats those as "sign out"); other failure → 502; timeout (incl. mid-body) → 504;
+//   body cap 1 MB. A stored key that no longer decrypts → 409 needsKey (the UI returns to the key form).
+//   saveUpstreamKey REFUSES (route → 503) when domain encryption is unavailable — encryptForDomain would return plaintext.
 ```
 Routes (`inboxRoutes.ts`, before `/:id`): `GET /upstream/status` → `{configured, hasKey}`; `PUT /upstream/key {apiKey}`
 (string 10–512 chars, no whitespace → 400) → `{hasKey:true}`; `DELETE /upstream/key`; `GET /upstream/stats/by-period`,

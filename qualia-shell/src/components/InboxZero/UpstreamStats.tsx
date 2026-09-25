@@ -91,13 +91,16 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
             const failing = !rtRes.ok ? rtRes : !bpRes.ok ? bpRes : null;
             if (failing) {
                 const body = await failing.json().catch(() => ({}));
+                // Recoverable states first: the server lost its upstream config, or the saved key
+                // is gone/unreadable — go back to the matching card instead of a dead-end error.
+                if (body.needsSetup) { setState({ kind: 'not-configured' }); return; }
+                if (body.needsKey) { setSaveError(body.error || null); setState({ kind: 'no-key' }); return; }
                 setState({
                     kind: 'error',
                     message: body.error || `Upstream stats request failed (${failing.status})`,
-                    // "Never treat these as auth failures" — 502 here only ever means the upstream
-                    // key was rejected or the proxy failed, so it's the one status worth a
-                    // dedicated "Replace key" escape hatch back to state 2.
-                    canReplaceKey: failing.status === 502,
+                    // Only a real upstream 401/403 (keyRejected) means the key is the problem; other
+                    // 502s are upstream outages/bad responses, where "Replace key" would mislead.
+                    canReplaceKey: body.keyRejected === true,
                 });
                 return;
             }
@@ -119,8 +122,7 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
         try {
             const res = await authFetch(`${API}/status`);
             if (!res.ok) {
-                if (res.status === 503) { setState({ kind: 'not-configured' }); return; }
-                if (res.status === 409) { setState({ kind: 'no-key' }); return; }
+                // /upstream/status itself only answers 200 or 400 — needsSetup/needsKey come from the stats calls.
                 const body = await res.json().catch(() => ({}));
                 setState({ kind: 'error', message: body.error || `Could not check upstream status (${res.status})`, canReplaceKey: false });
                 return;
@@ -221,7 +223,7 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
                         {saving ? 'Saving…' : 'Save'}
                     </button>
                 </div>
-                {saveError && <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-primary)', fontSize: '0.78rem' }}>{saveError}</p>}
+                {saveError && <p role="alert" style={{ margin: '0.5rem 0 0 0', color: 'color-mix(in srgb, var(--danger) 70%, var(--text-primary))', fontSize: '0.78rem' }}>{saveError}</p>}
             </div>
         );
     }
@@ -229,7 +231,7 @@ export default function UpstreamStats({ apiBase, authFetch }: UpstreamStatsProps
     if (state.kind === 'error') {
         return (
             <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '10px', padding: '1.25rem' }}>
-                <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{state.message}</p>
+                <p role="alert" style={{ margin: 0, color: 'color-mix(in srgb, var(--danger) 70%, var(--text-primary))', fontSize: '0.85rem' }}>{state.message}</p>
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
                     <button className="btn-secondary" onClick={loadStatus}>Retry</button>
                     {state.canReplaceKey && (

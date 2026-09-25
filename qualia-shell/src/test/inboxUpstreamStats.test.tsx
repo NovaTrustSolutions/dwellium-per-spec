@@ -72,8 +72,10 @@ describe('UpstreamStats', () => {
         expect(screen.queryByLabelText(/API key/i)).not.toBeInTheDocument();
     });
 
-    it('not configured via a 503 needsSetup status response shows the same message', async () => {
-        const authFetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'not set up', needsSetup: true }, false, 503));
+    it('a stats 503 needsSetup (server lost its upstream config) shows the not-configured card', async () => {
+        const authFetch = vi.fn().mockImplementation((url: string) => url.includes('/upstream/status')
+            ? Promise.resolve(okEnvelope({ configured: true, hasKey: true }))
+            : Promise.resolve(jsonResponse({ success: false, error: 'not set up', needsSetup: true }, false, 503)));
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         await waitFor(() => expect(screen.getByText(/isn't connected on this server/)).toBeInTheDocument());
     });
@@ -87,8 +89,10 @@ describe('UpstreamStats', () => {
         expect(screen.getByRole('button', { name: /Save/ })).toBeInTheDocument();
     });
 
-    it('no key via a 409 needsKey status response shows the same input state', async () => {
-        const authFetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'no key', needsKey: true }, false, 409));
+    it('a stats 409 needsKey shows the key input state', async () => {
+        const authFetch = vi.fn().mockImplementation((url: string) => url.includes('/upstream/status')
+            ? Promise.resolve(okEnvelope({ configured: true, hasKey: true }))
+            : Promise.resolve(jsonResponse({ success: false, error: 'no key', needsKey: true }, false, 409)));
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         await screen.findByLabelText(/Inbox Zero API key/i);
     });
@@ -225,12 +229,35 @@ describe('UpstreamStats', () => {
     it('502 on a stats call shows the error and a Replace key button', async () => {
         const authFetch = vi.fn().mockImplementation((url: string) => {
             if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
-            if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ error: 'Upstream rejected your API key' }, false, 502));
+            if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ success: false, error: 'Upstream rejected your API key', keyRejected: true }, false, 502));
             return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
         });
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
         await waitFor(() => expect(screen.getByText('Upstream rejected your API key')).toBeInTheDocument());
         expect(screen.getByRole('button', { name: /Replace key/i })).toBeInTheDocument();
+    });
+
+    it('a 502 that is NOT a rejected key (upstream outage) offers Retry but not Replace key', async () => {
+        const authFetch = vi.fn().mockImplementation((url: string) => {
+            if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
+            if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ success: false, error: 'Upstream request failed with status 500' }, false, 502));
+            return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
+        });
+        render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
+        await waitFor(() => expect(screen.getByText('Upstream request failed with status 500')).toBeInTheDocument());
+        expect(screen.queryByRole('button', { name: /Replace key/i })).toBeNull();
+        expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument();
+    });
+
+    it('a stats 409 needsKey (key gone or unreadable) returns to the key form with the reason', async () => {
+        const authFetch = vi.fn().mockImplementation((url: string) => {
+            if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
+            if (url.includes('/upstream/stats/')) return Promise.resolve(jsonResponse({ success: false, error: 'The saved upstream key can no longer be read — save it again', needsKey: true }, false, 409));
+            return Promise.resolve(jsonResponse({}, false, 500));
+        });
+        render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);
+        expect(await screen.findByLabelText(/Inbox Zero API key/i)).toBeInTheDocument();
+        expect(screen.getByText(/can no longer be read/)).toBeInTheDocument();
     });
 
     it('504 on a stats call shows the error and a Retry button (no Replace key)', async () => {
@@ -248,7 +275,7 @@ describe('UpstreamStats', () => {
     it('Replace key on a 502 error goes back to the no-key input state', async () => {
         const authFetch = vi.fn().mockImplementation((url: string) => {
             if (url.includes('/upstream/status')) return Promise.resolve(okEnvelope({ configured: true, hasKey: true }));
-            if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ error: 'Upstream rejected your API key' }, false, 502));
+            if (url.includes('/upstream/stats/response-time')) return Promise.resolve(jsonResponse({ success: false, error: 'Upstream rejected your API key', keyRejected: true }, false, 502));
             return Promise.resolve(okEnvelope(BY_PERIOD_FIXTURE));
         });
         render(<UpstreamStats apiBase="/api/inbox" authFetch={authFetch} />);

@@ -21,6 +21,7 @@ import './InboxZero.css';
 
 import NewslettersTab from './NewslettersTab';
 import StatsTab from './StatsTab';
+import UpstreamStats from './UpstreamStats';
 import RulesManager from './RulesManager';
 import { GlobalAuditTab } from './GlobalAuditTab';
 import { DraftReplyPanel } from './SmartActions';
@@ -1475,6 +1476,7 @@ export default function InboxZero() {
             {activeTab === 'stats' && (
                 <div role="tabpanel" id="iz-tabpanel-stats" aria-labelledby="iz-tab-stats">
                     <StatsTab stats={stats} metrics={metrics} zeroProgress={zeroProgress} />
+                    <UpstreamStats apiBase={INBOX_API} authFetch={authFetch} />
                 </div>
             )}
 

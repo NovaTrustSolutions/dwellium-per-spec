@@ -41,8 +41,8 @@ Standing rules (from CLAUDE.md, memory and prior plans):
 | G2 | Inbox visibility: owner-only, or shared team inbox? | **Answered 2026-09-24: owner-only** — each user sees mail from the Google accounts they linked; god sees all; legacy env-mailbox mail (no owner) is god-only |
 | G3 | Email body retention? | Keep everything; no pruning code is written |
 | G4 | Move app-wide settings (AI keys, theme, RBAC) out of the Inbox Zero Settings tab into Control Panel? | Extract to its own file only (6c); no move |
-| G5 | Upstream elie222/inbox-zero: is Dwellium sold/licensed, or used by 5+ business users? (LICENSE rider, lines 9-38) | Phase 7 not started; no iframe, no proxy |
-| G6 | Stop or rebind the idle `inbox-zero-services-web-1` container (`0.0.0.0:3000`)? | Left as is |
+| G5 | Upstream elie222/inbox-zero: is Dwellium sold/licensed, or used by 5+ business users? (LICENSE rider, lines 9-38) | **Answered 2026-09-24: under 5 business users, not sold/licensed** — the rider's exemption applies; Phase 7 option (c) (proxy the unmodified upstream API/MCP) may proceed after the read-only check. Re-ask if Dwellium is ever sold or reaches 5 business users. |
+| G6 | Stop or rebind the idle `inbox-zero-services-web-1` container (`0.0.0.0:3000`)? | **Answered 2026-09-25: keep it LAN-reachable** — Ilya uses it from several machines. On the Mac itself `localhost`/`MacBook-Pro.local:3000` is the Dwellium backend; only the LAN IP reaches the container, so a local-only second port was added (2026-09-25, Ilya's go): `~/dev/inbox-zero/docker-compose.override.yml` (git-ignored) publishes `127.0.0.1:3110` (3100 is PaperclipAI) → `INBOX_ZERO_API_URL=http://127.0.0.1:3110`; `:3000` stays on the LAN. |
 
 Phases 1–3 are direction-independent and can start now.
 
@@ -359,6 +359,50 @@ plane, no D6 owner scoping, weakest license posture), (c) proxy upstream's API/M
 like Documenso/Listmonk. Option (c) is only on the table if G5 confirms the Inbox Zero Inc. rider
 (no commercial monetization; enterprise license at 5+ business users) does not apply, and after a
 read-only check that the running image exposes the MCP/API. Until then, nothing.
+
+### Phase 7 read-only check (2026-09-24) and the scope Ilya chose
+
+G5 answered: under 5 business users, not sold → the rider exemption applies. Findings (container
+`inbox-zero-services-web-1`, image built 2026-08-24, rev `70dfe79`; source clone `~/dev/inbox-zero` @ `d45588b`;
+each cross-checked by a second agent):
+- **No MCP server.** `api/mcp/*` is upstream acting as an MCP *client* (Notion, Stripe, …).
+- **Public API = 7 endpoints**: `/api/v1/rules` CRUD, `GET /api/v1/stats/by-period`, `GET /api/v1/stats/response-time`
+  (+ `/api/v1/openapi`). Header `API-Key` (`apps/web/utils/api-auth.ts:10`), one key per upstream email account.
+  Reply tracking, cold-email and sender groups are internal session routes — not proxyable.
+- The API reads the mailbox **upstream itself OAuth-linked**, never Dwellium's accounts; self-hosted needs
+  `NEXT_PUBLIC_EXTERNAL_API_ENABLED=true` (off by default).
+- The running container currently **500s every API route** ("Invalid environment variables" at startup).
+- `localhost:3000` on the Mac is the Dwellium backend; the container is only reachable via colima's `*:3000` forward (G6).
+
+**Ilya's choice: a per-user stats proxy** (response-time + by-period in the Stats tab). Rules stay native (5c).
+
+**Phase 7 execution contract**
+```ts
+// backend src/services/inboxZeroUpstream.ts (new)
+export const UPSTREAM_API_KEY_HEADER = 'API-Key';
+export function upstreamBaseUrl(): string | null;   // env INBOX_ZERO_API_URL; http(s) only, trailing '/' stripped; else null
+export function saveUpstreamKey(userId: string, apiKey: string): void;   // upsert table inbox_upstream_keys(user_id PK, api_key TEXT = encryptForDomain('astra', key), updated_at)
+export function hasUpstreamKey(userId: string): boolean;
+export function removeUpstreamKey(userId: string): boolean;            // the user's own key only (their UI action)
+export async function fetchUpstreamStats(userId: string, kind: 'by-period' | 'response-time',
+    query: { period?: 'day' | 'week' | 'month' | 'year'; fromDate?: number; toDate?: number }):
+    Promise<{ ok: true; data: unknown } | { ok: false; status: 400 | 409 | 502 | 503 | 504; error: string; needsSetup?: true; needsKey?: true }>;
+//   no base URL → 503 needsSetup; no key → 409 needsKey; GET `${base}/api/v1/stats/${kind}?…` with API-Key, 10 s timeout,
+//   redirect:'manual' (3xx → 502); upstream 400 → 400; upstream 401/403 → 502 'Upstream rejected your API key' + keyRejected:true
+//   (NEVER 401/403 from Dwellium — the app treats those as "sign out"); other failure → 502; timeout (incl. mid-body) → 504;
+//   body cap 1 MB. A stored key that no longer decrypts → 409 needsKey (the UI returns to the key form).
+//   saveUpstreamKey REFUSES (route → 503) when domain encryption is unavailable — encryptForDomain would return plaintext.
+```
+Routes (`inboxRoutes.ts`, before `/:id`): `GET /upstream/status` → `{configured, hasKey}`; `PUT /upstream/key {apiKey}`
+(string 10–512 chars, no whitespace → 400) → `{hasKey:true}`; `DELETE /upstream/key`; `GET /upstream/stats/by-period`,
+`GET /upstream/stats/response-time` (query whitelisted: period enum, fromDate/toDate integer ms). Owner-only by
+construction: every call uses the CALLER's key. The key is never logged or returned. Audit rows `upstream_key_set` /
+`upstream_key_remove` (inboxItemId = `upstream-key:<userId>`, no key material). Contract-test rows for all five.
+Frontend: `UpstreamStats.tsx` in the Stats tab — honest states: server not configured / no key (password field + Save,
+"create a key in Inbox Zero → Settings → API keys") / data (median + average response time, % within 1 h, emails
+analyzed, distribution, by-period table) / upstream error (the server's message). Remove key behind a confirm.
+Production (Cloud Run) cannot reach a Mac-local container, so it shows "not configured" there until a reachable
+upstream exists.
 
 ---
 

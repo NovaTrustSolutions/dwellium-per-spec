@@ -1,69 +1,57 @@
 /**
- * /capture — P11-13: phone-friendly ThoughtWeaver capture (BACKLOG sketch).
+ * /capture — Phase 2 (plan 067): phone-friendly ThoughtWeaver capture.
  *
- * A thought typed here lands in the user's Supabase
- * `thought_weaver_captures` table and appears in desktop ThoughtWeaver on
- * its next load (pullCaptures merge). Instant bucketing reuses the SAME
- * deterministic localCategorize the desktop uses — verbatim text guaranteed.
- *
- * Setup (once per phone): open
- *   /capture?url=<supabase-url>&key=<anon-key>&user=<dwellium-user-id>
- * — the page stores the config in the PHONE's localStorage and works bare
- * from then on. No Dwellium auth shell on purpose: this page must load fast
- * on mobile and work offline-tolerantly (failures keep the text in the box).
+ * Sign in to Dwellium once on this phone — no Supabase, no per-device
+ * config. A thought typed here posts to the signed-in user's own inbox
+ * (`POST /api/thought-weaver/inbox`); desktop ThoughtWeaver imports each
+ * item once by id on its next load. Failures keep the text in the box.
  */
 import { useEffect, useState } from 'react';
-import { localCategorize } from '../../src/components/ThoughtWeaver/localCategorizer';
+import { API_BASE } from '../../src/config';
+import { getAuthToken } from '../../src/context/UserContext';
 
-const CFG_KEY = 'tw-capture-config';
-
-interface PhoneCfg { url: string; key: string; user: string }
-
-function loadCfg(): PhoneCfg | null {
-    try {
-        const qs = new URLSearchParams(window.location.search);
-        const fromQuery = { url: qs.get('url') ?? '', key: qs.get('key') ?? '', user: qs.get('user') ?? '' };
-        if (fromQuery.url && fromQuery.key && fromQuery.user) {
-            localStorage.setItem(CFG_KEY, JSON.stringify(fromQuery));
-            return fromQuery;
-        }
-        const stored = localStorage.getItem(CFG_KEY);
-        if (stored) return JSON.parse(stored);
-    } catch { /* private mode */ }
-    return null;
-}
+// Legacy per-device config (held a Supabase anon key) — removed on load, never stored again.
+const LEGACY_CFG_KEY = 'tw-capture-config';
 
 export default function CaptureRoute() {
-    const [cfg, setCfg] = useState<PhoneCfg | null>(null);
+    // null until mounted: the token lives in localStorage, and this route is
+    // server-rendered locally (react-router.config ssr) — reading it during
+    // render would mismatch hydration.
+    const [signedIn, setSignedIn] = useState<boolean | null>(null);
+    const [sessionLost, setSessionLost] = useState(false);
     const [text, setText] = useState('');
     const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [filedTo, setFiledTo] = useState<string | null>(null);
 
-    useEffect(() => { setCfg(loadCfg()); }, []);
+    useEffect(() => {
+        setSignedIn(!!getAuthToken());
+        try {
+            const qs = new URLSearchParams(window.location.search);
+            if (qs.has('url') || qs.has('key') || qs.has('user')) {
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+            localStorage.removeItem(LEGACY_CFG_KEY);
+        } catch { /* private mode */ }
+    }, []);
 
     const capture = async () => {
-        if (!cfg || !text.trim() || status === 'saving') return;
+        if (!text.trim() || status === 'saving') return;
         setStatus('saving');
-        const cat = localCategorize(text.trim());
         try {
-            const res = await fetch(`${cfg.url.replace(/\/$/, '')}/rest/v1/thought_weaver_captures`, {
+            const res = await fetch(`${API_BASE}/api/thought-weaver/inbox`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    apikey: cfg.key,
-                    Authorization: `Bearer ${cfg.key}`,
-                    Prefer: 'resolution=ignore-duplicates',
-                },
-                body: JSON.stringify({
-                    id: `phone-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-                    user_id: cfg.user,
-                    text: text.trim(),
-                    filed_to: cat.filed_to,
-                    confidence: cat.confidence,
-                    destination_name: cat.destination_name,
-                    created_at: new Date().toISOString(),
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text.trim() }),
             });
+            if (res.status === 401 || res.status === 403) {
+                setSessionLost(true); // keep the form and the text on screen
+                setStatus('idle');
+                return;
+            }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            setSessionLost(false);
+            setFiledTo(json?.data?.filed_to ?? null);
             setText('');
             setStatus('saved');
             setTimeout(() => setStatus('idle'), 1800);
@@ -78,15 +66,16 @@ export default function CaptureRoute() {
         btn: { width: '100%', maxWidth: 480, padding: '14px 0', fontSize: 16, fontWeight: 600, borderRadius: 12, border: 'none', background: '#D6FE51', color: '#0c0c0c', cursor: 'pointer' },
     };
 
-    if (!cfg) {
+    if (signedIn === null) return <div style={s.page} />;
+
+    if (!signedIn) {
         return (
             <div style={s.page}>
                 <h1 style={{ fontSize: 20 }}>ThoughtWeaver Capture</h1>
                 <p style={{ maxWidth: 480, color: '#999', fontSize: 14, lineHeight: 1.5 }}>
-                    Not configured on this device yet. Open this page once with
-                    <code> ?url=&lt;supabase-url&gt;&amp;key=&lt;anon-key&gt;&amp;user=&lt;your-user-id&gt;</code> —
-                    the settings are then remembered here.
+                    Sign in to Dwellium on this phone first.
                 </p>
+                <a href="/" style={{ color: '#D6FE51' }}>Go to sign in</a>
             </div>
         );
     }
@@ -105,8 +94,15 @@ export default function CaptureRoute() {
             <button style={s.btn} onClick={capture} disabled={!text.trim() || status === 'saving'}>
                 {status === 'saving' ? 'Saving…' : 'Capture'}
             </button>
-            {status === 'saved' && <div style={{ color: '#D6FE51' }}>Saved — it's on its way to your desktop.</div>}
-            {status === 'error' && <div style={{ color: '#ef4444' }}>Couldn't reach Supabase — your text is still here, try again.</div>}
+            <div aria-live="polite">
+                {status === 'saved' && <span style={{ color: '#D6FE51' }}>Filed to {filedTo ?? 'your inbox'}.</span>}
+                {status === 'error' && <span style={{ color: '#ef4444' }}>Couldn't save — your text is still here, try again.</span>}
+                {sessionLost && (
+                    <span style={{ color: '#ef4444' }}>
+                        Your session ended — <a href="/" target="_blank" rel="noopener" style={{ color: '#D6FE51' }}>sign in again</a>, then tap Capture. Your text is still here.
+                    </span>
+                )}
+            </div>
         </div>
     );
 }

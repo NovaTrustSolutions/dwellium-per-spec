@@ -92,6 +92,7 @@ import {
 import type { DreamEntry } from './honchoDreamStore';
 import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
 import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
+import { thoughtWeaverStore } from '../ThoughtWeaver/thoughtWeaverStore';
 import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
 import AgentEta from '../common/AgentEta';
 import { matchSkill, runSkillForInput } from '../../lib/agents/skills';
@@ -1441,14 +1442,10 @@ export default function StellaAgent() {
             const recent = honchoMemories.slice(0, 12);
             let twCaptures: string[] = [];
             try {
-                // Read any per-user TW captures already in localStorage (without
-                // re-importing the TW store from here — read by key directly).
-                const twKey = userIdForDreams ? `thought-weaver:captures:${userIdForDreams}` : 'thought-weaver:captures:_anonymous';
-                const raw = localStorage.getItem(twKey);
-                if (raw) {
-                    const arr = JSON.parse(raw);
-                    if (Array.isArray(arr)) twCaptures = arr.slice(0, 10).map((c: any) => c.text).filter(Boolean);
-                }
+                // Read via the shared store (holder set per-user by plan 067's
+                // identity writer) instead of touching localStorage directly.
+                const arr = thoughtWeaverStore.getSnapshot();
+                if (Array.isArray(arr)) twCaptures = arr.slice(0, 10).map((c: any) => c.text).filter(Boolean);
             } catch { /* sandboxed / no TW yet */ }
 
             const memoryText = recent.length === 0

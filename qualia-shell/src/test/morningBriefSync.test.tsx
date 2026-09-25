@@ -28,6 +28,8 @@ beforeEach(() => {
     get.mockReset(); notifyNewBrief.mockReset();
     morningBriefUserIdHolder.current = 'u-sync';
     resetMorningBriefs();
+    // The reset is a local set() → plan-067 dirty marker; start from "saved".
+    localStorage.removeItem('onesave:dirty:morning-brief_u-sync');
 });
 
 describe('useMorningBriefSync', () => {

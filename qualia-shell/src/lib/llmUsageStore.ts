@@ -477,6 +477,8 @@ export function recordLlmUsage(input: UsageInput): void {
 
         const entry: UsageEntry = { ts: Date.now(), provider: input.provider, model: input.model, estIn, estOut, estCost: cost, measured, source: input.source };
 
+        // ponytail: no cross-tab lock — two tabs recording in the same instant can still
+        // drop one entry (read→append→write isn't atomic); Web Locks if that ever matters.
         // Re-read localStorage fresh (another tab may have written since our last
         // cached snapshot) rather than trusting llmUsageStore.getSnapshot() (C3).
         let base: StoredLedgerV2;

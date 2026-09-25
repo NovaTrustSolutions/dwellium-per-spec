@@ -52,10 +52,10 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
         aliases: ['settings', 'control panel']
     },
     'thought-weaver': {
-        summary: 'AI ideation and synthesis workspace for drafting, strategy, and concept building.',
-        keywords: ['thought', 'weaver', 'ideation', 'brainstorm', 'strategy', 'drafting'],
-        contexts: ['writing', 'strategy planning', 'AI ideation'],
-        aliases: ['brainstorm', 'idea studio']
+        summary: 'Capture inbox that sorts thoughts into People / Projects / Ideas / Tasks, with to-dos, daily/weekly reports, and phone capture.',
+        keywords: ['thought', 'weaver', 'capture', 'inbox', 'note', 'jot', 'todo', 'to-do', 'report', 'brain dump'],
+        contexts: ['capture inbox', 'daily/weekly reports', 'to-do tracking'],
+        aliases: ['capture', 'inbox', 'quick note', 'jot', 'thoughts', 'to-do', 'brain dump']
     },
     'memory-graph-rag': {
         summary: 'Cognitive Memory Network — three-layer Graph-RAG memory (Ontology schema · Fact triplets · Passage evidence) with Personalized-PageRank retrieval, conflict adjudication, and source-grounded answers.',

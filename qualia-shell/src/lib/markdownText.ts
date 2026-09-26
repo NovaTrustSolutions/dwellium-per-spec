@@ -229,6 +229,48 @@ export function toPlainText(md: string): string {
     return plain(md, false);
 }
 
+/** Sentence or clause punctuation in any script (Unicode Terminal_Punctuation: . ! ? : ; , 。！？，、 । ؟ ، …) plus the
+ *  ellipsis: a line that already ends in one needs no added pause. */
+const PAUSED = /[\p{Terminal_Punctuation}\u2026]$/u;
+/** An ASCII wink/smile at a line end: its `:` / `;` is not punctuation, so the line still needs its pause. */
+const EMOTICON_END = /[:;][)\]]$/;
+/** Line breaks → pauses for text-to-speech (ARA and Stella share this): ". " unless the line already ends in punctuation,
+ *  looking past closing brackets and any quotation mark ("hi." ⏎, 「你好。」⏎, „Hallo.“⏎, »Hallo.«⏎ → no doubled period).
+ *  A punctuated line keeps ONE line break instead, so chunkForTts can still split there (a list whose lines end in
+ *  `;` / `：` still sends its first line alone); callers that want one line collapse whitespace afterwards.
+ *  The blank run is matched from its start ((?<![ \t])), so a long run of spaces is scanned once — linear. */
+export function speechPauses(text: string): string {
+    return text.replace(/(?<![ \t])[ \t]*\n\s*/g, (_m: string, off: number, all: string) => {
+        const before = all.slice(Math.max(0, off - 12), off);
+        if (EMOTICON_END.test(before)) return '. ';
+        const tail = before.replace(/[\s\p{Pe}\p{Pf}\p{Quotation_Mark}]+$/u, '');
+        return tail === '' || PAUSED.test(tail) ? '\n' : '. ';
+    });
+}
+
+/** Sentence ends that split speech into TTS requests (Unicode Sentence_Terminal: . ! ? 。！？ । ؟ ‼, plus the ellipsis),
+ *  and line breaks. U+FE0F stays with its mark and a sentence never starts on one, so ‼️ is never split into a request
+ *  of just the selector (a LEADING ‼️ is dropped, as a leading "!!" always was). The start check is a lookahead, not
+ *  optional leading marks, which would backtrack quadratically on a long run of "!". */
+const SPEECH_SENTENCE = /(?!\uFE0F)[^\p{Sentence_Terminal}\u2026\n]+[\p{Sentence_Terminal}\u2026\uFE0F]*\s*/gu;
+/**
+ * Split a reply into TTS chunks: first sentence alone (fastest possible time-to-first-audio), remaining
+ * sentences merged up to ~280 chars per request. One whole-reply request meant nothing played until the FULL
+ * completion was synthesized and downloaded — the single biggest source of "talking to a machine" latency.
+ */
+export function chunkForTts(text: string): string[] {
+    const sentences = text.match(SPEECH_SENTENCE)?.map(x => x.trim()).filter(Boolean) ?? [];
+    if (sentences.length <= 1) return sentences.length ? sentences : (text ? [text] : []);
+    const chunks: string[] = [sentences[0]];
+    let cur = '';
+    for (const sent of sentences.slice(1)) {
+        if (cur && (cur.length + sent.length + 1) > 280) { chunks.push(cur); cur = ''; }
+        cur = cur ? `${cur} ${sent}` : sent;
+    }
+    if (cur) chunks.push(cur);
+    return chunks;
+}
+
 /** Plain text for text-to-speech: code blocks become "code block", user_id_map is read "user id map",
  *  1_000_000 stays one number, leftover markers are never read aloud, "5 * 3" and "~5" are kept. */
 export function toSpeechText(md: string): string {

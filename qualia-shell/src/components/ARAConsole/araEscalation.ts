@@ -24,6 +24,7 @@ import { WIDGET_ACTIONS } from '../../lib/widgetActions';
 import { callLlm, hasActiveLlm, type LlmRequest, type LlmResponse } from '../../lib/llmClient';
 import { looksActionable } from '../../lib/llmRouter';
 import type { IntegrationsBundle } from '../../types/integrations';
+import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 
 // ponytail: regex heuristic over the reply's opening. False positives cost one
 // Hermes run; false negatives leave a refusal on screen. Tuned toward recall on
@@ -213,12 +214,14 @@ async function defaultPropose(userText: string, refusal: string, llm: Integratio
  * Never throws; every rung is best-effort.
  */
 export async function runAraEscalation(userText: string, refusal: string, deps: AraEscalationDeps): Promise<AraEscalationOutcome> {
+    const stillOwner = captureOwner(); // owner-race guard: no proposal is drafted for an account that signed out
     // Rung 1 — Hermes.
     deps.onProgress?.('That’s outside what I can do directly — handing it to Hermes…');
     let hermes: HermesRunResult | null = null;
     try {
         hermes = await (deps.runHermesFn ? deps.runHermesFn(userText) : defaultRunHermes(userText, deps));
     } catch { hermes = null; }
+    if (!stillOwner()) return { via: 'none', text: ACCOUNT_CHANGED };
     // A Hermes "success" that is itself a refusal (LLM prose) is not a solution.
     if (hermes && hermes.outcome === 'success' && hermes.result?.trim() && !looksLikeRefusal(hermes.result)) {
         return {

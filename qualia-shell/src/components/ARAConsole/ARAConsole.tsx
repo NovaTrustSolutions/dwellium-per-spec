@@ -9,7 +9,7 @@ import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient
 import { streamLlm } from '../../lib/llmStream';
 import { pumpSseBody } from '../../lib/readSse';
 import { araPrefsStore } from '../../lib/araPrefsStore';
-import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
 import { runDailyGlance } from '../../lib/araDailyGlance';
 import { starterPromptsFor } from './araStarterPrompts';
@@ -27,7 +27,7 @@ const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
-import { formatInline, toPlainText, toSpeechText, splitFences } from './araInline';
+import { formatInline, toPlainText, toSpeechText, speechPauses, chunkForTts, splitFences } from './araInline';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
@@ -667,12 +667,11 @@ export default function ARAConsole() {
 
     // Strip markdown for clean spoken text
     const stripMarkdown = useCallback((text: string): string => {
-        // toSpeechText drops markdown markers and reads user_id_map as "user id map".
-        return toSpeechText(text)
+        // toSpeechText drops markdown markers and reads user_id_map as "user id map"; speechPauses (shared with
+        // Stella) turns line breaks into pauses without doubling punctuation ("Done.." / "。.").
+        return speechPauses(toSpeechText(text)
             .replace(/\[Error\]/g, 'Error')         // error prefix
-            .replace(/\[Connection Error\]/g, 'Connection Error')
-            .replace(/\n{2,}/g, '. ')               // double newlines to pauses
-            .replace(/\n/g, '. ')                   // newlines to pauses
+            .replace(/\[Connection Error\]/g, 'Connection Error'))
             .trim();
     }, []);
 
@@ -690,25 +689,7 @@ export default function ARAConsole() {
      */
     const speakGenRef = useRef(0);
 
-    /**
-     * Split a reply into TTS chunks: first sentence alone (fastest possible
-     * time-to-first-audio), remaining sentences merged up to ~280 chars per
-     * request. One whole-reply request meant nothing played until the FULL
-     * completion was synthesized and downloaded — the single biggest source
-     * of "talking to a machine" latency in the console.
-     */
-    const chunkForTts = (text: string): string[] => {
-        const sentences = text.match(/[^.!?\u2026\n]+[.!?\u2026]*\s*/g)?.map(x => x.trim()).filter(Boolean) ?? [];
-        if (sentences.length <= 1) return sentences.length ? sentences : (text ? [text] : []);
-        const chunks: string[] = [sentences[0]];
-        let cur = '';
-        for (const sent of sentences.slice(1)) {
-            if (cur && (cur.length + sent.length + 1) > 280) { chunks.push(cur); cur = ''; }
-            cur = cur ? `${cur} ${sent}` : sent;
-        }
-        if (cur) chunks.push(cur);
-        return chunks;
-    };
+    // chunkForTts (lib/markdownText.ts): first sentence alone for fast first audio, then ~280-char requests.
 
     const speakText = useCallback(async (text: string) => {
         // Stop any current playback
@@ -1138,6 +1119,7 @@ export default function ARAConsole() {
             : (pending && Date.now() - pending.at < PENDING_ACTION_TTL_MS ? pending.text : text);
         const escalateIfRefusal = async (reply: string): Promise<boolean> => {
             const verdict = await classifyForEscalation(actionText, reply, integrations.llm);
+            if (!stillOwner()) return true; // account switched mid-call: drop, never redirect (and say nothing)
             console.info('[ARA escalation]', { verdict, actionText, latest: text, replyHead: reply.slice(0, 80) });
             if (verdict !== 'refusal' && verdict !== 'substitute' && verdict !== 'judge-deflected') return false;
             pendingActionRef.current = null; // one escalation per request
@@ -1219,6 +1201,7 @@ export default function ARAConsole() {
                 }
             }
 
+            if (!stillOwner()) return; // account switched mid-request: drop the reply's writes, never redirect them
             // Phase-10 A2: record the exchange into the per-user Hermes log
             // (ara-chat tag) so future similar questions get it as few-shot;
             // the run id rides on the message to power thumbs-up/down.
@@ -1271,6 +1254,7 @@ export default function ARAConsole() {
             // fall back to the user's personal LLM key when the backend is
             // unreachable — unlike Stella, which routes LLM-first. This keeps the
             // rich backend path primary while still answering when it's down.
+            if (!stillOwner()) return; // account switched mid-request: no fallback answer on the old key
             if (hasActiveLlm(integrations.llm)) {
                 let streamedId: string | null = null;
                 try {
@@ -1309,6 +1293,7 @@ export default function ARAConsole() {
                     } else {
                         llmText = (await callLlm(llmReq, integrations.llm))?.text ?? null;
                     }
+                    if (!stillOwner()) return; // account switched mid-call: drop, never redirect
                     if (llmText !== null) {
                         setActionStatus({
                             kind: 'success',
@@ -1429,6 +1414,7 @@ export default function ARAConsole() {
                     goal: req.goal, sources: '', team, personas, deps,
                     onEvent: e => line(`\`${e.phase}\` ${e.message}`),
                 });
+                if (!stillOwner()) { line(ACCOUNT_CHANGED); return; } // account switched mid-run: drop, never redirect
                 if (result.error) {
                     line(`**${req.name} failed:** ${result.error}`);
                 } else {
@@ -1445,6 +1431,7 @@ export default function ARAConsole() {
                 if (!persona) { line(`"${req.name}" not found in the Agent Lab catalog.`); return; }
                 line(`\`execute\` ${persona.name} is working…`);
                 const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
+                if (!stillOwner()) { line(ACCOUNT_CHANGED); return; } // account switched mid-run: drop, never redirect
                 // D3 fix: record success/fail from out.ok, not output-text truthiness
                 // (the placeholder no-response text used to read as a truthy success).
                 const rec = recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
@@ -1503,6 +1490,7 @@ export default function ARAConsole() {
     // returning the final deliverable for result piping (no chat-hosting;
     // the chain renders its own step lines).
     const runSpawnForChain = useCallback(async (req: SpawnRequest): Promise<{ ok: boolean; text: string; run?: HermesRunRecord }> => {
+        const stillOwner = captureOwner(); // owner-race guard (executeChain stops before a post-switch step reaches here)
         hermesLearningUserIdHolder.current = user?.id ?? null;
         if (!hasActiveLlm(integrations.llm)) {
             return { ok: false, text: 'No LLM configured — add a key in Control Panel → API Keys.' };
@@ -1530,6 +1518,7 @@ export default function ARAConsole() {
             const team = teams.find(t => t.id === req.id);
             if (!team) return { ok: false, text: `Team "${req.name}" not found in the Agent Lab catalog.` };
             const result = await runTeam({ goal: req.goal, sources: '', team, personas, deps });
+            if (!stillOwner()) return { ok: false, text: ACCOUNT_CHANGED };
             if (result.error) return { ok: false, text: result.error };
             const run = recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
             return { ok: true, text: result.final, run };
@@ -1537,6 +1526,7 @@ export default function ARAConsole() {
         const persona = findPersona(personas, req.id);
         if (!persona) return { ok: false, text: `"${req.name}" not found in the Agent Lab catalog.` };
         const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
+        if (!stillOwner()) return { ok: false, text: ACCOUNT_CHANGED };
         // D3 fix: record success/fail from out.ok, not output-text truthiness; surface
         // out.error in the returned text when the member failed.
         const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
@@ -1656,6 +1646,8 @@ export default function ARAConsole() {
     // re-dispatch → chat. Shared by the composer AND the ⌘K ara-prompt bus
     // so both doors behave identically.
     const routeUtterance = useCallback(async (text: string) => {
+        // Owner-race guard: an utterance typed by one account is never classified-then-answered for the next.
+        const stillOwnerRoute = captureOwner();
         // Pass 1 — exact parsers on the raw utterance (zero latency).
         if (await dispatchTiers(text, text)) return;
         // Pass 1.5 — 2026-06-12 (Ilya): "Ara, review the Markdown file open"
@@ -1761,6 +1753,7 @@ export default function ARAConsole() {
                         return null;
                     },
                 });
+                if (!stillOwnerRoute()) return;
                 recordRoutingDecision(text, decision);
                 if (decision.via === 'llm' && decision.intent !== 'chat' && decision.normalized
                     && decision.normalized.trim().toLowerCase() !== text.toLowerCase()) {
@@ -1768,6 +1761,7 @@ export default function ARAConsole() {
                 }
             } catch { /* classification is best-effort — fall through to chat */ }
         }
+        if (!stillOwnerRoute()) return;
         await sendPrompt(text);
     }, [dispatchTiers, sendPrompt, integrations.llm, user, authFetch, ttsEnabled, speakText]);
 

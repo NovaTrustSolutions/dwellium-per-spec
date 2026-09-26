@@ -11,6 +11,7 @@ import { UserContext } from '../context/UserContext';
 import { useIntegrations } from '../hooks/useIntegrations';
 import { callLlm, applyModelPreference, hasActiveLlm } from '../lib/llmClient';
 import { recallContext, withRecall } from '../lib/memoryGraphRag/recall';
+import { captureOwner } from '../lib/perUserIdentity';
 import {
     agentLabUserIdHolder,
     agentTeamsStore,
@@ -78,6 +79,10 @@ export interface AutonomousTaskResult {
 
 /** Claim and execute the next queued Hermes-persona task. Returns null when idle. */
 export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<AutonomousTaskResult | null> {
+    // Owner-race guard: an account switch mid-task drops every late write. The claimed task stays 'running' in the
+    // old account, as it did before this guard (the late write used to land in the new account, where the task does
+    // not exist); recoverStaleTasks re-queues it only when that account's runner next starts and it is STALE_AFTER_MS old.
+    const stillOwner = captureOwner();
     const claim = (deps.claim ?? (() => claimNextTask(HERMES_PERSONA_IDS)))();
     if (!claim) return null;
 
@@ -103,6 +108,7 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
         'You are running unattended. Finish the assigned task as far as the available tools and context allow. ' +
         'End with a concise completion report: result, evidence, blockers, and next action.';
     const memory = deps.recall ? await deps.recall(claim.task.title) : '';
+    if (!stillOwner()) return null;
     const augmented: Persona = {
         ...persona,
         systemPrompt: withRecall(composedPrompt, memory),
@@ -114,6 +120,7 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
             persona: augmented,
             deps: deps.orchestratorDeps,
         });
+        if (!stillOwner()) return null;
         const result = output.verified.trim();
         const ok = output.ok;
         const duration = Math.max(0, now() - startedAt);
@@ -135,6 +142,7 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
         }
         return { personaId: persona.id, taskId: claim.task.id, outcome: 'success', result };
     } catch (err: any) {
+        if (!stillOwner()) return null;
         const error = err?.message || String(err);
         const duration = Math.max(0, now() - startedAt);
         fail(persona.id, claim.task.id, error);

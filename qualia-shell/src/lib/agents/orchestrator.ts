@@ -25,6 +25,7 @@
  */
 import type { TaskType } from '../../components/HonchoHermesPanel/hermesLearningStore';
 import { AgentTeam, Persona, findPersona, disciplineToTaskType, ORCHESTRATOR_ID } from './personas';
+import { captureOwner, ACCOUNT_CHANGED } from '../perUserIdentity';
 
 export interface LlmReq {
     /** P12-2: the persona this call speaks AS — call sites may route it to the persona's preferred model. */
@@ -249,17 +250,20 @@ async function execute(
 ): Promise<{ output: string; ok: boolean; error?: string }> {
     const taskType = disciplineToTaskType[persona.discipline];
     const fewShot = deps.recall?.(goal, taskType) ?? '';
+    const stillOwner = captureOwner(); // owner-race guard (see runTeam)
     // P11-5: run equipped skills against the member's tasks first; outputs
     // become evidence in the prompt (capped to keep token use sane).
     let toolResults = '';
     if (deps.runSkill && persona.tools?.length) {
         for (const t of tasks.slice(0, 4)) {
+            if (!stillOwner()) return { output: '', ok: false, error: ACCOUNT_CHANGED }; // no tool on the old user's keys
             try {
                 const r = await deps.runSkill(t, persona.tools);
                 if (r) toolResults += `\n[${r.name}] for "${t.slice(0, 60)}":\n${r.text.slice(0, 800)}\n`;
             } catch { /* tools are best-effort — the member still writes */ }
         }
     }
+    if (!stillOwner()) return { output: '', ok: false, error: ACCOUNT_CHANGED };
     // A thrown provider error here is NOT caught — it propagates to the caller
     // (runTeam isolates it per-member; runPersona/runTeam callers have their
     // own catch).
@@ -384,6 +388,10 @@ export async function runTeam(params: {
     const emit = params.onEvent ?? (() => {});
     const onMemberTask = params.onMemberTask ?? (() => {});
     const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    // Owner-race guard: an account switch mid-run stops the run — no later member runs on the old
+    // user's key, and nothing (Hermes record, member-task event) lands in the new user's stores.
+    const stillOwner = captureOwner();
+    const stopped = (): TeamRunResult => ({ assignments: [], outputs: [], final: '', error: ACCOUNT_CHANGED, outcome: 'fail', warnings: [], unchecked: false });
 
     if (!goal.trim()) {
         return { assignments: [], outputs: [], final: '', error: 'Give the team a goal first.', outcome: 'fail', warnings: [], unchecked: false };
@@ -418,6 +426,7 @@ export async function runTeam(params: {
     const outputs: PersonaOutput[] = [];
     const warnings: string[] = [];
     for (const a of assignments) {
+        if (!stillOwner()) return stopped();
         const persona = findPersona(personas, a.personaId);
         if (!persona) continue;
         const title = a.tasks.join('; ') || goal;
@@ -439,6 +448,7 @@ export async function runTeam(params: {
             ok = ex.ok;
             error = ex.error;
             if (ok) {
+                if (!stillOwner()) return stopped();
                 emit({ phase: 'verify', personaId: persona.id, message: `Verifying ${persona.name}'s output…` });
                 const v = await verify(output, sources, deps);
                 verified = v.verified;
@@ -454,6 +464,7 @@ export async function runTeam(params: {
             output = '';
             verified = '';
         }
+        if (!stillOwner()) return stopped();
         if (!ok) {
             emit({ phase: 'error', personaId: persona.id, message: `${persona.name} failed: ${error}` });
             warnings.push(`${persona.name}: ${error}`);
@@ -487,6 +498,7 @@ export async function runTeam(params: {
         final = okOutputs.map(o => o.verified).join('\n\n');
         warnings.push(`Merge step failed (${describeLlmFailure(e)}); showing member outputs as-is.`);
     }
+    if (!stillOwner()) return stopped();
 
     // Success means every member answered AND passed its fact-check against the Sources —
     // a run with a flagged or unchecked member is partial, so it is never taught as a clean success.
@@ -508,7 +520,13 @@ export async function runPersona(params: {
 }): Promise<PersonaOutput> {
     const { goal, persona, deps } = params;
     const sources = params.sources ?? '';
+    const stillOwner = captureOwner(); // owner-race guard (see runTeam)
+    const stopped = (): PersonaOutput => ({
+        personaId: persona.id, personaName: persona.name, tasks: [goal],
+        output: '', verified: '', supported: false, ok: false, error: ACCOUNT_CHANGED, verifyStatus: 'skipped',
+    });
     const ex = await execute(goal, sources, persona, [goal], deps);
+    if (!stillOwner()) return stopped();
     let verified = ex.output;
     let verifyStatus: VerifyStatus = 'skipped';
     if (ex.ok) {
@@ -516,6 +534,7 @@ export async function runPersona(params: {
         verified = v.verified;
         verifyStatus = v.verifyStatus;
     }
+    if (!stillOwner()) return stopped();
     const supported = isSupported(ex.ok, verifyStatus);
     const recordId = recordOutcome(deps, persona, goal, ex.ok, verifyStatus, verified);
     return {

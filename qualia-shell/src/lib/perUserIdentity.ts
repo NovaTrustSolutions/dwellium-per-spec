@@ -178,6 +178,9 @@ export function setPerUserIdentity(userId: string | null): void {
  */
 let currentOwnerId: string | null = null;
 
+/** What a guarded run reports when it stopped because the account changed mid-run. */
+export const ACCOUNT_CHANGED = 'The account changed during this run, so it was stopped and nothing was saved.';
+
 /** Snapshot the signed-in owner now; the returned check is true only while it is unchanged. */
 export function captureOwner(): () => boolean {
     const atStart = currentOwnerId;

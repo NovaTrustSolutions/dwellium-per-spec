@@ -69,6 +69,8 @@ import { sessionRestoreStore, type SessionSnapshot } from '../lib/sessionRestore
 import { resetResumeChip } from '../components/ARAConsole/araResumeContext';
 import { getCmn, resetCmnForTests } from '../lib/memoryGraphRag/shared';
 import { RECALL_HEADING } from '../lib/memoryGraphRag/recall';
+import { UserContext } from '../context/UserContext';
+import { setPerUserIdentity } from '../lib/perUserIdentity';
 
 async function* offlineStream() {
     yield { delta: 'Offline ', text: 'Offline ', done: false };
@@ -509,6 +511,26 @@ describe('ARAConsole', () => {
         const said = spoken.find(t => /user id map/.test(t))!;
         expect(said).toContain('generate content free tier requests');
         expect(said).not.toMatch(/userid|useridmap/);
+    });
+
+    it('pauses between lines without doubling punctuation (Done.. / 。.) — the same rule as Stella', async () => {
+        araPrefsStore.set('streamTokens', false);
+        araPrefsStore.set('ttsEnabled', true);
+        const spoken: string[] = [];
+        vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; pitch = 1; volume = 1; voice = null; onend = null; onerror = null; constructor(public text: string) { spoken.push(text); } });
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Done.\n请参阅文档。\nNext step', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'What next?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/请参阅文档/);
+        const readButtons = screen.getAllByRole('button', { name: 'Read message aloud' });
+        await user.click(readButtons[readButtons.length - 1]);
+        await waitFor(() => expect(spoken.some(t => /请参阅文档/.test(t))).toBe(true));
+        // No added periods; a punctuated line keeps its break (chunkForTts splits there), the unpunctuated end needs none.
+        expect(spoken.find(t => /请参阅文档/.test(t))).toBe('Done.\n请参阅文档。\nNext step');
     });
 
     it('renders a fenced code block as one code block, with nothing formatted inside', async () => {
@@ -1081,6 +1103,101 @@ describe('ARAConsole', () => {
             expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
             await user.click(await screen.findByRole('button', { name: 'Rate this answer up' }));
             expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
+        });
+    });
+    // Owner-race guard: ARA holds no per-user state of its own, but its replies write into the
+    // signed-in user's Hermes log. A reply that lands after an account switch must be dropped,
+    // never written into the next account's log.
+    describe('owner-race guard — an account switch mid-request drops ARA writes', () => {
+        const asUser = (uid: string) => (
+            <UserContext.Provider value={{ user: { id: uid } } as any}><ARAConsole /></UserContext.Provider>
+        );
+        const flush = () => act(async () => { await new Promise(r => setTimeout(r, 60)); });
+        beforeEach(() => {
+            hermesLearningStore.reset();
+            callLlmMock.mockReset();
+            setPerUserIdentity('user-a'); // ARA's prefs are per-user: quiet user-a's before it mounts
+            araPrefsStore.set('ttsEnabled', false);
+            araPrefsStore.set('streamTokens', false);
+            Element.prototype.scrollIntoView = vi.fn();
+        });
+        afterEach(() => setPerUserIdentity(null));
+
+        const quickChat = async (switchMidRequest: boolean) => {
+            const base = authFetch.getMockImplementation()!;
+            let release!: () => void;
+            const gate = new Promise<void>(r => { release = r; });
+            authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+                if (url.endsWith('/chat')) await gate;
+                return base(url, opts);
+            });
+            const user = userEvent.setup();
+            const { rerender } = render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'summarize my week');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await waitFor(() => expect(authFetch.mock.calls.some((c: any[]) => String(c[0]).endsWith('/chat'))).toBe(true));
+            if (switchMidRequest) rerender(asUser('user-b'));
+            release();
+            await flush();
+        };
+
+        it('quick chat: the backend reply lands after the switch → no Hermes record, no reply shown', async () => {
+            await quickChat(true);
+            expect(hermesLearningStore.getSnapshot()).toEqual([]);
+            expect(screen.queryByText('I can help with that.')).toBeNull();
+        });
+
+        it('control: quick chat with no switch records the exchange', async () => {
+            await quickChat(false);
+            expect(hermesLearningStore.getSnapshot().map(r => r.prompt)).toContain('summarize my week');
+        });
+
+        it('quick chat: the backend fails after the switch → no LLM fallback answer on the old key', async () => {
+            llmActive = true;
+            const base = authFetch.getMockImplementation()!;
+            let release!: () => void;
+            const gate = new Promise<void>(r => { release = r; });
+            authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+                if (url.endsWith('/chat')) { await gate; throw new Error('Backend unreachable'); }
+                return base(url, opts);
+            });
+            const user = userEvent.setup();
+            const { rerender } = render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'what is on my plate this week?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await waitFor(() => expect(authFetch.mock.calls.some((c: any[]) => String(c[0]).endsWith('/chat'))).toBe(true));
+            rerender(asUser('user-b'));
+            release();
+            await flush();
+            expect(callLlmMock.mock.calls.some(([req]: any[]) => /backend is offline/.test(req?.systemPrompt ?? ''))).toBe(false);
+            expect(hermesLearningStore.getSnapshot()).toEqual([]);
+        });
+
+        it('control: the backend fails with no switch → the LLM fallback answers', async () => {
+            llmActive = true;
+            chatShouldThrow = true;
+            callLlmMock.mockResolvedValue({ text: 'Fallback answer.', provider: 'anthropic', model: 'x' });
+            const user = userEvent.setup();
+            render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'what is on my plate this week?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            expect(await screen.findByText('Fallback answer.')).toBeInTheDocument();
+        });
+
+        it('solo spawn: the persona answers after the switch → no Hermes record', async () => {
+            llmActive = true;
+            let answer!: (v: unknown) => void;
+            callLlmMock.mockReturnValue(new Promise(r => { answer = r; }));
+            const user = userEvent.setup();
+            const { rerender } = render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await waitFor(() => expect(callLlmMock).toHaveBeenCalled());
+            rerender(asUser('user-b'));
+            answer({ text: 'The lease renews on March 1.', provider: 'anthropic', model: 'x' });
+            await flush();
+            expect(hermesLearningStore.getSnapshot()).toEqual([]);
+            expect(screen.getByText(/account changed during this run/i)).toBeInTheDocument(); // not a stuck "working…"
         });
     });
 });

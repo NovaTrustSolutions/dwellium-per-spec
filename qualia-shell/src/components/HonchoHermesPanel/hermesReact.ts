@@ -18,6 +18,7 @@ import { extractJson } from '../../lib/agents/orchestrator';
 import { callLlm, type LlmRequest } from '../../lib/llmClient';
 import type { IntegrationsBundle } from '../../types/integrations';
 import type { HermesRunStep } from './hermesRunner';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 export interface ReactLoopResult {
     steps: HermesRunStep[];
@@ -58,6 +59,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
     const steps: HermesRunStep[] = [];
     const toolsUsed = new Set<string>();
     const scratchpad: string[] = [];
+    const stillOwner = captureOwner(); // owner-race guard: no tool runs for a user who signed out mid-loop
 
     const systemPrompt =
         'You are Hermes, a tool-using task agent inside the Dwellium app. Work step by step.\n' +
@@ -69,7 +71,9 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
         'when you can answer. Prefer tools for facts/calculations; never invent tool output.' +
         (fewShot ? `\n\n${fewShot}` : '');
 
+    const stopped = (): ReactLoopResult => ({ steps, result: '', ok: false, toolsUsed: [...toolsUsed] });
     for (let i = 0; i < maxSteps; i++) {
+        if (!stillOwner()) return stopped();
         const raw = await deps.invoke({
             systemPrompt,
             prompt:
@@ -93,6 +97,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
         const tool = v.action?.tool?.trim();
         if (!tool) break;
         steps.push({ type: 'action', content: `${tool}(${v.action?.input ?? ''})`, timestamp: now() });
+        if (!stillOwner()) return stopped();
         let observation = '';
         try {
             const r = await deps.runSkill(tool, v.action?.input ?? '');
@@ -106,6 +111,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
     }
 
     // Out of steps (or unusable output) — force a final answer from the scratchpad.
+    if (!stillOwner()) return stopped();
     if (scratchpad.length) {
         const raw = await deps.invoke({
             systemPrompt: 'Summarize the work below into a direct final answer to the task. Plain text.',

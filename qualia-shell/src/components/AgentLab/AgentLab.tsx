@@ -7,6 +7,7 @@
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Bot, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
+import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, applyModelPreference, hasActiveLlm } from '../../lib/llmClient';
 import {
@@ -125,6 +126,7 @@ export default function AgentLab() {
 
     const run = useCallback(async () => {
         if (!sel || running || !goal.trim()) return;
+        const stillOwner = captureOwner(); // owner-race guard: an account switch mid-run drops every late write
         resetRun();
         setRunning(true);
         try {
@@ -144,6 +146,7 @@ export default function AgentLab() {
                     goal, sources, team, personas: augmentedPersonas, deps,
                     onEvent: e => setEvents(prev => [...prev, e]),
                     onMemberTask: m => {
+                        if (!stillOwner()) return;
                         if (m.phase === 'assigned') {
                             memberTaskIds.set(m.personaId, addTask(m.personaId, m.title, 'orchestrator'));
                         } else if (m.phase === 'start') {
@@ -161,7 +164,8 @@ export default function AgentLab() {
                         }
                     },
                 });
-                setTeamResult(result);
+                setTeamResult(result); // after a switch this carries runTeam's ACCOUNT_CHANGED error
+                if (!stillOwner()) return;
                 // D3/D1: record whenever a run actually happened — including a
                 // failed one — with an HONEST outcome, not "only on success".
                 const rec = recordRun({
@@ -183,6 +187,7 @@ export default function AgentLab() {
                 const augmented = { ...persona, systemPrompt: persona.systemPrompt + formatMemory(persona.id) };
                 try {
                     const out = await runPersona({ goal, sources, persona: augmented, deps });
+                    if (!stillOwner()) { setSoloError({ personaId: persona.id, message: ACCOUNT_CHANGED }); return; }
                     const durationMs = performance.now() - t0;
                     setSoloResult(out);
                     // D3: outcome from `ok`, never from output-text truthiness.
@@ -194,6 +199,7 @@ export default function AgentLab() {
                     setRating(null);
                     recordPersonaRun(persona.id, learnedNote(`Goal: ${goal}`, out, 160), durationMs, outcome);
                 } catch (e) {
+                    if (!stillOwner()) { setSoloError({ personaId: persona.id, message: ACCOUNT_CHANGED }); return; }
                     // D1: runPersona doesn't catch a thrown provider error —
                     // this is that catch. Never let it vanish silently.
                     const durationMs = performance.now() - t0;
@@ -224,6 +230,7 @@ export default function AgentLab() {
     const runTask = useCallback(async (taskId: string, taskTitle: string) => {
         if (!selectedPersona || running || runningTasks[selectedPersona.id]) return;
         const personaId = selectedPersona.id;
+        const stillOwner = captureOwner(); // owner-race guard (see run)
         const augmented = { ...selectedPersona, systemPrompt: selectedPersona.systemPrompt + formatMemory(personaId) };
         setRunningTasks(prev => ({ ...prev, [personaId]: taskId }));
         // A task result is not a Hermes run: clear the rating target so its
@@ -235,6 +242,7 @@ export default function AgentLab() {
         const t0 = performance.now();
         try {
             const out = await runPersona({ goal: taskTitle, sources, persona: augmented, deps });
+            if (!stillOwner()) return;
             const durationMs = performance.now() - t0;
             // D8: a real answer completes the task; anything else — including a
             // clean "no response" — fails it with the real reason, never a
@@ -251,6 +259,7 @@ export default function AgentLab() {
                 setRating(null);
             }
         } catch (e) {
+            if (!stillOwner()) return;
             // D1: a thrown provider error fails the task with the real message.
             const durationMs = performance.now() - t0;
             const msg = describeLlmFailure(e);

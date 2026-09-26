@@ -7,7 +7,7 @@
  */
 import { OPEN, CLOSE, TOKEN, UNDERSCORE_EM, CODE_SPAN, spanText } from '../../lib/markdownText';
 
-export { splitFences, toPlainText, toSpeechText, type MdBlock } from '../../lib/markdownText';
+export { splitFences, toPlainText, toSpeechText, speechPauses, chunkForTts, type MdBlock } from '../../lib/markdownText';
 
 export function formatInline(escaped: string): string {
     const codes: string[] = [];

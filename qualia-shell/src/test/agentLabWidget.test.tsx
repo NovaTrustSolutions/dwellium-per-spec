@@ -34,6 +34,7 @@ import { personaWorkStore, addMemory } from '../lib/agents/personaWorkStore';
 import { hermesLearningStore, relevantPastRuns } from '../components/HonchoHermesPanel/hermesLearningStore';
 import { integrationsStore, saveIntegrations } from '../utils/integrationsStore';
 import { emptyIntegrations, type IntegrationsBundle } from '../types/integrations';
+import { setPerUserIdentity } from '../lib/perUserIdentity';
 
 function stubMatchMedia(reduce: boolean) {
     Object.defineProperty(window, 'matchMedia', {
@@ -603,5 +604,49 @@ describe('AgentLab — P3 icon fallback', () => {
         // unreliable (adjacent elements render with no separating whitespace,
         // e.g. "botNew Specialist"); queryByText matches per-element text.
         expect(within(railEl()).queryByText('bot')).toBeNull();
+    });
+});
+
+// Owner-race guard: a run that finishes after the signed-in account changed must not write its
+// Hermes record, working-memory note or task outcome into the next account's stores.
+describe('AgentLab — an account switch mid-run drops every late write', () => {
+    afterEach(() => setPerUserIdentity(null));
+    const settle = () => act(async () => { await new Promise(r => setTimeout(r, 40)); });
+
+    it('solo run: the answer lands after the switch → no Hermes record, no memory note, no rating button', async () => {
+        setPerUserIdentity('user-a');
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        const d = deferred<MockLlmResponse>();
+        plan.byPersona.researcher = () => d.promise;
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Switch mid-run' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalled());
+        setPerUserIdentity('user-b');
+        d.resolve({ text: 'late answer', provider: 'anthropic', model: 'x' });
+        await settle();
+        expect(hermesLearningStore.getSnapshot()).toEqual([]);
+        expect(JSON.stringify(personaWorkStore.getSnapshot())).not.toContain('Switch mid-run');
+        expect(screen.queryByRole('button', { name: 'Mark result good' })).toBeNull();
+        expect(screen.getByText(/account changed during this run/i)).toBeInTheDocument(); // not a stuck "working…"
+    });
+
+    it('team run: the first member answers after the switch → nothing recorded, no later member runs', async () => {
+        setPerUserIdentity('user-a');
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        const d = deferred<MockLlmResponse>();
+        plan.byPersona.researcher = () => d.promise;
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Switch mid-team' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run team' }));
+        await waitFor(() => expect(callLlmMock.mock.calls.some(([req]) => req.personaId === 'researcher')).toBe(true));
+        setPerUserIdentity('user-b');
+        d.resolve({ text: 'late findings', provider: 'anthropic', model: 'x' });
+        await settle();
+        expect(hermesLearningStore.getSnapshot()).toEqual([]);
+        expect(callLlmMock.mock.calls.some(([req]) => req.personaId === 'data-analyst')).toBe(false);
+        expect(personaWorkStore.getSnapshot().researcher?.tasks.map(t => t.status)).toEqual(['running']);
+        expect(personaWorkStore.getSnapshot()['data-analyst']?.tasks ?? []).toEqual([]);
     });
 });

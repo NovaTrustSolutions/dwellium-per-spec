@@ -269,10 +269,10 @@ describe('ContentSearch — Phase 3 (plan 069)', () => {
         const input = screen.getByRole('combobox', { name: 'Search all content' });
 
         await user.type(input, 'ab');
-        await waitFor(() => expect(searchRemoteMock).toHaveBeenCalledWith('ab', expect.anything(), expect.anything()));
+        await waitFor(() => expect(searchRemoteMock).toHaveBeenCalledWith('ab', expect.anything(), expect.anything(), expect.anything()));
 
         await user.type(input, 'c');
-        await waitFor(() => expect(searchRemoteMock).toHaveBeenCalledWith('abc', expect.anything(), expect.anything()));
+        await waitFor(() => expect(searchRemoteMock).toHaveBeenCalledWith('abc', expect.anything(), expect.anything(), expect.anything()));
         await screen.findByText('New Note');
 
         // The old ('ab') request finally resolves AFTER the newer ('abc') one already rendered —

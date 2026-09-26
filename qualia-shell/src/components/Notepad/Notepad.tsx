@@ -7,6 +7,14 @@ import './Notepad.css';
 import { API_BASE } from '../../config';
 import { WIDGET_ACTION_EVENT, consumePendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
 import { takePendingDeepLink } from '../../lib/pendingDeepLink';
+import { useNotesScopeParam } from '../../lib/notesScopeStore';
+
+/** Appends `scope` (already `scope=all` or `''`) to a URL that may or may not
+ *  already carry a `?query`. Plan 070 — every notes call goes through this. */
+function withNotesScope(url: string, scope: string): string {
+    if (!scope) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}${scope}`;
+}
 
 // ============================================
 // TYPES
@@ -58,6 +66,7 @@ export function noteDragData(note: Pick<Note, 'id' | 'title' | 'content'>): { wi
 
 export default function Notepad() {
     const { hierarchy } = useHierarchy();
+    const notesScope = useNotesScopeParam();
     const [notes, setNotes] = useState<Note[]>([]);
     const [notesUnavailable, setNotesUnavailable] = useState(false);
     const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -140,7 +149,7 @@ export default function Notepad() {
         // "Notes unavailable" state with Retry; a success clears it.
         try {
             const q = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : '';
-            const res = await fetch(`${API_FILES}/notes${q}`);
+            const res = await fetch(withNotesScope(`${API_FILES}/notes${q}`, notesScope));
             const json = await res.json().catch(() => null);
             if (res.ok && json?.success && Array.isArray(json.data)) {
                 setNotes(json.data);
@@ -157,7 +166,7 @@ export default function Notepad() {
     const autoSave = useCallback(async (noteId: string, noteTitle: string, noteContent: string) => {
         setIsSaving(true);
         try {
-            await fetch(`${API_FILES}/notes`, {
+            await fetch(withNotesScope(`${API_FILES}/notes`, notesScope), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: noteId, title: noteTitle, content: noteContent })
@@ -166,7 +175,7 @@ export default function Notepad() {
             // Offline — save will retry
         }
         setIsSaving(false);
-    }, []);
+    }, [notesScope]);
 
     const handleContentChange = (newContent: string) => {
         setContent(newContent);
@@ -254,7 +263,7 @@ export default function Notepad() {
     const openNoteFromPalette = useCallback(async (detail: { noteId?: string; title?: string }) => {
         if (detail.noteId) {
             try {
-                const res = await fetch(`${API_FILES}/notes/${encodeURIComponent(detail.noteId)}`);
+                const res = await fetch(withNotesScope(`${API_FILES}/notes/${encodeURIComponent(detail.noteId)}`, notesScope));
                 const json = await res.json();
                 if (json?.success && json.data) {
                     const note = json.data as Note;
@@ -274,7 +283,7 @@ export default function Notepad() {
         if (detail.title) {
             setSearchQuery(detail.title);
         }
-    }, [selectNote]);
+    }, [selectNote, notesScope]);
 
     // Command Palette / Search deep-link: open a selected note. A link fired
     // before this chunk mounted waits in the pending slot (plan 069).
@@ -347,7 +356,7 @@ export default function Notepad() {
             if (searchQuery.length > 1 || searchQuery.length === 0) fetchNotes();
         }, 300);
         return () => clearTimeout(debounce);
-    }, [searchQuery]);
+    }, [searchQuery, notesScope]);
 
     // ---- RENDER ----
     const activeNote = notes.find(n => n.id === activeNoteId);

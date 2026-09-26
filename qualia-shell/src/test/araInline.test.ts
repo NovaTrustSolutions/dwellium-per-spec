@@ -356,6 +356,207 @@ describe('eighth review: images with an empty source', () => {
     });
 });
 
+describe('links glued to CJK (and other space-less scripts) are read as their text', () => {
+    const time = (f: () => unknown) => { const t0 = performance.now(); f(); return performance.now() - t0; };
+    it('Chinese, Japanese (incl. ー), Korean, Thai: speech and titles drop the URL', () => {
+        const cases: [string, string][] = [
+            ['请参阅[官方文档](https://docs.example.com)了解更多', '请参阅官方文档了解更多'],
+            ['詳細は[ドキュメント](https://example.jp)をご覧ください', '詳細はドキュメントをご覧ください'],
+            ['データー[リンク](https://x.jp)です', 'データーリンクです'],
+            ['자세한 내용은[문서](https://example.kr)를 참조하세요', '자세한 내용은문서를 참조하세요'],
+            ['ภาษาไทย[เอกสาร](https://x.th)', 'ภาษาไทยเอกสาร'],
+            ['见图![图表](chart.png)。', '见图图表。'],
+            ['来源[[1]](https://x.cn/a)。', '来源[1]。'],
+        ];
+        for (const [md, want] of cases) {
+            expect(toPlainText(md)).toBe(want);
+            expect(toSpeechText(md)).toBe(want);
+        }
+    });
+    it('non-URL destinations glued to space-less scripts (these depend on the script list)', () => {
+        const cases: [string, string][] = [
+            ['ภาษาไทย[เอกสาร](เอกสาร.pdf)', 'ภาษาไทยเอกสาร'],
+            ['见[租约](租约 (1).pdf)', '见租约'],
+            ['ＰＤＦ[ファイル](ファイル.pdf)を', 'ＰＤＦファイルを'],
+            ['注音ㄅㄆㄇ[連結](連結.html)', '注音ㄅㄆㄇ連結'],
+            ['བོད[link](a.html)', 'བོདlink'],
+        ];
+        for (const [md, want] of cases) expect(toPlainText(md)).toBe(want);
+    });
+    it('a link with a URL destination glued to a Latin word or a number inside CJK text', () => {
+        const cases: [string, string][] = [
+            ['请参阅Python[官方文档](https://docs.python.org/3/)', '请参阅Python官方文档'],
+            ['详见2024[年度报告](https://x.cn/r.pdf)', '详见2024年度报告'],
+            ['iPhone[설정](https://x.kr)에서', 'iPhone설정에서'],
+            ['①[公式サイト](https://x.jp)で申し込む', '①公式サイトで申し込む'],
+        ];
+        for (const [md, want] of cases) { expect(toPlainText(md)).toBe(want); expect(toSpeechText(md)).toBe(want); }
+        expect(toPlainText('Call funcs[[1]](x) in R; fetch[i](event)')).toBe('Call funcs[[1]](x) in R; fetch[i](event)');
+    });
+    it('an underscore-emphasised link glued to CJK text', () => {
+        const out = toSpeechText('请看_[文档](文档.pdf)_');
+        expect(out).not.toMatch(/\]\(|\.pdf/);
+        expect(toPlainText('snake_[i](x) and obj.__dict__[k](a)')).toBe('snake_[i](x) and obj.__dict__[k](a)');
+    });
+    it('the wider rules stay linear', () => {
+        for (const md of ['a[b](https://'.repeat(30000), 'Python[a](http://x'.repeat(20000), '文' + '_'.repeat(100000) + '[a](b)', '文__[文](文'.repeat(30000), 'ｱ[a]('.repeat(40000)])
+            expect((() => { const t0 = performance.now(); toPlainText(md); return performance.now() - t0; })()).toBeLessThan(500);
+    });
+    it('a glued citation number never merges into the number before it; glued Latin words get a space', () => {
+        const cases: [string, string][] = [
+            ['It grew in 2023[2](https://example.com/report) and again in 2024.', 'It grew in 2023[2] and again in 2024.'],
+            ['EV sales hit 14 million in 2023[1](https://www.iea.org/x)[2](https://www.bloomberg.com/ev).', 'EV sales hit 14 million in 2023[1][2].'],
+            ['Smith 2020[12](https://doi.org/10.1000/182)', 'Smith 2020[12]'],
+            ['The population is 8.1 billion[1](https://www.un.org/pop)', 'The population is 8.1 billion[1]'],
+            ['中国人口约为14亿[1](https://www.stats.gov.cn/)。', '中国人口约为14亿[1]。'],
+            ['Revenue in 2023.[1](https://a.com)', 'Revenue in 2023.[1]'],
+            ['see the docs[here](https://example.com) and Node.js[docs](https://nodejs.org)', 'see the docs here and Node.js docs'],
+            ['as shown [1](https://a.com).', 'as shown 1.'],
+        ];
+        for (const [md, want] of cases) { expect(toPlainText(md)).toBe(want); expect(toSpeechText(md)).toBe(want); }
+    });
+    it('emphasis, marks, % and quotes around a glued link do not merge words or numbers', () => {
+        const nfdCafe = 'cafe' + String.fromCharCode(0x301);
+        const cases: [string, string][] = [
+            ['published in _Nature_[3](https://nature.com/a).', 'published in Nature[3].'],
+            ['grew in **2023**[2](https://a.com) and ~~2022~~[1](https://b.com)', 'grew in 2023[2] and 2022[1]'],
+            ['grew 12%[1](https://a.com), "quoted"[2](https://b.com)', 'grew 12%[1], "quoted"[2]'],
+            ['see the docs[*here*](https://x.com)', 'see the docs here'],
+            ['भारत में[1](https://x.com)', 'भारत में[1]'],
+            ['अधिक जानकारी[यहाँ](https://x.com) देखें', 'अधिक जानकारी यहाँ देखें'],
+            [nfdCafe + '[menu](https://a.com)', nfdCafe + ' menu'],
+            ['see [docs](https://a.com)[here](https://b.com)', 'see docs here'],
+            ['[文档](https://a.cn)[这里](https://b.cn)', '文档这里'],
+        ];
+        for (const [md, want] of cases) { expect(toPlainText(md)).toBe(want); expect(toSpeechText(md)).toBe(want); }
+    });
+    it('citations in any script\'s digits, after commas, CJK punctuation, units or currency keep their brackets', () => {
+        const cases: [string, string][] = [
+            ['２０２３[１](https://a.jp)', '２０２３[１]'],
+            ['人口约为１４亿[１](https://x.cn)。', '人口约为１４亿[１]。'],
+            ['๒๕๖๖[๑](https://x.th)', '๒๕๖๖[๑]'],
+            ['٢٠٢٣[١](https://x.eg)', '٢٠٢٣[١]'],
+            ['Sales rose in 2023,[2](https://a.com) up.', 'Sales rose in 2023,[2] up.'],
+            ['这是事实。[1](https://x.cn)', '这是事实。[1]'],
+            ['增长了５％[1](https://x.cn)', '增长了５％[1]'],
+            ['costs 5€[1](https://a.com) each; it rose 1.5°[2](https://b.com)', 'costs 5€[1] each; it rose 1.5°[2]'],
+        ];
+        for (const [md, want] of cases) { expect(toPlainText(md)).toBe(want); expect(toSpeechText(md)).toBe(want); }
+    });
+    it('a quote that opens a quotation is not "glued": a quoted year or title keeps its plain text', () => {
+        expect(toPlainText('Orwell\'s "[1984](https://en.wikipedia.org/wiki/Nineteen_Eighty-Four)" is a novel.')).toBe('Orwell\'s "1984" is a novel.');
+        expect(toPlainText("the film '[1917](https://imdb.com/t)' won")).toBe("the film '1917' won");
+        expect(toPlainText('German »[1984](https://x.de)«')).toBe('German »1984«');
+        expect(toPlainText('"quoted"[here](https://x.com)')).toBe('"quoted" here');
+    });
+    it('round five: elision, currency before a number, quotes around emphasis, German quotes, citation chains, speed', () => {
+        const cases: [string, string][] = [
+            ["Consultez l'[article](https://fr.wikipedia.org/wiki/X) pour plus", "Consultez l'article pour plus"],
+            ["Tim O'[Reilly](https://en.wikipedia.org/wiki/Tim) and j’[ai](https://x.fr) vu", "Tim O'Reilly and j’ai vu"],
+            ['The plan costs $[20](https://example.com/pricing) or €[5](https://x.eu) a month', 'The plan costs $20 or €5 a month'],
+            ['as reported in "*Nature*"[3](https://nature.com) and "`x`"[4](https://a.com)', 'as reported in "Nature"[3] and "x"[4]'],
+            ['„Nature“[3](https://nature.com), »Die Zeit«[4](https://zeit.de)', '„Nature“[3], »Die Zeit«[4]'],
+            ['这是事实，[1](https://x.cn) Is it true?[2](https://a.com)', '这是事实，[1] Is it true?[2]'],
+            ['Studies agree [1](https://a.org)[2](https://b.org)[3](https://c.org).', 'Studies agree [1][2][3].'],
+        ];
+        for (const [md, want] of cases) expect(toPlainText(md)).toBe(want);
+        for (const md of ['[a' + '*'.repeat(60000) + 'b](y)', 'x[a' + '_'.repeat(60000) + 'b](https://x.com)'])
+            expect((() => { const t0 = performance.now(); toPlainText(md); return performance.now() - t0; })()).toBeLessThan(500);
+    });
+    it('round six: CJK opening quotes, amounts written "20 €", comma-separated citation chains', () => {
+        const nbsp = String.fromCharCode(0xa0);
+        const cases: [string, string][] = [
+            ['点击“[Settings](https://example.com/settings)”按钮', '点击“Settings”按钮'],
+            ['我读了“[1984](https://zh.wikipedia.org/wiki/1984)”这本书', '我读了“1984”这本书'],
+            ['これは“[AI](https://x.jp)”です', 'これは“AI”です'],
+            ['他说“你好”[1](https://x.cn)', '他说“你好”[1]'],
+            ['Le prix est de 20 €[1](https://source.fr) par mois.', 'Le prix est de 20 €[1] par mois.'],
+            ['Der Preis: 20' + nbsp + '€[1](https://quelle.de).', 'Der Preis: 20' + nbsp + '€[1].'],
+            ['In 2023 $[20](https://x.com) bought lunch', 'In 2023 $20 bought lunch'],
+            ['Episodes [1](https://a.com),[2](https://b.com);[3](https://c.com)', 'Episodes [1],[2];[3]'],
+            ['„Nature“[3](https://nature.com)', '„Nature“[3]'],
+        ];
+        for (const [md, want] of cases) expect(toPlainText(md)).toBe(want);
+    });
+    it('round seven: straight quotes wrapping a link after CJK, **20**€, wider citation chains, ›…‹', () => {
+        const cases: [string, string][] = [
+            ['点击"[Settings](https://example.com/settings)"按钮', '点击"Settings"按钮'],
+            ['被称为"[996](https://zh.wikipedia.org/wiki/996)"工作制', '被称为"996"工作制'],
+            ["称为'[996](https://x.cn)'工作制", "称为'996'工作制"],
+            ['He said,"[1984](https://x.com)" then', 'He said,"1984" then'],
+            ['他说"你好"[1](https://x.cn)', '他说"你好"[1]'],
+            ['Il coûte **20**€[1](https://x.fr) par mois.', 'Il coûte 20€[1] par mois.'],
+            ['Refs [1](https://a.com),[**2**](https://b.com)', 'Refs [1],[2]'],
+            ['Refs [1](https://a.com)[[2]](https://b.com)', 'Refs [1][2]'],
+            ['Refs [1](https://a.com)、[2](https://b.com)', 'Refs [1]、[2]'],
+            ['›Die Zeit‹[hier](https://x.de) lesen, ›Die Zeit‹[4](https://x.de)', '›Die Zeit‹ hier lesen, ›Die Zeit‹[4]'],
+        ];
+        for (const [md, want] of cases) expect(toPlainText(md)).toBe(want);
+    });
+    it('round eight: straight double quotes decided by parity on the line; bold amounts before €/₽', () => {
+        const cases: [string, string][] = [
+            ['打开"**[Settings](https://example.com)**"页面', '打开"Settings"页面'],
+            ['被称为"**[996](https://x.cn)**"工作制', '被称为"996"工作制'],
+            ['他说"[Python](https://python.org)很好用"', '他说"Python很好用"'],
+            ['点击"[File](https://x.com) > Open"菜单', '点击"File > Open"菜单'],
+            ['Ratings: "good"[1](https://a.com)"bad"[2](https://b.com)', 'Ratings: "good"[1]"bad"[2]'],
+            ['分为"高"[1](https://a.cn)"中"[2](https://b.cn)"低"[3](https://c.cn)三档', '分为"高"[1]"中"[2]"低"[3]三档'],
+            ["称为'**[996](https://x.cn)**'工作制", "称为'996'工作制"],
+            ['Le prix est de **20** €[1](https://source.fr) par mois.', 'Le prix est de 20 €[1] par mois.'],
+            ['Цена **500** ₽[1](https://x.ru)', 'Цена 500 ₽[1]'],
+            ['Costs $[20](https://x.com) today', 'Costs $20 today'],
+        ];
+        for (const [md, want] of cases) { expect(toPlainText(md)).toBe(want); expect(toSpeechText(md)).toBe(want); }
+    });
+    it('the quote counter stays linear on one long line', () => {
+        const md = ('"a"[1](https://a.com) "' + '[b](https://b.com)" ').repeat(8000);
+        const t0 = performance.now(); toPlainText(md); expect(performance.now() - t0).toBeLessThan(500);
+    });
+    it('round nine: quotations that wrap across lines, a " after a space never closes, link URLs/titles are not counted', () => {
+        const cases: [string, string][] = [
+            ['> "Stay hungry,\n> stay foolish."[1](https://x.com)', '"Stay hungry,\nstay foolish."[1]'],
+            ['He said "this is\na claim"[source](https://a.com) today', 'He said "this is\na claim" source today'],
+            ['他说"这是一个\n很长的句子"[1](https://x.cn)', '他说"这是一个\n很长的句子"[1]'],
+            ['The report says "prices rose\nsharply" and "[2023](https://x.com) was a record"', 'The report says "prices rose\nsharply" and "2023 was a record"'],
+            ['He said "this spans\ntwo lines" and "[Python](https://python.org) rocks"', 'He said "this spans\ntwo lines" and "Python rocks"'],
+            ['See [guide](https://x.com "a \\" b") and "good"[1](https://y.com)', 'See guide and "good"[1]'],
+            ['An unclosed "quote\n\nNew paragraph "good"[1](https://y.com)', 'An unclosed "quote\n\nNew paragraph "good"[1]'],
+        ];
+        for (const [md, want] of cases) expect(toPlainText(md)).toBe(want);
+    });
+    it('round ten: a closing quote after 。？！…%; or a nested quote still closes (numbers never merge)', () => {
+        const cases: [string, string][] = [
+            ['他表示："我们将继续努力。"[1](https://x.cn)', '他表示："我们将继续努力。"[1]'],
+            ['他问："真的吗？"[1](https://x.cn)', '他问："真的吗？"[1]'],
+            ['他说："我们会赢。"[1](https://x.cn)2024年的数据显示', '他说："我们会赢。"[1]2024年的数据显示'],
+            ['He said, "We will keep going…"[1](https://x.com)', 'He said, "We will keep going…"[1]'],
+            ['Adoption reached "over 50%"[1](https://x.com).', 'Adoption reached "over 50%"[1].'],
+            ['"Wait…"[source](https://a.com) and more', '"Wait…" source and more'],
+            ['他表示：“我们将继续努力。”[1](https://x.cn)', '他表示：“我们将继续努力。”[1]'],
+            ['He said "[1984](https://x.com)" then', 'He said "1984" then'],
+        ];
+        for (const [md, want] of cases) { expect(toPlainText(md)).toBe(want); expect(toSpeechText(md)).toBe(want); }
+    });
+    it('confirmation pass: an opening “ ‘ after ： ， — : is still opening', () => {
+        const cases: [string, string][] = [
+            ['我读了：“[1984](https://zh.wikipedia.org/wiki/1984)”这本书', '我读了：“1984”这本书'],
+            ['他说：“[Python](https://python.org)”很好用', '他说：“Python”很好用'],
+            ['然后，“[GitHub](https://github.com)”上线了', '然后，“GitHub”上线了'],
+            ['他说：‘[Python](https://python.org)’很好用', '他说：‘Python’很好用'],
+            ['The answer—“[42](https://x.com)”—is famous.', 'The answer—“42”—is famous.'],
+            ['Options:“[Settings](https://x.com)” and more', 'Options:“Settings” and more'],
+        ];
+        for (const [md, want] of cases) { expect(toPlainText(md)).toBe(want); expect(toSpeechText(md)).toBe(want); }
+    });
+    it('Latin-script code glued to a word is still not a link', () => {
+        expect(toPlainText('call handlers[i](event) and obj.__dict__[k](a)')).toBe('call handlers[i](event) and obj.__dict__[k](a)');
+    });
+    it('stays linear', () => {
+        for (const md of ['文[a]('.repeat(40000), '文[文](文'.repeat(30000), 'ー![a]('.repeat(30000)])
+            expect(time(() => toPlainText(md))).toBeLessThan(500);
+    });
+});
+
 describe('splitFences', () => {
     const code = (md: string) => splitFences(md).filter(b => b.kind === 'code').map(b => b.lines.join('\n'));
     it('closes only on a fence at least as long as the opener; ~~~ works too', () => {

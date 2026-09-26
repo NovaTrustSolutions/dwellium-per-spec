@@ -20,7 +20,7 @@
  * <NotYet> chip (Unit has no listing fields; no layer serves any).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within, getNodeText } from '@testing-library/react';
 
 vi.mock('../../context/UserContext', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../context/UserContext')>();
@@ -124,8 +124,22 @@ const cardOf = (label: string): HTMLElement => screen.getByText(label).closest('
 // "Leasing Funnel" is both the sub-tab button and the card heading — anchor on the heading.
 const funnelCard = () => within(screen.getByRole('heading', { name: 'Leasing Funnel' }).closest('.s-glass-card') as HTMLElement);
 
+/** Same verdict as `expect(screen.queryByText(s)).toBeNull()` for each string, in ONE DOM pass:
+ * queryByText's default exact matcher compares each element's OWN text nodes (getNodeText),
+ * trimmed and whitespace-collapsed, skipping script/style, over document.body and its descendants.
+ * One queryByText walk per string made the sweep (38 strings × 10 views = 380 walks) take ~4.9 s
+ * of its 5 s budget even in isolation, so it timed out whenever the full suite loaded the machine. */
+function visibleTexts(): Set<string> {
+    const texts = new Set<string>();
+    for (const el of [document.body, ...document.body.querySelectorAll('*')]) {
+        if (el.matches('script, style')) continue;
+        texts.add(getNodeText(el as HTMLElement).trim().replace(/\s+/g, ' '));
+    }
+    return texts;
+}
 function expectNoneOf(strings: string[]) {
-    for (const s of strings) expect(screen.queryByText(s), s).toBeNull();
+    const texts = visibleTexts();
+    for (const s of strings) expect(texts.has(s), s).toBe(false);
 }
 
 describe('LeasingModule · empty account → honest empty states, never the old hardcoded arrays', () => {
@@ -221,7 +235,9 @@ describe('LeasingModule · empty account → honest empty states, never the old 
             openMetric(view);
             expectNoneOf(OLD_FAKE_STRINGS);
         }
-    });
+        // 10 views rendered in one test (each sibling test renders one, ~1 s). Isolated ~2 s after the
+        // single-pass expectNoneOf; up to ~4 s under full-suite load, so the 5 s default is too tight.
+    }, 15000);
 });
 
 describe('LeasingModule · mocked real rows render on the derived tabs', () => {

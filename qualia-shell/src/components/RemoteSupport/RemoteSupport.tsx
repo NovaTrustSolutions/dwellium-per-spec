@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { Copy, ExternalLink, Monitor, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { API_BASE } from '../../config';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { captureOwner, usePerUserIdentity } from '../../lib/perUserIdentity';
 import {
     MACHINE_TAGS,
     MachineTag,
@@ -202,8 +202,13 @@ export default function RemoteSupport({ env }: { env?: Env }) {
 
     const onImportFile = async (file: File | undefined) => {
         if (!file) return;
+        const stillOwner = captureOwner();
         try {
-            const n = importMachinesJson(await file.text());
+            const text = await file.text();
+            // Account switched while the file was being read — never merge
+            // A's address book into B's namespace.
+            if (!stillOwner()) return;
+            const n = importMachinesJson(text);
             setIoMessage(`Imported ${n} machine${n === 1 ? '' : 's'} (merged by id — nothing removed).`);
         } catch (e) {
             setIoMessage(`Import failed: ${e instanceof Error ? e.message : 'invalid JSON'}`);

@@ -26,6 +26,7 @@ import {
     type KgProject,
 } from '../../lib/halocronKnowledgeGraphStore';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
+import { captureOwner } from '../../lib/perUserIdentity';
 import AgentEta from '../common/AgentEta';
 import { KG_AGENTS, type KgAgent } from './HalocronKnowledgeGraph.agents';
 import './HalocronKnowledgeGraph.css';
@@ -566,12 +567,13 @@ export default function HalocronKnowledgeGraph() {
         const url = window.prompt('Graph a repo — paste a GitHub URL (https://github.com/owner/repo):');
         if (!url) return;
         setAdding(true);
+        const stillOwner = captureOwner();
         try {
             // Graph the repo CLIENT-SIDE via the GitHub API (no backend needed) — two
             // calls (repo + recursive file tree). Save the result to the account
             // resume store so it renders on every machine after login.
             const { project, gdata } = await graphGithubRepo(url);
-            upsertKgProject(project, gdata);
+            if (stillOwner()) upsertKgProject(project, gdata); // account switched mid-fetch — drop, never redirect
         } catch (e) {
             window.alert(`Could not graph that repo:\n${(e as Error).message}`);
         } finally {

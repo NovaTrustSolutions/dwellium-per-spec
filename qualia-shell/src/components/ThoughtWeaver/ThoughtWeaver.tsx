@@ -29,7 +29,7 @@ import {
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
 import { twSyncConfig, pullCaptures, planImport } from './thoughtWeaverSync';
 import { pullInbox } from './twInbox';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
@@ -319,10 +319,13 @@ function ThoughtWeaverWorkspace({ userId }: { userId: string }) {
         if (!text.trim() || loading) return;
         const thoughtText = text.trim();
         setLoading(true);
+        // Owner race guard: captured before the first await (LLM/backend) below.
+        const stillOwner = captureOwner();
 
         // Common: persist locally FIRST (always-persistent ask). Whatever
         // happens with the LLM / backend, the user keeps their thought.
         const persistLocally = (filed_to: string, confidence: number, destination_name: string | null) => {
+            if (!stillOwner()) return; // account switched mid-await — drop, never redirect
             const entry = {
                 id: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
                 text: thoughtText,

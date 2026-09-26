@@ -10,6 +10,7 @@ import { useGoals, goalProgress, type Goal } from '../../lib/goalsStore';
 import { generateGoalPlan } from '../../lib/goalPlanner';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { requestAraPrompt } from '../../lib/llmRouter';
+import { captureOwner } from '../../lib/perUserIdentity';
 import './MissionControl.css';
 
 function GoalCard({ goal }: { goal: Goal }) {
@@ -115,10 +116,12 @@ export default function MissionControl() {
     const create = async () => {
         const t = title.trim();
         if (!t || busy) return;
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-await
         setBusy(true);
         try {
             const goal = createGoal(t); // appears immediately…
             const plan = await generateGoalPlan(t, integrations.llm);
+            if (!stillOwner()) return;
             updateGoalPlan(goal.id, plan); // …plan fills in when ready
             setTitle('');
         } finally {

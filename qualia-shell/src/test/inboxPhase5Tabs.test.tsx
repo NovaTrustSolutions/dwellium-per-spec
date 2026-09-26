@@ -105,6 +105,24 @@ describe('GlobalAuditTab', () => {
         expect(screen.getAllByText('Row 2')).toHaveLength(1);
     });
 
+    // Same contrast fix as InboxZero's viewers: the preview used a hard-coded dark-blue-on-white
+    // stylesheet; it now uses emailFrame's literal palette (jsdom has no theme tokens → white text).
+    it('the preview body uses the shared email frame colors, not the old dark-blue stylesheet', async () => {
+        const authFetch = vi.fn().mockImplementation((url: string) => {
+            if (url.includes('/audit/global')) return Promise.resolve(jsonResponse({ success: true, data: [{ id: 'a1', inbox_item_id: 'mail-1', action: 'archive', actor: null, reason: null, details: '{}', created_at: '2026-09-01 00:00:00', subject: 'Viewable' }], pagination: { total: 1, limit: 50, offset: 0, hasMore: false } }));
+            if (url.endsWith('/body')) return Promise.resolve(jsonResponse({ success: true, data: { body: '<p>hi</p>' } }));
+            return Promise.resolve(jsonResponse({ success: true, data: { subject: 'Viewable', sender: 's@example.invalid' } }));
+        });
+        render(<GlobalAuditTab apiBase="/api/inbox" authFetch={authFetch} />);
+        await waitFor(() => expect(screen.getByText('Viewable')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: /View/ }));
+        const doc = (await screen.findByTitle('audit-email-body')).getAttribute('srcdoc') || '';
+        expect(doc).toContain('color:#ffffff');
+        expect(doc).not.toContain('#1e293b');
+        expect(doc).not.toContain('background:#fff;');
+        expect(doc).toContain('<p>hi</p>');
+    });
+
     it('the preview is a modal dialog that Escape closes', async () => {
         const authFetch = vi.fn().mockImplementation((url: string) => {
             if (url.includes('/audit/global')) return Promise.resolve(jsonResponse({ success: true, data: [{ id: 'a1', inbox_item_id: 'mail-1', action: 'archive', actor: null, reason: null, details: '{}', created_at: '2026-09-01 00:00:00', subject: 'Viewable' }], pagination: { total: 1, limit: 50, offset: 0, hasMore: false } }));

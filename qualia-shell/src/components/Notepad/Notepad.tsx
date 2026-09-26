@@ -75,6 +75,7 @@ export default function Notepad() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showPreview, setShowPreview] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [saveFailed, setSaveFailed] = useState(false);
     const [showMentions, setShowMentions] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [mentionPos, setMentionPos] = useState({ top: 0, left: 0 });
@@ -165,15 +166,21 @@ export default function Notepad() {
     // ---- AUTO-SAVE ----
     const autoSave = useCallback(async (noteId: string, noteTitle: string, noteContent: string) => {
         setIsSaving(true);
+        let ok = false;
         try {
-            await fetch(withNotesScope(`${API_FILES}/notes`, notesScope), {
+            const res = await fetch(withNotesScope(`${API_FILES}/notes`, notesScope), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: noteId, title: noteTitle, content: noteContent })
             });
+            const json = await res.json().catch(() => null);
+            ok = res.ok && !!json?.success;
         } catch {
-            // Offline — save will retry
+            // offline — nothing retries this save; the status below says so
         }
+        // Never show "Saved" for a save the server refused (e.g. 404 once the god
+        // "other users' notes" toggle is off) or that never reached it (plan 070).
+        setSaveFailed(!ok);
         setIsSaving(false);
     }, [notesScope]);
 
@@ -469,8 +476,8 @@ export default function Notepad() {
 
                     {/* Save Status */}
                     <div className="np-save">
-                        <span className={`np-save__dot ${isSaving ? 'np-save__dot--saving' : ''}`} />
-                        <span>{isSaving ? 'Saving...' : 'Saved'}</span>
+                        <span className={`np-save__dot ${isSaving ? 'np-save__dot--saving' : ''} ${!isSaving && saveFailed ? 'np-save__dot--failed' : ''}`} />
+                        <span role={!isSaving && saveFailed ? 'alert' : undefined}>{isSaving ? 'Saving...' : saveFailed ? 'Not saved — keep this window open and try again' : 'Saved'}</span>
                     </div>
                 </div>
             ) : (

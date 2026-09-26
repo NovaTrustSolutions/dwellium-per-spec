@@ -628,4 +628,136 @@ describe('InboxZero', () => {
         const frame = await screen.findByTitle('email-body-inline');
         await waitFor(() => expect(frame.getAttribute('srcdoc')).toContain('would like to renew my lease'));
     });
+
+    // Plan (inbox-viewer-contrast) — full viewer contrast + expand/drag-resize.
+    describe('full email viewer — contrast, expand and drag-resize', () => {
+        function mockBodyFetch() {
+            authFetch.mockImplementation((url: string) => {
+                if (typeof url === 'string' && /\/mail-1\/body$/.test(url)) {
+                    return Promise.resolve(jsonResponse({ success: true, data: { body: 'Full body text' } }));
+                }
+                return routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))(url);
+            });
+        }
+
+        /** Opens the full viewer and waits for the loaded (non-loading) dialog. */
+        async function openFullViewer(): Promise<HTMLElement> {
+            mockBodyFetch();
+            renderInbox();
+            await waitFor(() => expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument());
+            fireEvent.click(screen.getByText('Lease renewal for Unit 4B').closest('.iz-card__content')!);
+            fireEvent.click(await screen.findByRole('button', { name: /View Full Email/i }));
+            await screen.findByRole('button', { name: /Close email/i }); // loaded, not the loading state
+            return screen.getByRole('dialog');
+        }
+
+        function stubDialogRect(dialog: HTMLElement, width: number, height: number) {
+            vi.spyOn(dialog, 'getBoundingClientRect').mockReturnValue({
+                width, height, top: 0, left: 0, right: width, bottom: height, x: 0, y: 0,
+                toJSON() { return {}; },
+            } as DOMRect);
+        }
+
+        it("the viewer iframe srcDoc contains 'color:#ffffff' (high-contrast white text)", async () => {
+            await openFullViewer();
+            const frame = screen.getByTitle('email-viewer-body');
+            expect(frame.getAttribute('srcdoc')).toContain('color:#ffffff');
+        });
+
+        it('the expand toggle flips aria-pressed, adds iz-viewer--expanded, and persists to localStorage', async () => {
+            const dialog = await openFullViewer();
+            const toggle = screen.getByRole('button', { name: /Expand email viewer/i });
+            expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+            fireEvent.click(toggle);
+
+            expect(toggle).toHaveAttribute('aria-pressed', 'true');
+            expect(dialog.className).toContain('iz-viewer--expanded');
+            expect(localStorage.getItem('dwellium-iz-viewer-expanded')).toBe('1');
+        });
+
+        it('ArrowRight on the resize handle grows the dialog width by 20 and persists the new size', async () => {
+            const dialog = await openFullViewer();
+            stubDialogRect(dialog, 780, 720);
+            const handle = screen.getByRole('button', { name: /Resize email viewer/i });
+
+            fireEvent.keyDown(handle, { key: 'ArrowRight' });
+
+            expect(dialog.style.width).toBe('800px');
+            expect(JSON.parse(localStorage.getItem('dwellium-iz-viewer-size')!)).toEqual({ w: 800, h: 720 });
+        });
+
+        it('a pointer drag on the resize handle grows the dialog by the drag delta', async () => {
+            const dialog = await openFullViewer();
+            stubDialogRect(dialog, 780, 720);
+            const handle = screen.getByRole('button', { name: /Resize email viewer/i });
+
+            fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 100, pointerId: 1 });
+            fireEvent.pointerMove(handle, { clientX: 150, clientY: 100, pointerId: 1 });
+            fireEvent.pointerUp(handle, { clientX: 150, clientY: 100, pointerId: 1 });
+
+            // Dialog is centered by the overlay's flexbox — a dx=50 drag grows width by 2*50=100.
+            expect(dialog.style.width).toBe('880px');
+        });
+
+        it('a big leftward drag clamps width to MIN_W (420)', async () => {
+            const dialog = await openFullViewer();
+            stubDialogRect(dialog, 780, 720);
+            const handle = screen.getByRole('button', { name: /Resize email viewer/i });
+
+            fireEvent.pointerDown(handle, { button: 0, clientX: 500, clientY: 100, pointerId: 1 });
+            fireEvent.pointerMove(handle, { clientX: 0, clientY: 100, pointerId: 1 });
+            fireEvent.pointerUp(handle, { clientX: 0, clientY: 100, pointerId: 1 });
+
+            expect(dialog.style.width).toBe('420px');
+        });
+
+        it('a backdrop click right after a drag does not close the viewer, but a plain backdrop click does', async () => {
+            const dialog = await openFullViewer();
+            stubDialogRect(dialog, 780, 720);
+            const handle = screen.getByRole('button', { name: /Resize email viewer/i });
+            const overlay = dialog.closest('.iz-viewer-overlay') as HTMLElement;
+
+            fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 100, pointerId: 1 });
+            fireEvent.pointerMove(handle, { clientX: 150, clientY: 100, pointerId: 1 });
+            fireEvent.pointerUp(handle, { clientX: 150, clientY: 100, pointerId: 1 });
+
+            // The click that immediately follows the drag's pointerup must be swallowed.
+            fireEvent.click(overlay);
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+            // suppressBackdropClickRef clears a tick (setTimeout 0) after pointerup.
+            await new Promise(resolve => setTimeout(resolve, 0));
+            fireEvent.click(overlay);
+            await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        });
+
+        it('closing mid-drag (Escape) does not leave the next viewer stuck in resize mode', async () => {
+            const dialog = await openFullViewer();
+            stubDialogRect(dialog, 780, 720);
+            fireEvent.pointerDown(screen.getByRole('button', { name: /Resize email viewer/i }), { button: 0, clientX: 100, clientY: 100, pointerId: 1 });
+            expect(dialog.className).toContain('iz-viewer--resizing');
+
+            fireEvent.keyDown(document, { key: 'Escape' }); // handle unmounts — no pointerup ever arrives
+            await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+            fireEvent.click(await screen.findByRole('button', { name: /View Full Email/i }));
+            await screen.findByRole('button', { name: /Close email/i });
+            expect(screen.getByRole('dialog').className).not.toContain('iz-viewer--resizing');
+        });
+
+        it('applies a saved size from localStorage when the viewer opens', async () => {
+            localStorage.setItem('dwellium-iz-viewer-size', JSON.stringify({ w: 900, h: 650 }));
+            const dialog = await openFullViewer();
+            expect(dialog.style.width).toBe('900px');
+            expect(dialog.style.height).toBe('650px');
+        });
+
+        it('ignores corrupt localStorage JSON without throwing', async () => {
+            localStorage.setItem('dwellium-iz-viewer-size', '{not-json');
+            const dialog = await openFullViewer();
+            expect(dialog).toBeInTheDocument();
+            expect(dialog.style.width).toBe(''); // no saved size applied — falls back to the CSS default
+        });
+    });
 });

@@ -482,3 +482,10 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Fix:** Notepad uses its existing `API_FILES` constant for all four calls (test asserts every notes call goes through `/api/files`, mutation-checked); icons use `var(--accent-text)` (≥ 3:1 in all 26 themes; latte 5.95).
 - **Caution / merge blocker:** fixing the path turns Notepad's auto-save on for real, and the backend saved with `INSERT OR REPLACE` — which deletes the row, so each save reset `created_at`, cleared `project_id` when omitted, and cascade-deleted `note_mentions` (`foreign_keys = ON`). Backend fix: `ON CONFLICT(id) DO UPDATE` keeping `project_id`/`created_at` (branch `fix/notes-upsert-keep-fields`, `tests/noteUpsert.test.ts`). Merge the backend fix first.
 - **Prevention:** a widget that "works" with a catch-all fallback can hide a 404 forever — live-test against the real backend; in SQLite never use `INSERT OR REPLACE` for rows that other tables reference.
+
+## 2026-09-25 — Notepad showed two invented notes whenever the notes service failed
+
+- **Error:** when `/api/files/notes` could not be reached, Notepad listed "Meeting Notes — Q1 Review" and "ARA Personality Spec" as if they were the user's notes; a 500 / `success:false` response left an empty list with no explanation.
+- **Root cause:** `fetchNotes` caught every failure with a hard-coded two-note array (and never checked `res.ok`); combined with the wrong `/notes` path (fixed in plan 069, PR #150), every local session showed them.
+- **Fix:** `fetchNotes` sets `notesUnavailable` on a network error, a non-2xx, `success:false` or a non-array body, and clears it on success; the sidebar shows "Notes unavailable — couldn't reach the notes service." with a Retry button. `notepadScribeDrag.test.tsx` now gets its note from a stubbed `/api/files/notes` instead of the demo fallback. Test: `notepadNotesUnavailable.test.tsx` (demo-fallback mutation fails 2 of 3).
+- **Prevention:** a failed fetch renders an honest unavailable state, never plausible sample rows (see the 2026-09-05/06 `MOCK_*` entries); grep a widget's `catch` blocks for `set…([{` literals.

@@ -5,19 +5,19 @@
  * Second-layer query (re-query using the first synthesis as added context).
  * Runs client-side via `callLlm`; captured syntheses persist per-user.
  */
-import { useState, useContext, useSyncExternalStore, useCallback } from 'react';
+import { useState, useSyncExternalStore, useCallback } from 'react';
 import { Sparkles, RefreshCw, Save, Layers, Trash2, TriangleAlert } from 'lucide-react';
-import { UserContext } from '../../context/UserContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import {
-    synthesisStore, synthesisUserIdHolder, captureSynthesis, clearSyntheses,
+    synthesisStore, captureSynthesis, clearSyntheses,
     buildSecondLayerPrompt, type Synthesis as SynthesisEntry,
 } from './synthesisStore';
-import { captureFacts, copawUserIdHolder } from '../Hive/copawStore';
+import { captureFacts } from '../Hive/copawStore';
 
 const ACCENT = '#D6FE51';
 const PASSES = ['Ingest', 'Compile', 'Query & Synthesize', 'Capture', 'Return', 'Recompile'];
@@ -26,9 +26,7 @@ export default function Synthesis() {
     const { integrations } = useIntegrations();
     const ai = useAIAvailability();
     const llmReady = hasActiveLlm(integrations.llm);
-    const userCtx = useContext(UserContext);
-    synthesisUserIdHolder.current = userCtx?.user?.id ?? null;
-    copawUserIdHolder.current = userCtx?.user?.id ?? null;
+    usePerUserIdentity();
     const history: SynthesisEntry[] = useSyncExternalStore(synthesisStore.subscribe, synthesisStore.getSnapshot, synthesisStore.getServerSnapshot);
 
     const [query, setQuery] = useState('');

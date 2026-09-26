@@ -11,6 +11,7 @@
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { synthesisUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface Synthesis {
     id: string;
@@ -23,7 +24,8 @@ export interface Synthesis {
     capturedAt: string;
 }
 
-export const synthesisUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { synthesisUserIdHolder };
 
 export function resolveSynthesisKey(): string {
     const uid = synthesisUserIdHolder.current;

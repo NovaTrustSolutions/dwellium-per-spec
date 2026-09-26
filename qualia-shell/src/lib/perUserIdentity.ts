@@ -111,6 +111,17 @@ export const twImportedUserIdHolder: UserIdHolder = makeHolder();
 export const todoUserIdHolder: UserIdHolder = makeHolder();
 export const reportUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 067 (2026-09-25) — five more per-widget-render-only holders. Were set
+ *  only when their widget rendered, so readers outside it (unifiedMemory's
+ *  `recall`/`memoryCounts`, reached from the `skill-memory-recall` agent skill
+ *  and `dwelliumCommands.recallMemory`) could read the PREVIOUS account's
+ *  copaw memory after a switch until the widget was opened. */
+export const dumpUserIdHolder: UserIdHolder = makeHolder();
+export const synthesisUserIdHolder: UserIdHolder = makeHolder();
+export const wikiUserIdHolder: UserIdHolder = makeHolder();
+export const foundryUserIdHolder: UserIdHolder = makeHolder();
+export const copawUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -148,6 +159,11 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     twImportedUserIdHolder,
     todoUserIdHolder,
     reportUserIdHolder,
+    dumpUserIdHolder,
+    synthesisUserIdHolder,
+    wikiUserIdHolder,
+    foundryUserIdHolder,
+    copawUserIdHolder,
 ];
 
 /**

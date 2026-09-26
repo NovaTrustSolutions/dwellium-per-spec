@@ -7,6 +7,7 @@
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { copawUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface MemoryFact {
     id: string;
@@ -15,7 +16,8 @@ export interface MemoryFact {
     createdAt: string;   // ISO
 }
 
-export const copawUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { copawUserIdHolder };
 
 export function resolveCopawKey(): string {
     const uid = copawUserIdHolder.current;

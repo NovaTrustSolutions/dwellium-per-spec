@@ -13,6 +13,26 @@ vi.mock('../components/AiSpend/CostAdvisorPanel', () => ({
     default: () => <div data-testid="cost-advisor-stub" />,
 }));
 
+// Plan 068 Phase 2: stub the new layout children so this stays a pure
+// layout test — their own behavior is covered by aiBudget/spendBreakdown/
+// subscriptionsEditor test files.
+vi.mock('../components/AiSpend/BudgetBar', () => ({
+    default: () => <div data-testid="budget-bar-stub" />,
+}));
+vi.mock('../components/AiSpend/SpendBreakdown', () => ({
+    default: () => <div data-testid="spend-breakdown-stub" />,
+}));
+vi.mock('../components/AiSpend/SubscriptionsEditor', () => ({
+    default: () => <div data-testid="subscriptions-editor-stub" />,
+}));
+
+let mockSubscriptions: { id: string; name: string; vendor: string; monthly: number }[] = [];
+
+vi.mock('../lib/subscriptionsStore', () => ({
+    useSubscriptions: () => mockSubscriptions,
+    monthlyTotal: (list: { monthly: number }[]) => list.reduce((s, x) => s + x.monthly, 0),
+}));
+
 type DailyRollup = {
     date: string;
     calls: number;
@@ -59,8 +79,31 @@ afterEach(() => {
     vi.useRealTimers();
     mockDays = makeDays();
     mockEntries = [];
+    mockSubscriptions = [];
     clearLlmUsageMock = vi.fn();
     vi.clearAllMocks();
+});
+
+describe('AiSpend — Phase 2 layout', () => {
+    it('renders the budget bar, spend breakdown, and a collapsible subscriptions section', () => {
+        mockSubscriptions = [
+            { id: 'a', name: 'Claude Max', vendor: 'Anthropic', monthly: 100 },
+            { id: 'b', name: 'ChatGPT Plus', vendor: 'OpenAI', monthly: 20 },
+        ];
+        render(<AiSpend />);
+
+        expect(screen.getByTestId('budget-bar-stub')).toBeInTheDocument();
+        expect(screen.getByTestId('spend-breakdown-stub')).toBeInTheDocument();
+        expect(screen.getByText('Subscriptions (2 · $120.00/mo)')).toBeInTheDocument();
+        // Collapsed by default; content still mounted inside <details>.
+        expect(screen.getByTestId('subscriptions-editor-stub')).toBeInTheDocument();
+    });
+
+    it('shows a zero count/total when there are no subscriptions', () => {
+        mockSubscriptions = [];
+        render(<AiSpend />);
+        expect(screen.getByText('Subscriptions (0 · $0.00/mo)')).toBeInTheDocument();
+    });
 });
 
 describe('AiSpend — confirm-clear', () => {

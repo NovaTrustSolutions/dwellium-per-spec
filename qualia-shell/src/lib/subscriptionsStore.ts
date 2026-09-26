@@ -58,34 +58,6 @@ export function prorateMonthly(monthly: number, days: number): number {
     return (monthly * days) / 30;
 }
 
-/**
- * Applies one window.prompt() answer per existing row (parallel array, same
- * order as `list`). `null` (user cancelled) leaves the row unchanged;
- * "remove" (case-insensitive) drops it; anything else is parsed as the new
- * monthly price (blank/"0" both resolve to 0 and the row is kept).
- */
-export function applyPlanEdits(list: Subscription[], answers: (string | null)[]): Subscription[] {
-    const result: Subscription[] = [];
-    list.forEach((s, i) => {
-        const v = answers[i];
-        if (v == null) { result.push(s); return; }
-        if (v.trim().toLowerCase() === 'remove') return;
-        result.push({ ...s, monthly: Number(v.replace(/[^0-9.]/g, '')) || 0 });
-    });
-    return result;
-}
-
-/** Parses "Name, 20" from the add-subscription prompt. Blank/no name → null (skip). */
-export function parseNewSubscription(answer: string | null): Subscription | null {
-    if (!answer) return null;
-    const [namePart, pricePart] = answer.split(',');
-    const name = (namePart ?? '').trim();
-    if (!name) return null;
-    const monthly = Number(String(pricePart ?? '').replace(/[^0-9.]/g, '')) || 0;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'sub';
-    return { id: `${slug}-${Date.now()}`, name, vendor: '', monthly };
-}
-
 function deserialize(raw: string | null): Subscription[] {
     if (!raw) return defaults();
     try {

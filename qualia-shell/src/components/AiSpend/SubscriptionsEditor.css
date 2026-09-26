@@ -4,7 +4,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    color: var(--text-secondary);
+    color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
     font-size: 13px;
 }
 
@@ -12,7 +12,7 @@
 .subed__title { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .subed__total { font-size: 12px; font-weight: 600; color: var(--text-primary); }
 
-.subed__empty { color: var(--text-tertiary, #808080); line-height: 1.5; margin: 0; }
+.subed__empty { color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff)); line-height: 1.5; margin: 0; }
 
 .subed__sr-only {
     position: absolute; width: 1px; height: 1px;
@@ -23,7 +23,7 @@
 .subed__table { width: 100%; border-collapse: collapse; }
 .subed__table th {
     text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--text-tertiary, #808080); padding: 4px 6px; font-weight: 600;
+    color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff)); padding: 4px 6px; font-weight: 600;
     border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
 }
 .subed__table td { padding: 4px 6px; vertical-align: middle; }
@@ -49,7 +49,7 @@
 
 .subed__remove {
     font: inherit; font-size: 11px;
-    color: var(--text-tertiary, #808080);
+    color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
     background: transparent;
     border: 1px solid var(--border-default, #333);
     border-radius: 7px;
@@ -87,7 +87,7 @@
 .subed__save:disabled { opacity: 0.45; cursor: not-allowed; }
 .subed__save:focus-visible, .subed__cancel:focus-visible { outline: 2px solid var(--accent, #D6FE51); outline-offset: 1px; }
 .subed__cancel {
-    color: var(--text-secondary);
+    color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
     background: transparent;
     border: 1px solid var(--border-default, #333);
 }
@@ -97,5 +97,5 @@
 
 .subed__status {
     margin: 0; min-height: 14px;
-    font-size: 11px; color: var(--text-tertiary, #808080);
+    font-size: 11px; color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
 }

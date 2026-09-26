@@ -34,7 +34,7 @@
 .budget__actions { display: flex; gap: 10px; }
 .budget__link {
     background: none; border: none; padding: 0; cursor: pointer;
-    font: inherit; font-size: 11px; color: var(--text-secondary);
+    font: inherit; font-size: 11px; color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
     text-decoration: underline;
 }
 .budget__link:hover { color: var(--text-primary); }

@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { ClipboardList, Eye, RefreshCw, Undo2 } from 'lucide-react';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
+import { buildEmailSrcDoc, themePalette } from './emailFrame';
 
 type AuthFetch = (url: string, opts?: RequestInit) => Promise<Response>;
 
@@ -283,7 +284,13 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                         </div>
                         <div style={{ flex: 1, position: 'relative', background: 'var(--bg-surface)' }}>
                             <iframe
-                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:#fff;word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid #e2e8f0;text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:#64748b;border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:#f1f5f9;border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid #e2e8f0}hr{border:none;border-top:1px solid #e2e8f0;margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a}h3{font-size:16px;color:#1e293b}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:#64748b;margin-top:28px;padding-top:18px;border-top:1px solid #e2e8f0}</style></head><body>${sanitizeHtml(viewItem.body || '') || `<div style="padding:40px;text-align:center;color:#64748b;font-style:italic"><p>No rich content available.</p><div style="margin-top:16px;padding:16px;background:#f8fafc;border-radius:8px;text-align:left;color:#475569;font-style:normal">${sanitizeHtml(viewItem.snippet || '')}</div></div>`}</body></html>`}
+                                // Same builder as InboxZero's viewers: literal theme colors (var(--…) can't cross into
+                                // an srcdoc iframe), so the body follows the dialog's theme instead of a white slab.
+                                srcDoc={buildEmailSrcDoc(
+                                    sanitizeHtml(viewItem.body || '') || `<div class="empty"><p>No rich content available.</p><blockquote style="text-align:left;font-style:normal">${sanitizeHtml(viewItem.snippet || '')}</blockquote></div>`,
+                                    themePalette(),
+                                    'comfortable',
+                                )}
                                 style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
                                 title="audit-email-body"
                                 sandbox=""

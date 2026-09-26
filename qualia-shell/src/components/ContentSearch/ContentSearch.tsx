@@ -4,16 +4,16 @@
  * + file names, ranked, with snippets and click-to-open. Backend-free; full
  * file-content + semantic search is surfaced as a "needs backend index" note.
  */
-import { useState, useEffect, useMemo, useContext, useSyncExternalStore } from 'react';
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { Search, FileText, Brain, Layers, Inbox, BookOpen, Cpu } from 'lucide-react';
-import { UserContext } from '../../context/UserContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { fetchTree } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
-import { dumpStore, dumpUserIdHolder, type DumpEntry } from '../Scribe/dumpStore';
-import { synthesisStore, synthesisUserIdHolder, type Synthesis } from '../Synthesis/synthesisStore';
-import { wikiStore, wikiUserIdHolder, type WikiMap } from '../Wiki/wikiStore';
-import { foundryStore, foundryUserIdHolder, type FoundryItem } from '../Foundry/foundryStore';
-import { copawStore, copawUserIdHolder, type MemoryFact } from '../Hive/copawStore';
+import { dumpStore, type DumpEntry } from '../Scribe/dumpStore';
+import { synthesisStore, type Synthesis } from '../Synthesis/synthesisStore';
+import { wikiStore, type WikiMap } from '../Wiki/wikiStore';
+import { foundryStore, type FoundryItem } from '../Foundry/foundryStore';
+import { copawStore, type MemoryFact } from '../Hive/copawStore';
 import { searchCorpus, type SearchDoc, type SearchDocType } from './searchEngine';
 
 const ACCENT = '#D6FE51';
@@ -34,10 +34,7 @@ function allFilePaths(tree: FileEntry[]): string[] {
 }
 
 export default function ContentSearch() {
-    const userCtx = useContext(UserContext);
-    const uid = userCtx?.user?.id ?? null;
-    dumpUserIdHolder.current = uid; synthesisUserIdHolder.current = uid; wikiUserIdHolder.current = uid;
-    foundryUserIdHolder.current = uid; copawUserIdHolder.current = uid;
+    usePerUserIdentity();
 
     const dumps: DumpEntry[] = useSyncExternalStore(dumpStore.subscribe, dumpStore.getSnapshot, dumpStore.getServerSnapshot);
     const syntheses: Synthesis[] = useSyncExternalStore(synthesisStore.subscribe, synthesisStore.getSnapshot, synthesisStore.getServerSnapshot);

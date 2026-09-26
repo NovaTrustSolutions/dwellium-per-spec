@@ -3,13 +3,13 @@
  * Capture → Triage (AI tags/target/quality) → Review → Admit. Items track
  * separately from ingested documents, persisted per-user via foundryStore.
  */
-import { useState, useContext, useSyncExternalStore, useCallback } from 'react';
+import { useState, useSyncExternalStore, useCallback } from 'react';
 import { Inbox, Sparkles, Check, X, Trash2, Link2, FileText } from 'lucide-react';
-import { UserContext } from '../../context/UserContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import {
-    foundryStore, foundryUserIdHolder, captureItem, applyTriage, admitItem, rejectItem,
+    foundryStore, captureItem, applyTriage, admitItem, rejectItem,
     updateItem, clearFoundry, heuristicTriage, type FoundryItem, type TriageResult,
 } from './foundryStore';
 
@@ -19,8 +19,7 @@ const PIPE = ['Capture', 'Triage', 'Review', 'Admit'];
 export default function Foundry() {
     const { integrations } = useIntegrations();
     const llmReady = hasActiveLlm(integrations.llm);
-    const userCtx = useContext(UserContext);
-    foundryUserIdHolder.current = userCtx?.user?.id ?? null;
+    usePerUserIdentity();
     const items: FoundryItem[] = useSyncExternalStore(foundryStore.subscribe, foundryStore.getSnapshot, foundryStore.getServerSnapshot);
 
     const [text, setText] = useState('');

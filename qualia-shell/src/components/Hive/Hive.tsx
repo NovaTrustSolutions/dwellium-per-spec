@@ -5,13 +5,13 @@
  * observability fed where available), and the CoPaw memory feed (§8.5) + a Dreams
  * shortcut (§8.4).
  */
-import { useContext, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { Brain, Bot, Cpu, MessageSquare, Network, Layers, Sparkles, Play, Trash2, Eye } from 'lucide-react';
 import { useWindows } from '../../context/WindowContext';
-import { UserContext } from '../../context/UserContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
-import { copawStore, copawUserIdHolder, clearMemory, type MemoryFact } from './copawStore';
+import { copawStore, clearMemory, type MemoryFact } from './copawStore';
 
 const ACCENT = '#D6FE51';
 
@@ -31,8 +31,7 @@ export default function Hive() {
     const { integrations } = useIntegrations();
     const provider = integrations.llm.active || 'none';
     const llmReady = hasActiveLlm(integrations.llm);
-    const userCtx = useContext(UserContext);
-    copawUserIdHolder.current = userCtx?.user?.id ?? null;
+    usePerUserIdentity();
     const memory: MemoryFact[] = useSyncExternalStore(copawStore.subscribe, copawStore.getSnapshot, copawStore.getServerSnapshot);
 
     const openIds = new Set(windows.filter((w) => !w.minimized).map((w) => w.component));

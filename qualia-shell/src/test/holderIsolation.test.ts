@@ -16,9 +16,16 @@ import {
     firstRunUserIdHolder,
     onboardingUserIdHolder,
     araGlanceUserIdHolder,
+    dumpUserIdHolder,
+    synthesisUserIdHolder,
+    wikiUserIdHolder,
+    foundryUserIdHolder,
+    copawUserIdHolder,
 } from '../lib/perUserIdentity';
 import { llmUsageStore } from '../lib/llmUsageStore';
 import { tagsStore } from '../lib/tagsStore';
+import { copawStore, captureFacts } from '../components/Hive/copawStore';
+import { recall, memoryCounts } from '../lib/unifiedMemory';
 
 // withSync-wrapped stores (llmUsage) import oneSaveClient at load; mock it so no
 // network/side effects fire during these pure-holder assertions.
@@ -54,6 +61,11 @@ const ALL_HOLDERS = [
     firstRunUserIdHolder,
     onboardingUserIdHolder,
     araGlanceUserIdHolder,
+    dumpUserIdHolder,
+    synthesisUserIdHolder,
+    wikiUserIdHolder,
+    foundryUserIdHolder,
+    copawUserIdHolder,
 ];
 
 describe('perUserIdentity — decoupled holders (#185 loop guard)', () => {
@@ -61,15 +73,16 @@ describe('perUserIdentity — decoupled holders (#185 loop guard)', () => {
         // Reset factory caches + all holders between tests.
         llmUsageStore.reset();
         tagsStore.reset();
+        copawStore.reset();
         setPerUserIdentity(null);
     });
 
-    it('exports exactly 15 holders, all distinct object references', () => {
-        expect(ALL_HOLDERS).toHaveLength(15);
+    it('exports exactly 20 holders, all distinct object references', () => {
+        expect(ALL_HOLDERS).toHaveLength(20);
         const unique = new Set(ALL_HOLDERS);
         // Distinctness is what makes cross-store churn impossible — no two
         // exports may be the same object.
-        expect(unique.size).toBe(15);
+        expect(unique.size).toBe(20);
     });
 
     it('setPerUserIdentity(userId) assigns the SAME value to every holder from one call', () => {
@@ -123,5 +136,29 @@ describe('perUserIdentity — decoupled holders (#185 loop guard)', () => {
         // Not asserting a specific value (empty default here), only that the
         // per-user key path is still live — no throw, resolves cleanly.
         expect(() => tagsStore.getSnapshot()).not.toThrow();
+    });
+
+    // Plan 067 phase (2026-09-25): dumpUserIdHolder / synthesisUserIdHolder /
+    // wikiUserIdHolder / foundryUserIdHolder / copawUserIdHolder used to be set
+    // ONLY when their own widget rendered. A non-widget reader — unifiedMemory's
+    // `recall()` / `memoryCounts()`, reached from the `skill-memory-recall` agent
+    // skill and `dwelliumCommands.recallMemory` — read whatever the LAST-OPENED
+    // widget had left in the holder, so after an account switch it kept seeing
+    // the PREVIOUS account's copaw memory until the Hive/Synthesis widget was
+    // opened again. Now every one of the five lives in ALL_HOLDERS, so the
+    // single `usePerUserIdentity()` writer (called unconditionally from
+    // WindowContext on every render) keeps them correct with no widget open.
+    it('a non-widget reader (unifiedMemory) never sees the previous account\'s copaw data after a switch', () => {
+        setPerUserIdentity('user-a');
+        captureFacts('test-agent', 'This is a durable memory fact that belongs only to user A.');
+        expect(memoryCounts().copaw).toBe(1);
+        expect(recall('memory fact').some((h) => h.source === 'test-agent')).toBe(true);
+
+        // Switch accounts WITHOUT ever rendering Hive/Synthesis/ContentSearch —
+        // only the single ALL_HOLDERS writer runs.
+        setPerUserIdentity('user-b');
+
+        expect(memoryCounts().copaw).toBe(0);
+        expect(recall('memory fact')).toHaveLength(0);
     });
 });

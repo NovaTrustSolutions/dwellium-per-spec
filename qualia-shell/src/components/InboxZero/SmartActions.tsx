@@ -1,33 +1,18 @@
 /**
- * SmartActions.tsx — Phase 3 Frontend Component
+ * DraftReplyPanel — AI reply drafting, plan 066 §5f.
+ * POST `${apiBase}/${itemId}/draft`; never sends. The handoff copies the draft
+ * body to the clipboard and opens the target widget for the operator to paste
+ * into (the cross-widget bus carries no payload).
  *
- * Sub-views:
- * 1. Templates — CRUD for reply templates with variable support
- * 2. Quick Actions — AI draft, calendar extraction, workitem/Trello/assign
- * 3. Batch Ops — Multi-select operations panel
- *
- * Standalone component integrated into InboxZero as the ⚡ Actions tab.
+ * Templates, batch ops, calendar extraction and workitem creation were dropped
+ * here — none of them has a backend route in this plan.
  */
+import { useState } from 'react';
+import type { CSSProperties } from 'react';
+import { Hourglass, Sparkles } from 'lucide-react';
+import { getDraftHandoffs, openWidgetHandoff, type WidgetHandoff } from './inboxLinkage';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Bot, Calendar, Check, ClipboardList, Clock, FileText, Hourglass, Mail, MapPin, Package, Pencil, Plus, Rocket, Save, Shuffle, Sparkles, Timer, Trash2, User, Wrench, X, Zap } from 'lucide-react';
-import { API_BASE as API_ROOT } from '../../config';
-import { getDraftHandoffs, openWidgetHandoff } from './inboxLinkage';
-
-const API_BASE = `${API_ROOT}/api/inbox/actions`;
-
-// ── Types ──
-
-interface ReplyTemplate {
-    id: string;
-    name: string;
-    projectId: string | null;
-    subjectTemplate: string;
-    bodyTemplate: string;
-    variables: string[];
-    useCount: number;
-    createdAt: string;
-}
+type AuthFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 interface DraftResult {
     subject: string;
@@ -35,603 +20,117 @@ interface DraftResult {
     confidence: number;
 }
 
-interface ExtractedEvent {
-    title: string;
-    date: string | null;
-    time: string | null;
-    duration: string | null;
-    location: string | null;
-    attendees: string[];
-    confidence: number;
+interface DraftReplyPanelProps {
+    itemId: string;
+    apiBase: string;
+    authFetch: AuthFetch;
 }
 
-type SubView = 'templates' | 'quick' | 'batch';
+function toast(detail: string) {
+    window.dispatchEvent(new CustomEvent('qualia-toast', { detail }));
+}
 
-// ── Styles ──
-
-const styles: Record<string, React.CSSProperties> = {
-    container: { padding: '20px', fontFamily: 'var(--font-body, Inter, sans-serif)' },
-    header: { display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' },
-    tabBtn: {
-        padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-subtle, #2a2d35)',
-        background: 'var(--bg-secondary, #16191f)', color: 'var(--text-primary, #e8eaed)',
-        cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s',
-    },
-    tabBtnActive: {
-        background: 'var(--accent, var(--accent))', color: 'var(--text-primary)', borderColor: 'var(--accent, var(--accent))',
-    },
-    card: {
-        background: 'var(--bg-secondary, #16191f)', borderRadius: '12px',
-        border: '1px solid var(--border-subtle, #2a2d35)', padding: '16px', marginBottom: '12px',
-    },
-    cardTitle: { fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #e8eaed)', marginBottom: '8px' },
-    cardSubtext: { fontSize: '12px', color: 'var(--text-secondary, #8b8f98)', marginBottom: '4px' },
-    input: {
-        width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle, #2a2d35)',
-        background: 'var(--bg-primary, #0d0f12)', color: 'var(--text-primary, #e8eaed)', fontSize: '13px',
-        marginBottom: '8px', boxSizing: 'border-box' as const,
-    },
-    textarea: {
-        width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle, #2a2d35)',
-        background: 'var(--bg-primary, #0d0f12)', color: 'var(--text-primary, #e8eaed)', fontSize: '13px',
-        minHeight: '80px', resize: 'vertical' as const, marginBottom: '8px', boxSizing: 'border-box' as const,
-        fontFamily: 'inherit',
-    },
-    btn: {
-        padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-        fontSize: '13px', fontWeight: 500, transition: 'all 0.2s',
-    },
-    btnPrimary: { background: 'var(--accent, var(--accent))', color: 'var(--text-primary)' },
-    btnDanger: { background: '#ef4444', color: 'var(--text-primary)' },
-    btnGhost: { background: 'transparent', color: 'var(--text-secondary, #8b8f98)', border: '1px solid var(--border-subtle, #2a2d35)' },
-    badge: {
-        display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
-        fontWeight: 600, marginLeft: '6px',
-    },
-    grid: { display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' },
-    statusMsg: { padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' },
-    success: { background: 'rgba(16, 185, 129, 0.15)', color: '#22c55e', border: '1px solid rgba(16, 185, 129, 0.3)' },
-    error: { background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' },
-    section: { marginBottom: '24px' },
-    sectionTitle: { fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #e8eaed)', marginBottom: '12px' },
-    row: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' },
-    draftBox: {
-        background: 'var(--bg-primary, #0d0f12)', borderRadius: '8px', padding: '16px',
-        border: '1px solid var(--border-subtle, #2a2d35)', marginTop: '12px',
-    },
-    eventCard: {
-        background: 'var(--bg-primary, #0d0f12)', borderRadius: '8px', padding: '12px',
-        border: '1px solid var(--border-subtle, #2a2d35)', marginBottom: '8px',
-    },
-    empty: { textAlign: 'center' as const, padding: '40px', color: 'var(--text-secondary, #8b8f98)' },
-};
-
-function confidencePillStyle(confidence: number): React.CSSProperties {
+function confidencePillStyle(confidence: number): CSSProperties {
     return {
         display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
         fontWeight: 600, marginLeft: '6px',
-        background: confidence >= 0.7 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-        color: confidence >= 0.7 ? '#22c55e' : '#f59e0b',
+        background: confidence >= 0.7 ? 'color-mix(in srgb, var(--success) 20%, transparent)' : 'color-mix(in srgb, var(--warning) 20%, transparent)',
+        color: confidence >= 0.7 ? 'var(--success)' : 'var(--warning)',
     };
 }
 
-export default function SmartActions() {
-    const [subView, setSubView] = useState<SubView>('templates');
-    const [templates, setTemplates] = useState<ReplyTemplate[]>([]);
+export function DraftReplyPanel({ itemId, apiBase, authFetch }: DraftReplyPanelProps) {
+    const [instruction, setInstruction] = useState('');
     const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-
-    // Template form
-    const [showForm, setShowForm] = useState(false);
-    const [formName, setFormName] = useState('');
-    const [formSubject, setFormSubject] = useState('');
-    const [formBody, setFormBody] = useState('');
-    const [formProject, setFormProject] = useState('');
-    const [editingId, setEditingId] = useState<string | null>(null);
-
-    // Quick Actions
-    const [quickItemId, setQuickItemId] = useState('');
-    const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
-    const [draftInstruction, setDraftInstruction] = useState('');
-    const [events, setEvents] = useState<ExtractedEvent[]>([]);
-
-    // Batch Ops
-    const [batchIds, setBatchIds] = useState('');
-    const [batchProject, setBatchProject] = useState('');
-    const [batchAssignee, setBatchAssignee] = useState('');
-
-    const clearStatus = useCallback(() => setTimeout(() => setStatus(null), 5000), []);
-
-    // Load templates
-    const loadTemplates = useCallback(async () => {
-        try {
-            const res = await fetch(`${API_BASE}/templates`);
-            const data = await res.json();
-            if (data.success) setTemplates(data.templates || []);
-        } catch { /* ignore */ }
-    }, []);
-
-    useEffect(() => { loadTemplates(); }, [loadTemplates]);
-
-    // ── Template CRUD ──
-
-    const handleSaveTemplate = async () => {
-        if (!formName.trim() || !formBody.trim()) {
-            setStatus({ type: 'error', msg: 'Name and body are required' });
-            clearStatus();
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const payload = {
-                name: formName, bodyTemplate: formBody,
-                subjectTemplate: formSubject || undefined,
-                projectId: formProject || undefined,
-                variables: formBody.match(/\{\{(\w+)\}\}/g)?.map(v => v.replace(/\{\{|\}\}/g, '')) || [],
-            };
-
-            const url = editingId ? `${API_BASE}/templates/${editingId}` : `${API_BASE}/templates`;
-            const method = editingId ? 'PUT' : 'POST';
-
-            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const data = await res.json();
-
-            if (data.success) {
-                setStatus({ type: 'success', msg: editingId ? 'Template updated' : 'Template created' });
-                resetForm();
-                loadTemplates();
-            } else {
-                setStatus({ type: 'error', msg: data.error || 'Failed' });
-            }
-        } catch (err: any) {
-            setStatus({ type: 'error', msg: err.message });
-        }
-        setLoading(false);
-        clearStatus();
-    };
-
-    const handleDeleteTemplate = async (id: string) => {
-        try {
-            const res = await fetch(`${API_BASE}/templates/${id}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                setStatus({ type: 'success', msg: 'Template deleted' });
-                loadTemplates();
-            }
-        } catch (err: any) {
-            setStatus({ type: 'error', msg: err.message });
-        }
-        clearStatus();
-    };
-
-    const editTemplate = (t: ReplyTemplate) => {
-        setEditingId(t.id);
-        setFormName(t.name);
-        setFormSubject(t.subjectTemplate);
-        setFormBody(t.bodyTemplate);
-        setFormProject(t.projectId || '');
-        setShowForm(true);
-    };
-
-    const resetForm = () => {
-        setEditingId(null);
-        setFormName('');
-        setFormSubject('');
-        setFormBody('');
-        setFormProject('');
-        setShowForm(false);
-    };
-
-    // ── Quick Actions ──
+    const [draft, setDraft] = useState<DraftResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const generateDraft = async () => {
-        if (!quickItemId.trim()) { setStatus({ type: 'error', msg: 'Enter an inbox item ID' }); clearStatus(); return; }
         setLoading(true);
-        setDraftResult(null);
+        setError(null);
+        setDraft(null);
         try {
-            const res = await fetch(`${API_BASE}/${quickItemId}/draft`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ instruction: draftInstruction || undefined }),
+            const res = await authFetch(`${apiBase}/${itemId}/draft`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instruction: instruction.trim() || undefined }),
             });
-            const data = await res.json();
-            if (data.success) {
-                setDraftResult(data.draft);
-                setStatus({ type: 'success', msg: 'Draft generated!' });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success !== false && data.data) {
+                setDraft(data.data);
             } else {
-                setStatus({ type: 'error', msg: data.error });
+                setError(data.error || `Draft failed (${res.status})`);
             }
-        } catch (err: any) {
-            setStatus({ type: 'error', msg: err.message });
+        } catch (e: any) {
+            setError(e?.message || 'Network error');
         }
         setLoading(false);
-        clearStatus();
     };
 
-    const extractEvents = async () => {
-        if (!quickItemId.trim()) { setStatus({ type: 'error', msg: 'Enter an inbox item ID' }); clearStatus(); return; }
-        setLoading(true);
-        setEvents([]);
+    const handoff = async (h: WidgetHandoff) => {
+        let copied = false;
         try {
-            const res = await fetch(`${API_BASE}/${quickItemId}/extract-events`, { method: 'POST' });
-            const data = await res.json();
-            if (data.success) {
-                setEvents(data.events || []);
-                setStatus({ type: 'success', msg: `Found ${data.total} event(s)` });
-            } else {
-                setStatus({ type: 'error', msg: data.error });
-            }
-        } catch (err: any) {
-            setStatus({ type: 'error', msg: err.message });
+            await navigator.clipboard.writeText(draft?.body || '');
+            copied = true;
+        } catch {
+            // clipboard may be unavailable (permissions, non-secure context) — still open the widget
         }
-        setLoading(false);
-        clearStatus();
+        openWidgetHandoff(h);
+        toast(copied
+            ? `Draft copied — paste it where you need it (${h.label})`
+            : `Couldn't copy the draft — select it above and copy it by hand (${h.label})`);
     };
-
-    const createWorkitem = async () => {
-        if (!quickItemId.trim()) { setStatus({ type: 'error', msg: 'Enter an inbox item ID' }); clearStatus(); return; }
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/${quickItemId}/workitem`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setStatus({ type: 'success', msg: `Workitem created: ${data.workitem?.id?.slice(0, 8)}` });
-            } else {
-                setStatus({ type: 'error', msg: data.error });
-            }
-        } catch (err: any) {
-            setStatus({ type: 'error', msg: err.message });
-        }
-        setLoading(false);
-        clearStatus();
-    };
-
-    // ── Batch Operations ──
-
-    const performBatchRoute = async () => {
-        const ids = batchIds.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
-        if (ids.length === 0 || !batchProject.trim()) {
-            setStatus({ type: 'error', msg: 'Enter IDs and project' });
-            clearStatus();
-            return;
-        }
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/batch/route`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids, projectId: batchProject }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setStatus({ type: 'success', msg: `Routed ${data.routed}/${ids.length} items` });
-            } else {
-                setStatus({ type: 'error', msg: data.error });
-            }
-        } catch (err: any) {
-            setStatus({ type: 'error', msg: err.message });
-        }
-        setLoading(false);
-        clearStatus();
-    };
-
-    const performBatchAssign = async () => {
-        const ids = batchIds.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
-        if (ids.length === 0 || !batchAssignee.trim()) {
-            setStatus({ type: 'error', msg: 'Enter IDs and assignee' });
-            clearStatus();
-            return;
-        }
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE}/batch/assign`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids, assignee: batchAssignee }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setStatus({ type: 'success', msg: `Assigned ${data.assigned}/${ids.length} items to ${batchAssignee}` });
-            } else {
-                setStatus({ type: 'error', msg: data.error });
-            }
-        } catch (err: any) {
-            setStatus({ type: 'error', msg: err.message });
-        }
-        setLoading(false);
-        clearStatus();
-    };
-
-    // ══════════════════════════════════════════════
-    // RENDER
-    // ══════════════════════════════════════════════
 
     return (
-        <div style={styles.container}>
-            {/* Sub-view tabs */}
-            <div style={styles.header}>
-                {([
-                    { id: 'templates' as SubView, label: 'Templates', icon: ClipboardList, count: templates.length },
-                    { id: 'quick' as SubView, label: 'Quick Actions', icon: Zap },
-                    { id: 'batch' as SubView, label: 'Batch Ops', icon: Package },
-                ]).map(tab => {
-                    const TabIcon = tab.icon;
-                    return (
-                    <button
-                        key={tab.id}
-                        style={{ ...styles.tabBtn, ...(subView === tab.id ? styles.tabBtnActive : {}), display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                        onClick={() => setSubView(tab.id)}
-                    >
-                        <TabIcon size={14} aria-hidden />
-                        {tab.label}
-                        {tab.count !== undefined && tab.count > 0 && (
-                            <span style={{ ...styles.badge, background: 'rgba(0,136,204,0.2)', color: 'var(--accent)' }}>
-                                {tab.count}
-                            </span>
-                        )}
-                    </button>
-                    );
-                })}
+        <div style={{ padding: '16px' }}>
+            <label htmlFor={`iz-draft-instruction-${itemId}`} style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                Special instruction (optional)
+            </label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                    id={`iz-draft-instruction-${itemId}`}
+                    value={instruction}
+                    onChange={e => setInstruction(e.target.value)}
+                    placeholder="e.g. 'be apologetic', 'schedule a viewing'"
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: '13px', boxSizing: 'border-box' }}
+                />
+                <button
+                    onClick={generateDraft}
+                    disabled={loading}
+                    style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'var(--accent)', color: 'var(--text-inverse)', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, opacity: loading ? 0.6 : 1 }}
+                >
+                    {loading ? <><Hourglass size={14} aria-hidden /> Generating…</> : <><Sparkles size={14} aria-hidden /> Generate Draft</>}
+                </button>
             </div>
 
-            {/* Status message */}
-            {status && (
-                <div style={{ ...styles.statusMsg, ...(status.type === 'success' ? styles.success : styles.error), display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {status.type === 'success' ? <Check size={14} aria-hidden /> : <X size={14} aria-hidden />} {status.msg}
+            {error && (
+                <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '8px', background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)', fontSize: '13px' }}>
+                    {error}
                 </div>
             )}
 
-            {/* ──── TEMPLATES SUB-VIEW ──── */}
-            {subView === 'templates' && (
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h3 style={styles.sectionTitle}>Reply Templates</h3>
-                        <button
-                            style={{ ...styles.btn, ...styles.btnPrimary }}
-                            onClick={() => { resetForm(); setShowForm(!showForm); }}
-                        >
-                            {showForm ? <><X size={14} aria-hidden /> Cancel</> : <><Plus size={14} aria-hidden /> New Template</>}
-                        </button>
+            {draft && (
+                <div style={{ marginTop: '12px', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>{draft.subject}</strong>
+                        <span style={confidencePillStyle(draft.confidence)}>{Math.round(draft.confidence * 100)}% conf</span>
                     </div>
-
-                    {/* Template Form */}
-                    {showForm && (
-                        <div style={{ ...styles.card, borderColor: 'var(--accent, var(--accent))' }}>
-                            <div style={styles.cardTitle}>{editingId ? 'Edit Template' : 'New Template'}</div>
-                            <input style={styles.input} placeholder="Template name" value={formName} onChange={e => setFormName(e.target.value)} />
-                            <input style={styles.input} placeholder="Subject template (optional, use {{variable}})" value={formSubject} onChange={e => setFormSubject(e.target.value)} />
-                            <textarea style={styles.textarea} placeholder="Body template — use {{name}}, {{date}}, etc." value={formBody} onChange={e => setFormBody(e.target.value)} />
-                            <input style={styles.input} placeholder="Project ID (optional)" value={formProject} onChange={e => setFormProject(e.target.value)} />
-                            <div style={styles.row}>
-                                <button style={{ ...styles.btn, ...styles.btnPrimary }} onClick={handleSaveTemplate} disabled={loading}>
-                                    {loading ? <><Hourglass size={14} aria-hidden /> Saving...</> : editingId ? <><Save size={14} aria-hidden /> Update</> : <><Check size={14} aria-hidden /> Create</>}
-                                </button>
-                                {editingId && (
-                                    <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={resetForm}>Cancel</button>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Template List */}
-                    {templates.length === 0 ? (
-                        <div style={styles.empty}>
-                            <div style={{ fontSize: '32px', marginBottom: '8px' }}><ClipboardList size={32} aria-hidden /></div>
-                            <div>No reply templates yet. Create one to speed up your workflow.</div>
-                        </div>
-                    ) : (
-                        <div style={styles.grid}>
-                            {templates.map(t => (
-                                <div key={t.id} style={styles.card}>
-                                    <div style={styles.cardTitle}>
-                                        {t.name}
-                                        <span style={{ ...styles.badge, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>
-                                            used {t.useCount}x
-                                        </span>
-                                    </div>
-                                    {t.subjectTemplate && (
-                                        <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13} aria-hidden /> {t.subjectTemplate}</div>
-                                    )}
-                                    <div style={{ ...styles.cardSubtext, whiteSpace: 'pre-wrap', maxHeight: '60px', overflow: 'hidden' }}>
-                                        {t.bodyTemplate}
-                                    </div>
-                                    {t.variables.length > 0 && (
-                                        <div style={{ marginTop: '6px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                            {t.variables.map(v => (
-                                                <span key={v} style={{ ...styles.badge, background: 'rgba(245,158,11,0.2)', color: '#f59e0b' }}>
-                                                    {`{{${v}}}`}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div style={{ ...styles.row, marginTop: '10px' }}>
-                                        <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => editTemplate(t)}><Pencil size={14} aria-hidden /> Edit</button>
-                                        <button aria-label="Delete template" style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}><Trash2 size={16} /></button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ──── QUICK ACTIONS SUB-VIEW ──── */}
-            {subView === 'quick' && (
-                <div>
-                    <h3 style={styles.sectionTitle}>Quick Actions</h3>
-                    <div style={styles.card}>
-                        <div style={styles.cardTitle}>Target Inbox Item</div>
-                        <input
-                            style={styles.input}
-                            placeholder="Inbox item ID (paste from triage tab)"
-                            value={quickItemId}
-                            onChange={e => setQuickItemId(e.target.value)}
-                        />
+                    <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', fontSize: '13px' }}>
+                        {draft.body}
                     </div>
-
-                    {/* AI Draft */}
-                    <div style={styles.section}>
-                        <div style={styles.card}>
-                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Bot size={14} aria-hidden /> AI Auto-Draft</div>
-                            <div style={styles.cardSubtext}>Generate a professional reply draft using AI</div>
-                            <input
-                                style={{ ...styles.input, marginTop: '8px' }}
-                                placeholder="Special instruction (optional, e.g. 'be apologetic', 'schedule a viewing')"
-                                value={draftInstruction}
-                                onChange={e => setDraftInstruction(e.target.value)}
-                            />
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Open in:</span>
+                        {getDraftHandoffs(draft).map(h => (
                             <button
-                                style={{ ...styles.btn, ...styles.btnPrimary }}
-                                onClick={generateDraft}
-                                disabled={loading || !quickItemId.trim()}
+                                key={h.widgetId}
+                                onClick={() => handoff(h)}
+                                aria-label={h.label}
+                                title={h.label}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '12px' }}
                             >
-                                {loading ? <><Hourglass size={14} aria-hidden /> Generating...</> : <><Sparkles size={14} aria-hidden /> Generate Draft</>}
+                                {h.label}
                             </button>
-
-                            {draftResult && (
-                                <div style={styles.draftBox}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <strong style={{ color: 'var(--text-primary, #e8eaed)' }}>{draftResult.subject}</strong>
-                                        <span style={confidencePillStyle(draftResult.confidence)}>
-                                            {Math.round(draftResult.confidence * 100)}% conf
-                                        </span>
-                                    </div>
-                                    <div style={{ color: 'var(--text-secondary, #8b8f98)', whiteSpace: 'pre-wrap', fontSize: '13px' }}>
-                                        {draftResult.body}
-                                    </div>
-                                    {/* Cross-widget handoff (LINKAGE I2 + I3): take the draft into an
-                                        assistant/editor to refine and send. Uses the shell's
-                                        `dwellium:open-widget` intent bus via inboxLinkage. */}
-                                    <div style={{ ...styles.row, marginTop: '10px', flexWrap: 'wrap', marginBottom: 0 }}>
-                                        <span style={{ color: 'var(--text-secondary, #8b8f98)', fontSize: '12px' }}>Open in:</span>
-                                        {getDraftHandoffs(draftResult).map((h) => (
-                                            <button
-                                                key={h.widgetId}
-                                                style={{ ...styles.btn, ...styles.btnGhost }}
-                                                onClick={() => openWidgetHandoff(h)}
-                                                aria-label={h.label}
-                                                title={h.label}
-                                            >
-                                                {h.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Calendar Extraction */}
-                    <div style={styles.section}>
-                        <div style={styles.card}>
-                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={14} aria-hidden /> Calendar Event Extraction</div>
-                            <div style={styles.cardSubtext}>Extract dates, meetings, and scheduling info from email</div>
-                            <button
-                                style={{ ...styles.btn, ...styles.btnPrimary, marginTop: '8px' }}
-                                onClick={extractEvents}
-                                disabled={loading || !quickItemId.trim()}
-                            >
-                                {loading ? <><Hourglass size={14} aria-hidden /> Extracting...</> : <><Calendar size={14} aria-hidden /> Extract Events</>}
-                            </button>
-
-                            {events.length > 0 && (
-                                <div style={{ marginTop: '12px' }}>
-                                    {events.map((e, i) => (
-                                        <div key={i} style={styles.eventCard}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <strong style={{ color: 'var(--text-primary, #e8eaed)', fontSize: '13px' }}>{e.title}</strong>
-                                                <span style={confidencePillStyle(e.confidence)}>
-                                                    {Math.round(e.confidence * 100)}%
-                                                </span>
-                                            </div>
-                                            <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                                                <Calendar size={13} aria-hidden /> {e.date || 'TBD'}
-                                                {e.time ? <><Clock size={13} aria-hidden /> {e.time}</> : ''}
-                                                {e.duration ? <><Timer size={13} aria-hidden /> {e.duration}</> : ''}
-                                            </div>
-                                            {e.location && <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} aria-hidden /> {e.location}</div>}
-                                            {e.attendees.length > 0 && (
-                                                <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} aria-hidden /> {e.attendees.join(', ')}</div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Workflow Triggers */}
-                    <div style={styles.section}>
-                        <div style={styles.card}>
-                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Wrench size={14} aria-hidden /> Workflow Triggers</div>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-                                <button
-                                    style={{ ...styles.btn, ...styles.btnPrimary }}
-                                    onClick={createWorkitem}
-                                    disabled={loading || !quickItemId.trim()}
-                                >
-                                    <FileText size={14} aria-hidden /> Create Workitem
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ──── BATCH OPS SUB-VIEW ──── */}
-            {subView === 'batch' && (
-                <div>
-                    <h3 style={styles.sectionTitle}>Batch Operations</h3>
-                    <div style={styles.card}>
-                        <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><ClipboardList size={14} aria-hidden /> Item IDs</div>
-                        <div style={styles.cardSubtext}>Enter IDs separated by commas or newlines</div>
-                        <textarea
-                            style={styles.textarea}
-                            placeholder="id-1, id-2, id-3..."
-                            value={batchIds}
-                            onChange={e => setBatchIds(e.target.value)}
-                        />
-                    </div>
-
-                    <div style={styles.grid}>
-                        {/* Bulk Route */}
-                        <div style={styles.card}>
-                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Shuffle size={14} aria-hidden /> Bulk Route</div>
-                            <div style={styles.cardSubtext}>Route multiple items to a project</div>
-                            <input
-                                style={{ ...styles.input, marginTop: '8px' }}
-                                placeholder="Project ID"
-                                value={batchProject}
-                                onChange={e => setBatchProject(e.target.value)}
-                            />
-                            <button
-                                style={{ ...styles.btn, ...styles.btnPrimary }}
-                                onClick={performBatchRoute}
-                                disabled={loading || !batchIds.trim() || !batchProject.trim()}
-                            >
-                                {loading ? <><Hourglass size={14} aria-hidden /> ...</> : <><Rocket size={14} aria-hidden /> Route All</>}
-                            </button>
-                        </div>
-
-                        {/* Bulk Assign */}
-                        <div style={styles.card}>
-                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} aria-hidden /> Bulk Assign</div>
-                            <div style={styles.cardSubtext}>Assign multiple items to a team member</div>
-                            <input
-                                style={{ ...styles.input, marginTop: '8px' }}
-                                placeholder="Assignee email"
-                                value={batchAssignee}
-                                onChange={e => setBatchAssignee(e.target.value)}
-                            />
-                            <button
-                                style={{ ...styles.btn, ...styles.btnPrimary }}
-                                onClick={performBatchAssign}
-                                disabled={loading || !batchIds.trim() || !batchAssignee.trim()}
-                            >
-                                {loading ? <><Hourglass size={14} aria-hidden /> ...</> : <><User size={14} aria-hidden /> Assign All</>}
-                            </button>
-                        </div>
+                        ))}
                     </div>
                 </div>
             )}

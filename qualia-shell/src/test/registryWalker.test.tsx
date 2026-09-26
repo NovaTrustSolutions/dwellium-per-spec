@@ -53,9 +53,11 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + token-saver (token-saver skill status + estimated savings ring) → 68.
         //   + research-lab (labs-tier free-LLM sandbox, data-firewalled — see
         //     researchLabImportGuard.test.ts) → 69.
-        //   token-saver is DEV-only (2026-09-24) → 68 in production builds;
+        //   − inbox-zero (plan 066 phase 3: retired alias entry deleted;
+        //     resolveWidgetId('inbox-zero') now maps read-time to 'inbox') → 68.
+        //   token-saver is DEV-only (2026-09-24) → 67 in production builds;
         //   counted separately below so this guard does not depend on mode.
-        expect(ids.filter(id => id !== 'token-saver').length).toBe(68);
+        expect(ids.filter(id => id !== 'token-saver').length).toBe(67);
     });
 
     it('token-saver is registered only when import.meta.env.DEV is true', async () => {
@@ -65,13 +67,13 @@ describe('WIDGET_REGISTRY integrity', () => {
             const prod = await import('../registry/widgetRegistry');
             expect(prod.WIDGET_REGISTRY['token-saver']).toBeUndefined();
             expect(prod.WINDOW_COMPONENTS['token-saver']).toBeUndefined();
-            expect(Object.keys(prod.WIDGET_REGISTRY).length).toBe(68);
+            expect(Object.keys(prod.WIDGET_REGISTRY).length).toBe(67);
 
             vi.stubEnv('DEV', true);
             vi.resetModules();
             const dev = await import('../registry/widgetRegistry');
             expect(dev.WIDGET_REGISTRY['token-saver']).toBeDefined();
-            expect(Object.keys(dev.WIDGET_REGISTRY).length).toBe(69);
+            expect(Object.keys(dev.WIDGET_REGISTRY).length).toBe(68);
         } finally {
             vi.unstubAllEnvs();
             vi.resetModules();

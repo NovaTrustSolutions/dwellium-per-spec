@@ -195,3 +195,41 @@ describe('insights — surfaceInsights', () => {
         expect(await surfaceInsights(captures, stubLlm('no json here'))).toEqual([]);
     });
 });
+
+describe('insights — parseJsonLoose (via categorizeCapture, its only call site)', () => {
+    // parseJsonLoose isn't exported; exercise it through categorizeCapture,
+    // which just JSON.parses the result straight through.
+    const parseVia = async (text: string) => categorizeCapture('x', stubLlm(text));
+
+    it('picks the FIRST balanced object, not a greedy first-to-last span', async () => {
+        // The old regex `/[\[{][\s\S]*[\]}]/` spans from the first "{" to the
+        // LAST "]" — across both the object and the array below — and fails
+        // to parse. The balanced scan should find just the first object.
+        const r = await parseVia('Sure! {"filed_to":"admin","confidence":0.8,"destination_name":"a"} and also [2,3]');
+        expect(r?.filed_to).toBe('admin');
+        expect(r?.destination_name).toBe('a');
+    });
+
+    it('extracts JSON from a fenced ```json block', async () => {
+        const r = await parseVia('```json\n{"filed_to":"ideas","confidence":0.6,"destination_name":"b"}\n```');
+        expect(r?.filed_to).toBe('ideas');
+    });
+
+    it('handles nested objects', async () => {
+        const r = await parseVia('{"filed_to":"projects","confidence":0.5,"destination_name":"c","meta":{"x":{"y":1}}}');
+        expect(r?.filed_to).toBe('projects');
+    });
+
+    it('handles a string value containing brace characters without losing balance', async () => {
+        const r = await parseVia('noise {"filed_to":"people","confidence":0.5,"destination_name":"has } and { inside"} trailing');
+        expect(r?.filed_to).toBe('people');
+        expect(r?.destination_name).toBe('has } and { inside');
+    });
+
+    it('falls back through subsequent start positions when an earlier bracket never balances', async () => {
+        // Leading "[" with no closing bracket at all — scan must move on to
+        // the real object rather than giving up.
+        const r = await parseVia('prefix [ unterminated {"filed_to":"admin","confidence":0.4,"destination_name":"d"}');
+        expect(r?.filed_to).toBe('admin');
+    });
+});

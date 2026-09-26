@@ -8,7 +8,7 @@
  */
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import Wiki from '../components/Wiki/Wiki';
 import { wikiStore, setWikiPage, type WikiPage } from '../components/Wiki/wikiStore';
 import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
@@ -186,8 +186,16 @@ describe('deep link', () => {
     it('selects the page named by dwellium:wiki-open-page', async () => {
         render(<Wiki />);
         await screen.findByRole('button', { name: 'Acme, domain' });
-        window.dispatchEvent(new CustomEvent('dwellium:wiki-open-page', { detail: { path: 'Beta' } }));
-        await waitFor(() => expect(screen.getByRole('heading', { name: 'Beta' })).toBeInTheDocument());
+        // The listener effect is already attached (findByRole above proved a committed
+        // render), but `dispatchEvent` fires outside React's event system, so the
+        // resulting setState is only scheduled, not applied. Flush it inside `act` —
+        // under CPU load (parallel test workers) the flush can take longer than
+        // `waitFor`'s default 1s timeout, which read as a flaky "event lost" failure
+        // but was really the assertion racing an unflushed update.
+        await act(async () => {
+            window.dispatchEvent(new CustomEvent('dwellium:wiki-open-page', { detail: { path: 'Beta' } }));
+        });
+        expect(screen.getByRole('heading', { name: 'Beta' })).toBeInTheDocument();
     });
 });
 

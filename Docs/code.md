@@ -455,3 +455,10 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Root cause:** every store resolves its key from its `*UserIdHolder` at WRITE time; holders change only during render (`setPerUserIdentity`), and nothing cancels in-flight work on logout. JS has no async context a store could read to know who started the work.
 - **Fix:** `captureOwner()` in `src/lib/perUserIdentity.ts` snapshots the owner before the first await; each async write site checks `stillOwner()` right before the store write and drops (never redirects) on a change. The whiteboard captures at schedule time and re-checks after its own await and in `flushPendingSave`. Tests: `ownerGuard*.test.ts` (mutation-checked). `recordLlmUsage` is fixed separately in PR #147 (required `userId`).
 - **Prevention:** any new code that awaits and then writes a per-user store must capture the owner first. A whiteboard scene still pending at logout is dropped (it previously went to `_anonymous` — lost to A either way).
+
+## 2026-09-26 — Wiki deep-link test flaked under the full suite
+
+- **Error:** `Wiki.test.tsx` "selects the page named by dwellium:wiki-open-page" failed ~1 in 8 under parallel load (passed alone).
+- **Root cause:** not a lost event (the listener attaches on the first commit, before the awaited button appears): `window.dispatchEvent` runs outside React's event system, so the resulting state update was only scheduled, and under CPU load the flush outlasted `waitFor`'s 1 s default.
+- **Fix:** dispatch inside `await act(async () => …)` and assert directly. 20/20 runs green under load; breaking the listener still fails the test.
+- **Prevention:** wrap non-React `dispatchEvent` calls that should update a component in `act`, rather than widening timeouts.

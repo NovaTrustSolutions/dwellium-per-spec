@@ -7,7 +7,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Coins, Trash2 } from 'lucide-react';
 import { useLlmUsage, lastNDays, planAdvice, clearLlmUsage } from '../../lib/llmUsageStore';
+import { useSubscriptions, monthlyTotal } from '../../lib/subscriptionsStore';
 import CostAdvisorPanel from './CostAdvisorPanel';
+import BudgetBar from './BudgetBar';
+import SpendBreakdown from './SpendBreakdown';
+import SubscriptionsEditor from './SubscriptionsEditor';
 import './AiSpend.css';
 
 const fmt$ = (n: number) => (n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(4)}`);
@@ -16,6 +20,8 @@ const CONFIRM_CLEAR_MS = 4000;
 
 export default function AiSpend() {
     const ledger = useLlmUsage();
+    const subscriptions = useSubscriptions();
+    const subsTotal = monthlyTotal(subscriptions);
     const [confirmClear, setConfirmClear] = useState(false);
 
     // Plan 068 E1: a stray click minutes later must not wipe the ledger.
@@ -107,6 +113,8 @@ export default function AiSpend() {
                 </div>
             </div>
 
+            <BudgetBar ledger={ledger} />
+
             <p className="spend__coverage-note">
                 Not tracked yet: server-side calls, voice (TTS/STT), avatar.
             </p>
@@ -154,6 +162,13 @@ export default function AiSpend() {
                     </div>
                 ))}
             </section>
+
+            <SpendBreakdown ledger={ledger} />
+
+            <details className="spend__subs">
+                <summary>{`Subscriptions (${subscriptions.length} · $${subsTotal.toFixed(2)}/mo)`}</summary>
+                <SubscriptionsEditor showHeading={false} />
+            </details>
 
             <section className="spend__advisor" aria-label="Time-value advisor">
                 <CostAdvisorPanel variant="full" />

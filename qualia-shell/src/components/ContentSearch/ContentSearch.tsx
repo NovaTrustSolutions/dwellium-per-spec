@@ -21,7 +21,6 @@ import { getWidgetMeta } from '../../registry/widgetRegistry';
 import { setPendingDeepLink } from '../../lib/pendingDeepLink';
 import './ContentSearch.css';
 
-const ACCENT = '#D6FE51';
 const MAX_SHOWN = 50;
 const REMOTE_DEBOUNCE_MS = 250;
 const TYPE_META: Record<SearchDocType, { icon: typeof FileText; label: string }> = {
@@ -262,7 +261,7 @@ export default function ContentSearch() {
     return (
         <div className="cs-root">
             <div className="cs-header">
-                <Search size={16} style={{ color: ACCENT }} />
+                <Search size={16} className="cs-icon" />
                 <input
                     autoFocus
                     value={query}
@@ -316,7 +315,7 @@ export default function ContentSearch() {
                             className="cs-row"
                             onClick={() => openHit(h)}
                         >
-                            <Icon size={15} style={{ color: ACCENT, flexShrink: 0, marginTop: 1 }} />
+                            <Icon size={15} className="cs-icon cs-row-icon" />
                             <div className="cs-row-main">
                                 <div className="cs-row-title-line">
                                     <span className="cs-row-title"><Highlighted text={h.title} query={query} /></span>

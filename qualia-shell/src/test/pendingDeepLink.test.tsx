@@ -46,8 +46,11 @@ describe('pendingDeepLink', () => {
         render(<Notepad />);
         await waitFor(() => {
             const urls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
-            expect(urls.some((u) => u.includes('/notes/n5'))).toBe(true);
+            expect(urls.some((u) => u.includes('/api/files/notes/n5'))).toBe(true);
         });
+        // Every notes call goes through /api/files — the bare /notes path 404s on the backend.
+        const urls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+        expect(urls.filter((u) => /\/notes\b/.test(u)).every((u) => u.includes('/api/files/notes'))).toBe(true);
         expect(peekPendingDeepLink('notepad')).toBeUndefined();
     });
 });

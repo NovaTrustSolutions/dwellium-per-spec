@@ -93,7 +93,7 @@ export default function Notepad() {
         // Fetch files & tasks from backend
         try {
             const [filesRes, tasksRes] = await Promise.allSettled([
-                fetch(`${API_BASE}?q=${encodeURIComponent(query)}`),
+                fetch(`${API_FILES}?q=${encodeURIComponent(query)}`),
                 fetch(`${API_BASE}/api/tasks?q=${encodeURIComponent(query)}`)
             ]);
             if (filesRes.status === 'fulfilled') {
@@ -137,7 +137,7 @@ export default function Notepad() {
     const fetchNotes = async () => {
         try {
             const q = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : '';
-            const res = await fetch(`${API_BASE}/notes${q}`);
+            const res = await fetch(`${API_FILES}/notes${q}`);
             const json = await res.json();
             if (json.success) setNotes(json.data);
         } catch {
@@ -152,7 +152,7 @@ export default function Notepad() {
     const autoSave = useCallback(async (noteId: string, noteTitle: string, noteContent: string) => {
         setIsSaving(true);
         try {
-            await fetch(`${API_BASE}/notes`, {
+            await fetch(`${API_FILES}/notes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: noteId, title: noteTitle, content: noteContent })
@@ -249,7 +249,7 @@ export default function Notepad() {
     const openNoteFromPalette = useCallback(async (detail: { noteId?: string; title?: string }) => {
         if (detail.noteId) {
             try {
-                const res = await fetch(`${API_BASE}/notes/${encodeURIComponent(detail.noteId)}`);
+                const res = await fetch(`${API_FILES}/notes/${encodeURIComponent(detail.noteId)}`);
                 const json = await res.json();
                 if (json?.success && json.data) {
                     const note = json.data as Note;

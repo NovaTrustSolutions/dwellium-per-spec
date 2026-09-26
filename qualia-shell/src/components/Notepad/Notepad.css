@@ -510,3 +510,8 @@
     border-radius: 4px;
     cursor: pointer;
 }
+
+/* A save the server refused or never received (plan 070) — never shown as "Saved". */
+.np-save__dot--failed {
+    background: var(--danger);
+}

@@ -111,6 +111,9 @@ export const twImportedUserIdHolder: UserIdHolder = makeHolder();
 export const todoUserIdHolder: UserIdHolder = makeHolder();
 export const reportUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 070 — per-user god-only "Show other users' notes" toggle (notesScopeStore). */
+export const notesScopeUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -148,6 +151,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     twImportedUserIdHolder,
     todoUserIdHolder,
     reportUserIdHolder,
+    notesScopeUserIdHolder,
 ];
 
 /**

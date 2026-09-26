@@ -12,6 +12,7 @@ import { hiddenWidgetsStore } from '../../lib/hiddenWidgetsStore';
 import { getWidgetMeta, resolveWidgetId } from '../../registry/widgetRegistry';
 import { buildHelpRows } from '../../lib/helpCommands';
 import { UserContext } from '../../context/UserContext';
+import { useNotesScopeParam } from '../../lib/notesScopeStore';
 import { recentActivityStore, type RecentActivityEntry } from '../../lib/recentActivityStore';
 import { readWidgetMemory, patchWidgetMemory } from '../../lib/widgetMemory';
 import { SCRIBE_MEM_DEFAULTS } from '../Scribe/scribeMemory';
@@ -603,6 +604,7 @@ export default function CommandPalette() {
     const { windows, dockItems, openWindow, focusWindow, restoreWindow } = useWindows();
     // Plan 047 §6: raw context (null outside a provider) — gates restricted labs/help rows by email.
     const userEmail = useContext(UserContext)?.user?.email ?? null;
+    const notesScope = useNotesScopeParam();
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -749,6 +751,7 @@ export default function CommandPalette() {
                     fileUrl.searchParams.set('limit', '10');
                     noteUrl.searchParams.set('limit', '8');
                 }
+                if (notesScope) noteUrl.searchParams.set('scope', 'all');
 
                 const requests: Promise<Response>[] = [
                     fetch(fileUrl.toString()),
@@ -799,7 +802,7 @@ export default function CommandPalette() {
         }, 180);
 
         return () => clearTimeout(timer);
-    }, [isOpen, query]);
+    }, [isOpen, query, notesScope]);
 
     const results = useMemo(() => {
         const queryValue = query.trim();

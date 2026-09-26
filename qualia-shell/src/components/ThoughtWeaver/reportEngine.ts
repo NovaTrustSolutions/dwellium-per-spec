@@ -27,6 +27,7 @@ import {
     generateTodoSeeds,
     surfaceInsights,
 } from './insights';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 /** Persistence sink — the component wires the real reportStore/todoStore mutators. */
 export interface ReportSink {
@@ -100,6 +101,11 @@ export async function generateReports(
     const weekStart = weekStartOf(today);
     const dayCaps = capturesForDay(captures, today);
     const weekCaps = capturesForWeek(captures, weekStart);
+    // Owner race guard (plan owner-race): each branch awaits an LLM call before
+    // writing to the per-user reportStore/todoStore. If the account changed
+    // mid-await, drop that branch's write rather than filing it under the new
+    // account's namespace.
+    const stillOwner = captureOwner();
 
     const result: GenerateResult = {
         ranDaily: false,
@@ -112,22 +118,28 @@ export async function generateReports(
 
     if (o.daily) {
         const summary = await draftDailyReport(dayCaps, today, llm);
-        sink.addDailyReport(today, summary, dayCaps.length, nowIso);
-        result.ranDaily = true;
+        if (stillOwner()) {
+            sink.addDailyReport(today, summary, dayCaps.length, nowIso);
+            result.ranDaily = true;
+        }
     }
     if (o.weekly) {
         const summary = await draftWeeklySummary(weekCaps, weekStart, llm);
-        sink.addWeeklySummary(weekStart, summary, weekCaps.length, nowIso);
-        result.ranWeekly = true;
+        if (stillOwner()) {
+            sink.addWeeklySummary(weekStart, summary, weekCaps.length, nowIso);
+            result.ranWeekly = true;
+        }
     }
     if (o.todos) {
         const seeds = await generateTodoSeeds(dayCaps, llm);
-        result.todosAdded = sink.syncTodos(seeds);
+        if (stillOwner()) result.todosAdded = sink.syncTodos(seeds);
     }
     if (o.insights) {
         const seeds = await surfaceInsights(captures, llm);
-        sink.setInsights(seeds, nowIso);
-        result.insightCount = seeds.length;
+        if (stillOwner()) {
+            sink.setInsights(seeds, nowIso);
+            result.insightCount = seeds.length;
+        }
     }
     return result;
 }

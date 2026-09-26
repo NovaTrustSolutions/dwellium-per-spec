@@ -449,6 +449,13 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Caught only by the standalone harness:** swapping undefined CSS tokens for `--bg-surface-elevated` looked right in dark but that token is an OPAQUE darker surface in latte → secondary text fell from 4.32:1 to 3.53:1 (81 vs 32 low-contrast items). Fixed by keeping the old translucent tint.
 - **Prevention:** before replacing an undefined CSS token, check what the replacement resolves to in latte (`themes-master.css` token bridge) and compare before/after contrast counts in the harness. For any "record on completion" code, ask per branch: did the provider bill this call? A `finally` records aborted streams — and also everything that never reached the provider.
 
+## 2026-09-25 — Per-user stores: async writes landed in the next account (owner race)
+
+- **Error:** code that started as user A, awaited (LLM, fetch, debounce timer), then wrote a per-user store put A's result in whichever account was active when the await resolved — `_anonymous` after logout, or user B after a re-login — and for One Save stores pushed it to B's server copy too. 21 unguarded sites (ARA artifacts and goals, morning brief and dreams, ThoughtWeaver captures and reports, advisory-board sessions, Scribe KB, knowledge graph, Research Lab log, whiteboard debounced save, remote-machines import, AI-spend ledger).
+- **Root cause:** every store resolves its key from its `*UserIdHolder` at WRITE time; holders change only during render (`setPerUserIdentity`), and nothing cancels in-flight work on logout. JS has no async context a store could read to know who started the work.
+- **Fix:** `captureOwner()` in `src/lib/perUserIdentity.ts` snapshots the owner before the first await; each async write site checks `stillOwner()` right before the store write and drops (never redirects) on a change. The whiteboard captures at schedule time and re-checks after its own await and in `flushPendingSave`. Tests: `ownerGuard*.test.ts` (mutation-checked). `recordLlmUsage` is fixed separately in PR #147 (required `userId`).
+- **Prevention:** any new code that awaits and then writes a per-user store must capture the owner first. A whiteboard scene still pending at logout is dropped (it previously went to `_anonymous` — lost to A either way).
+
 ## 2026-09-26 — Leasing sweep test timed out under full-suite load (380 whole-DOM `queryByText` walks)
 
 - **Error:** `leasing.module.test.tsx > sweep: none of the old fake strings render on any changed tab or metric view` failed with "Test timed out in 5000ms" in roughly 1 of 3 full `npx vitest run`s (seen on `feat/069-cognitive-harness`, which does not touch LeasingModule); it passed alone.

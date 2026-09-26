@@ -45,10 +45,13 @@ export interface CmnMetrics {
     persist: CmnPersistState;
     persistedBytes: number;
     hydrated: boolean;
+    /** The engine's live similarity-bridge threshold (not a UI constant). */
+    similarityThreshold: number;
     events: CmnEvent[];
 }
 
-export interface CmnProbe { ok: boolean; detail: string; }
+/** `kind` says which half failed, so a storage problem is not shown as a retrieval outage. */
+export interface CmnProbe { ok: boolean; detail: string; kind: 'ok' | 'engine' | 'storage'; }
 
 interface PersistedV1 { v: 1; snapshot: MemorySnapshot; seen: Record<string, string>; }
 
@@ -125,6 +128,8 @@ export class CognitiveMemoryNetwork {
         } catch {
             // Corrupt payload: keep it on disk (never auto-delete user data), start empty in memory.
             this.log('hydrate', 'Saved memory could not be read; starting empty (saved copy left untouched)');
+            // A failure after the rebuild await lands post-render — bump the version so readers see it.
+            this.emit();
         }
     }
 
@@ -243,6 +248,7 @@ export class CognitiveMemoryNetwork {
             persist: this.persist,
             persistedBytes: this.persistedBytes,
             hydrated: this.hydrated,
+            similarityThreshold: this.engine.simThreshold,
             events: this.events,
         };
     }
@@ -253,12 +259,12 @@ export class CognitiveMemoryNetwork {
             this.engine.store.counts();
             this.engine.retrieve('cmn-health-probe', 1);
         } catch (e: any) {
-            return { ok: false, detail: `Engine error: ${e?.message || e}` };
+            return { ok: false, detail: `Engine error: ${e?.message || e}`, kind: 'engine' };
         }
-        if (this.persist === 'full') return { ok: false, detail: 'Browser storage is full — memory is not being saved' };
-        if (this.persist === 'unavailable') return { ok: false, detail: 'Browser storage unavailable — memory will not survive a reload' };
+        if (this.persist === 'full') return { ok: false, detail: 'Browser storage is full — memory is not being saved', kind: 'storage' };
+        if (this.persist === 'unavailable') return { ok: false, detail: 'Browser storage unavailable — memory will not survive a reload', kind: 'storage' };
         const c = this.engine.store.counts();
-        return { ok: true, detail: `${c.passages} passages · ${c.entities} entities · ${c.facts} facts` };
+        return { ok: true, detail: `${c.passages} passages · ${c.entities} entities · ${c.facts} facts`, kind: 'ok' };
     }
 }
 

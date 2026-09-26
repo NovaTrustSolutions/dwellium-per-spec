@@ -16,6 +16,7 @@
 import { EditorView, ViewPlugin } from '@codemirror/view';
 import { API_BASE } from '../../config';
 import { getAuthHeaders } from '../../context/UserContext';
+import { captureOwner } from '../../lib/perUserIdentity';
 import { htmlToMarkdown } from './htmlToMarkdown';
 
 // Flip to true to debug DnD wiring (logs every drag/drop event in DevTools)
@@ -134,6 +135,8 @@ export async function handleDrop(view: EditorView, e: DragEvent): Promise<boolea
     if (!e.dataTransfer) return false;
     const dt = e.dataTransfer;
     const dropPos = getDropPos(view, e);
+    // owner-race guard: PDFs are read (fetch / arrayBuffer) before conversion — hand in the owner at drop time.
+    const stillOwner = captureOwner();
 
     // ── Phase D: Dwellium widget ─────────────────────────────────────
     const widgetRaw = dt.getData(DWELLIUM_WIDGET_MIME);
@@ -171,9 +174,9 @@ export async function handleDrop(view: EditorView, e: DragEvent): Promise<boolea
                     const bytes = res.ok && data.success && typeof data.content === 'string'
                         ? bytesFromBinaryString(data.content)
                         : new Uint8Array(0);
-                    await openPdfBytesAsMarkdown(payload.name, bytes);
+                    await openPdfBytesAsMarkdown(payload.name, bytes, stillOwner);
                 } catch {
-                    await openPdfBytesAsMarkdown(payload.name, new Uint8Array(0)); // honest fallback doc
+                    await openPdfBytesAsMarkdown(payload.name, new Uint8Array(0), stillOwner); // honest fallback doc
                 }
                 return true;
             }
@@ -230,7 +233,7 @@ export async function handleDrop(view: EditorView, e: DragEvent): Promise<boolea
             } else if (ext === '.pdf') {
                 // Dropped PDF file → convert to a sibling markdown doc and open it.
                 const { openPdfBytesAsMarkdown } = await import('./pdfOpen');
-                await openPdfBytesAsMarkdown(file.name, new Uint8Array(await file.arrayBuffer()));
+                await openPdfBytesAsMarkdown(file.name, new Uint8Array(await file.arrayBuffer()), stillOwner);
             } else if (TEXT_FILE_EXTS.includes(ext)) {
                 const text = await readTextFile(file);
                 if (text) {

@@ -12,6 +12,11 @@
     color: var(--avd-text);
     font-size: 14px;
     line-height: 1.45;
+    /* Respond to the WIDGET's own width, not the viewport — Agent Lab's window
+       can be narrower than 1040px while still wider than a phone, and the
+       .avd-frame below is overflow:hidden so a viewport media query clips the
+       right column instead of collapsing it. */
+    container-type: inline-size;
 }
 .avd *, .avd *::before, .avd *::after { box-sizing: border-box; }
 
@@ -89,6 +94,8 @@ textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var
     background: transparent; color: rgba(134, 163, 184, .55); font-size: 11px; opacity: 0; transition: opacity 120ms ease;
 }
 .avd-row:hover .avd-del, .avd-channel:hover .avd-del, .avd-note:hover .avd-del { opacity: 1; }
+.avd-row:focus-within .avd-del, .avd-channel:focus-within .avd-del, .avd-note:focus-within .avd-del { opacity: 1; }
+.avd-del:focus-visible { opacity: 1; outline: 2px solid var(--avd-primary); outline-offset: 2px; }
 .avd-del:hover { background: rgba(239, 68, 68, .18); color: #fca5a5; }
 .avd-add {
     margin-top: 4px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
@@ -136,6 +143,16 @@ textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var
 .avd-tag--4 { bottom: 8%; right: 0; }
 .avd-tag-label { text-transform: uppercase; letter-spacing: .1em; color: var(--avd-muted); font-size: 9px; }
 .avd-tag-value { color: var(--avd-primary); font-family: var(--avd-display); font-size: 12px; }
+
+/* Activity — read-only Hermes stats, rendered above the editable metrics. */
+.avd-activity { width: 100%; margin-bottom: 14px; }
+.avd-activity-list { display: grid; gap: 4px; margin: 0; }
+.avd-activity-row {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    padding: 3px 0; border-bottom: 1px dashed rgba(134, 163, 184, .18); font-size: 12px;
+}
+.avd-activity-row dt { margin: 0; color: var(--avd-muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+.avd-activity-row dd { margin: 0; font-weight: 600; color: var(--avd-text); }
 
 /* Metrics */
 .avd-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
@@ -188,6 +205,8 @@ textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var
     background: transparent; color: rgba(134, 163, 184, .55); opacity: 0; transition: opacity 120ms ease;
 }
 .avd-section:hover .avd-hide, .avd-fieldrow:hover .avd-hide, .avd-status label:hover .avd-hide, .avd-sectaghide .avd-hide { opacity: 1; }
+.avd-section:focus-within .avd-hide, .avd-fieldrow:focus-within .avd-hide, .avd-status label:focus-within .avd-hide { opacity: 1; }
+.avd-hide:focus-visible { opacity: 1; outline: 2px solid var(--avd-primary); outline-offset: 2px; }
 .avd-hide:hover { background: rgba(81, 212, 255, .16); color: var(--avd-primary); }
 .avd-fieldrow { display: flex; align-items: flex-start; gap: 4px; }
 .avd-fieldrow .avd-h1, .avd-fieldrow .avd-desc { flex: 1; }
@@ -207,20 +226,42 @@ textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var
 @keyframes avd-spin { to { transform: rotate(360deg); } }
 
 /* Looping neural video — badge in the top-right corner of the dossier. */
-.avd-corner-video {
+.avd-corner-video-wrap {
     position: absolute;
     top: 10px;
     right: 14px;
     width: 112px;
+    z-index: 6;
+}
+.avd-corner-video {
+    display: block;
+    width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
     border-radius: 10px;
     border: 1px solid rgba(81, 212, 255, .42);
     box-shadow: 0 0 18px rgba(81, 212, 255, .28);
     background: #04080f;
-    z-index: 6;
     pointer-events: none;
 }
+/* Pause/play the neural loop — small badge overlapping the video's corner. */
+.avd-video-toggle {
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(81, 212, 255, .42);
+    background: rgba(5, 10, 18, .92);
+    color: var(--avd-primary);
+    cursor: pointer;
+}
+.avd-video-toggle:hover { background: rgba(81, 212, 255, .18); }
+.avd-video-toggle:focus-visible { outline: 2px solid var(--avd-primary); outline-offset: 2px; }
 /* Keep the header content clear of the corner video. */
 .avd-topbar { padding-right: 138px; }
 
@@ -229,13 +270,13 @@ textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var
 
 .avd-tool-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--avd-muted); align-self: center; }
 
-@media (max-width: 1040px) {
+@container (max-width: 900px) {
     .avd-grid { grid-template-columns: 1fr; }
     .avd-panel { border-right: none; border-bottom: 1px solid var(--avd-border); }
     .avd-panel:last-child { border-bottom: none; }
 }
-@media (max-width: 640px) {
-    .avd-corner-video { width: 84px; }
+@container (max-width: 640px) {
+    .avd-corner-video-wrap { width: 84px; }
     .avd-topbar { padding-right: 104px; }
 }
 

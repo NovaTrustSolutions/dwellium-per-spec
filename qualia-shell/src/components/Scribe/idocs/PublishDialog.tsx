@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { exportHtml } from './idocExport';
 import { IdocsApiError, embedCodeFor, isValidSlug, linkedInShareUrl, publicUrlFor, publishDoc, slugify, unpublish, type IdocsApiDeps } from './idocsApi';
+import { captureOwner } from '../../../lib/perUserIdentity';
 import { updateDoc } from './idocsStore';
 import type { IDoc } from './idocTypes';
 import './PublishDialog.css';
@@ -34,6 +35,7 @@ export default function PublishDialog({ doc, onClose, api, onToast }: PublishDia
     const publish = async () => {
         if (!slugOk) return;
         setBusy('publish'); setError(null);
+        const stillOwner = captureOwner();
         try {
             const r = await publishDoc({
                 docId: doc.id, title: doc.title, html: exportHtml(doc), slug,
@@ -41,6 +43,7 @@ export default function PublishDialog({ doc, onClose, api, onToast }: PublishDia
                 seo: { title: seoTitle || undefined, description: seoDesc || undefined, noindex: noindex || undefined },
                 embedAllowed,
             }, api);
+            if (!stillOwner()) return; // owner-race guard: never stamp A's publication on B's copy of this doc id
             updateDoc(doc.id, { publication: { slug: r.slug, url: r.url, publishedAt: r.publishedAt } });
             setSlug(r.slug); setPassword('');
             onToast?.(pub ? 'Re-published' : 'Published');
@@ -50,7 +53,12 @@ export default function PublishDialog({ doc, onClose, api, onToast }: PublishDia
     const doUnpublish = async () => {
         if (!pub) return;
         setBusy('unpublish'); setError(null);
-        try { await unpublish(pub.slug, api); updateDoc(doc.id, { publication: undefined }); onToast?.('Unpublished'); }
+        const stillOwner = captureOwner();
+        try {
+            await unpublish(pub.slug, api);
+            if (!stillOwner()) return; // owner-race guard
+            updateDoc(doc.id, { publication: undefined }); onToast?.('Unpublished');
+        }
         catch (e) { setError(`Unpublish failed: ${(e as Error).message}`); }
         finally { setBusy(null); }
     };

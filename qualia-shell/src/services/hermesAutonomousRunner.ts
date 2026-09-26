@@ -11,6 +11,7 @@ import { UserContext } from '../context/UserContext';
 import { useIntegrations } from '../hooks/useIntegrations';
 import { callLlm, applyModelPreference, hasActiveLlm } from '../lib/llmClient';
 import { recallContext, withRecall } from '../lib/memoryGraphRag/recall';
+import { captureOwner } from '../lib/perUserIdentity';
 import {
     agentLabUserIdHolder,
     agentTeamsStore,
@@ -24,6 +25,7 @@ import {
     recordRun as recordPersonaRun,
     recoverStaleTasks,
     type ClaimedPersonaTask,
+    type WorkOutcome,
 } from '../lib/agents/personaWorkStore';
 import {
     HERMES_PERSONA_IDS,
@@ -32,6 +34,8 @@ import {
 } from '../lib/agents/personas';
 import {
     runPersona,
+    notReusedReason,
+    workOutcome,
     type OrchestratorDeps,
     type PersonaOutput,
 } from '../lib/agents/orchestrator';
@@ -55,9 +59,9 @@ export interface RunNextHermesTaskDeps {
     personas: Persona[];
     orchestratorDeps: OrchestratorDeps;
     claim?: () => ClaimedPersonaTask | null;
-    complete?: (personaId: string, taskId: string, result: string) => void;
+    complete?: (personaId: string, taskId: string, result: string, hermesRunId?: string) => void;
     fail?: (personaId: string, taskId: string, error: string) => void;
-    remember?: (personaId: string, summary: string, durationMs: number, outcome: 'success' | 'fail') => void;
+    remember?: (personaId: string, summary: string, durationMs: number, outcome: WorkOutcome) => void;
     wikiContext?: () => string;
     personaMemory?: (personaId: string) => string;
     recall?: (query: string) => Promise<string>;
@@ -75,6 +79,10 @@ export interface AutonomousTaskResult {
 
 /** Claim and execute the next queued Hermes-persona task. Returns null when idle. */
 export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<AutonomousTaskResult | null> {
+    // Owner-race guard: an account switch mid-task drops every late write. The claimed task stays 'running' in the
+    // old account, as it did before this guard (the late write used to land in the new account, where the task does
+    // not exist); recoverStaleTasks re-queues it only when that account's runner next starts and it is STALE_AFTER_MS old.
+    const stillOwner = captureOwner();
     const claim = (deps.claim ?? (() => claimNextTask(HERMES_PERSONA_IDS)))();
     if (!claim) return null;
 
@@ -100,6 +108,7 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
         'You are running unattended. Finish the assigned task as far as the available tools and context allow. ' +
         'End with a concise completion report: result, evidence, blockers, and next action.';
     const memory = deps.recall ? await deps.recall(claim.task.title) : '';
+    if (!stillOwner()) return null;
     const augmented: Persona = {
         ...persona,
         systemPrompt: withRecall(composedPrompt, memory),
@@ -111,19 +120,29 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
             persona: augmented,
             deps: deps.orchestratorDeps,
         });
+        if (!stillOwner()) return null;
         const result = output.verified.trim();
-        const ok = !!output.output.trim() && !output.output.startsWith('(no response');
+        const ok = output.ok;
         const duration = Math.max(0, now() - startedAt);
         if (!ok) {
-            const error = 'No usable response. Check the persona model/key assignment and retry.';
+            const error = output.error || 'No usable response. Check the persona model/key assignment and retry.';
             fail(persona.id, claim.task.id, error);
             remember(persona.id, `Autonomous task failed: ${claim.task.title}`, duration, 'fail');
             return { personaId: persona.id, taskId: claim.task.id, outcome: 'fail', error };
         }
-        complete(persona.id, claim.task.id, result.slice(0, 2_000));
-        remember(persona.id, `Autonomous task: ${claim.task.title} -> ${result.slice(0, 180)}`, duration, 'success');
+        // The Hermes run id lets the user 👍 this answer later (it has no Sources, so only a 👍 makes it reusable).
+        complete(persona.id, claim.task.id, result.slice(0, 2_000), output.recordId);
+        // The task is done either way, but only an answer that passed its fact-check against
+        // Sources is remembered as a success — a flagged or unchecked claim never enters memory.
+        const outcome = workOutcome(output);
+        if (outcome === 'success') {
+            remember(persona.id, `Autonomous task: ${claim.task.title} -> ${result.slice(0, 180)}`, duration, 'success');
+        } else {
+            remember(persona.id, `Autonomous task: ${claim.task.title} -> ${notReusedReason(output.verifyStatus)}`, duration, outcome);
+        }
         return { personaId: persona.id, taskId: claim.task.id, outcome: 'success', result };
     } catch (err: any) {
+        if (!stillOwner()) return null;
         const error = err?.message || String(err);
         const duration = Math.max(0, now() - startedAt);
         fail(persona.id, claim.task.id, error);
@@ -160,7 +179,7 @@ export function useHermesAutonomousRunner(): void {
                 return response?.text ?? null;
             },
             recall: prompt => formatFewShot(relevantPastRuns(prompt, 3)),
-            record: input => { recordHermesRun(input); },
+            record: input => recordHermesRun(input),
             runSkill: async (input, skillIds) => {
                 const catalog = AGENT_SKILLS.filter(skill => skillIds.includes(skill.id));
                 // PROVENANCE GATE: autonomous-task skill input is orchestrator/model-

@@ -1122,6 +1122,39 @@
     font-size: 9px;
 }
 
+.haw__rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.haw__rating-note {
+    flex: 1;
+    color: var(--text-secondary);
+    font-size: 10px;
+}
+
+.haw__rate-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 24px;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+/* Specific enough to beat `.haw button:not(...):not(...)`; the fill is a cue that is not hue alone. */
+.haw .haw__rating .haw__rate-btn[aria-pressed='true'] {
+    border-color: var(--accent, currentColor);
+    background: var(--accent-subtle, rgba(255, 255, 255, 0.08));
+    color: var(--text-primary);
+}
+
 .haw__prompt-card {
     display: flex;
     flex-direction: column;

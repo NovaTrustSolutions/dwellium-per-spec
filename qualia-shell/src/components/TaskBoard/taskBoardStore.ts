@@ -22,6 +22,7 @@ import {
     createInitialBoard, defaultColumns, makeCard, type ActionContext,
 } from './taskBoardModel';
 import { aiEndpoint, buildGmailComposeUrl, composeCardEmail, composeCardPrompt } from './taskRouting';
+import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 
 // Module-level holder updated DURING render by the consuming component
 // (TaskBoard.tsx) before useSyncExternalStore fires — mirrors WindowContext's
@@ -231,12 +232,15 @@ export async function routeCard(cardId: string): Promise<RouteResult> {
 
     if (a.kind === 'ai') {
         const endpoint = aiEndpoint(a.id);
+        const stillOwner = captureOwner();
         try {
             const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: composeCardPrompt(card), source: 'task-board', cardId }),
             });
+            // owner-race guard: account changed mid-send — never audit A's card into B's board.
+            if (!stillOwner()) return { status: 'none', detail: ACCOUNT_CHANGED };
             if (res.ok) {
                 logEvent(`Sent "${card.title}" to AI · ${a.label}`, cardId);
                 return { status: 'sent', detail: `Sent to ${a.label}.` };
@@ -244,6 +248,7 @@ export async function routeCard(cardId: string): Promise<RouteResult> {
             logEvent(`Queued "${card.title}" for AI · ${a.label} (agent returned ${res.status})`, cardId);
             return { status: 'queued', detail: `${a.label} unavailable (HTTP ${res.status}) — queued, not sent.` };
         } catch {
+            if (!stillOwner()) return { status: 'none', detail: ACCOUNT_CHANGED };
             logEvent(`Queued "${card.title}" for AI · ${a.label} (backend offline)`, cardId);
             return { status: 'queued', detail: `${a.label} is offline — queued, not sent.` };
         }

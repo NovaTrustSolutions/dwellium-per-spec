@@ -93,7 +93,11 @@ export function captureItem(
 
 export function updateItem(id: string, patch: Partial<FoundryItem>): void {
     if (typeof window === 'undefined') return;
-    const next = foundryStore.getSnapshot().map((it) => (it.id === id ? { ...it, ...patch } : it));
+    const cur = foundryStore.getSnapshot();
+    // owner-race guard: an id not in this namespace (A's item resolving after a switch to B,
+    // or cleared mid-triage) is a no-op — never rewrite and push the other list.
+    if (!cur.some((it) => it.id === id)) return;
+    const next = cur.map((it) => (it.id === id ? { ...it, ...patch } : it));
     persist(next);
 }
 

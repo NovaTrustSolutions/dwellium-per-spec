@@ -28,7 +28,7 @@ import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } fro
 import { API_BASE } from '../../config';
 import { getAuthHeaders } from '../../context/UserContext';
 import { recordArtifact } from '../artifactStore';
-import { captureOwner } from '../perUserIdentity';
+import { captureOwner, ACCOUNT_CHANGED } from '../perUserIdentity';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -527,7 +527,9 @@ const composeIntoWidgetSkill: AgentSkill = {
         if (!res?.text) {
             return { ok: false, text: 'Drafting needs an LLM key — add one in Control Panel → API Keys.', via: 'compose-widget' };
         }
-        if (stillOwner()) recordArtifact({ content: res.text, source: 'skill', title: what.slice(0, 60) }); // P12-3
+        // owner-race guard: drop A's draft before it is recorded or opened/inserted into B's widget
+        if (!stillOwner()) return { ok: false, text: ACCOUNT_CHANGED, via: 'compose-widget' };
+        recordArtifact({ content: res.text, source: 'skill', title: what.slice(0, 60) }); // P12-3
         const delivered = performWidgetAction(target, 'insert-text', { text: res.text });
         return delivered
             ? { ok: true, text: `Drafted into ${target}:\n\n${res.text.slice(0, 400)}${res.text.length > 400 ? '…' : ''}`, via: 'compose-widget' }

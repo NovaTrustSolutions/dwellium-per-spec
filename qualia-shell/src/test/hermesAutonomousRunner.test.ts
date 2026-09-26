@@ -17,6 +17,8 @@ describe('runNextHermesTask', () => {
             output: 'Launch map',
             verified: 'Launch map with evidence',
             supported: true,
+            ok: true,
+            verifyStatus: 'passed',
         }));
 
         const result = await runNextHermesTask({
@@ -36,10 +38,57 @@ describe('runNextHermesTask', () => {
         });
 
         expect(result).toMatchObject({ personaId: labyrinth.id, taskId: 'task-1', outcome: 'success' });
-        expect(complete).toHaveBeenCalledWith(labyrinth.id, 'task-1', 'Launch map with evidence');
+        expect(complete).toHaveBeenCalledWith(labyrinth.id, 'task-1', 'Launch map with evidence', undefined); // mock output carries no recordId
         expect(fail).not.toHaveBeenCalled();
         expect(remember).toHaveBeenCalledWith(labyrinth.id, expect.stringContaining('Map the launch'), 60, 'success');
         expect(runPersonaFn.mock.calls[0][0].persona.systemPrompt).toContain('Shared Hermes memory');
+    });
+
+    it.each([
+        ['flagged', 'flagged by the fact-check', 'fail'],
+        ['unavailable', 'fact-check unavailable', 'fail'],
+        ['skipped', 'not fact-checked', 'unchecked'],
+    ] as const)('a %s answer completes the task but is remembered as not reusable, without the claim text', async (verifyStatus, label, expectedOutcome) => {
+        const complete = vi.fn();
+        const remember = vi.fn();
+        const runPersonaFn = vi.fn(async ({ persona }: any) => ({
+            personaId: persona.id, personaName: persona.name, tasks: ['Check hours'],
+            output: 'The office is open Saturdays.', verified: '[UNVERIFIED] The office is open Saturdays.',
+            supported: false, ok: true, verifyStatus,
+        }));
+        const result = await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({ personaId: labyrinth.id, task: { id: 'task-9', title: 'Check hours', status: 'running', assignedBy: 'user', createdAt: 1 } }),
+            orchestratorDeps: { invoke: vi.fn(async () => 'unused') },
+            complete, fail: vi.fn(), remember,
+            wikiContext: () => '', personaMemory: () => '',
+            runPersonaFn: runPersonaFn as any,
+            now: vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(130),
+        });
+        expect(complete).toHaveBeenCalledWith(labyrinth.id, 'task-9', expect.any(String), undefined);
+        expect(result).toMatchObject({ outcome: 'success' });
+        const [, note, , outcome] = remember.mock.calls[0];
+        expect(outcome).toBe(expectedOutcome);
+        expect(note).toContain(label);
+        expect(note).not.toContain('open Saturdays');
+    });
+
+    it('stores the Hermes run id on the completed task so it can be 👍\'d later', async () => {
+        const complete = vi.fn();
+        const runPersonaFn = vi.fn(async ({ persona }: any) => ({
+            personaId: persona.id, personaName: persona.name, tasks: ['Map the launch'],
+            output: 'Launch map', verified: 'Launch map', supported: false, ok: true, verifyStatus: 'skipped', recordId: 'hrun-42',
+        }));
+        await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({ personaId: labyrinth.id, task: { id: 'task-42', title: 'Map the launch', status: 'running', assignedBy: 'user', createdAt: 1 } }),
+            orchestratorDeps: { invoke: vi.fn(async () => 'unused') },
+            complete, fail: vi.fn(), remember: vi.fn(),
+            wikiContext: () => '', personaMemory: () => '',
+            runPersonaFn: runPersonaFn as any,
+            now: vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(130),
+        });
+        expect(complete).toHaveBeenCalledWith(labyrinth.id, 'task-42', 'Launch map', 'hrun-42');
     });
 
     it('marks a task failed when the persona run throws', async () => {

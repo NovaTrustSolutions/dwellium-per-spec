@@ -13,6 +13,7 @@ import { useScribeStore, type DocComment, type Redline } from './scribeStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { COMMENT_REDLINE_SYSTEM_PROMPT, parseRedlineResponse } from './redlinePrompt';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 interface Props {
     getView: () => EditorView | null;
@@ -132,6 +133,7 @@ export function CommentEditor({ getView }: Props) {
     const handleSubmitToAgent = async () => {
         if (!hasActiveLlm(integrations.llm) || submitting) return;
         setSubmitting(true);
+        const stillOwner = captureOwner(); // owner-race guard: never PUT A's comments with B's token
         try {
             const safeTo = Math.max(safeFrom, Math.min(comment.to, docLen));
             const selectedText = view.state.doc.sliceString(safeFrom, safeTo);
@@ -142,6 +144,7 @@ export function CommentEditor({ getView }: Props) {
                 maxTokens: 2048,
                 temperature: 0.3,
             }, integrations.llm);
+            if (!stillOwner()) return; // finally clears `submitting`
 
             if (res) {
                 const parsed = parseRedlineResponse(res.text);

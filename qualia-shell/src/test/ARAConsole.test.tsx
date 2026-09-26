@@ -12,6 +12,7 @@ const callLlmMock = vi.fn();
 vi.mock('../lib/llmClient', () => ({
     hasActiveLlm: () => llmActive,
     callLlm: (...args: any[]) => callLlmMock(...args),
+    applyModelPreference: (llm: unknown) => llm,
     LlmError: class LlmError extends Error {},
 }));
 
@@ -60,12 +61,16 @@ vi.mock('../context/HierarchyContext', () => ({
 import ARAConsole from '../components/ARAConsole/ARAConsole';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import { araPrefsStore } from '../lib/araPrefsStore';
+import { hermesLearningStore, relevantPastRuns } from '../components/HonchoHermesPanel/hermesLearningStore';
+import { artifactStore } from '../lib/artifactStore';
 import { resetAraGlance } from '../lib/araDailyGlance';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 import { sessionRestoreStore, type SessionSnapshot } from '../lib/sessionRestoreStore';
 import { resetResumeChip } from '../components/ARAConsole/araResumeContext';
 import { getCmn, resetCmnForTests } from '../lib/memoryGraphRag/shared';
 import { RECALL_HEADING } from '../lib/memoryGraphRag/recall';
+import { UserContext } from '../context/UserContext';
+import { setPerUserIdentity } from '../lib/perUserIdentity';
 
 async function* offlineStream() {
     yield { delta: 'Offline ', text: 'Offline ', done: false };
@@ -458,6 +463,134 @@ describe('ARAConsole', () => {
         expect(screen.getAllByText('Offline LLM reply.')).toHaveLength(1);
     });
 
+    it('renders underscores inside words literally, keeps _real italics_, and leaves code spans alone', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Quota metric generate_content_free_tier_requests hit; see _the docs_ and `org_01abc` on `on_demand`.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'What happened?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        const line = (await screen.findByText(/Quota metric/)).closest('.ara-line') as HTMLElement;
+        expect(line.textContent).toContain('generate_content_free_tier_requests');
+        expect([...line.querySelectorAll('em')].map(e => e.textContent)).toEqual(['the docs']);
+        expect([...line.querySelectorAll('code')].map(c => c.textContent)).toEqual(['org_01abc', 'on_demand']);
+    });
+
+    it('Save As Note pre-fills a subject that keeps underscores inside words and hyphens', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Noted.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Fix user_id_map follow-up for 2026-09-24');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText('Noted.');
+        await user.click(screen.getByRole('button', { name: /Save As Note/i }));
+        expect((screen.getByLabelText('Note subject') as HTMLInputElement).value).toBe('ARA Note — Fix user_id_map follow-up for 2026-09-24');
+    });
+
+    it('reads identifiers aloud as words (user_id_map → "user id map")', async () => {
+        araPrefsStore.set('streamTokens', false);
+        araPrefsStore.set('ttsEnabled', true);
+        const spoken: string[] = [];
+        vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; pitch = 1; volume = 1; voice = null; onend = null; onerror = null; constructor(public text: string) { spoken.push(text); } });
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Check user_id_map and **generate_content_free_tier_requests** now.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'What next?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/Check user_id_map/);
+        const readButtons = screen.getAllByRole('button', { name: 'Read message aloud' });
+        await user.click(readButtons[readButtons.length - 1]); // the reply's own "Read aloud"
+        await waitFor(() => expect(spoken.some(t => /user id map/.test(t))).toBe(true));
+        const said = spoken.find(t => /user id map/.test(t))!;
+        expect(said).toContain('generate content free tier requests');
+        expect(said).not.toMatch(/userid|useridmap/);
+    });
+
+    it('pauses between lines without doubling punctuation (Done.. / 。.) — the same rule as Stella', async () => {
+        araPrefsStore.set('streamTokens', false);
+        araPrefsStore.set('ttsEnabled', true);
+        const spoken: string[] = [];
+        vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; pitch = 1; volume = 1; voice = null; onend = null; onerror = null; constructor(public text: string) { spoken.push(text); } });
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Done.\n请参阅文档。\nNext step', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'What next?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/请参阅文档/);
+        const readButtons = screen.getAllByRole('button', { name: 'Read message aloud' });
+        await user.click(readButtons[readButtons.length - 1]);
+        await waitFor(() => expect(spoken.some(t => /请参阅文档/.test(t))).toBe(true));
+        // No added periods; a punctuated line keeps its break (chunkForTts splits there), the unpunctuated end needs none.
+        expect(spoken.find(t => /请参阅文档/.test(t))).toBe('Done.\n请参阅文档。\nNext step');
+    });
+
+    it('renders a fenced code block as one code block, with nothing formatted inside', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Run this:\n```bash\nfind . -name "*.tsx" | grep **bold** _x_\nls -la\n```\nDone.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'How do I list files?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText('Done.');
+        const pre = document.querySelector('.ara-message-body pre.ara-code-block') as HTMLElement;
+        expect(pre).not.toBeNull();
+        expect(pre.textContent).toBe('find . -name "*.tsx" | grep **bold** _x_\nls -la');
+        expect(pre.querySelector('em, strong')).toBeNull();
+        expect(document.body.textContent).not.toContain('```');
+    });
+
+    it('a line starting with inline ```code``` is not a fence — nothing after it is swallowed', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Run:\n```npm install``` then restart.\nAfter that, you are done.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Setup?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        const after = await screen.findByText('After that, you are done.');
+        expect(after.closest('pre')).toBeNull();
+        expect(document.querySelector('.ara-message-body pre.ara-code-block')).toBeNull();
+        expect(document.body.textContent).toContain('then restart.');
+    });
+
+    it('a fence indented inside a numbered list renders without the list indent', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: '1. Install:\n   ```bash\n   npm i\n   ```\n2. Run it.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Steps?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/Run it\./);
+        expect(document.querySelector('.ara-message-body pre.ara-code-block')?.textContent).toBe('npm i');
+    });
+
+    it('a fence indented 4 spaces under a bullet renders as a code block', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: '- Install:\n    ```bash\n    npm i\n    ```\n- Done here.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'Install?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+        await screen.findByText(/Done here\./);
+        expect(document.querySelector('.ara-message-body pre.ara-code-block')?.textContent).toBe('npm i');
+    });
+
     it('offline fallback uses single-shot callLlm when streamTokens is OFF', async () => {
         araPrefsStore.set('streamTokens', false);
         chatShouldThrow = true;
@@ -757,6 +890,314 @@ describe('ARAConsole', () => {
             expect(textbox).toHaveValue('I was last working on WoodlandLease.md in Scribe. Give me a quick re-orientation: what this document is, and suggest the next 2–3 concrete actions to continue.');
             // Not auto-sent: no user message posted yet.
             expect(document.querySelector('.ara-message--user')).toBeNull();
+        });
+    });
+
+
+    describe('ARA — a spawned agent answer has no Sources, so it gets a 👍 (and is reused only after one)', () => {
+        beforeEach(() => {
+            localStorage.clear();
+            hermesLearningStore.reset();
+            callLlmMock.mockReset();
+            araPrefsStore.set('ttsEnabled', false);
+            Element.prototype.scrollIntoView = vi.fn();
+            llmActive = true;
+            callLlmMock.mockResolvedValue({ text: 'The lease renews on March 1.', provider: 'anthropic', model: 'x' });
+        });
+
+        it('solo spawn: the answer says it was not fact-checked, and 👍 makes it reusable', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/The lease renews on March 1\./);
+            expect(await screen.findByText(/not fact-checked \(no Sources\).*agents will reuse it/i)).toBeInTheDocument();
+
+            const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === 'when does the lease renew')!;
+            expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+            expect(relevantPastRuns(rec.prompt, 3).map(r => r.id)).not.toContain(rec.id);
+            await user.click(await screen.findByRole('button', { name: 'Rate this answer up' }));
+            expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
+            expect(relevantPastRuns(rec.prompt, 3).map(r => r.id)).toContain(rec.id);
+        });
+
+        it('a direct team spawn gets the note and a 👍 for the team run', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'spawn research squad on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            expect(await screen.findByText(/not fact-checked \(no Sources\)/i, undefined, { timeout: 4000 })).toBeInTheDocument();
+            const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === 'lease renewals')!;
+            expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+            await user.click(await screen.findByRole('button', { name: 'Rate this answer up' }));
+            expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
+        });
+
+        it('direct solo spawn that got no answer: says it failed, saves no artifact, never announces "has finished"', async () => {
+            araPrefsStore.set('ttsEnabled', true);
+            vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; pitch = 1; volume = 1; voice = null; onend = null; onerror = null; constructor(public text: string) {} }); // jsdom has none
+            callLlmMock.mockResolvedValue({ text: '', provider: 'anthropic', model: 'x' });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            (artifactStore as unknown as { reset?: () => void }).reset?.(); // earlier tests saved the same text; the store skips duplicates
+            const artifactsBefore = artifactStore.getSnapshot().length;
+            const speakCalls = () => (window.speechSynthesis.cancel as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+            const spokenBefore = speakCalls();
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/Researcher failed:/);
+            expect(document.body.textContent).toMatch(/Researcher failed: No response from the model/);
+            expect(artifactStore.getSnapshot().length).toBe(artifactsBefore);
+            expect(speakCalls()).toBe(spokenBefore);
+        });
+
+        it('direct solo spawn that answered (control): saves the artifact and announces it', async () => {
+            araPrefsStore.set('ttsEnabled', true);
+            vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; pitch = 1; volume = 1; voice = null; onend = null; onerror = null; constructor(public text: string) {} }); // jsdom has none
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            (artifactStore as unknown as { reset?: () => void }).reset?.(); // earlier tests saved the same text; the store skips duplicates
+            const artifactsBefore = artifactStore.getSnapshot().length;
+            const speakCalls = () => (window.speechSynthesis.cancel as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+            const spokenBefore = speakCalls();
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/The lease renews on March 1\./);
+            await waitFor(() => expect(speakCalls()).toBeGreaterThan(spokenBefore));
+            expect(artifactStore.getSnapshot().length).toBe(artifactsBefore + 1);
+            expect(document.body.textContent).not.toMatch(/failed:/);
+        });
+
+        it('direct spawn whose provider errored shows the provider\'s message, not its raw JSON', async () => {
+            callLlmMock.mockRejectedValue(Object.assign(new Error('[custom] {"error":{"message":"Model \'x\' is currently unavailable.","type":"invalid_request_error"}}'), { status: 400 }));
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/Researcher failed:/);
+            expect(document.body.textContent).toMatch(/Researcher failed: \[custom\] 400 Model 'x' is currently unavailable\./);
+            expect(document.body.textContent).not.toMatch(/invalid_request_error|\{"error"/);
+        });
+
+        it('the "taking on:" header shows a goal with underscores and code cleanly (no stray _ or *)', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on check user_id_map and `on_demand`');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            const header = (await screen.findByText(/taking on:/)).closest('.ara-line') as HTMLElement;
+            expect(header.textContent).toBe('Researcher taking on: check user_id_map and on_demand');
+            expect(header.querySelector('em')?.textContent).toBe('check user_id_map and on_demand');
+            expect(header.querySelector('em code')?.textContent).toBe('on_demand');
+        });
+
+        it('the "taking on:" header shows a goal containing * cleanly', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on find all *.tsx files');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            const header = (await screen.findByText(/taking on:/)).closest('.ara-line') as HTMLElement;
+            expect(header.textContent).toBe('Researcher taking on: find all *.tsx files');
+            expect(header.querySelector('em')?.textContent).toBe('find all *.tsx files');
+        });
+
+        it('direct team spawn where no member answered says the team failed and saves nothing', async () => {
+            callLlmMock.mockResolvedValue({ text: '', provider: 'anthropic', model: 'x' });
+            (artifactStore as unknown as { reset?: () => void }).reset?.();
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'spawn research squad on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/Research Squad failed:/, undefined, { timeout: 4000 });
+            expect(document.body.textContent).toMatch(/Research Squad failed: No team member produced a result/);
+            expect(artifactStore.getSnapshot()).toHaveLength(0);
+            expect(screen.queryByRole('button', { name: 'Rate this answer up' })).toBeNull();
+        });
+
+        it('direct team spawn whose merge step failed says "Finished with problems" instead of a clean finish', async () => {
+            callLlmMock.mockImplementation(async (req: { prompt?: string }) => {
+                if (String(req.prompt ?? '').includes('Merge these into one')) throw new Error('[anthropic] 529 Overloaded');
+                return { text: 'Member answer about renewals.', provider: 'anthropic', model: 'x' };
+            });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'spawn research squad on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/Finished with problems:/, undefined, { timeout: 4000 });
+            expect(document.body.textContent).toMatch(/Finished with problems: Merge step failed/);
+        });
+
+        it('a spawn that produced no answer gets no 👍 and no note', async () => {
+            callLlmMock.mockResolvedValue({ text: '', provider: 'anthropic', model: 'x' });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/No output — the model returned nothing\.|No response from the model/);
+            expect(screen.queryByRole('button', { name: 'Rate this answer up' })).toBeNull();
+            expect(screen.queryByText(/not fact-checked/i)).toBeNull();
+        });
+
+        it('a spawn step that hit a provider error shows the provider\'s message, not its raw JSON', async () => {
+            callLlmMock.mockRejectedValue(Object.assign(new Error('[custom] {"error":{"message":"Model \'x\' is currently unavailable.","type":"invalid_request_error"}}'), { status: 400 }));
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'calculate 2+2 then solo researcher on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/Finished with hiccups/, undefined, { timeout: 6000 });
+            expect(document.body.textContent).toMatch(/Step 2 — failed: \[custom\] 400 Model 'x' is currently unavailable\./);
+            expect(document.body.textContent).not.toMatch(/invalid_request_error|\{"error"/);
+            expect(document.body.textContent).toMatch(/Finished with hiccups — 1 step failed/);
+        });
+
+        it('a chain that ends in a failed spawn does not say "All done"', async () => {
+            callLlmMock.mockResolvedValue({ text: '', provider: 'anthropic', model: 'x' });
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'calculate 2+2 then solo researcher on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/Finished with hiccups|All done\./, undefined, { timeout: 6000 });
+            expect(document.body.textContent).toMatch(/Finished with hiccups/);
+            expect(document.body.textContent).not.toMatch(/All done\./);
+        });
+
+        it('a chain whose spawn step got no answer marks that step failed, ends with hiccups, and does not pipe the error on', async () => {
+            callLlmMock.mockResolvedValue({ text: '', provider: 'anthropic', model: 'x' }); // the model returns nothing
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'calculate 2+2 then solo researcher on lease renewals then calculate the result + 10');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/Finished with hiccups/, undefined, { timeout: 6000 });
+            const chainText = document.body.textContent ?? '';
+            expect(chainText).toMatch(/Step 1 — 2\+2 = 4/);            // a good step is not labelled failed
+            expect(chainText).not.toMatch(/Step 1 — failed/);
+            expect(chainText).toMatch(/Step 2 — failed/);
+            expect(chainText).not.toMatch(/All done\./);
+            // step 3's "the result" meant the failed spawn's answer — so it fails too, and never
+            // computes on the error text or on step 1's older result
+            const step3 = chainText.slice(chainText.indexOf('Step 3'));
+            expect(step3).toMatch(/^Step 3 — failed/);
+            expect(step3).not.toMatch(/No response from the model/);
+            expect(step3).not.toMatch(/= 14/);
+            expect(chainText).toMatch(/Finished with hiccups — 2 steps failed/);
+            expect(screen.queryByRole('button', { name: 'Rate this answer up' })).toBeNull();
+        });
+
+        it('a chain with two spawn steps gets no 👍 (one pair of buttons cannot rate two answers)', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'calculate 2+2 then solo researcher on lease renewals then solo data analyst on rent roll');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/All done\.|Finished with hiccups/, undefined, { timeout: 6000 });
+            const recs = hermesLearningStore.getSnapshot().filter(r => r.prompt === 'lease renewals' || r.prompt === 'rent roll');
+            expect(recs).toHaveLength(2);
+            expect(screen.queryByRole('button', { name: 'Rate this answer up' })).toBeNull();
+        });
+
+        it('a chain with exactly one spawn step gets a 👍 for that run', async () => {
+            const user = userEvent.setup();
+            render(<ARAConsole />);
+            await user.type(await screen.findByPlaceholderText('Message ARA (Executive Assistant)'), 'calculate 2+2 then spawn research squad on lease renewals');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await screen.findByText(/All done\.|Finished with hiccups/, undefined, { timeout: 4000 });
+            const rec = hermesLearningStore.getSnapshot().find(r => r.prompt === 'lease renewals')!;
+            expect(rec).toMatchObject({ outcome: 'fail', unchecked: true });
+            await user.click(await screen.findByRole('button', { name: 'Rate this answer up' }));
+            expect(hermesLearningStore.getSnapshot().find(r => r.id === rec.id)?.rating).toBe(1);
+        });
+    });
+    // Owner-race guard: ARA holds no per-user state of its own, but its replies write into the
+    // signed-in user's Hermes log. A reply that lands after an account switch must be dropped,
+    // never written into the next account's log.
+    describe('owner-race guard — an account switch mid-request drops ARA writes', () => {
+        const asUser = (uid: string) => (
+            <UserContext.Provider value={{ user: { id: uid } } as any}><ARAConsole /></UserContext.Provider>
+        );
+        const flush = () => act(async () => { await new Promise(r => setTimeout(r, 60)); });
+        beforeEach(() => {
+            hermesLearningStore.reset();
+            callLlmMock.mockReset();
+            setPerUserIdentity('user-a'); // ARA's prefs are per-user: quiet user-a's before it mounts
+            araPrefsStore.set('ttsEnabled', false);
+            araPrefsStore.set('streamTokens', false);
+            Element.prototype.scrollIntoView = vi.fn();
+        });
+        afterEach(() => setPerUserIdentity(null));
+
+        const quickChat = async (switchMidRequest: boolean) => {
+            const base = authFetch.getMockImplementation()!;
+            let release!: () => void;
+            const gate = new Promise<void>(r => { release = r; });
+            authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+                if (url.endsWith('/chat')) await gate;
+                return base(url, opts);
+            });
+            const user = userEvent.setup();
+            const { rerender } = render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'summarize my week');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await waitFor(() => expect(authFetch.mock.calls.some((c: any[]) => String(c[0]).endsWith('/chat'))).toBe(true));
+            if (switchMidRequest) rerender(asUser('user-b'));
+            release();
+            await flush();
+        };
+
+        it('quick chat: the backend reply lands after the switch → no Hermes record, no reply shown', async () => {
+            await quickChat(true);
+            expect(hermesLearningStore.getSnapshot()).toEqual([]);
+            expect(screen.queryByText('I can help with that.')).toBeNull();
+        });
+
+        it('control: quick chat with no switch records the exchange', async () => {
+            await quickChat(false);
+            expect(hermesLearningStore.getSnapshot().map(r => r.prompt)).toContain('summarize my week');
+        });
+
+        it('quick chat: the backend fails after the switch → no LLM fallback answer on the old key', async () => {
+            llmActive = true;
+            const base = authFetch.getMockImplementation()!;
+            let release!: () => void;
+            const gate = new Promise<void>(r => { release = r; });
+            authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+                if (url.endsWith('/chat')) { await gate; throw new Error('Backend unreachable'); }
+                return base(url, opts);
+            });
+            const user = userEvent.setup();
+            const { rerender } = render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'what is on my plate this week?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await waitFor(() => expect(authFetch.mock.calls.some((c: any[]) => String(c[0]).endsWith('/chat'))).toBe(true));
+            rerender(asUser('user-b'));
+            release();
+            await flush();
+            expect(callLlmMock.mock.calls.some(([req]: any[]) => /backend is offline/.test(req?.systemPrompt ?? ''))).toBe(false);
+            expect(hermesLearningStore.getSnapshot()).toEqual([]);
+        });
+
+        it('control: the backend fails with no switch → the LLM fallback answers', async () => {
+            llmActive = true;
+            chatShouldThrow = true;
+            callLlmMock.mockResolvedValue({ text: 'Fallback answer.', provider: 'anthropic', model: 'x' });
+            const user = userEvent.setup();
+            render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'what is on my plate this week?');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            expect(await screen.findByText('Fallback answer.')).toBeInTheDocument();
+        });
+
+        it('solo spawn: the persona answers after the switch → no Hermes record', async () => {
+            llmActive = true;
+            let answer!: (v: unknown) => void;
+            callLlmMock.mockReturnValue(new Promise(r => { answer = r; }));
+            const user = userEvent.setup();
+            const { rerender } = render(asUser('user-a'));
+            await user.type(await screen.findByPlaceholderText(/Message ARA/), 'solo researcher on when does the lease renew');
+            await user.click(screen.getByRole('button', { name: 'Send message' }));
+            await waitFor(() => expect(callLlmMock).toHaveBeenCalled());
+            rerender(asUser('user-b'));
+            answer({ text: 'The lease renews on March 1.', provider: 'anthropic', model: 'x' });
+            await flush();
+            expect(hermesLearningStore.getSnapshot()).toEqual([]);
+            expect(screen.getByText(/account changed during this run/i)).toBeInTheDocument(); // not a stuck "working…"
         });
     });
 });

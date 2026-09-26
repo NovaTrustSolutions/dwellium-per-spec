@@ -12,6 +12,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { UserProvider, useUser, tokenStore } from '../context/UserContext';
+import { captureOwner, setPerUserIdentity, artifactsUserIdHolder } from '../lib/perUserIdentity';
 import type { ReactNode } from 'react';
 
 // Mock the config module that UserContext imports
@@ -173,6 +174,28 @@ describe('UserContext', () => {
         expect(result.current.user).toBeNull();
         expect(result.current.token).toBeNull();
         expect(localStorage.getItem('dwellium-auth-token')).toBeNull();
+    });
+
+    // Owner-race guard: sign-out unmounts the shell, so no usePerUserIdentity render ever
+    // reports "nobody". The provider itself must, or a job started as A that finishes on the
+    // login screen passes captureOwner() and writes into _anonymous (One Save repoints holders).
+    it('logout() ends the owner: a captureOwner() taken while signed in no longer passes', async () => {
+        setPerUserIdentity(null);
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(async (url: string) => {
+            if (url === '/api/auth/login') return { ok: true, json: async () => ({ token: 'jwt-123', user: MOCK_USER, permissions: {} }) };
+            if (url === '/api/auth/logout') return { ok: true };
+            if (url.includes('/api/objects/')) return { ok: false, status: 404 };
+            throw new Error(`Unmocked: ${url}`);
+        });
+        const { result } = renderHook(() => useUser(), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        await act(async () => { await result.current.login('andy@zpgroup.com', 'password'); });
+        await waitFor(() => expect(artifactsUserIdHolder.current).toBe('u1'));
+        const stillOwner = captureOwner();
+        expect(stillOwner()).toBe(true); // control: still signed in as u1
+        act(() => { result.current.logout(); });
+        await waitFor(() => expect(stillOwner()).toBe(false));
+        expect(artifactsUserIdHolder.current).toBeNull();
     });
 
     // ── Role Hierarchy ──────────────────────────────────────────────────────

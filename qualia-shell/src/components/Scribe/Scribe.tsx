@@ -3,14 +3,15 @@
  * AI redlines, inline comments, versioning, and table of contents.
  */
 
-import { useEffect, useRef, useCallback, useMemo, useState, lazy, Suspense, type ChangeEvent, Component, type ReactNode, type ErrorInfo } from 'react';
+import { useContext, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useState, lazy, Suspense, type ChangeEvent, Component, type ReactNode, type ErrorInfo } from 'react';
+import { UserContext } from '../../context/UserContext';
 import { Maximize, Upload } from 'lucide-react';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { search } from '@codemirror/search';
 import { getMarkdownExtensions, registerEditorView } from './markdownConfig';
 import { FindReplace } from './FindReplace';
-import { useScribeStore, type FileEntry } from './scribeStore';
+import { useScribeStore, dropTabsFromAnotherAccount, type FileEntry } from './scribeStore';
 import { useAutoSave } from './useAutoSave';
 import { TabBar } from './TabBar';
 import { DocumentToolbar } from './DocumentToolbar';
@@ -34,7 +35,7 @@ import { SearchPanel } from './SearchPanel';
 import { docxToMarkdown } from './docxConvert';
 import DumpMode from './DumpMode';
 import { WIDGET_ACTION_EVENT, peekPendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
 import { flushWidgetMemory } from '../../lib/widgetMemory';
 import { captureScribeView, readScribeView, restoreScribeSession, trackScribeSession } from './scribeMemory';
 import { pdfSourceFromContent } from './pdfOpen';
@@ -77,6 +78,10 @@ export class IdocsLoadBoundary extends Component<{ children: ReactNode; onBackTo
 
 export default function Scribe() {
     usePerUserIdentity();
+    // Owner-race guard: tabs left by a previous account are cleared before paint, before autosave and
+    // before this account's session restore (layout effects run ahead of every passive effect).
+    const uid = useContext(UserContext)?.user?.id ?? null;
+    useLayoutEffect(() => { dropTabsFromAnotherAccount(); }, [uid]);
     useScribeTheme();
     const layout = useScribeLayout();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -137,6 +142,7 @@ export default function Scribe() {
     // Reopen the remembered tabs once per app session (the in-memory zustand
     // store survives widget remounts, so this only fires on a fresh load),
     // and mirror the open-tab list + active file into widget memory.
+    // Keyed on uid: an in-place account switch (session re-auth) restores and tracks the NEW account's session.
     useEffect(() => {
         void restoreScribeSession();
         const untrack = trackScribeSession();
@@ -144,7 +150,7 @@ export default function Scribe() {
             untrack();
             flushWidgetMemory(); // drafts-flush rule: never lose the last edit on unmount
         };
-    }, []);
+    }, [uid]);
 
     const onDocChange = useCallback((filepath: string, content: string) => {
         useScribeStore.getState().updateContent(filepath, content);
@@ -155,6 +161,7 @@ export default function Scribe() {
 
         const doc = activeFile?.content ?? '';
         const filepath = activeFilepath;
+        const viewOwner = captureOwner(); // owner-race guard: scroll/cursor is remembered only for the account that opened the view
 
         const view = new EditorView({
             state: EditorState.create({
@@ -178,7 +185,7 @@ export default function Scribe() {
                             onDocChange(filepath, update.state.doc.toString());
                         }
                         // Plan 055 phase 2 — live cursor capture (debounced by widgetMemory).
-                        if ((update.selectionSet || update.docChanged) && filepath) {
+                        if ((update.selectionSet || update.docChanged) && filepath && viewOwner()) {
                             captureScribeView(filepath, update.view.scrollDOM.scrollTop, update.state.selection.main.head);
                         }
                     }),
@@ -205,7 +212,7 @@ export default function Scribe() {
         }
         // Live scroll capture (blur-independent; debounced by widgetMemory).
         const onEditorScroll = () => {
-            if (viewRef.current && filepath) {
+            if (viewRef.current && filepath && viewOwner()) {
                 captureScribeView(filepath, viewRef.current.scrollDOM.scrollTop, viewRef.current.state.selection.main.head);
             }
         };
@@ -216,7 +223,7 @@ export default function Scribe() {
         return () => {
             view.scrollDOM.removeEventListener('scroll', onEditorScroll);
             view.contentDOM.removeEventListener('blur', onEditorBlur);
-            if (viewRef.current && filepath) {
+            if (viewRef.current && filepath && viewOwner()) {
                 useScribeStore.getState().setScrollTop(filepath, viewRef.current.scrollDOM.scrollTop);
                 captureScribeView(filepath, viewRef.current.scrollDOM.scrollTop, viewRef.current.state.selection.main.head);
             }
@@ -447,7 +454,8 @@ function ScribeTreeColumn() {
         setWsDraft('');
         if (!name) return;
         const path = `${name}/Untitled.md`;
-        void useScribeStore.getState().createFile(path).then(() => useScribeStore.getState().openFile(path)).catch(() => { /* ignore */ });
+        const stillOwner = captureOwner(); // owner-race guard: the follow-up open belongs to the same account
+        void useScribeStore.getState().createFile(path, undefined, { stillOwner }).then(() => useScribeStore.getState().openFile(path, { stillOwner })).catch(() => { /* ignore */ });
         selectWs(name);
     };
     return (
@@ -622,12 +630,13 @@ function EmptyState() {
         const file = e.target.files?.[0];
         e.target.value = '';
         if (!file) return;
+        const stillOwner = captureOwner(); // owner-race guard: the store drops the import if the account changed mid-convert
         try {
             const md = await docxToMarkdown(await file.arrayBuffer());
             const base = file.name.replace(/\.docx$/i, '').trim() || 'imported';
             const path = `${base}.md`;
-            await useScribeStore.getState().createFile(path, md);
-            await useScribeStore.getState().openFile(path);
+            await useScribeStore.getState().createFile(path, md, { stillOwner });
+            await useScribeStore.getState().openFile(path, { stillOwner });
         } catch (err) {
             console.error('[Scribe] .docx import failed', err);
             alert('Could not import that .docx file.');

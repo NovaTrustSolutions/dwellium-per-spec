@@ -1,5 +1,7 @@
 /* PersonaWorkspace — Tools / Tasks / Memory / Audit panels */
-.pw { display: grid; gap: 8px; padding: 4px 2px; }
+/* minmax(0,1fr): without it the single auto column grows to the widest row's
+   min-content (a failed task's nowrap error), pushing the panel past the window. */
+.pw { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 4px 2px; }
 .pw-head { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary, #808080); margin-top: 8px; }
 .pw-empty { font-size: 12px; color: var(--text-tertiary, #808080); padding: 6px 0; }
 
@@ -37,15 +39,19 @@
 /* Tasks */
 .pw-task { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .07); background: rgba(255, 255, 255, .025); }
 .pw-task--done { opacity: .75; }
+.pw-task--failed { border-color: color-mix(in srgb, var(--danger, #ef4444) 40%, transparent); background: color-mix(in srgb, var(--danger, #ef4444) 6%, transparent); }
 .pw-task-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #888; }
-.pw-task-dot--todo { background: #f59e0b; }
+.pw-task-dot--todo { background: var(--warning, #f59e0b); }
 .pw-task-dot--running { background: #51d4ff; animation: pw-pulse 1.1s ease-in-out infinite; }
-.pw-task-dot--done { background: #22c55e; }
+.pw-task-dot--done { background: var(--success, #22c55e); }
+.pw-task-dot--failed { background: var(--danger, #ef4444); }
 .pw-task-title { flex: 1; font-size: 13px; color: var(--text-primary, #fff); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .pw-task-by { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; padding: 2px 6px; border-radius: 999px; color: var(--text-tertiary, #808080); border: 1px solid rgba(255, 255, 255, .12); }
 .pw-task-by--orchestrator { color: #a78bfa; border-color: rgba(167, 139, 250, .4); }
 .pw-task-running { font-size: 11px; color: #51d4ff; }
-.pw-task-dur { font-size: 12px; font-variant-numeric: tabular-nums; color: #22c55e; }
+.pw-task-dur { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--success, #22c55e); }
+.pw-task-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--alab-danger-text, #ef4444); flex-shrink: 0; }
+.pw-task-error { font-size: 11px; color: var(--alab-danger-text, #ef4444); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pw-mini { font: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); color: var(--text-secondary, #aaa); }
 .pw-mini:hover { background: rgba(255, 255, 255, .1); color: var(--text-primary, #fff); }
 .pw-mini--del:hover { background: rgba(239, 68, 68, .18); color: #fca5a5; border-color: rgba(239, 68, 68, .4); }

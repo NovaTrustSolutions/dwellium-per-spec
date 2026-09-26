@@ -9,7 +9,7 @@ import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient
 import { streamLlm } from '../../lib/llmStream';
 import { pumpSseBody } from '../../lib/readSse';
 import { araPrefsStore } from '../../lib/araPrefsStore';
-import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
 import { runDailyGlance } from '../../lib/araDailyGlance';
 import { starterPromptsFor } from './araStarterPrompts';
@@ -27,14 +27,15 @@ const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
+import { formatInline, toPlainText, toSpeechText, speechPauses, chunkForTts, splitFences } from './araInline';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
 import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStore';
-import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
+import { runTeam, runPersona, describeLlmFailure, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
-import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
+import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun, type HermesRunRecord } from '../HonchoHermesPanel/hermesLearningStore';
 import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
 import { classifyForEscalation, looksLikeActionRequest, runAraEscalation } from './araEscalation';
@@ -384,7 +385,8 @@ function createChatMessage(
 }
 
 function summarizeText(value: string, fallback: string, maxLength = 72): string {
-    const cleaned = value.replace(/\s+/g, ' ').replace(/[*_`#>-]/g, '').trim();
+    // Markers only — underscores inside words and hyphens (follow-up, 2026-09-24) stay.
+    const cleaned = toPlainText(value).replace(/\s+/g, ' ').trim();
     if (!cleaned) return fallback;
     return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength - 1).trim()}…` : cleaned;
 }
@@ -438,6 +440,9 @@ function getSafetyNotice(text: string, mode: string): string | null {
     }
     return null;
 }
+
+/** Shown under a spawned agent's answer: it had no Sources, so it is only reused after a 👍. */
+const NOT_CHECKED_NOTE = '_Not fact-checked (no Sources). 👍 it if it is right, and agents will reuse it for similar tasks._';
 
 export default function ARAConsole() {
     const { user, authFetch, isAuthenticated } = useUser();
@@ -662,18 +667,11 @@ export default function ARAConsole() {
 
     // Strip markdown for clean spoken text
     const stripMarkdown = useCallback((text: string): string => {
-        return text
-            .replace(/\*\*(.+?)\*\*/g, '$1')       // bold
-            .replace(/\*(.+?)\*/g, '$1')            // italic
-            .replace(/_(.+?)_/g, '$1')              // italic underscore
-            .replace(/`([^`]+)`/g, '$1')            // inline code
-            .replace(/^#{1,6}\s+/gm, '')           // headings
-            .replace(/^[-•]\s/gm, '')              // bullets
-            .replace(/^\d+\.\s/gm, '')             // numbered lists
+        // toSpeechText drops markdown markers and reads user_id_map as "user id map"; speechPauses (shared with
+        // Stella) turns line breaks into pauses without doubling punctuation ("Done.." / "。.").
+        return speechPauses(toSpeechText(text)
             .replace(/\[Error\]/g, 'Error')         // error prefix
-            .replace(/\[Connection Error\]/g, 'Connection Error')
-            .replace(/\n{2,}/g, '. ')               // double newlines to pauses
-            .replace(/\n/g, '. ')                   // newlines to pauses
+            .replace(/\[Connection Error\]/g, 'Connection Error'))
             .trim();
     }, []);
 
@@ -691,25 +689,7 @@ export default function ARAConsole() {
      */
     const speakGenRef = useRef(0);
 
-    /**
-     * Split a reply into TTS chunks: first sentence alone (fastest possible
-     * time-to-first-audio), remaining sentences merged up to ~280 chars per
-     * request. One whole-reply request meant nothing played until the FULL
-     * completion was synthesized and downloaded — the single biggest source
-     * of "talking to a machine" latency in the console.
-     */
-    const chunkForTts = (text: string): string[] => {
-        const sentences = text.match(/[^.!?\u2026\n]+[.!?\u2026]*\s*/g)?.map(x => x.trim()).filter(Boolean) ?? [];
-        if (sentences.length <= 1) return sentences.length ? sentences : (text ? [text] : []);
-        const chunks: string[] = [sentences[0]];
-        let cur = '';
-        for (const sent of sentences.slice(1)) {
-            if (cur && (cur.length + sent.length + 1) > 280) { chunks.push(cur); cur = ''; }
-            cur = cur ? `${cur} ${sent}` : sent;
-        }
-        if (cur) chunks.push(cur);
-        return chunks;
-    };
+    // chunkForTts (lib/markdownText.ts): first sentence alone for fast first audio, then ~280-char requests.
 
     const speakText = useCallback(async (text: string) => {
         // Stop any current playback
@@ -890,6 +870,7 @@ export default function ARAConsole() {
 
     const handleVoiceUpload = useCallback(async (file: File) => {
         if (!file) return;
+        const stillOwner = captureOwner(); // owner-race guard: the clone can take seconds; account may switch
         const name = voiceUploadName.trim() || file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '-');
         setVoiceUploading(true);
         try {
@@ -904,6 +885,7 @@ export default function ARAConsole() {
             if (data.success) {
                 setVoiceUploadName('');
                 await fetchVoices();
+                if (!stillOwner()) return; // owner-race guard: never select A's cloned voice into B's prefs (finally clears the spinner)
                 selectVoice(data.data.voice_id);
             }
         } catch (err) {
@@ -914,8 +896,10 @@ export default function ARAConsole() {
     }, [voiceUploadName, authFetch, fetchVoices, selectVoice]);
 
     const deleteVoice = useCallback(async (voiceId: string) => {
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-DELETE
         try {
             await authFetch(`${API_ARA}/voice/clone/${voiceId}`, { method: 'DELETE' });
+            if (!stillOwner()) return; // owner-race guard: activeVoice is A's — never reset B's voice pref
             if (activeVoice === voiceId) selectVoice('default');
             await fetchVoices();
         } catch { /* silently fail */ }
@@ -1139,6 +1123,7 @@ export default function ARAConsole() {
             : (pending && Date.now() - pending.at < PENDING_ACTION_TTL_MS ? pending.text : text);
         const escalateIfRefusal = async (reply: string): Promise<boolean> => {
             const verdict = await classifyForEscalation(actionText, reply, integrations.llm);
+            if (!stillOwner()) return true; // account switched mid-call: drop, never redirect (and say nothing)
             console.info('[ARA escalation]', { verdict, actionText, latest: text, replyHead: reply.slice(0, 80) });
             if (verdict !== 'refusal' && verdict !== 'substitute' && verdict !== 'judge-deflected') return false;
             pendingActionRef.current = null; // one escalation per request
@@ -1220,6 +1205,7 @@ export default function ARAConsole() {
                 }
             }
 
+            if (!stillOwner()) return; // account switched mid-request: drop the reply's writes, never redirect them
             // Phase-10 A2: record the exchange into the per-user Hermes log
             // (ara-chat tag) so future similar questions get it as few-shot;
             // the run id rides on the message to power thumbs-up/down.
@@ -1272,6 +1258,7 @@ export default function ARAConsole() {
             // fall back to the user's personal LLM key when the backend is
             // unreachable — unlike Stella, which routes LLM-first. This keeps the
             // rich backend path primary while still answering when it's down.
+            if (!stillOwner()) return; // account switched mid-request: no fallback answer on the old key
             if (hasActiveLlm(integrations.llm)) {
                 let streamedId: string | null = null;
                 try {
@@ -1310,6 +1297,7 @@ export default function ARAConsole() {
                     } else {
                         llmText = (await callLlm(llmReq, integrations.llm))?.text ?? null;
                     }
+                    if (!stillOwner()) return; // account switched mid-call: drop, never redirect
                     if (llmText !== null) {
                         setActionStatus({
                             kind: 'success',
@@ -1376,13 +1364,23 @@ export default function ARAConsole() {
     const updateMessageContent = useCallback((id: string, transform: (content: string) => string) => {
         setMessages(prev => prev.map(m => (m.id === id ? { ...m, content: transform(m.content) } : m)));
     }, []);
+    // A spawned run has no Sources, so it is logged unchecked and never reused — unless the user
+    // 👍s it. Pin its Hermes run to the reply so the message's 👍/👎 rate exactly that run.
+    const attachRun = useCallback((id: string, rec: HermesRunRecord) => {
+        if (!rec.unchecked && rec.outcome !== 'success') return; // a 👍 could not promote it — don't offer one
+        setMessages(prev => prev.map(m => (m.id === id ? {
+            ...m,
+            hermesRunId: rec.id,
+            content: rec.unchecked ? `${m.content}\n\n${NOT_CHECKED_NOTE}` : m.content,
+        } : m)));
+    }, []);
 
     const runSpawn = useCallback(async (req: SpawnRequest, echoUser: boolean = true) => {
         const stillOwner = captureOwner(); // owner-race guard: account may switch mid-run
         hermesLearningUserIdHolder.current = user?.id ?? null;
         const progress = createChatMessage({
             role: 'assistant',
-            content: `**${req.name}** taking on: _${req.goal}_`,
+            content: `**${req.name}** taking on: _${req.goal}_`, // _…_ may contain in-word underscores (araInline)
         });
         setMessages(prev => (echoUser
             ? [...prev, createChatMessage({ role: 'user', content: `${req.kind === 'team' ? 'Spawn' : 'Solo'} ${req.name}: ${req.goal}` }), progress]
@@ -1420,31 +1418,44 @@ export default function ARAConsole() {
                     goal: req.goal, sources: '', team, personas, deps,
                     onEvent: e => line(`\`${e.phase}\` ${e.message}`),
                 });
+                if (!stillOwner()) { line(ACCOUNT_CHANGED); return; } // account switched mid-run: drop, never redirect
                 if (result.error) {
-                    line(`${result.error}`);
+                    line(`**${req.name} failed:** ${result.error}`);
                 } else {
-                    recordRun({ prompt: req.goal, taskType: 'planning', outcome: 'success', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
+                    const rec = recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
                     if (stillOwner()) recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                     line(`---\n\n${result.final}`);
-                    if (ttsEnabled) void speakText(`${req.name} has finished.`);
+                    // Member failures / a merge fallback are problems, not a clean finish — say so (Agent Lab shows these too).
+                    if (result.warnings.length) line(`**Finished with problems:** ${result.warnings.join('; ')}`);
+                    attachRun(progress.id, rec);
+                    if (ttsEnabled) void speakText(result.warnings.length ? `${req.name} finished with problems.` : `${req.name} has finished.`);
                 }
             } else {
                 const persona = findPersona(personas, req.id);
                 if (!persona) { line(`"${req.name}" not found in the Agent Lab catalog.`); return; }
                 line(`\`execute\` ${persona.name} is working…`);
                 const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
-                recordRun({ prompt: req.goal, taskType: 'general', outcome: out.output ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
-                const text = out.verified || out.output;
-                if (text && stillOwner()) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
-                line(text ? `---\n\n${text}` : 'No output — the model returned nothing.');
-                if (text && ttsEnabled) void speakText(`${persona.name} has finished.`);
+                if (!stillOwner()) { line(ACCOUNT_CHANGED); return; } // account switched mid-run: drop, never redirect
+                // D3 fix: record success/fail from out.ok, not output-text truthiness
+                // (the placeholder no-response text used to read as a truthy success).
+                const rec = recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
+                if (!out.ok) {
+                    // A failed run is not a deliverable: no artifact, no "has finished", no 👍 — say it failed.
+                    line(`**${persona.name} failed:** ${out.error || 'No output — the model returned nothing.'}`);
+                } else {
+                    const text = out.verified || out.output;
+                    if (stillOwner()) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
+                    line(`---\n\n${text}`);
+                    attachRun(progress.id, rec);
+                    if (ttsEnabled) void speakText(`${persona.name} has finished.`);
+                }
             }
         } catch (err) {
-            line(`Run failed — ${err instanceof Error ? err.message : String(err)}.`);
+            line(`**${req.name} failed:** ${describeLlmFailure(err)}`); // the provider's message, not its raw JSON
         } finally {
             setIsLoading(false);
         }
-    }, [user, integrations.llm, updateMessageContent, ttsEnabled, speakText]);
+    }, [user, integrations.llm, updateMessageContent, attachRun, ttsEnabled, speakText]);
 
     useEffect(() => {
         const handler = (ev: Event) => {
@@ -1482,7 +1493,8 @@ export default function ARAConsole() {
     // ── P11-3: spawn-in-chain runner — orchestrator run as a chain step,
     // returning the final deliverable for result piping (no chat-hosting;
     // the chain renders its own step lines).
-    const runSpawnForChain = useCallback(async (req: SpawnRequest): Promise<{ ok: boolean; text: string }> => {
+    const runSpawnForChain = useCallback(async (req: SpawnRequest): Promise<{ ok: boolean; text: string; run?: HermesRunRecord }> => {
+        const stillOwner = captureOwner(); // owner-race guard (executeChain stops before a post-switch step reaches here)
         hermesLearningUserIdHolder.current = user?.id ?? null;
         if (!hasActiveLlm(integrations.llm)) {
             return { ok: false, text: 'No LLM configured — add a key in Control Panel → API Keys.' };
@@ -1510,16 +1522,21 @@ export default function ARAConsole() {
             const team = teams.find(t => t.id === req.id);
             if (!team) return { ok: false, text: `Team "${req.name}" not found in the Agent Lab catalog.` };
             const result = await runTeam({ goal: req.goal, sources: '', team, personas, deps });
+            if (!stillOwner()) return { ok: false, text: ACCOUNT_CHANGED };
             if (result.error) return { ok: false, text: result.error };
-            recordRun({ prompt: req.goal, taskType: 'planning', outcome: 'success', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
-            return { ok: true, text: result.final };
+            const run = recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
+            return { ok: true, text: result.final, run };
         }
         const persona = findPersona(personas, req.id);
         if (!persona) return { ok: false, text: `"${req.name}" not found in the Agent Lab catalog.` };
         const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
-        const text = out.verified || out.output;
-        recordRun({ prompt: req.goal, taskType: 'general', outcome: out.output ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id] });
-        return { ok: !!text, text: text || 'No output — the model returned nothing.' };
+        if (!stillOwner()) return { ok: false, text: ACCOUNT_CHANGED };
+        // D3 fix: record success/fail from out.ok, not output-text truthiness; surface
+        // out.error in the returned text when the member failed.
+        const text = out.ok ? (out.verified || out.output) : (out.error || out.output);
+        const run = recordRun({ prompt: req.goal, taskType: 'general', outcome: out.supported ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id], unchecked: out.ok && out.verifyStatus === 'skipped' });
+        // ok is the run's own verdict — an error message is text too, and it must never count (or be piped on) as an answer.
+        return { ok: out.ok, text: text || 'No output — the model returned nothing.', run: out.ok ? run : undefined };
     }, [user, integrations.llm]);
 
     // ── Conductor tier dispatch (Phase-10 B2 refactor) ─────────────────────
@@ -1551,12 +1568,25 @@ export default function ARAConsole() {
             setInput('');
             setIsLoading(true);
             try {
+                const spawnRuns: HermesRunRecord[] = [];
                 const outcomes = await executeChain(chain, { llm: integrations.llm, search: integrations.search }, (i, o) => {
-                    const icon = o.ok ? '' : '';
-                    updateMessageContent(progress.id, c => `${c}\n\n${icon} **Step ${i + 1}** — ${o.text}`);
-                }, runSpawnForChain); // P11-3: spawn steps run the orchestrator
+                    // Words, not an icon: markdown can't carry the Lucide icons that replaced the old ✓/⚠.
+                    updateMessageContent(progress.id, c => `${c}\n\n${o.ok ? `**Step ${i + 1}** — ` : `**Step ${i + 1} — failed:** `}${o.text}`);
+                }, async (spawnReq) => { // P11-3: spawn steps run the orchestrator
+                    try {
+                        const r = await runSpawnForChain(spawnReq);
+                        if (r.run) spawnRuns.push(r.run);
+                        return r;
+                    } catch (e) {
+                        return { ok: false, text: describeLlmFailure(e) }; // the provider's message, not its raw JSON
+                    }
+                });
                 const allOk = outcomes.every(o => o.ok);
-                updateMessageContent(progress.id, c => `${c}\n\n${allOk ? 'All done. What would you like me to do next?' : 'Finished with hiccups — see the flagged step above.'}`);
+                const failedSteps = outcomes.filter(o => !o.ok).length;
+                updateMessageContent(progress.id, c => `${c}\n\n${allOk ? 'All done. What would you like me to do next?' : `Finished with hiccups — ${failedSteps} ${failedSteps === 1 ? 'step' : 'steps'} failed (marked above).`}`);
+                // ponytail: one spawn step → its 👍 on this message; several spawns share one message, so no 👍 (ambiguous) —
+                // counted by steps, so a chain whose other spawn failed still gets none.
+                if (chain.steps.filter(st => st.kind === 'spawn').length === 1 && spawnRuns.length === 1) attachRun(progress.id, spawnRuns[0]);
                 if (ttsEnabled && allOk) void speakText('All done.');
             } finally {
                 setIsLoading(false);
@@ -1602,7 +1632,7 @@ export default function ARAConsole() {
             return true;
         }
         return false;
-    }, [runSpawn, runSpawnForChain, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
+    }, [runSpawn, runSpawnForChain, updateMessageContent, attachRun, ttsEnabled, speakText, integrations.llm]);
 
     // KG arc 2026-06-12 (Ilya): the Graph tab opens the Knowledge Graph in a
     // SPLIT-SCREEN view next to ARA — apply-space restores exactly these two
@@ -1620,6 +1650,8 @@ export default function ARAConsole() {
     // re-dispatch → chat. Shared by the composer AND the ⌘K ara-prompt bus
     // so both doors behave identically.
     const routeUtterance = useCallback(async (text: string) => {
+        // Owner-race guard: an utterance typed by one account is never classified-then-answered for the next.
+        const stillOwnerRoute = captureOwner();
         // Pass 1 — exact parsers on the raw utterance (zero latency).
         if (await dispatchTiers(text, text)) return;
         // Pass 1.5 — 2026-06-12 (Ilya): "Ara, review the Markdown file open"
@@ -1725,6 +1757,7 @@ export default function ARAConsole() {
                         return null;
                     },
                 });
+                if (!stillOwnerRoute()) return;
                 recordRoutingDecision(text, decision);
                 if (decision.via === 'llm' && decision.intent !== 'chat' && decision.normalized
                     && decision.normalized.trim().toLowerCase() !== text.toLowerCase()) {
@@ -1732,6 +1765,7 @@ export default function ARAConsole() {
                 }
             } catch { /* classification is best-effort — fall through to chat */ }
         }
+        if (!stillOwnerRoute()) return;
         await sendPrompt(text);
     }, [dispatchTiers, sendPrompt, integrations.llm, user, authFetch, ttsEnabled, speakText]);
 
@@ -2085,30 +2119,28 @@ export default function ARAConsole() {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
-    const renderContent = (text: string) => {
-        const lines = text.split('\n');
-        return lines.map((line, i) => {
-            let processed = escapeHtml(line);
-            processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            processed = processed.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-            processed = processed.replace(/_([^_]+)_/g, '<em>$1</em>');
-            processed = processed.replace(/`([^`]+)`/g, '<code>$1</code>');
-            if (processed.match(/^[-•]\s/)) {
-                processed = `<span class="ara-bullet">•</span>${processed.slice(2)}`;
-            }
-            if (processed.match(/^\d+\.\s/)) {
-                const num = processed.match(/^(\d+)\./)?.[1];
-                processed = `<span class="ara-num">${num}.</span>${processed.replace(/^\d+\.\s/, '')}`;
-            }
-            if (processed.startsWith('### ')) {
-                return <h5 key={i} className="ara-h3" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(4)) }} />;
-            }
-            if (processed.startsWith('## ')) {
-                return <h4 key={i} className="ara-h2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(3)) }} />;
-            }
-            if (processed === '') return <br key={i} />;
-            return <p key={i} className="ara-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed) }} />;
-        });
+    const renderContent = (text: string) => splitFences(text).flatMap(block => (block.kind === 'code'
+        // a fenced block is one <pre>, its text inserted as text (never as HTML)
+        ? [<pre key={`code-${block.start}`} className="ara-code-block"><code>{block.lines.join('\n')}</code></pre>]
+        : block.lines.map((line, k) => renderLine(line, block.start + k))));
+
+    const renderLine = (line: string, i: number) => {
+        let processed = formatInline(escapeHtml(line));
+        if (processed.match(/^[-•]\s/)) {
+            processed = `<span class="ara-bullet">•</span>${processed.slice(2)}`;
+        }
+        if (processed.match(/^\d+\.\s/)) {
+            const num = processed.match(/^(\d+)\./)?.[1];
+            processed = `<span class="ara-num">${num}.</span>${processed.replace(/^\d+\.\s/, '')}`;
+        }
+        if (processed.startsWith('### ')) {
+            return <h5 key={i} className="ara-h3" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(4)) }} />;
+        }
+        if (processed.startsWith('## ')) {
+            return <h4 key={i} className="ara-h2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(3)) }} />;
+        }
+        if (processed === '') return <br key={i} />;
+        return <p key={i} className="ara-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed) }} />;
     };
 
     const getPersonaTheme = (id: string) => PERSONA_THEMES[id] || DEFAULT_THEME;

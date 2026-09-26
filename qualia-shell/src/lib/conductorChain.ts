@@ -22,6 +22,7 @@
 import { parseCommand, stripPoliteness, type ParsedCommand } from './dwelliumCommands';
 import { matchSkill, type AgentSkill, type SkillContext, type SkillOrigin } from './agents/skills';
 import { parseSpawn, type SpawnRequest } from './agents/spawn';
+import { captureOwner } from './perUserIdentity';
 
 export interface ChainStep {
     kind: 'command' | 'skill' | 'spawn';
@@ -157,7 +158,9 @@ export function parseChain(input: string, origin: SkillOrigin = 'user'): Command
 /**
  * Execute a chain sequentially: commands fire their run(); skills run with
  * the supplied context, with "the result" references substituted from the
- * previous successful skill output. Outcomes stream via onStep.
+ * previous successful skill output. A failed step breaks the pipe — a later
+ * "the result" then has nothing to refer to (it never falls back to an older
+ * step's output). Outcomes stream via onStep.
  */
 export async function executeChain(
     chain: CommandChain,
@@ -167,9 +170,16 @@ export async function executeChain(
 ): Promise<ChainStepOutcome[]> {
     const outcomes: ChainStepOutcome[] = [];
     let lastResult = '';
+    const stillOwner = captureOwner(); // owner-race guard: an account switch mid-chain stops it
     for (let i = 0; i < chain.steps.length; i++) {
         const step = chain.steps[i];
         let outcome: ChainStepOutcome;
+        if (!stillOwner()) {
+            outcome = { step, ok: false, text: 'Stopped — the account changed mid-chain.' };
+            outcomes.push(outcome);
+            onStep?.(i, outcome);
+            break;
+        }
         if (step.kind === 'spawn' && step.spawn) {
             // P11-3: long-running orchestrator step — the chain WAITS for the
             // run (sequential semantics), then pipes its final deliverable.
@@ -207,6 +217,7 @@ export async function executeChain(
         } else {
             outcome = { step, ok: false, text: 'Unresolvable step.' };
         }
+        if (!outcome.ok) lastResult = ''; // "the result" meant THIS step's output — don't substitute an older one
         outcomes.push(outcome);
         onStep?.(i, outcome);
     }

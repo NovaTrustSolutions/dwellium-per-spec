@@ -28,6 +28,7 @@ import { collectMoveTargets, type MoveTarget } from '../FileExplorer/moveTargets
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { activeThreadStore, activeThreadUserIdHolder } from '../Workspace/activeThreadStore';
 import { fetchSourceExcerpts, buildCompilePrompt, WIKI_SYSTEM_PROMPT } from './wikiSources';
+import { captureOwner } from '../../lib/perUserIdentity';
 import {
     wikiStore, wikiUserIdHolder, getWikiPage, setWikiPage, isWikiPageStale, attachWikiCrossTabSync,
     parseWikiResponse, outlinePage, type WikiMap, type WikiPage,
@@ -192,12 +193,15 @@ export default function Wiki() {
             const ok = window.confirm(`Replace the AI-written page for "${node.name}" with a structure-only outline?`);
             if (!ok) return;
         }
+        const stillOwner = captureOwner();
         setCompiling(true);
         setErr('');
         setStatus('Compiling…');
         try {
             if (llmActive) {
                 const excerpts = await fetchSourceExcerpts(sourcePaths, readFile).catch(() => []);
+                // owner-race guard: account changed — drop A's page (finally still clears `compiling`).
+                if (!stillOwner()) { setStatus(''); return; }
                 const prompt = buildCompilePrompt(node, sourcePaths, excerpts);
                 const res = await callLlm({
                     systemPrompt: WIKI_SYSTEM_PROMPT,
@@ -206,6 +210,7 @@ export default function Wiki() {
                     maxTokens: 1024,
                     temperature: 0.3,
                 }, integrations.llm);
+                if (!stillOwner()) { setStatus(''); return; }
                 const parsed = res ? parseWikiResponse(res.text, node, sourcePaths) : null;
                 if (parsed) {
                     setWikiPage(parsed);

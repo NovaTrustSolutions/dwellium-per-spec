@@ -93,6 +93,7 @@ import type { DreamEntry } from './honchoDreamStore';
 import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
 import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
 import { thoughtWeaverStore } from '../ThoughtWeaver/thoughtWeaverStore';
+import { captureOwner } from '../../lib/perUserIdentity';
 import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
 import AgentEta from '../common/AgentEta';
 import { matchSkill, runSkillForInput } from '../../lib/agents/skills';
@@ -1438,6 +1439,7 @@ export default function StellaAgent() {
     const runDream = useCallback(async () => {
         if (dreaming) return;
         setDreaming(true);
+        const stillOwner = captureOwner();
         try {
             const recent = honchoMemories.slice(0, 12);
             let twCaptures: string[] = [];
@@ -1473,6 +1475,8 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     maxTokens: 400,
                     temperature: 0.7,
                 }, integrations.llm);
+                // owner-race guard: account changed mid-call — drop A's dream (finally clears Dreaming…).
+                if (!stillOwner()) return;
                 if (res) {
                     try {
                         const parsed = JSON.parse(res.text);

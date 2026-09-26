@@ -1,10 +1,13 @@
-import { useRef } from 'react';
-import { EyeOff, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { EyeOff, Pause, Play, X } from 'lucide-react';
 import {
     type PersonaDossier, type DossierKV, type DossierChannel, type DossierNote,
     type PersonaAvatar, NEURAL_VIDEOS,
 } from '../../lib/agents/personas';
 import { getIcon, ICON_KEYS } from '../Sidebar/iconMap';
+import { formatDuration } from '../../lib/agents/personaWorkStore';
+import type { PersonaStats } from '../../lib/agents/hermesStatus';
+import { captureOwner } from '../../lib/perUserIdentity';
 import './AvatarDossier.css';
 
 /**
@@ -17,27 +20,34 @@ import './AvatarDossier.css';
 
 const clampPct = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
 
-function Txt({ value, onChange, placeholder, className }: {
-    value: string; onChange: (v: string) => void; placeholder?: string; className?: string;
+function Txt({ value, onChange, placeholder, className, id }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; className?: string; id?: string;
 }) {
     return (
-        <input className={`avd-edit ${className || ''}`} value={value} placeholder={placeholder} spellCheck={false}
+        <input id={id} className={`avd-edit ${className || ''}`} value={value} placeholder={placeholder} spellCheck={false}
             onChange={e => onChange(e.target.value)} />
     );
 }
 
 function KVList({ rows, onChange, addLabel }: { rows: DossierKV[]; onChange: (rows: DossierKV[]) => void; addLabel: string }) {
+    const addRef = useRef<HTMLButtonElement | null>(null);
     const set = (i: number, p: Partial<DossierKV>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
+    // ponytail: removal takes focus with it (the button leaves the DOM); send it
+    // to the list's own Add button rather than letting it fall back to <body>.
+    const remove = (i: number) => {
+        onChange(rows.filter((_, j) => j !== i));
+        requestAnimationFrame(() => addRef.current?.focus());
+    };
     return (
         <ul className="avd-list">
             {rows.map((r, i) => (
                 <li key={i} className="avd-row">
                     <Txt className="avd-row-label" value={r.label} onChange={v => set(i, { label: v })} placeholder="Label" />
                     <Txt className="avd-row-value" value={r.value} onChange={v => set(i, { value: v })} placeholder="Value" />
-                    <button type="button" className="avd-del" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label="Remove field"><X size={16} /></button>
+                    <button type="button" className="avd-del" onClick={() => remove(i)} aria-label={r.label ? `Remove field "${r.label}"` : 'Remove field'}><X size={16} /></button>
                 </li>
             ))}
-            <li><button type="button" className="avd-add" onClick={() => onChange([...rows, { label: 'New', value: '' }])}>+ {addLabel}</button></li>
+            <li><button ref={addRef} type="button" className="avd-add" onClick={() => onChange([...rows, { label: 'New', value: '' }])}>+ {addLabel}</button></li>
         </ul>
     );
 }
@@ -68,7 +78,7 @@ function readImageScaled(file: File, max = 256): Promise<string> {
     });
 }
 
-export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChange, neuralVideo, onNeuralVideoChange, icon, onIconChange }: {
+export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChange, neuralVideo, onNeuralVideoChange, icon, onIconChange, stats }: {
     dossier: PersonaDossier;
     onChange: (d: PersonaDossier) => void;
     avatar: PersonaAvatar;
@@ -78,28 +88,76 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
     /** Persona identity icon key (lucide) — editable via the picker. */
     icon?: string;
     onIconChange?: (k: string) => void;
+    /** Real Hermes activity, read-only — shown above the editable metrics when present. */
+    stats?: PersonaStats;
 }) {
     const patch = (p: Partial<PersonaDossier>) => onChange({ ...dossier, ...p });
     const fileRef = useRef<HTMLInputElement | null>(null);
+    const channelAddRef = useRef<HTMLButtonElement | null>(null);
+    const noteAddRef = useRef<HTMLButtonElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const uid = useId();
+    const [videoPaused, setVideoPaused] = useState(false);
 
     const hidden = new Set(dossier.hidden ?? []);
     const isHidden = (k: string) => hidden.has(k);
-    const toggleHide = (k: string) => patch({ hidden: hidden.has(k) ? [...hidden].filter(x => x !== k) : [...hidden, k] });
+    const toggleHide = (k: string) => {
+        const hiding = !hidden.has(k);
+        patch({ hidden: hiding ? [...hidden, k] : [...hidden].filter(x => x !== k) });
+        // ponytail: the hide button just vanished with the field — send focus to
+        // its restore chip in the Hidden bar instead of leaving it on <body>.
+        if (hiding) {
+            requestAnimationFrame(() => {
+                rootRef.current?.querySelector<HTMLButtonElement>(`[data-restore="${k}"]`)?.focus();
+            });
+        }
+    };
     const HideBtn = ({ k }: { k: string }) => (
-        <button type="button" className="avd-hide" title="Hide field" aria-label="Hide field" onClick={() => toggleHide(k)}><EyeOff size={14} aria-hidden /></button>
+        <button type="button" className="avd-hide" title={`Hide ${k}`} aria-label={`Hide ${k}`} onClick={() => toggleHide(k)}><EyeOff size={14} aria-hidden /></button>
     );
 
     const setChannel = (i: number, p: Partial<DossierChannel>) => patch({ channels: dossier.channels.map((c, j) => (j === i ? { ...c, ...p } : c)) });
     const setNote = (i: number, p: Partial<DossierNote>) => patch({ notes: dossier.notes.map((n, j) => (j === i ? { ...n, ...p } : n)) });
+    const removeChannel = (i: number) => {
+        patch({ channels: dossier.channels.filter((_, j) => j !== i) });
+        requestAnimationFrame(() => channelAddRef.current?.focus());
+    };
+    const removeNote = (i: number) => {
+        patch({ notes: dossier.notes.filter((_, j) => j !== i) });
+        requestAnimationFrame(() => noteAddRef.current?.focus());
+    };
 
     const onUpload = async (file?: File) => {
         if (!file) return;
-        try { onAvatarChange({ kind: 'image', src: await readImageScaled(file) }); } catch { /* ignore */ }
+        const stillOwner = captureOwner();
+        try {
+            const src = await readImageScaled(file);
+            // owner-race guard: account changed mid-decode — never hand A's image to the new account's persona.
+            if (!stillOwner()) return;
+            onAvatarChange({ kind: 'image', src });
+        } catch { /* ignore */ }
     };
     const curVideoIdx = Math.max(0, NEURAL_VIDEOS.indexOf(neuralVideo));
 
+    // Respect reduced-motion: start paused. Read the media query in an effect
+    // (never during render) so this stays SSR-safe.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) setVideoPaused(true);
+    }, []);
+    // Re-apply on every src change too: this instance is reused across personas,
+    // and a new src loads paused now that there is no `autoPlay` attribute.
+    useEffect(() => {
+        const v = videoRef.current;
+        if (!v) return;
+        if (videoPaused) v.pause();
+        else v.play?.()?.catch?.(() => { /* autoplay can be blocked; the toggle still works */ });
+    }, [videoPaused, neuralVideo]);
+    const toggleVideo = () => setVideoPaused(p => !p);
+
     return (
-        <div className="avd" data-dossier>
+        <div className="avd" data-dossier ref={rootRef}>
             <div className="avd-frame">
                 <header className="avd-topbar">
                     <div className="avd-brand">
@@ -107,14 +165,21 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                         <span>Neural Identity Dossier</span>
                     </div>
                     <div className="avd-status">
-                        {!isHidden('subjectId') && <label>Subject <Txt className="avd-status-edit" value={dossier.subjectId} onChange={v => patch({ subjectId: v })} placeholder="ID" /><HideBtn k="subjectId" /></label>}
-                        {!isHidden('scanMode') && <label>Scan <Txt className="avd-status-edit" value={dossier.scanMode} onChange={v => patch({ scanMode: v })} placeholder="Mode" /><HideBtn k="scanMode" /></label>}
-                        {!isHidden('clearance') && <label>Clearance <Txt className="avd-status-edit" value={dossier.clearance} onChange={v => patch({ clearance: v })} placeholder="Level" /><HideBtn k="clearance" /></label>}
+                        {!isHidden('subjectId') && <label htmlFor={`${uid}-subjectId`}>Subject <Txt id={`${uid}-subjectId`} className="avd-status-edit" value={dossier.subjectId} onChange={v => patch({ subjectId: v })} placeholder="ID" /><HideBtn k="subjectId" /></label>}
+                        {!isHidden('scanMode') && <label htmlFor={`${uid}-scanMode`}>Scan <Txt id={`${uid}-scanMode`} className="avd-status-edit" value={dossier.scanMode} onChange={v => patch({ scanMode: v })} placeholder="Mode" /><HideBtn k="scanMode" /></label>}
+                        {!isHidden('clearance') && <label htmlFor={`${uid}-clearance`}>Clearance <Txt id={`${uid}-clearance`} className="avd-status-edit" value={dossier.clearance} onChange={v => patch({ clearance: v })} placeholder="Level" /><HideBtn k="clearance" /></label>}
                     </div>
                 </header>
 
-                {/* Looping neural activity — top-right corner. */}
-                <video className="avd-corner-video" src={neuralVideo} autoPlay loop muted playsInline aria-label="Neural activity loop" />
+                {/* Looping neural activity — top-right corner. Autoplay is decided in
+                    an effect (prefers-reduced-motion), so no `autoPlay` attribute here. */}
+                <div className="avd-corner-video-wrap">
+                    <video ref={videoRef} className="avd-corner-video" src={neuralVideo} loop muted playsInline aria-label="Neural activity loop" />
+                    <button type="button" className="avd-video-toggle" aria-pressed={videoPaused}
+                        aria-label={videoPaused ? 'Play neural loop' : 'Pause neural loop'} onClick={toggleVideo}>
+                        {videoPaused ? <Play size={12} aria-hidden /> : <Pause size={12} aria-hidden />}
+                    </button>
+                </div>
 
                 <section className="avd-grid">
                     {/* LEFT */}
@@ -197,6 +262,19 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                             )}
                         </div>
 
+                        {stats && (
+                            <div className="avd-activity">
+                                <div className="avd-eyebrow">Activity</div>
+                                <dl className="avd-activity-list">
+                                    <div className="avd-activity-row"><dt>Runs</dt><dd>{stats.runs}</dd></div>
+                                    <div className="avd-activity-row"><dt>Success rate</dt><dd>{stats.successRate == null ? 'Not available' : `${Math.round(stats.successRate * 100)}%`}</dd></div>
+                                    {stats.uncheckedRuns > 0 && <div className="avd-activity-row"><dt>Not fact-checked</dt><dd>{stats.uncheckedRuns} {stats.uncheckedRuns === 1 ? 'run' : 'runs'} (no Sources)</dd></div>}
+                                    <div className="avd-activity-row"><dt>Avg task time</dt><dd>{stats.avgTaskMs == null ? 'Not available' : formatDuration(stats.avgTaskMs)}</dd></div>
+                                    <div className="avd-activity-row"><dt>Last run</dt><dd>{stats.lastRunAt == null ? 'Never' : new Date(stats.lastRunAt).toLocaleDateString()}</dd></div>
+                                </dl>
+                            </div>
+                        )}
+
                         {!isHidden('metrics') && (
                             <div className="avd-metrics-wrap">
                                 <div className="avd-metrics">
@@ -229,14 +307,16 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                                         <div key={i} className="avd-channel">
                                             <div className="avd-channel-head">
                                                 <Txt className="avd-channel-label" value={c.label} onChange={v => setChannel(i, { label: v })} placeholder="Channel" />
-                                                <input className="avd-channel-pct" type="number" min={0} max={100} value={c.pct} onChange={e => setChannel(i, { pct: clampPct(Number(e.target.value)) })} />
+                                                <input className="avd-channel-pct" type="number" min={0} max={100} value={c.pct}
+                                                    aria-label={`${c.label || 'Channel'} strength (percent)`}
+                                                    onChange={e => setChannel(i, { pct: clampPct(Number(e.target.value)) })} />
                                                 <span className="avd-channel-unit">%</span>
-                                                <button type="button" className="avd-del" onClick={() => patch({ channels: dossier.channels.filter((_, j) => j !== i) })} aria-label="Remove channel"><X size={16} /></button>
+                                                <button type="button" className="avd-del" onClick={() => removeChannel(i)} aria-label={c.label ? `Remove channel "${c.label}"` : 'Remove channel'}><X size={16} /></button>
                                             </div>
                                             <div className="avd-bar"><i style={{ width: `${clampPct(c.pct)}%` }} /></div>
                                         </div>
                                     ))}
-                                    <button type="button" className="avd-add" onClick={() => patch({ channels: [...dossier.channels, { label: 'New channel', pct: 50 }] })}>+ Channel</button>
+                                    <button ref={channelAddRef} type="button" className="avd-add" onClick={() => patch({ channels: [...dossier.channels, { label: 'New channel', pct: 50 }] })}>+ Channel</button>
                                 </div>
                             </div>
                         )}
@@ -248,12 +328,12 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                                         <div key={i} className="avd-note">
                                             <div className="avd-note-head">
                                                 <Txt className="avd-note-title" value={n.title} onChange={v => setNote(i, { title: v })} placeholder="Note title" />
-                                                <button type="button" className="avd-del" onClick={() => patch({ notes: dossier.notes.filter((_, j) => j !== i) })} aria-label="Remove note"><X size={16} /></button>
+                                                <button type="button" className="avd-del" onClick={() => removeNote(i)} aria-label={n.title ? `Remove note "${n.title}"` : 'Remove note'}><X size={16} /></button>
                                             </div>
                                             <textarea className="avd-note-body" value={n.body} onChange={e => setNote(i, { body: e.target.value })} placeholder="Note…" />
                                         </div>
                                     ))}
-                                    <button type="button" className="avd-add" onClick={() => patch({ notes: [...dossier.notes, { title: 'New note', body: '' }] })}>+ Note</button>
+                                    <button ref={noteAddRef} type="button" className="avd-add" onClick={() => patch({ notes: [...dossier.notes, { title: 'New note', body: '' }] })}>+ Note</button>
                                 </div>
                             </div>
                         )}
@@ -264,7 +344,7 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                     <div className="avd-hidden-bar">
                         <span className="avd-hidden-label">Hidden ({hidden.size}):</span>
                         {[...hidden].map(k => (
-                            <button key={k} type="button" className="avd-restore" onClick={() => toggleHide(k)} title="Restore field">+ {k}</button>
+                            <button key={k} type="button" className="avd-restore" data-restore={k} onClick={() => toggleHide(k)} title="Restore field">+ {k}</button>
                         ))}
                     </div>
                 )}

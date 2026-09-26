@@ -131,8 +131,11 @@ function toolUseCard(input: HarnessInputs): HarnessCard {
     const runs = input.runs.filter((r) =>
         r.toolsUsed.some((t) => t !== ROUTER_TOOL && t !== ARA_CHAT_TOOL),
     );
-    const success = runs.filter((r) => r.outcome === 'success').length;
-    const rate = runs.length === 0 ? '—' : `${Math.round((100 * success) / runs.length)}%`;
+    // An unchecked run answered but had no Sources to fact-check (logged 'fail' + unchecked so it isn't reused):
+    // not a failure, not a success — left out of the rate, as personaStats does.
+    const scored = runs.filter((r) => !r.unchecked);
+    const success = scored.filter((r) => r.outcome === 'success').length;
+    const rate = scored.length === 0 ? '—' : `${Math.round((100 * success) / scored.length)}%`;
     const distinct = new Set(
         runs.flatMap((r) => r.toolsUsed.filter((t) => t !== ROUTER_TOOL && t !== ARA_CHAT_TOOL)),
     );
@@ -168,7 +171,7 @@ function evaluationCard(input: HarnessInputs): HarnessCard {
     const rated = runs.filter((r) => typeof r.rating === 'number');
     const approved = rated.filter((r) => (r.rating ?? 0) > 0).length;
     const approval = rated.length === 0 ? '—' : `${Math.round((100 * approved) / rated.length)}%`;
-    const failed = runs.filter((r) => r.outcome === 'fail').length;
+    const failed = runs.filter((r) => r.outcome === 'fail' && !r.unchecked).length; // unchecked answers are not failures
     return {
         metrics: [
             metric('Rated', String(rated.length)),

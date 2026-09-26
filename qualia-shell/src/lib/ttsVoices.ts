@@ -8,6 +8,8 @@
  * keyless fallback. Selection is persisted per-consumer (e.g. dwellium-stella-voice).
  */
 
+import { toSpeechText, speechPauses } from './markdownText';
+
 export interface TtsVoiceOption {
     id: string;
     label: string;
@@ -44,16 +46,10 @@ export const HUMANIZE_PREFIX =
 const OPENAI_TTS_ENDPOINT = 'https://api.openai.com/v1/audio/speech';
 const LEGACY_VOICE_MAP: Record<string, string> = { female: 'openai-alloy', male: 'openai-onyx' };
 
-/** Flatten Markdown to plain prose so the TTS reads it naturally. */
+/** Flatten Markdown to plain prose so the TTS reads it naturally — the same rules as ARA's speech
+ *  (lib/markdownText.ts: toSpeechText, speechPauses), plus # > | dropped anywhere, as this helper always did. */
 export function stripMarkdownForSpeech(text: string): string {
-    return text
-        .replace(/```[\s\S]*?```/g, ' code block ')
-        .replace(/`([^`]+)`/g, '$1')
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/[*_#>~|]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    return speechPauses(toSpeechText(text).replace(/[#>|]/g, ' ')).replace(/\s+/g, ' ').trim();
 }
 
 export interface SpeakHandle { stop: () => void; }

@@ -14,6 +14,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { useUiEdits } from '../../lib/uiEditStore';
 import { parseUiEdit, parseUiEditWithLlm, pickedElementHolder, NAMED_TARGETS } from '../../lib/uiEditParser';
 import { hasActiveLlm } from '../../lib/llmClient';
+import { captureOwner } from '../../lib/perUserIdentity';
 import './UiEditorPanel.css';
 
 /** Build a short, stable selector + label for a clicked element. */
@@ -89,6 +90,7 @@ export function UiEditorPanel() {
     const apply = useCallback(async () => {
         const text = input.trim();
         if (!text || busy) return;
+        const stillOwner = captureOwner(); // owner-race guard: account may switch during the LLM parse
         setStatus(null);
         // Pass 1 — heuristics.
         let op = parseUiEdit(text);
@@ -98,6 +100,7 @@ export function UiEditorPanel() {
             try { op = await parseUiEditWithLlm(text, integrations.llm); }
             finally { setBusy(false); }
         }
+        if (!stillOwner()) return; // owner-race guard: never add A's edit to B's ui-edits (busy already cleared)
         if (!op) {
             setStatus(pickedElementHolder.current || /header|sidebar|desktop|dock|window|container/i.test(text)
                 ? "Couldn't turn that into a style change — try \"…color to yellow\", \"move … to the right\", \"hide …\", \"bigger text in …\"."

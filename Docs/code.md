@@ -440,3 +440,10 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Root cause:** (1) no memo on the engine version. (2) the canvas effect depended on `activeIndex`, sized from `offsetWidth` once, listened only to `window` resize. (3) `.ch-logs-container` used `color-mix(black 20%, transparent)` — a fixed black darkens the light surface under accent text; the coder's contrast table used the plain surface, not the composited one. (4) the grid is redrawn every frame under a 0.15-alpha trailing fade, so it accumulates to ≈ alpha / 0.15 (8 % → ~50 %).
 - **Fix:** `useMemo(() => cmn.probe(), [cmn, version])`; `harnessCanvas.ts` (seed once, ResizeObserver × DPR, IntersectionObserver + visibilitychange gate, offscreen grid, CSS-token palette with a parse check); theme-relative tint `color-mix(var(--text-primary) 5%, transparent)`; grid 1.5 %. Also `hydrate()` now emits on its post-await failure path.
 - **Prevention:** expensive probes belong behind the store version; tints use `--text-primary`, never literal black/white; judge contrast with axe on a real render in BOTH themes (my DOM walker read 4.61 where axe measured 4.34 on the actual pixels); for trail-fade canvases, size per-frame alphas by alpha / fadeAlpha.
+
+## 2026-09-26 — Wiki deep-link test flaked under the full suite
+
+- **Error:** `Wiki.test.tsx` "selects the page named by dwellium:wiki-open-page" failed ~1 in 8 under parallel load (passed alone).
+- **Root cause:** not a lost event (the listener attaches on the first commit, before the awaited button appears): `window.dispatchEvent` runs outside React's event system, so the resulting state update was only scheduled, and under CPU load the flush outlasted `waitFor`'s 1 s default.
+- **Fix:** dispatch inside `await act(async () => …)` and assert directly. 20/20 runs green under load; breaking the listener still fails the test.
+- **Prevention:** wrap non-React `dispatchEvent` calls that should update a component in `act`, rather than widening timeouts.

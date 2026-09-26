@@ -47,3 +47,5 @@
 }
 
 .budget__line { margin: 0; font-size: 11px; color: var(--text-primary); }
+
+.budget__error { margin: 4px 0 0; font-size: 11px; color: color-mix(in srgb, var(--danger, #ef4444) 60%, var(--text-primary, #fff)); }

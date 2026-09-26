@@ -98,8 +98,18 @@ export default function SubscriptionsEditor({ showHeading = true }: { showHeadin
 
     function save() {
         if (saveDisabled) return;
+        // New ids must be unique within the list: two rows added and saved in the
+        // same millisecond (or with the same name) would otherwise share one id.
+        const used = new Set(draft.map((row) => row.id).filter(Boolean));
+        const uniqueId = (base: string): string => {
+            let id = base;
+            for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+            used.add(id);
+            return id;
+        };
+        const stamp = Date.now();
         const cleaned: Subscription[] = draft.map((row) => ({
-            id: row.id || `${slugify(row.name.trim())}-${Date.now()}`,
+            id: row.id || uniqueId(`${slugify(row.name.trim())}-${stamp}`),
             name: row.name.trim(),
             vendor: row.vendor.trim(),
             monthly: Math.round(Number(row.monthly) * 100) / 100,

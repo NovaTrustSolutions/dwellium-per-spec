@@ -185,3 +185,21 @@ describe('SubscriptionsEditor — heading', () => {
         expect(screen.queryByRole('heading', { name: 'Subscriptions' })).toBeNull();
     });
 });
+
+describe('SubscriptionsEditor — new ids are unique', () => {
+    it('two new rows with the same name saved in the same millisecond get different ids', () => {
+        vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+        render(<SubscriptionsEditor />);
+        fireEvent.click(screen.getByRole('button', { name: /add subscription/i }));
+        fireEvent.change(screen.getByLabelText('Name for row 1'), { target: { value: 'Same Plan' } });
+        fireEvent.change(screen.getByLabelText('Monthly price for row 1'), { target: { value: '10' } });
+        fireEvent.click(screen.getByRole('button', { name: /add subscription/i }));
+        fireEvent.change(screen.getByLabelText('Name for row 2'), { target: { value: 'Same Plan' } });
+        fireEvent.change(screen.getByLabelText('Monthly price for row 2'), { target: { value: '20' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        const ids = subscriptionsStore.getSnapshot().map((s) => s.id);
+        expect(ids).toHaveLength(2);
+        expect(new Set(ids).size).toBe(2);
+        vi.restoreAllMocks();
+    });
+});

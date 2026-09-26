@@ -174,3 +174,17 @@ describe('BudgetBar', () => {
         expect(screen.getByText('On track')).toBeTruthy();
     });
 });
+
+describe('BudgetBar — invalid input', () => {
+    // 0 / negatives are blocked by the input's native min=1 validation (browser message);
+    // an EMPTY submit passes native validation, so the component must explain it.
+    it('an empty Save explains instead of silently doing nothing; typing clears the message', () => {
+        render(<BudgetBar ledger={{ entries: [], days: {} }} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect(getAiBudget()).toBeNull();
+        expect(screen.getByRole('alert').textContent).toMatch(/greater than \$0/);
+        expect(screen.getByLabelText('Set a monthly AI budget').getAttribute('aria-invalid')).toBe('true');
+        fireEvent.change(screen.getByLabelText('Set a monthly AI budget'), { target: { value: '40' } });
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+});

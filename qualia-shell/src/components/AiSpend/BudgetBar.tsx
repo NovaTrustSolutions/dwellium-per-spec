@@ -22,6 +22,7 @@ export default function BudgetBar({ ledger }: { ledger: UsageLedger }) {
     const subscriptions = monthlyTotal(useSubscriptions());
     const [draft, setDraft] = useState('');
     const [editing, setEditing] = useState(false);
+    const [invalid, setInvalid] = useState(false);
 
     if (budget == null || editing) {
         return (
@@ -30,8 +31,10 @@ export default function BudgetBar({ ledger }: { ledger: UsageLedger }) {
                 onSubmit={(e) => {
                     e.preventDefault();
                     const n = Number(draft);
-                    if (Number.isFinite(n) && n > 0) setAiBudget(n);
+                    if (!(Number.isFinite(n) && n > 0)) { setInvalid(true); return; } // keep what they typed
+                    setAiBudget(n);
                     setDraft('');
+                    setInvalid(false);
                     setEditing(false);
                 }}
             >
@@ -47,11 +50,14 @@ export default function BudgetBar({ ledger }: { ledger: UsageLedger }) {
                         inputMode="decimal"
                         placeholder="100"
                         value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
+                        onChange={(e) => { setDraft(e.target.value); setInvalid(false); }}
+                        aria-invalid={invalid || undefined}
+                        aria-describedby={invalid ? 'budget-input-error' : undefined}
                     />
                     <button type="submit" className="budget__save">Save</button>
-                    {editing && <button type="button" className="budget__link" onClick={() => { setEditing(false); setDraft(''); }}>Cancel</button>}
+                    {editing && <button type="button" className="budget__link" onClick={() => { setEditing(false); setDraft(''); setInvalid(false); }}>Cancel</button>}
                 </div>
+                {invalid && <p id="budget-input-error" className="budget__error" role="alert">Enter an amount greater than $0.</p>}
             </form>
         );
     }

@@ -167,7 +167,7 @@ export default function AiSpend() {
 
             <details className="spend__subs">
                 <summary>{`Subscriptions (${subscriptions.length} · $${subsTotal.toFixed(2)}/mo)`}</summary>
-                <SubscriptionsEditor />
+                <SubscriptionsEditor showHeading={false} />
             </details>
 
             <section className="spend__advisor" aria-label="Time-value advisor">

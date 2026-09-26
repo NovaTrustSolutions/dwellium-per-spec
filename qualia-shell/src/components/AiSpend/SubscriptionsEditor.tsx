@@ -41,7 +41,8 @@ function checkRow(row: DraftRow, index: number): RowCheck {
     return { valid: true };
 }
 
-export default function SubscriptionsEditor() {
+/** `showHeading={false}` when a parent already titles it (e.g. AiSpend's disclosure summary). */
+export default function SubscriptionsEditor({ showHeading = true }: { showHeading?: boolean } = {}) {
     const subscriptions = useSubscriptions();
     const [draft, setDraft] = useState<DraftRow[]>(() => toDraft(subscriptions));
     const [dirty, setDirty] = useState(false);
@@ -110,10 +111,12 @@ export default function SubscriptionsEditor() {
 
     return (
         <div className="subed">
-            <div className="subed__head">
-                <h2 className="subed__title">Subscriptions</h2>
-                <span className="subed__total">{`$${total.toFixed(2)} / month`}</span>
-            </div>
+            {showHeading && (
+                <div className="subed__head">
+                    <h2 className="subed__title">Subscriptions</h2>
+                    <span className="subed__total">{`$${total.toFixed(2)} / month`}</span>
+                </div>
+            )}
 
             {draft.length === 0 ? (
                 <p className="subed__empty">No subscriptions yet — add the AI plans you pay for.</p>

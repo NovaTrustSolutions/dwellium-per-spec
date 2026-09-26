@@ -10,6 +10,10 @@
     color: var(--text-secondary);
     font-size: 13px;
 }
+/* The widget scrolls; its sections never shrink. Without this the fixed-height
+   chart is the first thing a full-height flex column squashes once content
+   exceeds the window (plan 068 phase 2 added sections and exposed it). */
+.spend > * { flex-shrink: 0; }
 
 .spend__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .spend__title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text-primary); }

@@ -175,3 +175,13 @@ describe('SubscriptionsEditor — old sample list', () => {
         expect(stored[0].name).toBe('Real Plan');
     });
 });
+
+describe('SubscriptionsEditor — heading', () => {
+    it('shows its own heading by default and hides it when a parent titles it', () => {
+        const { unmount } = render(<SubscriptionsEditor />);
+        expect(screen.getByRole('heading', { name: 'Subscriptions' })).toBeTruthy();
+        unmount();
+        render(<SubscriptionsEditor showHeading={false} />);
+        expect(screen.queryByRole('heading', { name: 'Subscriptions' })).toBeNull();
+    });
+});

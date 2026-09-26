@@ -109,7 +109,7 @@ export function useHonchoBackgroundRunner(): void {
                 try {
                     const rateItems = liveRateRequestItems(costRecs);
                     const rateRes = await callLlm(
-                        { systemPrompt: LIVE_RATE_SYSTEM, prompt: buildLiveRatePrompt(rateItems), responseFormat: 'json', maxTokens: 300, temperature: 0 },
+                        { systemPrompt: LIVE_RATE_SYSTEM, prompt: buildLiveRatePrompt(rateItems), responseFormat: 'json', maxTokens: 300, temperature: 0, source: 'honcho' },
                         llm,
                     );
                     const rateOverrides = parseLiveRates(rateRes?.text, new Set(rateItems.map(i => i.taskId)));
@@ -133,6 +133,7 @@ export function useHonchoBackgroundRunner(): void {
                             maxTokens: 700,
                             temperature: 0.6,
                             responseFormat: 'json',
+                            source: 'honcho',
                         }, llm);
                         const deep = parseDeepDream(res?.text);
                         if (deep) {
@@ -179,6 +180,7 @@ export function useHonchoBackgroundRunner(): void {
                     maxTokens: 300,
                     temperature: 0.6,
                     responseFormat: 'json',
+                    source: 'honcho',
                 }, llm);
                 if (cancelled || !res?.text) return;
                 let title = '';

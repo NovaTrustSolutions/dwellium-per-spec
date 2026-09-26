@@ -512,8 +512,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'cognitive-harness': {
         id: 'cognitive-harness',
         label: 'Cognitive Harness',
-        description: "Animated map of the AI stack's parts (retrieval, memory, tools, routing) with live status.",
-        tip: { tryThis: 'Hover a part of the stack to see its live status.', related: ['system-health', 'connections'] },
+        description: "Live numbers for the AI stack: memory, retrieval, routing, tools, agent tasks and feedback.",
+        tip: { tryThis: 'Click a part of the stack (or use the arrow keys) to see its live numbers.', related: ['system-health', 'connections'] },
         icon: 'brain-circuit',
         component: lazyWithReload(() => import('../components/CognitiveHarness/CognitiveHarness')),
         minWidth: 800,

@@ -1937,10 +1937,14 @@
 }
 
 .iz-viewer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
     width: 780px;
-    max-width: 94vw;
-    max-height: 90vh;
-    overflow-y: auto;
+    height: min(86vh, 860px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow: hidden;
     background: linear-gradient(165deg, #1a1d2e, #11131e);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
@@ -1954,15 +1958,39 @@
     to   { transform: scale(1);    opacity: 1; }
 }
 
-.iz-viewer::-webkit-scrollbar {
+/* Plan (inbox-viewer-contrast) — user-resizable via .iz-viewer__resize drag
+   handle / arrow keys, or expanded to near-fullscreen via .iz-viewer__expand. */
+.iz-viewer--expanded {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+}
+
+.iz-viewer--resizing {
+    user-select: none;
+    cursor: nwse-resize;
+}
+
+.iz-viewer--resizing iframe {
+    pointer-events: none;
+}
+
+.iz-viewer__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.iz-viewer__scroll::-webkit-scrollbar {
     width: 6px;
 }
 
-.iz-viewer::-webkit-scrollbar-track {
+.iz-viewer__scroll::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.iz-viewer::-webkit-scrollbar-thumb {
+.iz-viewer__scroll::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.12);
     border-radius: 3px;
 }
@@ -1994,6 +2022,7 @@
 
 /* Header */
 .iz-viewer__header {
+    flex: 0 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -2079,8 +2108,34 @@
     border-color: rgba(239, 68, 68, 0.25);
 }
 
+/* Expand/restore toggle — same shape as .iz-viewer__close, accent hover
+   instead of danger (this one isn't destructive). */
+.iz-viewer__expand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+    margin-left: 16px;
+}
+
+.iz-viewer__expand:hover {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
 /* Badges */
 .iz-viewer__badges {
+    flex: 0 0 auto;
     display: flex;
     gap: 6px;
     padding: 12px 28px;
@@ -2097,6 +2152,7 @@
 
 /* AI Summary */
 .iz-viewer__summary {
+    flex: 0 0 auto;
     margin: 0 28px 12px;
     padding: 12px 14px;
     background: color-mix(in srgb, var(--accent) 6%, transparent);
@@ -2123,8 +2179,12 @@
 /* ponytail: .iz-viewer__attachment* rules removed at plan 066 §6 along with
    the dead attachment-download-card markup — no backend route exists yet. */
 
-/* Body — no max-height, the viewer itself scrolls */
+/* Body — flexes to fill remaining dialog height; the iframe fills it */
 .iz-viewer__body {
+    flex: 1 0 auto;
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
     margin: 0 28px 16px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 10px;
@@ -2142,6 +2202,7 @@
 
 /* Routing Reasoning */
 .iz-viewer__reasoning {
+    flex: 0 0 auto;
     margin: 0 28px 16px;
     padding: 12px 14px;
     background: rgba(245, 158, 11, 0.05);
@@ -2167,6 +2228,7 @@
 
 /* Actions bar */
 .iz-viewer__actions {
+    flex: 0 0 auto;
     display: flex;
     gap: 8px;
     padding: 16px 28px 24px;
@@ -2180,12 +2242,39 @@
     font-size: 12px;
 }
 
+/* Drag-resize handle — bottom-right corner of the dialog, hidden while
+   expanded (an expanded dialog has nothing left to resize). */
+.iz-viewer__resize {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: nwse-resize;
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.iz-viewer__resize:hover {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 /* Cycle 9 a11y — visible keyboard focus on interactive controls (WCAG 2.4.7).
    Icon-only and action buttons rely on aria-label for a name; this gives them a
    clear focus ring so keyboard users can see where they are. */
 .iz-action:focus-visible,
 .iz-toolbar__search-clear:focus-visible,
 .iz-viewer__close:focus-visible,
+.iz-viewer__expand:focus-visible,
+.iz-viewer__resize:focus-visible,
 .iz-batch__btn:focus-visible,
 .iz-batch__select-all:focus-visible,
 .iz-snooze-trigger:focus-visible,

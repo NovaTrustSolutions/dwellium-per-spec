@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore
 import {
     ArrowDown, ArrowUp, Bot, Brain, Check, ClipboardList, Clock,
     Download, Inbox,
-    Link, Mail, MailOpen,
+    Link, Mail, MailOpen, Maximize2, Minimize2, MoveDiagonal2,
     Paperclip, PartyPopper, RefreshCw, Reply, Search,
     Sparkles, Trash2, TriangleAlert,
     Undo2, X, Zap,
@@ -17,6 +17,7 @@ import type {
 } from './InboxZeroTypes';
 import { URGENCY_COLORS, SIGNAL_CONFIG, PROJECT_NAMES } from './InboxZeroTypes';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
+import { themePalette, buildEmailSrcDoc, VIEWER_PALETTE } from './emailFrame';
 import './InboxZero.css';
 
 import NewslettersTab from './NewslettersTab';
@@ -48,6 +49,48 @@ const SNOOZE_OPTIONS: Array<{ label: string; ms: number }> = [
     { label: '1 day', ms: 24 * 60 * 60_000 },
     { label: '1 week', ms: 7 * 24 * 60 * 60_000 },
 ];
+
+// Full email viewer — expand toggle + drag/keyboard resize.
+const VIEWER_MIN_W = 420;
+const VIEWER_MIN_H = 360;
+const VIEWER_VIEWPORT_MARGIN = 24;
+const VIEWER_KEY_STEP = 20;
+const VIEWER_KEY_STEP_BIG = 80;
+const VIEWER_FALLBACK_W = 780;
+const VIEWER_FALLBACK_H = 720;
+const VIEWER_SIZE_STORAGE_KEY = 'dwellium-iz-viewer-size';
+const VIEWER_EXPANDED_STORAGE_KEY = 'dwellium-iz-viewer-expanded';
+
+interface ViewerSize { w: number; h: number }
+
+function readViewerSize(): ViewerSize | null {
+    try {
+        const raw = localStorage.getItem(VIEWER_SIZE_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as { w?: unknown; h?: unknown };
+        if (typeof parsed?.w !== 'number' || typeof parsed?.h !== 'number') return null;
+        if (!Number.isFinite(parsed.w) || !Number.isFinite(parsed.h)) return null;
+        return { w: Math.max(VIEWER_MIN_W, parsed.w), h: Math.max(VIEWER_MIN_H, parsed.h) };
+    } catch {
+        return null;
+    }
+}
+
+function readViewerExpanded(): boolean {
+    try {
+        return localStorage.getItem(VIEWER_EXPANDED_STORAGE_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function persistViewerSize(size: ViewerSize): void {
+    try { localStorage.setItem(VIEWER_SIZE_STORAGE_KEY, JSON.stringify(size)); } catch { /* ponytail: best-effort persistence only */ }
+}
+
+function persistViewerExpanded(expanded: boolean): void {
+    try { localStorage.setItem(VIEWER_EXPANDED_STORAGE_KEY, expanded ? '1' : '0'); } catch { /* ponytail: best-effort persistence only */ }
+}
 
 // Urgency colors, signal config, and project names imported from InboxZeroTypes.ts
 
@@ -93,6 +136,93 @@ export default function InboxZero() {
     }) | null>(null);
     const [viewerLoading, setViewerLoading] = useState(false);
     const viewerOverlayRef = useRef<HTMLDivElement | null>(null);
+    // Plan (inbox-viewer-contrast) — full viewer expand + drag/keyboard resize.
+    const [viewerSize, setViewerSize] = useState<ViewerSize | null>(() => readViewerSize());
+    const [viewerExpanded, setViewerExpanded] = useState<boolean>(() => readViewerExpanded());
+    const [viewerResizing, setViewerResizing] = useState(false);
+    const viewerDialogRef = useRef<HTMLDivElement | null>(null);
+    const viewerResizeStartRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+    // A drag that ends over the backdrop must not close the viewer — set the
+    // instant a drag starts, cleared a tick after pointerup so the click
+    // event that follows it is still swallowed by the overlay handler below.
+    const suppressBackdropClickRef = useRef(false);
+
+    const clampViewerW = (w: number) => Math.min(Math.max(w, VIEWER_MIN_W), window.innerWidth - VIEWER_VIEWPORT_MARGIN);
+    const clampViewerH = (h: number) => Math.min(Math.max(h, VIEWER_MIN_H), window.innerHeight - VIEWER_VIEWPORT_MARGIN);
+
+    const getCurrentViewerSize = (): ViewerSize => {
+        const rect = viewerDialogRef.current?.getBoundingClientRect();
+        const w = (rect && rect.width) || viewerSize?.w || VIEWER_FALLBACK_W;
+        const h = (rect && rect.height) || viewerSize?.h || VIEWER_FALLBACK_H;
+        return { w, h };
+    };
+
+    const toggleViewerExpanded = () => {
+        setViewerExpanded(prev => {
+            const next = !prev;
+            persistViewerExpanded(next);
+            return next;
+        });
+    };
+
+    const onViewerResizePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        suppressBackdropClickRef.current = true;
+        const { w, h } = getCurrentViewerSize();
+        viewerResizeStartRef.current = { x: e.clientX, y: e.clientY, w, h };
+        setViewerResizing(true);
+    };
+
+    // The dialog is centered by the overlay's flexbox, so growing it by dx
+    // only moves ONE edge outward by dx/2 on each side — double the delta so
+    // the grip stays under the pointer instead of drifting away from it.
+    const onViewerResizePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+        const start = viewerResizeStartRef.current;
+        if (!start) return;
+        setViewerSize({
+            w: clampViewerW(start.w + 2 * (e.clientX - start.x)),
+            h: clampViewerH(start.h + 2 * (e.clientY - start.y)),
+        });
+    };
+
+    const onViewerResizePointerEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
+        if (!viewerResizeStartRef.current) return;
+        viewerResizeStartRef.current = null;
+        setViewerResizing(false);
+        e.currentTarget.releasePointerCapture?.(e.pointerId);
+        window.setTimeout(() => { suppressBackdropClickRef.current = false; }, 0);
+    };
+
+    // Persist once a drag settles (or after each arrow-key step) — from committed
+    // state, so the saved size is never a pointermove behind.
+    useEffect(() => {
+        if (viewerSize && !viewerResizing) persistViewerSize(viewerSize);
+    }, [viewerSize, viewerResizing]);
+
+    // Every close path (Escape, backdrop, ✕, approve/archive/delete) unmounts the
+    // handle mid-drag without a pointerup — reset here so the next open isn't stuck
+    // in `--resizing` (which disables pointer events on the email body).
+    useEffect(() => {
+        if (viewerEmail || viewerLoading) return;
+        viewerResizeStartRef.current = null;
+        suppressBackdropClickRef.current = false;
+        setViewerResizing(false);
+    }, [viewerEmail, viewerLoading]);
+
+    const onViewerResizeKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+        const cur = getCurrentViewerSize();
+        const step = e.shiftKey ? VIEWER_KEY_STEP_BIG : VIEWER_KEY_STEP;
+        let next: ViewerSize;
+        if (e.key === 'ArrowRight') next = { w: clampViewerW(cur.w + step), h: cur.h };
+        else if (e.key === 'ArrowLeft') next = { w: clampViewerW(cur.w - step), h: cur.h };
+        else if (e.key === 'ArrowDown') next = { w: cur.w, h: clampViewerH(cur.h + step) };
+        else if (e.key === 'ArrowUp') next = { w: cur.w, h: clampViewerH(cur.h - step) };
+        else return;
+        e.preventDefault();
+        setViewerSize(next);
+    };
 
     /**
      * Detect plain-text vs HTML email bodies and format accordingly.
@@ -112,9 +242,10 @@ export default function InboxZero() {
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
-        // Style email quote lines (lines starting with >)
-        escaped = escaped.replace(/^&gt;(.*)$/gm,
-            '<span style="color:var(--text-tertiary);border-left:3px solid var(--border-default);padding-left:10px;display:inline-block;margin:2px 0">&gt;$1</span>');
+        // Style email quote lines (lines starting with >) — .q is defined by
+        // emailFrame.ts's buildEmailSrcDoc (var(--…) is invalid inside the
+        // iframe srcDoc this ends up in; DOMPurify allows `class`).
+        escaped = escaped.replace(/^&gt;(.*)$/gm, '<span class="q">&gt;$1</span>');
         // Convert newlines to <br>
         escaped = escaped.replace(/\r?\n/g, '<br>');
         return escaped;
@@ -272,7 +403,12 @@ export default function InboxZero() {
         if (!viewerEmail && !viewerLoading) return;
         const overlay = viewerOverlayRef.current;
         const closeViewer = () => { setViewerEmail(null); setViewerLoading(false); };
-        const onOverlayClick = (e: MouseEvent) => { if (e.target === overlay) closeViewer(); };
+        const onOverlayClick = (e: MouseEvent) => {
+            // A resize drag that ends over the backdrop fires a click on it
+            // right after pointerup — don't let that close the viewer.
+            if (suppressBackdropClickRef.current) return;
+            if (e.target === overlay) closeViewer();
+        };
         const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') closeViewer(); };
         overlay?.addEventListener('click', onOverlayClick);
         document.addEventListener('keydown', onKeyDown);
@@ -1021,7 +1157,7 @@ export default function InboxZero() {
                                             background: 'var(--bg-surface)', minHeight: 120, maxHeight: 400,
                                         }}>
                                             <iframe
-                                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:20px 24px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.7;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0}a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{padding:8px 12px;border:1px solid var(--border-default);text-align:left;font-size:13px}th{background:#f8fafc;font-weight:600}blockquote{margin:12px 0;padding:12px 20px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 6px 6px 0}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:14px 18px;overflow-x:auto}hr{border:none;border-top:1px solid var(--border-default);margin:16px 0}h1,h2,h3{color:#0f172a;margin:16px 0 8px}ul,ol{padding-left:24px}li{margin:4px 0}p{margin:8px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:24px;padding-top:16px;border-top:1px solid var(--border-default)}</style></head><body>${sanitizeHtml(formatEmailBody(inlineBody))}</body></html>`}
+                                                srcDoc={buildEmailSrcDoc(sanitizeHtml(formatEmailBody(inlineBody)), themePalette(), 'compact')}
                                                 style={{ width: '100%', height: '100%', minHeight: 120, border: 'none', display: 'block' }}
                                                 title="email-body-inline"
                                                 sandbox=""
@@ -1329,11 +1465,14 @@ export default function InboxZero() {
                 {(viewerEmail || viewerLoading) && (
                     <div className="iz-viewer-overlay" ref={viewerOverlayRef}>
                         <div
-                            className="iz-viewer"
+                            className={`iz-viewer${viewerExpanded ? ' iz-viewer--expanded' : ''}${viewerResizing ? ' iz-viewer--resizing' : ''}`}
+                            ref={viewerDialogRef}
                             role="dialog"
                             aria-modal="true"
                             aria-label={viewerEmail ? viewerEmail.subject : 'Loading email'}
+                            style={!viewerExpanded && viewerSize ? { width: viewerSize.w, height: viewerSize.h } : undefined}
                         >
+                        <div className="iz-viewer__scroll">
                             {viewerLoading ? (
                                 <div className="iz-viewer__loading">
                                     <div className="iz-viewer__spinner" />
@@ -1353,6 +1492,16 @@ export default function InboxZero() {
                                                 <span className="iz-viewer__date">{new Date(viewerEmail.createdAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         </div>
+                                        <button
+                                            type="button"
+                                            className="iz-viewer__expand"
+                                            aria-pressed={viewerExpanded}
+                                            aria-label={viewerExpanded ? 'Restore email viewer size' : 'Expand email viewer'}
+                                            title={viewerExpanded ? 'Restore email viewer size' : 'Expand email viewer'}
+                                            onClick={toggleViewerExpanded}
+                                        >
+                                            {viewerExpanded ? <Minimize2 size={16} aria-hidden /> : <Maximize2 size={16} aria-hidden />}
+                                        </button>
                                         <button className="iz-viewer__close" onClick={() => setViewerEmail(null)} title="Close (Esc)" aria-label="Close email"><X size={16} /></button>
                                     </div>
 
@@ -1393,10 +1542,14 @@ export default function InboxZero() {
                                         Add them back once a real download route exists. */}
 
                                     {/* Email Body — auto-resizing iframe */}
-                                    <div className="iz-viewer__body" style={{ background: 'var(--bg-surface)', borderRadius: 8, overflow: 'hidden' }}>
+                                    <div className="iz-viewer__body" style={{ borderRadius: 8, overflow: 'hidden' }}>
                                         <iframe
-                                            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid var(--border-default);text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid var(--border-default)}hr{border:none;border-top:1px solid var(--border-default);margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a;margin:18px 0 8px}h3{font-size:16px;color:#1e293b;margin:14px 0 6px}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:28px;padding-top:18px;border-top:1px solid var(--border-default)}</style></head><body>${sanitizeHtml(formatEmailBody(viewerEmail.body || '')) || `<div style="padding:40px;text-align:center;color:var(--text-secondary);font-style:italic"><p style="font-size:16px"></p><p>${sanitizeHtml(viewerEmail.snippet || 'No email body available.')}</p></div>`}</body></html>`}
-                                            style={{ width: '100%', border: 'none', display: 'block', minHeight: 200 }}
+                                            srcDoc={buildEmailSrcDoc(
+                                                sanitizeHtml(formatEmailBody(viewerEmail.body || '')) || `<div class="empty"><p>${sanitizeHtml(viewerEmail.snippet || 'No email body available.')}</p></div>`,
+                                                VIEWER_PALETTE,
+                                                'comfortable',
+                                            )}
+                                            style={{ width: '100%', border: 'none', display: 'block', flex: '1 1 auto', minHeight: 240 }}
                                             title="email-viewer-body"
                                             sandbox="allow-popups"
                                         />
@@ -1435,6 +1588,23 @@ export default function InboxZero() {
                                     </div>
                                 </>
                             ) : null}
+                        </div>
+                        {!viewerExpanded && (
+                            <button
+                                type="button"
+                                className="iz-viewer__resize"
+                                aria-label="Resize email viewer — drag, or use the arrow keys"
+                                title="Drag to resize"
+                                onPointerDown={onViewerResizePointerDown}
+                                onPointerMove={onViewerResizePointerMove}
+                                onPointerUp={onViewerResizePointerEnd}
+                                onPointerCancel={onViewerResizePointerEnd}
+                                onLostPointerCapture={onViewerResizePointerEnd}
+                                onKeyDown={onViewerResizeKeyDown}
+                            >
+                                <MoveDiagonal2 size={14} aria-hidden />
+                            </button>
+                        )}
                         </div>
                     </div>
                 )}

@@ -172,7 +172,32 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
  * Safe to call during render — it only mutates plain objects.
  */
 export function setPerUserIdentity(userId: string | null): void {
+    currentOwnerId = userId;
     for (const holder of ALL_HOLDERS) holder.current = userId;
+}
+
+/* ── Owner guard for async writers ───────────────────────────────────────────
+ * Every per-user store resolves its key from its holder AT WRITE TIME. Code
+ * that starts as user A, awaits (fetch / LLM / timer), then writes would land
+ * A's result in B's namespace (or `_anonymous`) if the account changed in
+ * between — and a One Save store would push it to B's server copy too.
+ * Capture the owner BEFORE the first await and re-check right before the
+ * write (same idea as oneSaveStore hydrate's `ownerAtStart`):
+ *
+ *     const stillOwner = captureOwner();
+ *     const result = await work();
+ *     if (!stillOwner()) return;   // account changed — drop, never redirect
+ *     recordThing(result);
+ *
+ * ponytail: per-call-site guard (JS has no async context a store could read);
+ * an AsyncContext-based store-level guard can replace these when it ships.
+ */
+let currentOwnerId: string | null = null;
+
+/** Snapshot the signed-in owner now; the returned check is true only while it is unchanged. */
+export function captureOwner(): () => boolean {
+    const atStart = currentOwnerId;
+    return () => currentOwnerId === atStart;
 }
 
 /**

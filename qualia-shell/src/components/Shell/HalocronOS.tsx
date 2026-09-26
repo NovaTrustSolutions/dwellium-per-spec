@@ -663,7 +663,7 @@ export default function HalocronOS() {
                                     {([
                                         ['__kg__', 'Knowledge Graph', 'Interactive import-graph of your repos — most-important files, clusters, and an "ask the map" chat.'],
                                         ['memory-graph-rag', 'Cognitive M Network', 'Retrieval-augmented memory graph that stores and recalls knowledge as linked nodes.'],
-                                        ['cognitive-harness', 'Cognitive Harness', 'Tune the cognitive parameters that shape how agents weight, retain, and recall context.'],
+                                        ['cognitive-harness', 'Cognitive Harness', 'Live status of memory, retrieval, routing, tools and agent tasks — read-only.'],
                                         ['honcho', 'Honcho', 'Durable per-user memory the agents read and write — plus background "dreams" that consolidate it.'],
                                         ['thought-weaver', 'Thought Weaver', 'Capture fleeting thoughts and notes; they are auto-categorized and woven into your memory.'],
                                         ['two-brains', 'Two Brains', 'A shared second brain — notes, tasks, and reactions you and the team build together.'],

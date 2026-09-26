@@ -434,6 +434,13 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 
 - **Prevention:** never put `var(--…)` inside an `srcDoc` — resolve tokens to literals first (`themePalette()`), and never hard-code a text color without its background; any drag that can end over a click-to-close backdrop must swallow the trailing click; state set on pointerdown must also be reset on unmount/close, not only on pointerup.
 
+## 2026-09-25 — Plan 069: Cognitive Harness (per-render retrieval, latte log contrast, accumulating canvas grid)
+
+- **Error:** the widget called `cmn.probe()` in its render body — a full retrieval + PageRank on every render (6 s auto-cycle included); the canvas reseeded every tab change, ignored DPR and host resizes, and kept animating while hidden in a tab group; after theming, the event log failed latte contrast (3.19–4.34:1) and the canvas grid became a heavy lattice.
+- **Root cause:** (1) no memo on the engine version. (2) the canvas effect depended on `activeIndex`, sized from `offsetWidth` once, listened only to `window` resize. (3) `.ch-logs-container` used `color-mix(black 20%, transparent)` — a fixed black darkens the light surface under accent text; the coder's contrast table used the plain surface, not the composited one. (4) the grid is redrawn every frame under a 0.15-alpha trailing fade, so it accumulates to ≈ alpha / 0.15 (8 % → ~50 %).
+- **Fix:** `useMemo(() => cmn.probe(), [cmn, version])`; `harnessCanvas.ts` (seed once, ResizeObserver × DPR, IntersectionObserver + visibilitychange gate, offscreen grid, CSS-token palette with a parse check); theme-relative tint `color-mix(var(--text-primary) 5%, transparent)`; grid 1.5 %. Also `hydrate()` now emits on its post-await failure path.
+- **Prevention:** expensive probes belong behind the store version; tints use `--text-primary`, never literal black/white; judge contrast with axe on a real render in BOTH themes (my DOM walker read 4.61 where axe measured 4.34 on the actual pixels); for trail-fade canvases, size per-frame alphas by alpha / fadeAlpha.
+
 ## 2026-09-25 — AI Spend (plan 068 phase 1): what the green tests missed
 
 - **Error:** the AI Spend ledger under-counted most real spend, priced unknown models at a silent $1/$3, let one device's One Save write erase another's usage, and "Clear" wiped every device. Found by a read-only audit; fixed on `feat/068-ai-spend`.

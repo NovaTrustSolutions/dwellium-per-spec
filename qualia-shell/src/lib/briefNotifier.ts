@@ -9,6 +9,7 @@
 import { activationStore } from './activationStore';
 import type { MorningBrief } from './morningBriefStore';
 import { markBriefSeen, requestBriefInAra } from './morningBriefStore';
+import { captureOwner } from './perUserIdentity';
 
 function notificationApi(): typeof Notification | null {
     return typeof Notification === 'undefined' ? null : Notification;
@@ -31,6 +32,7 @@ export function requestBriefNotificationPermission(): void {
 /** Desktop notification for a new brief; click opens the brief in ARA. */
 export function notifyNewBrief(b: MorningBrief): void {
     if (!canNotify()) return;
+    const stillOwner = captureOwner();
     try {
         const n = new Notification('Your morning brief is ready', {
             body: b.insights[0]?.title ?? b.dataLines[0] ?? b.date,
@@ -38,6 +40,8 @@ export function notifyNewBrief(b: MorningBrief): void {
         });
         n.onclick = () => {
             try { window.focus(); } catch { /* ignore */ }
+            // owner-race guard: clicked after an account switch — don't open or mark B's same-date brief.
+            if (!stillOwner()) return;
             requestBriefInAra(b.date); // ARA mount-race leg picks it up when ARA opens
             markBriefSeen(b.date);
         };

@@ -156,8 +156,11 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
  * Safe to call during render — it only mutates plain objects.
  */
 export function setPerUserIdentity(userId: string | null): void {
+    const changed = currentOwnerId !== userId;
     currentOwnerId = userId;
     for (const holder of ALL_HOLDERS) holder.current = userId;
+    // Deferred: this also runs during render (usePerUserIdentity), where listeners must not set state.
+    if (changed && ownerListeners.size) queueMicrotask(() => { for (const fn of ownerListeners) fn(currentOwnerId); });
 }
 
 /* ── Owner guard for async writers ───────────────────────────────────────────
@@ -177,9 +180,20 @@ export function setPerUserIdentity(userId: string | null): void {
  * an AsyncContext-based store-level guard can replace these when it ships.
  */
 let currentOwnerId: string | null = null;
+const ownerListeners = new Set<(owner: string | null) => void>();
+
+/** Run `fn` (one microtask later) whenever the signed-in owner changes — for module-level state that
+ *  outlives a sign-out and must not follow the person to the next account. Returns an unsubscribe. */
+export function onOwnerChange(fn: (owner: string | null) => void): () => void {
+    ownerListeners.add(fn);
+    return () => { ownerListeners.delete(fn); };
+}
 
 /** What a guarded run reports when it stopped because the account changed mid-run. */
 export const ACCOUNT_CHANGED = 'The account changed during this run, so it was stopped and nothing was saved.';
+
+/** The signed-in owner right now (null = nobody). Prefer captureOwner() for async guards. */
+export function currentOwner(): string | null { return currentOwnerId; }
 
 /** Snapshot the signed-in owner now; the returned check is true only while it is unchanged. */
 export function captureOwner(): () => boolean {

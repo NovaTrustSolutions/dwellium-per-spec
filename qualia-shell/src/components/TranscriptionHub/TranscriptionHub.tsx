@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { MicrophoneTranscriber as MicrophoneTranscriberType } from '@moonshine-ai/moonshine-js';
 import { UserContext } from '../../context/UserContext';
+import { captureOwner } from '../../lib/perUserIdentity';
 import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
 import { identifyWithConfidence, type EnrolledSpeaker } from './speakerLibrary';
 import { speakerLibraryStore, speakerLibraryUserIdHolder, addSpeakerSample, autoEnrollUnknown, renameSpeaker, migrateAnonLibraryToUser, speakerLibraryResolvedKey, SPEAKER_RENAMED_EVENT } from './speakerLibraryStore';
@@ -1230,8 +1231,15 @@ export default function TranscriptionHub() {
             tag(smootherRef.current.current() ?? 'Unknown');
             return;
         }
+        // owner-race guard: the first embed loads the model (seconds). captureOwner misses
+        // sign-out (nothing flips it on LoginScreen), so also pin the library holder that
+        // oneSaveSync.bootstrap repoints on logout/login.
+        const stillOwner = captureOwner();
+        const libOwner = speakerLibraryUserIdHolder.current;
         let embedding: number[] | null = null;
         try { embedding = await embedAudio(voiced); } catch { /* model/audio unavailable */ }
+        // owner-race guard: drop A's voiceprint — never enroll it into B's or _anonymous's library
+        if (!stillOwner() || speakerLibraryUserIdHolder.current !== libOwner) return;
         if (embedding) latestEmbeddingRef.current = embedding;
         // #4: margin-gated identification, then temporal smoothing.
         const detail = embedding

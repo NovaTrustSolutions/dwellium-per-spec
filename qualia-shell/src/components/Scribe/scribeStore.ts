@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { API_BASE } from '../../config';
 import { getAuthHeaders } from '../../context/UserContext';
+import { captureOwner, currentOwner, onOwnerChange } from '../../lib/perUserIdentity';
 
 export interface OpenFile {
     filepath: string;
@@ -107,12 +108,13 @@ interface ScribeState {
 
     createVersion: (filepath: string) => Promise<string | null>;
 
-    openFile: (filepath: string) => Promise<void>;
+    /** `stillOwner`: a caller that awaited before calling passes its own capture (owner-race guard). */
+    openFile: (filepath: string, options?: { stillOwner?: () => boolean }) => Promise<void>;
     closeFile: (filepath: string) => void;
     setActiveFile: (filepath: string) => void;
     updateContent: (filepath: string, content: string) => void;
     saveFile: (filepath: string) => Promise<void>;
-    createFile: (filepath: string, content?: string, options?: { open?: boolean }) => Promise<void>;
+    createFile: (filepath: string, content?: string, options?: { open?: boolean; stillOwner?: () => boolean }) => Promise<void>;
     deleteFile: (filepath: string) => Promise<void>;
     listFiles: () => Promise<FileEntry[]>;
     setScrollTop: (filepath: string, scrollTop: number) => void;
@@ -144,6 +146,16 @@ function activeLocalUserId(): string {
         return typeof parsed.id === 'string' && parsed.id.trim() ? parsed.id : '_anonymous';
     } catch {
         return '_anonymous';
+    }
+}
+
+/** The signed-in person's email (lower-case) from the stored user record, or null when signed out. */
+function activeLocalEmail(): string | null {
+    try {
+        const parsed = JSON.parse(localStorage.getItem('dwellium-user') ?? 'null') as { email?: unknown } | null;
+        return typeof parsed?.email === 'string' && parsed.email.trim() ? parsed.email.trim().toLowerCase() : null;
+    } catch {
+        return null;
     }
 }
 
@@ -265,8 +277,10 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     setEditingCommentId: (id) => set({ editingCommentId: id }),
 
     loadComments: async (filepath) => {
+        const stillOwner = captureOwner(); // owner-race guard: never attach A's comments to B's same-path file
         try {
             const data = await apiFetch(`/api/scribe/comments/${filepath}`);
+            if (!stillOwner()) return;
             const loaded: DocComment[] = (data.comments || []).map((c: any) => ({ ...c, filepath }));
             set((s) => ({
                 comments: [...s.comments.filter((c) => c.filepath !== filepath), ...loaded],
@@ -346,29 +360,34 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     setPreviewVisible: (v) => set({ previewVisible: v }),
 
     createVersion: async (filepath) => {
+        const stillOwner = captureOwner(); // owner-race guard: the new version is opened for this account only
         try {
             const data = await apiFetch('/api/scribe/version', {
                 method: 'POST',
                 body: JSON.stringify({ filepath }),
             });
+            if (!stillOwner()) return null;
             if (data.newFilepath) {
-                void get().openFile(data.newFilepath);
+                void get().openFile(data.newFilepath, { stillOwner });
                 return data.newFilepath as string;
             }
             return null;
         } catch (err: any) {
-            set({ error: err.message });
+            if (stillOwner()) set({ error: err.message });
             return null;
         }
     },
 
-    openFile: async (filepath) => {
+    openFile: async (filepath, options) => {
+        // owner-race guard: a job started under another account never opens/caches into this one
+        const stillOwner = options?.stillOwner ?? captureOwner();
+        if (!stillOwner()) return;
         // .pdf opened anywhere (FileTree click, session restore, drops, palette)
         // → convert to a sibling markdown doc and open THAT (plan: Scribe never
         // shows raw PDF bytes). Lazy import keeps pdfjs out of the main chunk.
         if (/\.pdf$/i.test(filepath)) {
             const { openPdfFilepath } = await import('./pdfOpen');
-            await openPdfFilepath(filepath);
+            await openPdfFilepath(filepath, stillOwner);
             return;
         }
         const existing = get().openFiles.find((f) => f.filepath === filepath);
@@ -379,6 +398,7 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
         set({ loading: true, error: null });
         try {
             const data = await apiFetch(`/api/scribe/files/${filepath}`);
+            if (!stillOwner()) { set({ loading: false }); return; } // owner-race guard: drop, never cache under the new account
             const content = typeof data.content === 'string' ? data.content : '';
             cacheLocalFile(filepath, content, false);
             set((s) => ({
@@ -388,6 +408,7 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
             }));
             void get().loadComments(filepath);
         } catch (err: any) {
+            if (!stillOwner()) { set({ loading: false }); return; } // owner-race guard: never read/re-upload the new account's copy
             const local = getLocalFile(filepath);
             if (local) {
                 // A TypeError is the network layer (backend unreachable). Anything
@@ -439,12 +460,14 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     saveFile: async (filepath) => {
         const file = get().openFiles.find((f) => f.filepath === filepath);
         if (!file) return;
+        const stillOwner = captureOwner(); // owner-race guard: the PUT's result belongs to this account only
         cacheLocalFile(filepath, file.content, true);
         try {
             await apiFetch(`/api/scribe/files/${filepath}`, {
                 method: 'PUT',
                 body: JSON.stringify({ content: file.content }),
             });
+            if (!stillOwner()) return;
             cacheLocalFile(filepath, file.content, false);
             set((s) => ({
                 openFiles: s.openFiles.map((f) =>
@@ -452,6 +475,7 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
                 ),
             }));
         } catch (err: any) {
+            if (!stillOwner()) return;
             set({ error: err.message });
         }
     },
@@ -459,12 +483,16 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     createFile: async (filepath, content, options) => {
         const body = content ?? '';
         const shouldOpen = options?.open !== false;
+        // owner-race guard: a caller's job started under another account never POSTs with this one's token
+        const stillOwner = options?.stillOwner ?? captureOwner();
+        if (!stillOwner()) return;
         set({ loading: true, error: null });
         try {
             await apiFetch('/api/scribe/files', {
                 method: 'POST',
                 body: JSON.stringify({ filepath, content: body }),
             });
+            if (!stillOwner()) { set({ loading: false }); return; }
             cacheLocalFile(filepath, body, false);
             set((s) => shouldOpen
                 ? {
@@ -478,6 +506,7 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
                 }
                 : { loading: false });
         } catch (err: any) {
+            if (!stillOwner()) { set({ loading: false }); return; } // else the dirty copy would be re-uploaded to the new account
             cacheLocalFile(filepath, body, true);
             set((s) => shouldOpen
                 ? {
@@ -495,8 +524,10 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     },
 
     deleteFile: async (filepath) => {
+        const stillOwner = captureOwner(); // owner-race guard: never remove the new account's same-path copy
         try {
             await apiFetch(`/api/scribe/files/${filepath}`, { method: 'DELETE' });
+            if (!stillOwner()) return;
             removeLocalFile(filepath);
             set((s) => {
                 const next = s.openFiles.filter((f) => f.filepath !== filepath);
@@ -507,6 +538,7 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
                 return { openFiles: next, activeFilepath: nextActive };
             });
         } catch (err: any) {
+            if (!stillOwner()) return;
             set({ error: err.message });
         }
     },
@@ -530,3 +562,53 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
         }));
     },
 }));
+
+/* ── Owner-race guard: the open tabs belong to the account that opened them ──
+ * This store is module-level and outlives a sign-out (logout clears tokens, it does not reload),
+ * so the next account would open Scribe on these tabs — unsaved content included — and
+ * useAutoSave would PUT a dirty one with the new account's token. Remember who populated the
+ * tabs; Scribe calls dropTabsFromAnotherAccount() before first paint. */
+// Owned content = open tabs plus the per-file comments/redlines (which can outlive the last tab).
+let tabsOwner: (() => boolean) | null = null;
+let tabsOwnerId: string | null = null;
+let tabsOwnerEmail: string | null = null;
+let droppingTabs = false;
+useScribeStore.subscribe((s) => {
+    if (!s.openFiles.length && !s.comments.length && !s.redlines.length) tabsOwner = null;
+    else if (!tabsOwner) { tabsOwner = captureOwner(); tabsOwnerId = currentOwner(); tabsOwnerEmail = activeLocalEmail(); }
+});
+
+/** Clear tabs (and their comments/redlines) populated under another account. True when it cleared. */
+export function dropTabsFromAnotherAccount(): boolean {
+    if (!tabsOwner || tabsOwner()) return false;
+    // Content opened while nobody was signed in (boot, tests) is adopted by the first account, not dropped.
+    // The SAME person under a new id (the session modal's offline path swaps the backend id for the local
+    // roster id) keeps their tabs — dropping would lose their unsaved work. Adopt under the new id.
+    const email = activeLocalEmail();
+    if (tabsOwnerId === null || (email !== null && email === tabsOwnerEmail)) {
+        tabsOwner = captureOwner(); tabsOwnerId = currentOwner(); tabsOwnerEmail = email;
+        return false;
+    }
+    tabsOwner = null;
+    droppingTabs = true; // the session tracker must not record the drop into the new account's memory
+    try {
+        useScribeStore.setState({
+            openFiles: [], activeFilepath: null, comments: [], editingCommentId: null,
+            redlines: [], selectionToolbar: null, loading: false, error: null, redlineLoading: false,
+        });
+    } finally { droppingTabs = false; }
+    return true;
+}
+
+/** True while dropTabsFromAnotherAccount() is clearing the store (trackScribeSession skips that change). */
+export function isDroppingTabs(): boolean { return droppingTabs; }
+
+// Drop the moment the owner changes (sign-out, sign-in, in-place re-auth) — not only when Scribe mounts —
+// so nothing that reads this store (memory bridge, ARA's "open doc") serves A's tabs to B.
+onOwnerChange(() => {
+    if (dropTabsFromAnotherAccount()) return;
+    // Nothing owned to drop, but a still-running AI redline's spinner belongs to the previous owner.
+    if (!useScribeStore.getState().redlineLoading) return;
+    droppingTabs = true;
+    try { useScribeStore.setState({ redlineLoading: false }); } finally { droppingTabs = false; }
+});

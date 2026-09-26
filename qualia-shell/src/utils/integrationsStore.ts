@@ -229,6 +229,10 @@ let persistSeq = 0;
  */
 export async function saveIntegrationsSecure(bundle: IntegrationsBundle, userId: string | null): Promise<void> {
     if (typeof window === 'undefined') return;
+    // owner-race guard: a caller that awaited across an account switch still holds
+    // the old owner's userId + bundle; drop it rather than put A's keys in B's
+    // memory / vault (resolveKey() follows the holder, not userId).
+    if (integrationsOwnerIdHolder.current !== userId) return;
     // Make the new plaintext visible to consumers immediately (synchronous).
     setMemoryOnly(bundle);
     // Anti-clobber: refuse to PERSIST an all-empty bundle over a stored key
@@ -296,8 +300,13 @@ async function migrateStrandedVaults(stableId: string, legacyIds: string[]): Pro
 export async function unlockIntegrations(userId: string | null, legacyIds: string[] = []): Promise<void> {
     if (typeof window === 'undefined') return;
     integrationsOwnerIdHolder.current = userId; // ensure resolveKey() targets this person (private vault holder)
+    // owner-race guard: sign-out / another sign-in re-points the holder mid-run;
+    // every resolveKey() write and setMemoryOnly below would then land in the new
+    // owner's vault. Drop, never redirect (this person re-unlocks on next sign-in).
+    const stillOwner = () => integrationsOwnerIdHolder.current === userId;
     if (userId) {
         try { await migrateStrandedVaults(userId, legacyIds); } catch { /* migration is best-effort */ }
+        if (!stillOwner()) return;
     }
     let raw: string | null = null;
     try { raw = localStorage.getItem(resolveKey()); } catch { return; }
@@ -306,6 +315,7 @@ export async function unlockIntegrations(userId: string | null, legacyIds: strin
         try {
             const { oneSaveClient } = await import('../lib/oneSaveClient');
             const remote = await oneSaveClient.get<IntegrationsBundle>(remoteObjectId(userId));
+            if (!stillOwner()) return; // owner-race guard
             if (remote?.payload) {
                 // Anti-clobber: a flapped backend or a clear on another device
                 // must never wipe good local keys. Adopt the remote only when it
@@ -342,6 +352,7 @@ export async function unlockIntegrations(userId: string | null, legacyIds: strin
                 const decrypted = await decryptBundle(payload, legacy);
                 if (!bundleHasPlaintextSecret(decrypted)) continue; // wrong key → don't adopt garbage
                 const reEncrypted = await encryptBundle(decrypted, userId);
+                if (!stillOwner()) return; // owner-race guard
                 raw = JSON.stringify(reEncrypted);
                 localStorage.setItem(resolveKey(), raw);
                 break;
@@ -352,11 +363,13 @@ export async function unlockIntegrations(userId: string | null, legacyIds: strin
     const parsed = deserialize(raw);
     try {
         const decrypted = await decryptBundle(parsed, userId);
+        if (!stillOwner()) return; // owner-race guard: never publish these keys to another owner's snapshot
         setMemoryOnly(decrypted);
         // Proactive migration: if the at-rest copy still holds legacy plaintext
         // secrets, re-persist them encrypted now (don't wait for a manual save).
         if (bundleHasPlaintextSecret(parsed)) {
             const encrypted = await encryptBundle(decrypted, userId);
+            if (!stillOwner()) return; // owner-race guard
             try { localStorage.setItem(resolveKey(), JSON.stringify(encrypted)); } catch { /* sandboxed */ }
             await syncEncryptedBundle(encrypted, userId);
         } else if (!hydratedFromRemote) {
@@ -389,6 +402,8 @@ export async function saveIntegrationsForceRemoval(
     userId: string | null,
 ): Promise<void> {
     if (typeof window === 'undefined') return;
+    // owner-race guard: same stale-caller drop as saveIntegrationsSecure.
+    if (integrationsOwnerIdHolder.current !== userId) return;
     // Make the cleared bundle visible to consumers immediately (synchronous).
     setMemoryOnly(bundle);
     const seq = ++persistSeq;

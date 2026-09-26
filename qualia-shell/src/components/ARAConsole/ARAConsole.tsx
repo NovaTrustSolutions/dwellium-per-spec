@@ -870,6 +870,7 @@ export default function ARAConsole() {
 
     const handleVoiceUpload = useCallback(async (file: File) => {
         if (!file) return;
+        const stillOwner = captureOwner(); // owner-race guard: the clone can take seconds; account may switch
         const name = voiceUploadName.trim() || file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '-');
         setVoiceUploading(true);
         try {
@@ -884,6 +885,7 @@ export default function ARAConsole() {
             if (data.success) {
                 setVoiceUploadName('');
                 await fetchVoices();
+                if (!stillOwner()) return; // owner-race guard: never select A's cloned voice into B's prefs (finally clears the spinner)
                 selectVoice(data.data.voice_id);
             }
         } catch (err) {
@@ -894,8 +896,10 @@ export default function ARAConsole() {
     }, [voiceUploadName, authFetch, fetchVoices, selectVoice]);
 
     const deleteVoice = useCallback(async (voiceId: string) => {
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-DELETE
         try {
             await authFetch(`${API_ARA}/voice/clone/${voiceId}`, { method: 'DELETE' });
+            if (!stillOwner()) return; // owner-race guard: activeVoice is A's — never reset B's voice pref
             if (activeVoice === voiceId) selectVoice('default');
             await fetchVoices();
         } catch { /* silently fail */ }

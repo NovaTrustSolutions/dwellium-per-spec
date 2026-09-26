@@ -71,7 +71,8 @@ export function savePersonaConfig(next: PersonaConfig): void {
 /** Hook: read + patch the active user's persona config from any widget. */
 export function usePersonaConfig() {
     const userCtx = useContext(UserContext);
-    personaUserIdHolder.current = userCtx?.user?.id ?? null;
+    const uid = userCtx?.user?.id ?? null;
+    personaUserIdHolder.current = uid;
 
     const config = useSyncExternalStore(
         personaConfigStore.subscribe,
@@ -79,9 +80,13 @@ export function usePersonaConfig() {
         personaConfigStore.getServerSnapshot,
     );
 
+    // Bound to THIS render's user: async callers (LLM prompt, file reads) close
+    // over the patch from the render where they started.
     const patch = useCallback((partial: Partial<PersonaConfig>) => {
+        // owner-race guard: the key now resolves to another account — drop, never redirect.
+        if (personaUserIdHolder.current !== uid) return;
         savePersonaConfig({ ...personaConfigStore.getSnapshot(), ...partial });
-    }, []);
+    }, [uid]);
 
     return { config, patch };
 }

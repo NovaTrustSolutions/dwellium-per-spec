@@ -35,6 +35,7 @@ import {
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 
 const ACCENT = '#D6FE51';
 
@@ -135,6 +136,7 @@ export default function DumpMode() {
         }
         setReportBusy(true);
         setReportError('');
+        const stillOwner = captureOwner(); // owner-race guard: the report never opens in the next account's Scribe
         try {
             const corpus = compileBrainDumpMarkdown(dumps, 'Brain Dump');
             const res = await callLlm(
@@ -147,6 +149,7 @@ export default function DumpMode() {
                 },
                 integrations.llm,
             );
+            if (!stillOwner()) { setReportError(ACCOUNT_CHANGED); return; } // finally clears reportBusy
             if (!res || !res.text.trim()) {
                 setReportError('The LLM returned an empty report. Try again.');
                 setReportBusy(false);

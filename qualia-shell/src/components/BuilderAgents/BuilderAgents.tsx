@@ -13,6 +13,7 @@ import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useScribeStore } from '../Scribe/scribeStore';
 import { UserContext } from '../../context/UserContext';
 import { captureFacts, copawUserIdHolder } from '../Hive/copawStore';
+import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 import { AGENTS, composePrompt, canRun, type AgentMode } from './agentDefs';
 
 const ACCENT = '#D6FE51';
@@ -40,7 +41,10 @@ export default function BuilderAgents() {
         setBusy(true); setErr(''); setOutput(''); setCopied(false);
         try {
             const { systemPrompt, prompt } = composePrompt(mode, values);
+            const stillOwner = captureOwner();
             const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text' }, integrations.llm);
+            // owner-race guard: account changed mid-call — drop output + CoPaw facts (finally clears busy).
+            if (!stillOwner()) { setErr(ACCOUNT_CHANGED); return; }
             if (res && res.text.trim()) {
                 setOutput(res.text.trim());
                 captureFacts(def.label, res.text.trim()); // CoPaw §8.5

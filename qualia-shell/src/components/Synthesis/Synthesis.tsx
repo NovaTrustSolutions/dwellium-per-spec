@@ -18,6 +18,7 @@ import {
     buildSecondLayerPrompt, type Synthesis as SynthesisEntry,
 } from './synthesisStore';
 import { captureFacts, copawUserIdHolder } from '../Hive/copawStore';
+import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 
 const ACCENT = '#D6FE51';
 const PASSES = ['Ingest', 'Compile', 'Query & Synthesize', 'Capture', 'Return', 'Recompile'];
@@ -42,6 +43,7 @@ export default function Synthesis() {
     const runSynthesis = useCallback(async (prompt: string) => {
         if (!hasActiveLlm(integrations.llm)) { setErr('No LLM configured — add a key above.'); return; }
         setBusy(true); setErr(''); setCaptured(false);
+        const stillOwner = captureOwner();
         try {
             const res = await callLlm({
                 systemPrompt: 'You are a synthesis engine. Given a question (and any provided prior context), produce a concise, well-structured synthesis in Markdown — claims grounded, assumptions flagged, ending with the most important open question.',
@@ -49,6 +51,8 @@ export default function Synthesis() {
                 maxTokens: 1200,
                 temperature: 0.4,
             }, integrations.llm);
+            // owner-race guard: account changed mid-call — drop result + CoPaw facts (finally clears busy).
+            if (!stillOwner()) { setErr(ACCOUNT_CHANGED); return; }
             if (res && res.text.trim()) {
                 setResult(res.text.trim());
                 captureFacts('Synthesis Lab', res.text.trim()); // CoPaw §8.5

@@ -9,6 +9,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { UserContext } from '../../../context/UserContext';
 import { useIntegrations } from '../../../hooks/useIntegrations';
+import { captureOwner } from '../../../lib/perUserIdentity';
 import { WIDGET_ACTION_EVENT, consumePendingWidgetAction, type WidgetActionRequest } from '../../../lib/widgetActions';
 import IDocEditor from './IDocEditor';
 import IDocLibrary from './IDocLibrary';
@@ -38,12 +39,15 @@ export default function InteractiveDocs() {
             if (!prompt) return;
             setView('library');
             setGenBusy(true);
+            // owner-race guard: captured per call — this handler is registered once, so a render-scoped capture would be stale.
+            const stillOwner = captureOwner();
             void generateDocFromPrompt(prompt, {}, llmRef.current)
                 .then((doc) => {
+                    if (!stillOwner()) return; // account changed mid-generation — drop, and don't prefill B's composer with A's prompt
                     if (doc) { replaceDoc(doc); setActive(doc.id); setView('edit'); }
                     else setPendingPrompt(prompt); // no LLM / bad reply → prefill the composer instead
                 })
-                .catch(() => setPendingPrompt(prompt))
+                .catch(() => { if (stillOwner()) setPendingPrompt(prompt); })
                 .finally(() => setGenBusy(false));
         };
         const handler = (ev: Event) => {

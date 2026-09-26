@@ -7,6 +7,7 @@ import {
 import { getIcon, ICON_KEYS } from '../Sidebar/iconMap';
 import { formatDuration } from '../../lib/agents/personaWorkStore';
 import type { PersonaStats } from '../../lib/agents/hermesStatus';
+import { captureOwner } from '../../lib/perUserIdentity';
 import './AvatarDossier.css';
 
 /**
@@ -129,7 +130,13 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
 
     const onUpload = async (file?: File) => {
         if (!file) return;
-        try { onAvatarChange({ kind: 'image', src: await readImageScaled(file) }); } catch { /* ignore */ }
+        const stillOwner = captureOwner();
+        try {
+            const src = await readImageScaled(file);
+            // owner-race guard: account changed mid-decode — never hand A's image to the new account's persona.
+            if (!stillOwner()) return;
+            onAvatarChange({ kind: 'image', src });
+        } catch { /* ignore */ }
     };
     const curVideoIdx = Math.max(0, NEURAL_VIDEOS.indexOf(neuralVideo));
 

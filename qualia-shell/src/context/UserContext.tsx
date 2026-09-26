@@ -13,6 +13,7 @@ import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import { sessionHealthStore } from '../lib/sessionHealthStore';
 import { oneSaveSync } from '../lib/oneSaveStore';
+import { setPerUserIdentity } from '../lib/perUserIdentity';
 import { unlockIntegrations, stableIntegrationsOwnerId } from '../utils/integrationsStore';
 
 // API_BASE imported from config
@@ -562,6 +563,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     /* ── One Save: hydrate durable stores + backfill local-only ones on login.
      * Inert unless VITE_ONE_SAVE is on (oneSaveSync.bootstrap no-ops). ── */
     useEffect(() => {
+        // Owner-race guard: sign-out unmounts the shell, so no usePerUserIdentity render reports
+        // "nobody" — do it here, or captureOwner() still passes for A's in-flight jobs while One Save
+        // has repointed the stores at _anonymous. Same value the shell sets on sign-in (no churn).
+        setPerUserIdentity(user?.id ?? null);
         void oneSaveSync.bootstrap(user?.id ?? null);
         // Decrypt at-rest API keys for this user into the in-memory snapshot so
         // every consumer reads plaintext while localStorage keeps ciphertext.

@@ -15,7 +15,25 @@
  * (NOT built here; backend deploys are blocked).
  */
 import { getResearchProvider } from '../../data/researchProviders';
+import type { ResearchProvider } from '../../data/researchProviders';
 import type { ResearchLogResponse } from './researchLogStore';
+import { recordLlmUsage, currentUsageUserId } from '../llmUsageStore';
+import type { LlmProvider } from '../../types/integrations';
+
+/**
+ * Plan 068 (A2): Research Lab providers aren't LlmProvider ids — map to the
+ * closest one so llmPricing.priceFor can match (it strips "vendor/" prefixes,
+ * so the real model id still resolves). Google Gemini's OpenAI-compat
+ * endpoint maps to 'gemini' (exact pricing); anything at localhost maps to
+ * 'local' (free); the real api.openai.com maps to 'openai'; everything else
+ * (OpenRouter, Groq, Mistral, ...) maps to 'custom'.
+ */
+export function mapResearchProviderToLlmProvider(provider: ResearchProvider): LlmProvider {
+    if (provider.id === 'google-gemini') return 'gemini';
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/)/i.test(provider.baseUrl)) return 'local';
+    if (/^https?:\/\/api\.openai\.com\//i.test(provider.baseUrl)) return 'openai';
+    return 'custom';
+}
 
 /** Fixed research system prompts — the only non-user-typed request content. */
 export const RESEARCH_PRESETS: readonly { id: string; label: string; system: string }[] = [
@@ -83,6 +101,8 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
     const url = provider.keyless ? provider.baseUrl : chatCompletionsUrl(provider.baseUrl);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (!provider.keyless) headers.Authorization = `Bearer ${req.apiKey}`;
+    // Plan 068 (A2/C4): capture the ledger owner BEFORE the fetch.
+    const userId = currentUsageUserId();
     try {
         const res = await fetch(url, {
             method: 'POST',
@@ -100,11 +120,25 @@ export async function runResearchChat(req: ResearchRunRequest): Promise<Research
         try { body = JSON.parse(raw) as ChatCompletionBody; } catch {
             return { ...base, latencyMs, status: res.status, error: `Non-JSON response: ${raw.slice(0, 500)}` };
         }
+        const text = body.choices?.[0]?.message?.content ?? '';
+        // Plan 068 (A2): record this completion — a real, billed provider
+        // response, same as every other AI call path.
+        recordLlmUsage({
+            provider: mapResearchProviderToLlmProvider(provider),
+            model: req.model,
+            promptChars: req.prompt.length + preset.system.length,
+            responseChars: text.length,
+            usage: (typeof body.usage?.prompt_tokens === 'number' && typeof body.usage?.completion_tokens === 'number')
+                ? { inputTokens: body.usage.prompt_tokens, outputTokens: body.usage.completion_tokens }
+                : undefined,
+            source: 'research',
+            userId,
+        });
         return {
             ...base,
             latencyMs,
             status: res.status,
-            text: body.choices?.[0]?.message?.content ?? '',
+            text,
             usage: body.usage
                 ? { promptTokens: body.usage.prompt_tokens, completionTokens: body.usage.completion_tokens }
                 : undefined,

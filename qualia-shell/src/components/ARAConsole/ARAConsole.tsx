@@ -9,7 +9,7 @@ import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient
 import { streamLlm } from '../../lib/llmStream';
 import { pumpSseBody } from '../../lib/readSse';
 import { araPrefsStore } from '../../lib/araPrefsStore';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
 import { runDailyGlance } from '../../lib/araDailyGlance';
 import { starterPromptsFor } from './araStarterPrompts';
@@ -1076,6 +1076,7 @@ export default function ARAConsole() {
     ) => {
         const text = rawText.trim();
         if (!text || isLoading) return;
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-await below
 
         const modeToUse = options?.mode || activeMode;
         const jurisdictionToUse = options?.jurisdiction || (modeToUse === 'lead-counsel' ? jurisdiction : undefined);
@@ -1151,7 +1152,7 @@ export default function ARAConsole() {
                 onProgress: setProgress,
             });
             setProgress(outcome.text);
-            if (outcome.proposalTitle) recordArtifact({ content: outcome.text, source: 'ara', title: outcome.proposalTitle, type: 'markdown' });
+            if (outcome.proposalTitle && stillOwner()) recordArtifact({ content: outcome.text, source: 'ara', title: outcome.proposalTitle, type: 'markdown' });
             if (ttsEnabled) void speakText(outcome.via === 'hermes' ? 'I couldn’t do that myself, so Hermes handled it — the result is on screen.' : outcome.text);
             return true;
         };
@@ -1223,7 +1224,7 @@ export default function ARAConsole() {
             // the run id rides on the message to power thumbs-up/down.
             const hermesRec = recordAraChat(text, data.data.content);
             // P12-3: substantial replies auto-land in the Artifact Gallery.
-            if (isSubstantialOutput(data.data.content)) recordArtifact({ content: data.data.content, source: 'ara' });
+            if (isSubstantialOutput(data.data.content) && stillOwner()) recordArtifact({ content: data.data.content, source: 'ara' });
             const araMsg = createChatMessage({
                 role: 'assistant',
                 content: data.data.content,
@@ -1314,7 +1315,7 @@ export default function ARAConsole() {
                             message: `Backend offline — answered via your ${integrations.llm.active} key.`,
                         });
                         const hermesRec = recordAraChat(text, llmText);
-                        if (isSubstantialOutput(llmText)) recordArtifact({ content: llmText, source: 'ara' }); // P12-3
+                        if (isSubstantialOutput(llmText) && stillOwner()) recordArtifact({ content: llmText, source: 'ara' }); // P12-3
                         const final = createChatMessage({
                             role: 'assistant',
                             content: llmText,
@@ -1386,6 +1387,7 @@ export default function ARAConsole() {
     }, []);
 
     const runSpawn = useCallback(async (req: SpawnRequest, echoUser: boolean = true) => {
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-run
         hermesLearningUserIdHolder.current = user?.id ?? null;
         const progress = createChatMessage({
             role: 'assistant',
@@ -1431,7 +1433,7 @@ export default function ARAConsole() {
                     line(`**${req.name} failed:** ${result.error}`);
                 } else {
                     const rec = recordRun({ prompt: req.goal, taskType: 'planning', outcome: result.outcome === 'success' ? 'success' : 'fail', summary: result.final.slice(0, 200), toolsUsed: [team.id], unchecked: result.unchecked });
-                    recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
+                    if (stillOwner()) recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                     line(`---\n\n${result.final}`);
                     // Member failures / a merge fallback are problems, not a clean finish — say so (Agent Lab shows these too).
                     if (result.warnings.length) line(`**Finished with problems:** ${result.warnings.join('; ')}`);
@@ -1451,7 +1453,7 @@ export default function ARAConsole() {
                     line(`**${persona.name} failed:** ${out.error || 'No output — the model returned nothing.'}`);
                 } else {
                     const text = out.verified || out.output;
-                    recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
+                    if (stillOwner()) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                     line(`---\n\n${text}`);
                     attachRun(progress.id, rec);
                     if (ttsEnabled) void speakText(`${persona.name} has finished.`);
@@ -1705,12 +1707,14 @@ export default function ARAConsole() {
         const newGoalMatch = text.match(NEW_GOAL_PATTERN);
         const refineGoalMatch = text.match(REFINE_GOAL_PATTERN);
         if (newGoalMatch || refineGoalMatch) {
+            const stillOwnerGoal = captureOwner(); // owner-race guard: account may switch mid-plan
             setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text })]);
             setIsLoading(true);
             try {
                 if (newGoalMatch) {
                     const title = newGoalMatch[1].trim();
                     const plan = await generateGoalPlan(title, integrations.llm);
+                    if (!stillOwnerGoal()) return;
                     const goal = createGoal(title, plan);
                     const reply = formatPlanForChat(goal.title, plan);
                     recordArtifact({ content: reply, source: 'ara', title: `Goal plan: ${title.slice(0, 40)}`, type: 'markdown' });
@@ -1721,6 +1725,7 @@ export default function ARAConsole() {
                         setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: `I couldn't find a goal matching "${refineGoalMatch[1]}" — check Mission Control for the exact title.` })]);
                     } else {
                         const plan = await generateGoalPlan(goal.title, integrations.llm, refineGoalMatch[2]);
+                        if (!stillOwnerGoal()) return;
                         updateGoalPlan(goal.id, plan);
                         setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatPlanForChat(goal.title, plan) })]);
                     }

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
     Cpu, Database, Network, GitFork,
     Wrench, Compass, BarChart2, ShieldAlert,
@@ -6,21 +6,22 @@ import {
 } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { getCmn, type CmnMetrics, type CmnEvent } from '../../lib/memoryGraphRag/shared';
+import { getCmn, type CmnEvent } from '../../lib/memoryGraphRag/shared';
+import { hermesLearningStore } from '../HonchoHermesPanel/hermesLearningStore';
+import { personaWorkStore } from '../../lib/agents/personaWorkStore';
+import { allLocalDocuments } from '../../lib/memoryGraphRag/sources';
+import { harnessCard } from './harnessMetrics';
+import type { HarnessCardId } from './harnessTypes';
+import { startHarnessCanvas, type HarnessCanvasHandle } from './harnessCanvas';
 import './CognitiveHarness.css';
 
 interface Subsystem {
-    id: string;
+    id: HarnessCardId;
     name: string;
     sub: string;
     icon: React.ReactNode;
     description: string;
-    /** Placeholder labels shown (with '—' values) for subsystems with no backing code in this app. */
-    metricLabels: [string, string, string];
 }
-
-/** Subsystems with a real engine behind them — everything else has no backing code in this app. */
-const WIRED_IDS = new Set(['rag', 'graph-rag', 'vector-db', 'memory']);
 
 const SUBSYSTEMS: Subsystem[] = [
     {
@@ -28,134 +29,72 @@ const SUBSYSTEMS: Subsystem[] = [
         name: 'RAG SYSTEM',
         sub: 'RETRIEVAL-AUGMENTED GENERATION',
         icon: <Cpu size={18} />,
-        description: 'Dynamically fetches context from external vector search stores and local databases, injecting relevant knowledge segments directly into the LLM context window to prevent hallucinations and assure factual grounding.',
-        metricLabels: ['Queries', 'Last Latency', 'Passages'],
+        description: 'Retrieves the most relevant passages from the local memory network and hands them to the LLM as context.',
     },
     {
         id: 'graph-rag',
         name: 'GRAPH-RAG',
         sub: 'KNOWLEDGE GRAPH ENHANCED RETRIEVAL',
         icon: <Network size={18} />,
-        description: 'Maps semantic connections and entity relationships across documents. Recursively traverses knowledge nodes to compile structured, multi-hop context for complex reasoning tasks.',
-        metricLabels: ['Entities', 'Facts', 'Bridges'],
+        description: 'Extracts entities and facts from ingested text, and bridges entities that share a type or have similar names.',
     },
     {
         id: 'vector-db',
         name: 'VECTOR DATABASE',
         sub: 'HIGH-DIMENSIONAL EMBEDDING SPACE',
         icon: <Database size={18} />,
-        description: 'Index store for high-dimensional float arrays representing text embeddings. Utilizes cosine similarity search to perform semantic search operations.',
-        metricLabels: ['Embedding', 'Vectors', 'Threshold'],
+        description: 'Entity names are embedded with a local hashed-word + trigram scheme; passages themselves are matched by word overlap, not vectors.',
     },
     {
         id: 'memory',
         name: 'MEMORY SYSTEM',
         sub: 'SHORT | LONG-TERM | EPISODIC',
         icon: <Binary size={18} />,
-        description: 'Implements dual-store cognitive architecture. Captures episodic conversation traces in short-term buffer, while consolidating long-term semantic precedents and user preferences in database storage.',
-        metricLabels: ['Documents', 'Storage', 'Conflicts Resolved'],
+        description: 'Ingested documents and extracted facts are kept in this browser tab and saved to localStorage.',
     },
     {
         id: 'prompt-opt',
         name: 'PROMPT OPTIMIZATION',
-        sub: 'DYNAMIC ENGINEERING & REFINEMENT',
+        sub: 'FEW-SHOT EXAMPLE SELECTION',
         icon: <Compass size={18} />,
-        description: 'Iteratively refines LLM inputs by applying system instructions, negative constraints, and few-shot examples customized for the target domain and model capability tier.',
-        metricLabels: ['Optimizer Temp', 'Tokens Saved', 'Format Score'],
+        description: 'ARA Chat answers are logged locally; those not down-voted are reused as examples for similar future questions.',
     },
     {
         id: 'tool-use',
         name: 'TOOL USE',
-        sub: 'APIS | FUNCTIONS INTEGRATION',
+        sub: 'HERMES RUN LOG',
         icon: <Wrench size={18} />,
-        description: 'Enables autonomous operations by binding APIs, database wrappers, and OS terminals. Translates natural language intent into structured JSON payloads for tool execution.',
-        metricLabels: ['Success Rate', 'Tools Configured', 'Sandbox Status'],
+        description: 'Every Hermes run that calls a tool other than the router or ara-chat is logged locally, with its outcome.',
     },
     {
         id: 'planning',
         name: 'AGENT PLANNING',
-        sub: 'REASONING & TASK DECOMPOSITION',
+        sub: 'PERSONA TASK QUEUE',
         icon: <GitFork size={18} />,
-        description: 'Deconstructs complex goals into a dependency tree of sub-tasks. Dynamically evaluates task status and self-corrects execution paths using ReAct/CoT reasoning loops.',
-        metricLabels: ['ReAct Cycles', 'Sub-tasks Active', 'Confidence'],
+        description: 'Persona tasks (queued, running, done, failed) tracked in the local per-user work store.',
     },
     {
         id: 'semantic-routing',
         name: 'SEMANTIC ROUTING',
         sub: 'INTENT UNDERSTANDING & DISPATCH',
         icon: <Zap size={18} />,
-        description: 'Super-fast semantic classifier acting as the front gate. Routes incoming requests to specialized agent experts or raw prompt templates based on semantic proximity.',
-        metricLabels: ['Dispatch Delay', 'Classification', 'Active Routes'],
+        description: 'Classifies what you type into an intent (spawn, chain, command, skill or chat); each decision is logged locally.',
     },
     {
         id: 'evaluation',
         name: 'EVALUATION & MONITORING',
-        sub: 'QUALITY | SAFETY | PERFORMANCE',
+        sub: 'RUN OUTCOMES & RATINGS',
         icon: <BarChart2 size={18} />,
-        description: 'Evaluates agent outputs in real-time. Checks for format constraints, safety policy compliance, and potential regression risks using automated evaluation heuristics.',
-        metricLabels: ['Policy Flags', 'Correctness', 'Guardrails Hit'],
+        description: 'Every recorded Hermes run and any user rating it received, tallied from the local run log.',
     },
     {
         id: 'ext-knowledge',
         name: 'EXTERNAL KNOWLEDGE',
-        sub: 'SOURCES & INTEGRATIONS',
+        sub: 'LOCAL DOCUMENT SOURCES',
         icon: <ShieldAlert size={18} />,
-        description: 'Bridges private data environments and public web scraping endpoints. Maintains secure, encrypted pipelines to retrieve real-time domain facts.',
-        metricLabels: ['Sources Online', 'Sync Status', 'Bytes Pulled'],
+        description: 'Documents available locally that could be fed into the memory network, and how many already are.',
     },
 ];
-
-function persistText(m: CmnMetrics): string {
-    switch (m.persist) {
-        case 'ok': return `saved · ${Math.round(m.persistedBytes / 1024)} KB`;
-        case 'full': return 'NOT SAVED — full';
-        case 'unavailable': return 'NOT SAVED';
-        case 'empty': return 'nothing saved';
-    }
-}
-
-/** Real per-card metrics for the 4 subsystems backed by the shared engine; '—' for everything else. */
-function metricsFor(system: Subsystem, m: CmnMetrics): { label: string; value: string }[] {
-    switch (system.id) {
-        case 'rag':
-            return [
-                { label: 'Queries', value: String(m.queries) },
-                { label: 'Last Latency', value: `${m.lastQueryMs ?? '—'} ms` },
-                { label: 'Passages', value: String(m.counts.passages) },
-            ];
-        case 'graph-rag':
-            return [
-                { label: 'Entities', value: String(m.counts.entities) },
-                { label: 'Facts', value: String(m.counts.facts) },
-                { label: 'Bridges', value: String(m.bridges) },
-            ];
-        case 'vector-db':
-            return [
-                { label: 'Embedding', value: 'local hashed trigram' },
-                { label: 'Vectors', value: String(m.counts.entities) },
-                { label: 'Threshold', value: '0.6' },
-            ];
-        case 'memory':
-            return [
-                { label: 'Documents', value: String(m.documents) },
-                { label: 'Storage', value: persistText(m) },
-                { label: 'Conflicts Resolved', value: String(m.conflictsResolved) },
-            ];
-        default:
-            return system.metricLabels.map((label) => ({ label, value: '—' }));
-    }
-}
-
-/** Deterministic PRNG (xorshift32) for the decorative particle visualization — no engine-native randomness. */
-function makePrng(seed: number): () => number {
-    let s = (seed >>> 0) || 1;
-    return () => {
-        s ^= s << 13; s >>>= 0;
-        s ^= s >>> 17;
-        s ^= s << 5; s >>>= 0;
-        return s / 4294967296;
-    };
-}
 
 function formatEvent(e: CmnEvent): string {
     const t = new Date(e.at);
@@ -166,339 +105,269 @@ function formatEvent(e: CmnEvent): string {
     return `[${hh}:${mm}:${ss}] ${e.kind} · ${e.detail}${ms}`;
 }
 
+/** SSR-safe `prefers-reduced-motion` read via useSyncExternalStore (no window access at init/render). */
+function useReducedMotion(): boolean {
+    return useSyncExternalStore(
+        (cb) => {
+            if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+            const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+            mql.addEventListener('change', cb);
+            return () => mql.removeEventListener('change', cb);
+        },
+        () => (typeof window !== 'undefined' && window.matchMedia
+            ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            : false),
+        () => false,
+    );
+}
+
 export default function CognitiveHarness() {
     const userCtx = useContext(UserContext);
     const uid = userCtx?.user?.id ?? null;
     const { integrations } = useIntegrations();
     const cmn = getCmn(uid, integrations.llm);
-    useSyncExternalStore(cmn.subscribe, cmn.getVersion, cmn.getVersion);
-    const m = cmn.metrics();
-    const probe = cmn.probe();
+    const version = useSyncExternalStore(cmn.subscribe, cmn.getVersion, cmn.getVersion);
+
+    // metrics()/probe() are recomputed only when the engine version changes —
+    // probe() runs a real retrieval, so it must not run on every render.
+    const metrics = useMemo(() => cmn.metrics(), [cmn, version]);
+    const probe = useMemo(() => cmn.probe(), [cmn, version]);
+
+    const runs = useSyncExternalStore(
+        hermesLearningStore.subscribe,
+        hermesLearningStore.getSnapshot,
+        hermesLearningStore.getServerSnapshot,
+    );
+    const work = useSyncExternalStore(
+        personaWorkStore.subscribe,
+        personaWorkStore.getSnapshot,
+        personaWorkStore.getServerSnapshot,
+    );
+    const availableDocs = useMemo(() => {
+        try { return allLocalDocuments(uid).length; } catch { return 0; }
+    }, [uid, version]);
+
+    const reducedMotion = useReducedMotion();
 
     const [activeIndex, setActiveIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(true);
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const listRef = useRef<HTMLDivElement | null>(null);
+    const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const intervalRef = useRef<number | null>(null);
+    const handleRef = useRef<HarnessCanvasHandle | null>(null);
+    // Snapshot the mount-time values so the mount-only canvas effect below
+    // never needs them in its dependency array.
+    const initialMetricsRef = useRef(metrics);
+    const initialReducedMotionRef = useRef(reducedMotion);
+    const activeIndexRef = useRef(activeIndex);
+    activeIndexRef.current = activeIndex;
 
-    // Auto-progress subsystem tabs (UI-only; not tied to data)
+    // Auto-progress subsystem tabs — pauses when the user interacts or reduced motion is on.
     useEffect(() => {
-        if (isPlaying) {
+        if (isPlaying && !reducedMotion) {
             intervalRef.current = window.setInterval(() => {
                 setActiveIndex((prev) => (prev + 1) % SUBSYSTEMS.length);
-            }, 6000); // Shift every 6s
+            }, 6000);
         } else if (intervalRef.current) {
             clearInterval(intervalRef.current);
         }
-
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [isPlaying]);
+    }, [isPlaying, reducedMotion]);
 
-    // Scroll active item into view on the moving bar
+    // Scroll active tab into view on the moving bar.
     useEffect(() => {
         if (listRef.current) {
-            const activeChild = listRef.current.children[activeIndex] as HTMLElement;
+            const activeChild = listRef.current.children[activeIndex] as HTMLElement | undefined;
             if (activeChild) {
                 const containerWidth = listRef.current.offsetWidth;
                 const childOffset = activeChild.offsetLeft;
                 const childWidth = activeChild.offsetWidth;
-
-                listRef.current.scrollTo({
+                // jsdom (test env) has no scrollTo on Element.
+                listRef.current.scrollTo?.({
                     left: childOffset - containerWidth / 2 + childWidth / 2,
-                    behavior: 'smooth'
+                    behavior: reducedMotion ? 'auto' : 'smooth',
                 });
             }
         }
-    }, [activeIndex]);
+    }, [activeIndex, reducedMotion]);
 
-    // Futuristic Particle Space Visualizer (Canvas) — decoration only, seeded from real counts
-    const entityCount = m.counts.entities;
+    // Canvas: start once on mount (StrictMode-safe — destroy() tears down every
+    // observer/rAF so a double-mount leaves nothing dangling), then drive it via refs.
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        let animationFrameId: number;
-        let width = (canvas.width = canvas.offsetWidth);
-        let height = (canvas.height = canvas.offsetHeight);
-
-        const handleResize = () => {
-            if (canvas) {
-                width = canvas.width = canvas.offsetWidth;
-                height = canvas.height = canvas.offsetHeight;
-            }
-        };
-        window.addEventListener('resize', handleResize);
-
-        // Particle System variables
-        const rng = makePrng(entityCount * 7919 + 104729);
-        const particles: { x: number; y: number; z: number; px: number; py: number; speed: number; color: string }[] = [];
-        const maxParticles = Math.min(200, 20 + entityCount);
-
-        // Generate parameter space coordinates
-        for (let i = 0; i < maxParticles; i++) {
-            particles.push({
-                x: rng() * width - width / 2,
-                y: rng() * height - height / 2,
-                z: rng() * width,
-                px: 0,
-                py: 0,
-                speed: 0.5 + rng() * 1.5,
-                color: rng() > 0.6 ? 'rgba(0, 136, 204, 0.8)' : 'rgba(129, 140, 248, 0.7)'
-            });
-        }
-
-        // Target rotation parameters based on active index
-        let rotY = 0;
-        let rotX = 0;
-
-        const render = () => {
-            ctx.fillStyle = 'rgba(10, 14, 26, 0.15)';
-            ctx.fillRect(0, 0, width, height);
-
-            // Subtle background grid
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
-            ctx.lineWidth = 1;
-            const gridSpacing = 40;
-            for (let x = 0; x < width; x += gridSpacing) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, height);
-                ctx.stroke();
-            }
-            for (let y = 0; y < height; y += gridSpacing) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(width, y);
-                ctx.stroke();
-            }
-
-            // Draw Orchestration Rings (visual orbits)
-            ctx.strokeStyle = 'rgba(0, 136, 204, 0.15)';
-            ctx.beginPath();
-            ctx.ellipse(width / 2, height / 2, width * 0.35, height * 0.15, 0.2, 0, 2 * Math.PI);
-            ctx.stroke();
-
-            ctx.strokeStyle = 'rgba(129, 140, 248, 0.1)';
-            ctx.beginPath();
-            ctx.ellipse(width / 2, height / 2, width * 0.25, height * 0.22, -0.4, 0, 2 * Math.PI);
-            ctx.stroke();
-
-            // Center glow (LLM Core)
-            const radGlow = ctx.createRadialGradient(width / 2, height / 2, 5, width / 2, height / 2, 80);
-            radGlow.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
-            radGlow.addColorStop(0.5, 'rgba(99, 102, 241, 0.1)');
-            radGlow.addColorStop(1, 'transparent');
-            ctx.fillStyle = radGlow;
-            ctx.beginPath();
-            ctx.arc(width / 2, height / 2, 80, 0, 2 * Math.PI);
-            ctx.fill();
-
-            // Label text inside LLM core
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.font = 'bold 12px Montserrat, Inter, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('LLM CORE', width / 2, height / 2 - 4);
-            ctx.fillStyle = 'rgba(0, 136, 204, 0.8)';
-            ctx.font = '9px monospace';
-            ctx.fillText('PARAMETER SPACE', width / 2, height / 2 + 10);
-
-            // Update rotation
-            rotY += 0.003;
-            rotX = Math.sin(rotY * 0.5) * 0.1;
-
-            // Render particles
-            particles.forEach((p, idx) => {
-                // Apply rotation
-                let x1 = p.x;
-                let y1 = p.y;
-                let z1 = p.z;
-
-                // Rotate around Y
-                const cosY = Math.cos(rotY);
-                const sinY = Math.sin(rotY);
-                const rx = x1 * cosY - z1 * sinY;
-                const rz = x1 * sinY + z1 * cosY;
-
-                // Perspective projection
-                const fov = 350;
-                const scale = fov / (fov + rz);
-                const projX = rx * scale + width / 2;
-                const projY = y1 * scale + height / 2;
-
-                // Reset on boundary exit
-                p.z -= p.speed;
-                if (p.z <= 0) {
-                    p.z = width;
-                    p.x = rng() * width - width / 2;
-                    p.y = rng() * height - height / 2;
-                }
-
-                // Draw if inside bounds
-                if (projX >= 0 && projX <= width && projY >= 0 && projY <= height) {
-                    const radius = Math.max(0.5, scale * 2.2);
-
-                    // Highlight active system interaction nodes
-                    const isActiveNode = idx % SUBSYSTEMS.length === activeIndex;
-
-                    ctx.fillStyle = isActiveNode ? '#22c55e' : p.color;
-                    ctx.beginPath();
-                    ctx.arc(projX, projY, isActiveNode ? radius * 2.5 : radius, 0, 2 * Math.PI);
-                    ctx.fill();
-
-                    // Active node connections (network web)
-                    if (isActiveNode) {
-                        ctx.shadowColor = '#22c55e';
-                        ctx.shadowBlur = 10;
-
-                        ctx.beginPath();
-                        ctx.arc(projX, projY, radius * 3, 0, 2 * Math.PI);
-                        ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
-                        ctx.stroke();
-
-                        ctx.shadowBlur = 0; // Reset shadow
-
-                        // Line to center core
-                        ctx.strokeStyle = 'rgba(34, 197, 94, 0.2)';
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(projX, projY);
-                        ctx.lineTo(width / 2, height / 2);
-                        ctx.stroke();
-                    }
-                }
-            });
-
-            // Active Subsystem overlay data ring
-            ctx.strokeStyle = 'rgba(0, 136, 204, 0.4)';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 6]);
-            ctx.beginPath();
-            ctx.arc(width / 2, height / 2, 110 + Math.sin(rotY * 4) * 5, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
-
-            animationFrameId = requestAnimationFrame(render);
-        };
-
-        render();
-
+        const handle = startHarnessCanvas(canvas, {
+            seedCount: initialMetricsRef.current.counts.entities,
+            slots: SUBSYSTEMS.length,
+            activeIndex: activeIndexRef.current,
+            reducedMotion: initialReducedMotionRef.current,
+        });
+        handleRef.current = handle;
         return () => {
-            cancelAnimationFrame(animationFrameId);
-            window.removeEventListener('resize', handleResize);
+            handle.destroy();
+            handleRef.current = null;
         };
-    }, [activeIndex, entityCount]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; initial values read via refs, live updates via setActive/setReducedMotion below.
+    }, []);
+
+    useEffect(() => {
+        handleRef.current?.setActive(activeIndex);
+    }, [activeIndex]);
+
+    useEffect(() => {
+        handleRef.current?.setReducedMotion(reducedMotion);
+    }, [reducedMotion]);
 
     const activeSystem = SUBSYSTEMS[activeIndex];
-    const activeWired = WIRED_IDS.has(activeSystem.id);
-    const statusLabel = !activeWired ? 'Not connected' : probe.ok ? 'CONNECTED' : `DEGRADED — ${probe.detail}`;
-    const statusOk = activeWired && probe.ok;
-    const recentEvents = m.events.slice(0, 6);
+    const card = harnessCard(activeSystem.id, { cmn: metrics, probe, runs, work, availableDocs });
+    const recentEvents = metrics.events.slice(0, 6);
+    // isPlaying is the user's intent; reduced motion overrides it to a visible paused state.
+    const effectivePlaying = isPlaying && !reducedMotion;
+
+    const focusTab = (index: number) => {
+        setActiveIndex(index);
+        setIsPlaying(false);
+        tabRefs.current[index]?.focus();
+    };
+
+    const handleTabKeyDown = (e: React.KeyboardEvent, index: number) => {
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            focusTab((index + 1) % SUBSYSTEMS.length);
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            focusTab((index - 1 + SUBSYSTEMS.length) % SUBSYSTEMS.length);
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            focusTab(0);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            focusTab(SUBSYSTEMS.length - 1);
+        }
+    };
 
     return (
-        <div className="cognitive-harness">
-            {/* Topbar Controls */}
-            <div className="ch-top-controls">
-                <div className="ch-title-area">
-                    <Activity className="ch-pulse-icon" size={16} />
-                    <span>COGNITIVE HARNESS ORCHESTRATION</span>
+        <div className="ch-container">
+            <div className="cognitive-harness">
+                <div className="ch-top-controls">
+                    <div className="ch-title-area">
+                        <Activity className="ch-pulse-icon" size={16} aria-hidden="true" />
+                        <span>COGNITIVE HARNESS</span>
+                    </div>
+                    <button
+                        type="button"
+                        className="ch-play-btn"
+                        aria-pressed={effectivePlaying}
+                        aria-label={effectivePlaying ? 'Pause auto-cycle' : 'Start auto-cycle'}
+                        onClick={() => setIsPlaying((p) => !p)}
+                    >
+                        {effectivePlaying ? <Pause size={12} /> : <Play size={12} />}
+                        <span>{effectivePlaying ? 'AUTO-CYCLE ON' : 'AUTO-CYCLE PAUSED'}</span>
+                    </button>
                 </div>
-                <button
-                    className="ch-play-btn"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    title={isPlaying ? 'Pause Auto-Cycle' : 'Start Auto-Cycle'}
-                >
-                    {isPlaying ? <Pause size={12} /> : <Play size={12} />}
-                    <span>{isPlaying ? 'ACTIVE SWEEPING' : 'SWEEP PAUSED'}</span>
-                </button>
-            </div>
 
-            {/* Rotating Moving Highlight Bar */}
-            <div className="ch-bar-wrapper">
-                <div className="ch-scroll-left" onClick={() => setActiveIndex(prev => (prev - 1 + SUBSYSTEMS.length) % SUBSYSTEMS.length)}>‹</div>
-                <div className="ch-bar-list" ref={listRef}>
-                    {SUBSYSTEMS.map((system, idx) => {
-                        const isActive = idx === activeIndex;
-                        return (
-                            <div
-                                key={system.id}
-                                className={`ch-bar-item ${isActive ? 'ch-bar-item--active' : ''}`}
-                                onClick={() => {
-                                    setActiveIndex(idx);
-                                    setIsPlaying(false); // Pause auto-rotation when user clicks
-                                }}
-                            >
-                                <span className="ch-item-icon">{system.icon}</span>
-                                <div className="ch-item-text">
-                                    <div className="ch-item-name">{system.name}</div>
-                                    <div className="ch-item-sub">{system.sub.slice(0, 26)}...</div>
-                                </div>
-                                {isActive && <div className="ch-item-highlight-bar" />}
+                <div className="ch-bar-wrapper">
+                    <button
+                        type="button"
+                        className="ch-scroll-left"
+                        aria-label="Previous subsystem"
+                        onClick={() => focusTab((activeIndex - 1 + SUBSYSTEMS.length) % SUBSYSTEMS.length)}
+                    >
+                        &lsaquo;
+                    </button>
+                    <div className="ch-bar-list" ref={listRef} role="tablist" aria-label="Harness subsystems" onFocus={() => setIsPlaying(false)}>
+                        {SUBSYSTEMS.map((system, idx) => {
+                            const isActive = idx === activeIndex;
+                            return (
+                                <button
+                                    type="button"
+                                    key={system.id}
+                                    ref={(el) => { tabRefs.current[idx] = el; }}
+                                    id={`ch-tab-${system.id}`}
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    aria-controls={isActive ? `ch-panel-${system.id}` : undefined}
+                                    tabIndex={isActive ? 0 : -1}
+                                    className={`ch-bar-item${isActive ? ' ch-bar-item--active' : ''}`}
+                                    onClick={() => focusTab(idx)}
+                                    onKeyDown={(e) => handleTabKeyDown(e, idx)}
+                                >
+                                    <span className="ch-item-icon">{system.icon}</span>
+                                    <div className="ch-item-text">
+                                        <div className="ch-item-name">{system.name}</div>
+                                        <div className="ch-item-sub">{system.sub}</div>
+                                    </div>
+                                    {isActive && <div className="ch-item-highlight-bar" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <button
+                        type="button"
+                        className="ch-scroll-right"
+                        aria-label="Next subsystem"
+                        onClick={() => focusTab((activeIndex + 1) % SUBSYSTEMS.length)}
+                    >
+                        &rsaquo;
+                    </button>
+                </div>
+
+                <div className="ch-visual-space">
+                    <div className="ch-canvas-container">
+                        <canvas ref={canvasRef} className="ch-canvas" aria-hidden="true" />
+                        <div className="ch-glass-overlay-label">
+                            HARNESS ORCHESTRATION VISUALIZATION
+                        </div>
+                    </div>
+
+                    <div className="ch-details-panel" role="tabpanel" id={`ch-panel-${activeSystem.id}`} aria-labelledby={`ch-tab-${activeSystem.id}`}>
+                        <div className="ch-panel-header">
+                            <div className="ch-panel-icon-wrap">{activeSystem.icon}</div>
+                            <div className="ch-panel-header-text">
+                                <h3>{activeSystem.name}</h3>
+                                <span className="ch-panel-subtitle">{activeSystem.sub}</span>
                             </div>
-                        );
-                    })}
-                </div>
-                <div className="ch-scroll-right" onClick={() => setActiveIndex(prev => (prev + 1) % SUBSYSTEMS.length)}>›</div>
-            </div>
-
-            {/* Interactive parameter space canvas & central harness visualization */}
-            <div className="ch-visual-space">
-                <div className="ch-canvas-container">
-                    <canvas ref={canvasRef} className="ch-canvas" />
-                    <div className="ch-glass-overlay-label">
-                        HARNESS ORCHESTRATION VISUALIZATION
-                    </div>
-                </div>
-
-                {/* Subsystem Details & Metrics */}
-                <div className="ch-details-panel">
-                    <div className="ch-panel-header">
-                        <div className="ch-panel-icon-wrap">{activeSystem.icon}</div>
-                        <div className="ch-panel-header-text">
-                            <h3>{activeSystem.name}</h3>
-                            <span className="ch-panel-subtitle">{activeSystem.sub}</span>
-                        </div>
-                        <div className={`ch-panel-status-indicator ${statusOk ? '' : 'ch-panel-status-indicator--off'}`}>
-                            <span className="ch-status-ping" />
-                            <span>{statusLabel}</span>
-                        </div>
-                    </div>
-
-                    <p className="ch-panel-description">{activeSystem.description}</p>
-
-                    {/* Metrics Grid */}
-                    <div className="ch-metrics-grid">
-                        {metricsFor(activeSystem, m).map((met) => (
-                            <div key={met.label} className="ch-metric-card">
-                                <span className="ch-metric-label">{met.label}</span>
-                                <span className="ch-metric-value">{met.value}</span>
+                            <div className={`ch-panel-status-indicator ch-panel-status-indicator--${card.status.state}`}>
+                                <span className="ch-status-ping" aria-hidden="true" />
+                                <span>{card.status.label}</span>
                             </div>
-                        ))}
-                    </div>
-
-                    {/* Dynamic Log Feed */}
-                    <div className="ch-logs-container">
-                        <div className="ch-logs-header">
-                            <Zap size={11} className="ch-logs-flash" />
-                            <span>COGNITIVE MEMORY NETWORK EVENT LOG</span>
                         </div>
-                        <div className="ch-logs-list">
-                            {recentEvents.length === 0 && (
-                                <div className="ch-log-row">
-                                    <span className="ch-log-bullet">&gt;</span>
-                                    <span className="ch-log-content">No events yet</span>
-                                </div>
-                            )}
-                            {recentEvents.map((e, i) => (
-                                <div key={`${e.at}-${i}`} className="ch-log-row">
-                                    <span className="ch-log-bullet">&gt;</span>
-                                    <span className="ch-log-content">{formatEvent(e)}</span>
+
+                        <p className="ch-panel-description">{activeSystem.description}</p>
+
+                        <div className="ch-metrics-grid">
+                            {card.metrics.map((met) => (
+                                <div key={met.label} className="ch-metric-card">
+                                    <span className="ch-metric-label">{met.label}</span>
+                                    <span className="ch-metric-value">{met.value}</span>
                                 </div>
                             ))}
+                        </div>
+                        <p className="ch-card-source">{card.source}</p>
+
+                        <div className="ch-logs-container">
+                            <div className="ch-logs-header">
+                                <Zap size={11} className="ch-logs-flash" aria-hidden="true" />
+                                <span>MEMORY NETWORK EVENTS</span>
+                            </div>
+                            <div className="ch-logs-list" role="log" aria-live="polite" aria-label="Memory network events">
+                                {recentEvents.length === 0 && (
+                                    <div className="ch-log-row">
+                                        <span className="ch-log-bullet">&gt;</span>
+                                        <span className="ch-log-content">No events yet</span>
+                                    </div>
+                                )}
+                                {recentEvents.map((e, i) => (
+                                    <div key={`${e.at}-${i}`} className="ch-log-row">
+                                        <span className="ch-log-bullet">&gt;</span>
+                                        <span className="ch-log-content">{formatEvent(e)}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

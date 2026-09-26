@@ -19,10 +19,8 @@ import {
     Save,
     Satellite,
     Sparkles,
-    Sprout,
     Trash2,
     TrendingUp,
-    TriangleAlert,
     User,
     X,
     Zap,
@@ -31,7 +29,9 @@ import {
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { twSyncConfig, pushCapture, pullCaptures } from './thoughtWeaverSync';
+import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
+import { twSyncConfig, pullCaptures, planImport } from './thoughtWeaverSync';
+import { pullInbox } from './twInbox';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { logActivity } from '../../lib/activityLogStore';
 import {
@@ -41,11 +41,12 @@ import {
     deleteLocalCapture,
     clearLocalCaptures,
     recategorizeLocalCapture,
+    importCaptures,
 } from './thoughtWeaverStore';
 import type { LocalCapture } from './thoughtWeaverStore';
+import { twImportedStore, markImported } from './twImportedStore';
 import {
     todoStore,
-    todoUserIdHolder,
     addTodo,
     syncTodosFromCaptures,
     toggleTodo,
@@ -55,7 +56,6 @@ import {
 import type { TodoItem } from './todoStore';
 import {
     reportStore,
-    reportUserIdHolder,
     addDailyReport,
     addWeeklySummary,
     setInsights,
@@ -79,7 +79,6 @@ import {
 } from './thoughtWeaverLinkage';
 import { localCategorize } from './localCategorizer';
 import { deriveStats, deriveBuckets, deriveTimeline } from './localViews';
-import { friendlyLoadError, isBackendDownError } from '../../lib/backendStatus';
 import './ThoughtWeaver.css';
 
 // ── Daily to-do synthesis ────────────────────────────────────────────
@@ -140,8 +139,8 @@ interface CaptureEntry {
     destination_name: string | null;
     status: string;
     createdAt: string;
-    /** 'local' = persisted in this browser (user-only-delete). 'backend' = server-side. */
-    source?: 'local' | 'backend';
+    /** Every capture is local now (plan 067 Phase 2 — the backend stores nothing). */
+    source: 'local';
 }
 
 interface BucketItem {
@@ -168,11 +167,22 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
     { id: 'timeline', label: 'Timeline', icon: Clock },
 ];
 
+// Colors double as both a decorative left-border/icon tint AND, in several
+// places (badges, chips), the text color itself — so each is blended toward
+// --text-primary via color-mix() rather than used as a flat token/hex,
+// keeping contrast solid on both very dark (cosmos) and very light (latte,
+// corporate) themes while still telling the 4 buckets apart. (An earlier
+// pass used flat var(--danger)/var(--warning)/var(--success) tokens to
+// dodge a capture-harness bug where Chromium serializes color-mix() as
+// `color(srgb r g b)` — 0-1 fractional, not 0-255 — misread as near-black;
+// the harness parser now scales that case ×255, so the adaptive blend is
+// back and measures correctly.)
+const twCatText = (token: string) => `color-mix(in srgb, ${token} 35%, var(--text-primary))`;
 const BUCKETS: { id: BucketId; label: string; icon: LucideIcon; color: string }[] = [
-    { id: 'people', label: 'People', icon: User, color: 'var(--accent)' },
-    { id: 'projects', label: 'Projects', icon: Folder, color: '#60a5fa' },
-    { id: 'ideas', label: 'Ideas', icon: Lightbulb, color: '#f59e0b' },
-    { id: 'admin', label: 'Tasks', icon: ClipboardList, color: '#22c55e' },
+    { id: 'people', label: 'People', icon: User, color: twCatText('var(--accent)') },
+    { id: 'projects', label: 'Projects', icon: Folder, color: twCatText('var(--danger)') },
+    { id: 'ideas', label: 'Ideas', icon: Lightbulb, color: twCatText('var(--warning)') },
+    { id: 'admin', label: 'Tasks', icon: ClipboardList, color: twCatText('var(--success)') },
 ];
 
 const TEMPLATES: { icon: LucideIcon; label: string; template: string }[] = [
@@ -217,7 +227,7 @@ function confidenceLabel(c: number): string {
 
 function bucketColor(bucket: string): string {
     const found = BUCKETS.find(b => b.id === bucket);
-    return found ? found.color : 'var(--text-tertiary)';
+    return found ? found.color : twCatText('var(--text-secondary)');
 }
 
 function bucketIcon(bucket: string): LucideIcon {
@@ -233,19 +243,35 @@ function BucketIcon({ bucket, size = 14 }: { bucket: string; size?: number }) {
 
 // ── Component ────────────────────────────────────────────────────────
 
+/**
+ * Thoughts belong to the signed-in account (plan 067): with nobody signed in
+ * there is no workspace at all — never the shared `_anonymous` bucket, which
+ * every visitor of this browser would read and write. Anonymous thoughts
+ * captured before this change stay in that bucket untouched.
+ */
 export default function ThoughtWeaver() {
+    const userCtx = useContext(UserContext);
+    const userId = userCtx?.user?.id ?? null;
+    if (!userId) {
+        return (
+            <div className="tw">
+                <p className="tw-empty" role="status">
+                    Sign in to use Thought Weaver — your thoughts are saved to your own account.
+                </p>
+            </div>
+        );
+    }
+    return <ThoughtWeaverWorkspace userId={userId} />;
+}
+
+function ThoughtWeaverWorkspace({ userId }: { userId: string }) {
     const { integrations } = useIntegrations();
 
     // ── Per-user local persistence (Phase-8+ Task 8.10 Option β dynamic-key) ──
-    // Read UserContext directly (NOT useUser()) so anonymous/test envs degrade
-    // gracefully to the `_anonymous` namespace — matches useIntegrations pattern.
-    const userCtx = useContext(UserContext);
-    const userId = userCtx?.user?.id ?? null;
-    // Update holder DURING render BEFORE useSyncExternalStore reads — factory
-    // cache invalidates automatically when the key resolver returns a fresh value.
-    thoughtWeaverUserIdHolder.current = userId;
-    todoUserIdHolder.current = userId;
-    reportUserIdHolder.current = userId;
+    // The single identity writer points every per-user holder (captures,
+    // imported ids, to-dos, reports — plan 067) at this user BEFORE the
+    // useSyncExternalStore reads below.
+    usePerUserIdentity();
     const localCaptures: LocalCapture[] = useSyncExternalStore(
         thoughtWeaverStore.subscribe,
         thoughtWeaverStore.getSnapshot,
@@ -265,83 +291,27 @@ export default function ThoughtWeaver() {
     const [generating, setGenerating] = useState(false);
     const [genMsg, setGenMsg] = useState<string | null>(null);
     const [handoffMsg, setHandoffMsg] = useState<string | null>(null);
+    const [syncMsg, setSyncMsg] = useState<string | null>(null);
+    // Clear the "Sync from captures" note after a few seconds so it never reads as current.
+    useEffect(() => {
+        if (!syncMsg) return;
+        const t = setTimeout(() => setSyncMsg(null), 5000);
+        return () => clearTimeout(t);
+    }, [syncMsg]);
     const didCatchUp = useRef(false);
     const llmReady = hasActiveLlm(integrations.llm);
 
     const [activeTab, setActiveTab] = useState<TabId>('capture');
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
-    const [captures, setCaptures] = useState<CaptureEntry[]>([]);
-    const [stats, setStats] = useState<Stats | null>(null);
-    const [bucketItems, setBucketItems] = useState<Record<BucketId, BucketItem[]>>({ people: [], projects: [], ideas: [], admin: [] });
     const [activeBucket, setActiveBucket] = useState<BucketId | 'all'>('all');
-    const [timeline, setTimeline] = useState<BucketItem[]>([]);
     const [timelineFilter, setTimelineFilter] = useState<BucketId | 'all'>('all');
     const [lastResult, setLastResult] = useState<{ filed_to: string; confidence: number; destination_name: string | null } | null>(null);
-    const [seeded, setSeeded] = useState(false);
-    const [resolveId, setResolveId] = useState<string | null>(null);
     // How the most recent capture was sorted — surfaced honestly in the toast
     // instead of silently swallowing where the result came from.
     const [captureSource, setCaptureSource] = useState<'llm' | 'backend' | 'local' | null>(null);
-    // Backend reachability — drives the honest "backend offline" banner instead
-    // of silently showing empty panels when the Dwellium backend isn't running.
-    const [backendOffline, setBackendOffline] = useState(false);
     // Which local capture is being re-filed by the user (category override).
     const [refileId, setRefileId] = useState<string | null>(null);
-
-    // ── Data fetching ────────────────────────────────────────────────
-
-    const fetchCaptures = useCallback(async () => {
-        try {
-            const res = await fetch(`${API}/captures?limit=20`);
-            const json = await res.json();
-            if (json.success) setCaptures(json.data);
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    const fetchStats = useCallback(async () => {
-        try {
-            const res = await fetch(`${API}/stats`);
-            const json = await res.json();
-            if (json.success) setStats(json.data);
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    const fetchBucketItems = useCallback(async () => {
-        try {
-            const [p, pr, i, a] = await Promise.all(
-                (['people', 'projects', 'ideas', 'admin'] as BucketId[]).map(t => fetch(`${API}/${t}`).then(r => r.json()))
-            );
-            setBucketItems({
-                people: p.success ? p.data : [],
-                projects: pr.success ? pr.data : [],
-                ideas: i.success ? i.data : [],
-                admin: a.success ? a.data : [],
-            });
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    const fetchTimeline = useCallback(async () => {
-        try {
-            const res = await fetch(`${API}/timeline`);
-            const json = await res.json();
-            if (json.success) setTimeline(json.data);
-            setBackendOffline(false);
-        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
-    }, []);
-
-    useEffect(() => {
-        fetchCaptures();
-        fetchStats();
-    }, [fetchCaptures, fetchStats]);
-
-    useEffect(() => {
-        if (activeTab === 'dashboard') { fetchBucketItems(); fetchStats(); }
-        if (activeTab === 'timeline') fetchTimeline();
-    }, [activeTab, fetchBucketItems, fetchStats, fetchTimeline]);
 
     // ── Actions ──────────────────────────────────────────────────────
 
@@ -349,10 +319,13 @@ export default function ThoughtWeaver() {
         if (!text.trim() || loading) return;
         const thoughtText = text.trim();
         setLoading(true);
+        // Owner race guard: captured before the first await (LLM/backend) below.
+        const stillOwner = captureOwner();
 
         // Common: persist locally FIRST (always-persistent ask). Whatever
         // happens with the LLM / backend, the user keeps their thought.
         const persistLocally = (filed_to: string, confidence: number, destination_name: string | null) => {
+            if (!stillOwner()) return; // account switched mid-await — drop, never redirect
             const entry = {
                 id: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
                 text: thoughtText,
@@ -367,10 +340,9 @@ export default function ThoughtWeaver() {
             // (LLM / backend / local-fallback) won. Never log full thought
             // text — first 140 chars only.
             logActivity('thought-weaver', 'Thought Weaver', 'capture', { preview: thoughtText.slice(0, 140) });
-            // P11-13: write-through to the user's Supabase (best-effort,
-            // fire-and-forget — local is already the source of truth).
-            const cfg = twSyncConfig(integrations);
-            if (cfg && userId) void pushCapture(cfg, userId, { ...entry, source: 'local' });
+            // P11-13 revised 2026-09-25 (plan 067, G2): no more desktop writes
+            // to Supabase — a new capture is local-only. Supabase rows are a
+            // one-time IMPORT (see the effect below), never a write target.
         };
 
         // ── 1) Try user-configured LLM first ──
@@ -403,11 +375,6 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     persistLocally(filed_to, confidence, destination_name);
                     setText('');
                     setLoading(false);
-                    // Best-effort: also POST to backend so other consumers stay in sync.
-                    fetch(`${API}/capture`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: thoughtText }),
-                    }).then(() => { fetchCaptures(); fetchStats(); }).catch(() => { /* backend down — local copy is canonical */ });
                     return;
                 }
             } catch {
@@ -423,12 +390,13 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             });
             const json = await res.json();
             if (json.success) {
+                // Plan 067 Phase 2 (G1): POST /capture is now a stateless classifier —
+                // `{ filed_to, confidence, destination_name }` — nothing is stored
+                // server-side, so persisting locally (below) is the only write.
                 setLastResult({ filed_to: json.data.filed_to, confidence: json.data.confidence, destination_name: json.data.destination_name });
                 setCaptureSource('backend');
                 persistLocally(json.data.filed_to, json.data.confidence, json.data.destination_name);
                 setText('');
-                fetchCaptures();
-                fetchStats();
                 setLoading(false);
                 return;
             }
@@ -447,33 +415,6 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         setLoading(false);
     };
 
-    const handleSeed = async () => {
-        await fetch(`${API}/seed`, { method: 'POST' });
-        setSeeded(true);
-        fetchCaptures();
-        fetchStats();
-        fetchBucketItems();
-        fetchTimeline();
-    };
-
-    const handleDelete = async (table: string, id: string) => {
-        await fetch(`${API}/${table}/${id}`, { method: 'DELETE' });
-        fetchBucketItems();
-        fetchStats();
-        fetchTimeline();
-    };
-
-    const handleResolve = async (logId: string, destination: BucketId) => {
-        await fetch(`${API}/resolve/${logId}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ destination }),
-        });
-        setResolveId(null);
-        fetchCaptures();
-        fetchStats();
-        fetchBucketItems();
-    };
-
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); handleCapture(); }
     };
@@ -482,83 +423,94 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
 
     // ── Computed ─────────────────────────────────────────────────────
 
-    // Merge backend captures with local ones (local-first, dedupe by id).
-    // Local entries always carry source: 'local' so the delete button can
-    // be gated on user-owned records.
-    // P11-13: rows pulled from the user's Supabase (phone captures). Merged
-    // as NON-local records (no local delete handle — user-only-delete holds).
-    const [syncedCaptures, setSyncedCaptures] = useState<CaptureEntry[]>([]);
+    // P11-13 revised 2026-09-25 (plan 067 Phase 2, D2/D3/D4/G1/G2/G3): every
+    // capture view comes from the LOCAL store only — the shared in-memory
+    // backend Maps (D3, cross-user leak) and the Supabase phone-sync writes
+    // (D4, anon-key-in-URL leak) are both retired. Two READ-ONLY sources are
+    // still a ONE-TIME IMPORT into the local store, never a live merge: the
+    // user's Supabase rows (Phase 1, unchanged) and the backend's per-user
+    // `thought-weaver-inbox_<uid>` One Save object (Phase 2 — phone captures
+    // land here now, server-classified, never stored in a shared Map).
+    // Hydrate the synced "already imported" id set FIRST (so a delete
+    // recorded on another device is known before deciding what's new —
+    // `twImportedStore` is itself One-Save-synced), pull both sources, let
+    // `planImport` (pure) decide which rows are genuinely new (not local, not
+    // previously imported/deleted), write them into the local store in one
+    // `importCaptures()` call, then record every pulled id via `markImported`
+    // so it is never re-imported even after the user deletes it locally.
+    // Imported rows are local from then on — same delete/re-file handles as
+    // any other capture (`mergedCaptures` below assumes only one source).
+    // `alive` + re-checking the user holder after every await guards against
+    // an unmount or an account switch mid-import (A's rows must never land
+    // in B's store); StrictMode's double-effect-mount is safe because
+    // `importCaptures` dedupes by id and `markImported` is a no-op when every
+    // id is already recorded. The Supabase pull stays optional (only when the
+    // user has Supabase configured); the inbox pull always runs once a user
+    // is signed in.
     useEffect(() => {
-        const cfg = twSyncConfig(integrations);
-        if (!cfg || !userId) return;
+        if (!userId) return;
         let alive = true;
-        void pullCaptures(cfg, userId).then(rows => {
-            if (!alive) return;
-            setSyncedCaptures(rows.map(r => ({
-                id: r.id,
-                original_text: r.text,
-                filed_to: r.filed_to,
-                confidence: r.confidence,
-                destination_name: r.destination_name,
-                status: r.filed_to === 'needs_review' ? 'needs_review' : 'filed',
-                createdAt: r.createdAt,
-                source: 'backend' as const,
-            })));
-        });
+        (async () => {
+            try {
+                await twImportedStore.hydrate();
+            } catch {
+                // One Save disabled/unreachable — the local imported-id
+                // snapshot is still authoritative for this device.
+            }
+            if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
+
+            const cfg = twSyncConfig(integrations);
+            const supabaseRows = cfg ? await pullCaptures(cfg, userId) : [];
+            if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
+
+            const inboxRows = await pullInbox(userId);
+            if (!alive || thoughtWeaverUserIdHolder.current !== userId) return;
+
+            const localIds = new Set(thoughtWeaverStore.getSnapshot().map(c => c.id));
+            const { toAppend, seenIds } = planImport([...supabaseRows, ...inboxRows], localIds, twImportedStore.getSnapshot());
+            if (toAppend.length > 0) importCaptures(toAppend);
+            if (seenIds.length > 0) markImported(seenIds);
+        })();
         return () => { alive = false; };
     }, [integrations, userId]);
 
+    // Every capture is local now — no backend/synced source left to merge.
     const mergedCaptures = useMemo<CaptureEntry[]>(() => {
-        const local: CaptureEntry[] = localCaptures.map(c => ({
-            id: c.id,
-            original_text: c.text,
-            filed_to: c.filed_to,
-            confidence: c.confidence,
-            destination_name: c.destination_name,
-            status: c.filed_to === 'needs_review' ? 'needs_review' : 'filed',
-            createdAt: c.createdAt,
-            source: 'local' as const,
-        }));
-        const backend: CaptureEntry[] = captures.map(c => ({ ...c, source: 'backend' as const }));
-        const seen = new Set<string>();
-        const out: CaptureEntry[] = [];
-        // local first → a row that exists locally wins (keeps its delete handle)
-        for (const c of [...local, ...backend, ...syncedCaptures]) {
-            if (seen.has(c.id)) continue;
-            seen.add(c.id);
-            out.push(c);
-        }
-        // Most recent first
-        return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [localCaptures, captures, syncedCaptures]);
+        return localCaptures
+            .map((c): CaptureEntry => ({
+                id: c.id,
+                original_text: c.text,
+                filed_to: c.filed_to,
+                confidence: c.confidence,
+                destination_name: c.destination_name,
+                status: c.filed_to === 'needs_review' ? 'needs_review' : 'filed',
+                createdAt: c.createdAt,
+                source: 'local',
+            }))
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [localCaptures]);
 
-    // Local delete handler — backend records can't be removed from here.
-    const handleLocalDelete = useCallback((id: string) => {
-        deleteLocalCapture(id);
+    // Shared delete confirm (plan 067 Phase 3, D6) — used by both the Recent
+    // list and the Dashboard item delete. Deleting a local capture is
+    // irreversible (Phase 2 removed the backend copy), so name the thought
+    // (first ~60 chars, verbatim) in the confirm and bail out on Cancel.
+    const handleDeleteCapture = useCallback((id: string, text: string) => {
+        const preview = text.length > 60 ? text.slice(0, 60) + '…' : text;
+        const ok = typeof window !== 'undefined' && window.confirm(
+            `Delete this thought — "${preview}"? This cannot be undone.`
+        );
+        if (ok) deleteLocalCapture(id);
     }, []);
 
-    // ── Glanceable views from the LOCAL trusted store ────────────────────
-    // The header counts, Dashboard, and Timeline must reflect what's stored on
-    // THIS device even with no backend. Derive them from localCaptures and merge
-    // backend data on top when present, so the views are never blank offline.
-    const effectiveStats = useMemo<Stats>(() => {
-        return stats ?? deriveStats(localCaptures);
-    }, [stats, localCaptures]);
-
-    const effectiveBuckets = useMemo<Record<BucketId, BucketItem[]>>(() => {
-        const local = deriveBuckets(localCaptures);
-        return {
-            people: [...bucketItems.people, ...local.people],
-            projects: [...bucketItems.projects, ...local.projects],
-            ideas: [...bucketItems.ideas, ...local.ideas],
-            admin: [...bucketItems.admin, ...local.admin],
-        };
-    }, [bucketItems, localCaptures]);
-
-    const effectiveTimeline = useMemo<BucketItem[]>(() => {
-        const merged = [...timeline, ...deriveTimeline(localCaptures)];
-        return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [timeline, localCaptures]);
+    // ── Glanceable views from the LOCAL trusted store (D5) ────────────────
+    // The header counts, Dashboard, and Timeline reflect ONLY what's stored on
+    // this device — there is no backend source left to merge on top of.
+    const effectiveStats = useMemo<Stats>(() => deriveStats(localCaptures), [localCaptures]);
+    const effectiveBuckets = useMemo<Record<BucketId, BucketItem[]>>(
+        () => deriveBuckets(localCaptures),
+        [localCaptures],
+    );
+    const effectiveTimeline = useMemo<BucketItem[]>(() => deriveTimeline(localCaptures), [localCaptures]);
 
     // User override of the AI's category on a local capture (never-misinterpreted).
     const handleRefile = useCallback((id: string, bucket: BucketId) => {
@@ -569,7 +521,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
     const handleClearAllLocal = useCallback(() => {
         if (localCaptures.length === 0) return;
         const ok = typeof window !== 'undefined' && window.confirm(
-            `Delete all ${localCaptures.length} of YOUR captures from this browser? Backend records will remain.`
+            `Delete all ${localCaptures.length} of YOUR captures from this browser? This cannot be undone.`
         );
         if (ok) clearLocalCaptures();
     }, [localCaptures.length]);
@@ -695,10 +647,10 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     <h2 className="tw-title"><Brain size={16} aria-hidden /> Thought Weaver</h2>
                     {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}><User size={13} aria-hidden /> {effectiveStats.activePeople}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}><Folder size={13} aria-hidden /> {effectiveStats.activeProjects}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}><Lightbulb size={13} aria-hidden /> {effectiveStats.totalIdeas}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}><ClipboardList size={13} aria-hidden /> {effectiveStats.tasksDue}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--accent)') }}><User size={13} aria-hidden /> {effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--danger)') }}><Folder size={13} aria-hidden /> {effectiveStats.activeProjects}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--warning)') }}><Lightbulb size={13} aria-hidden /> {effectiveStats.totalIdeas}</span>
+                            <span className="tw-stats-mini__item" style={{ color: twCatText('var(--success)') }}><ClipboardList size={13} aria-hidden /> {effectiveStats.tasksDue}</span>
                         </div>
                     )}
                 </div>
@@ -713,24 +665,6 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     })}
                 </div>
             </div>
-
-            {/* Honest backend-offline banner — shown when a backend fetch fails
-                because the Dwellium server isn't reachable (your "show the error
-                if the backend isn't up" ask). The local store remains the source
-                of truth, so the views above still work. */}
-            {backendOffline && (
-                <div
-                    className="tw-offline-banner"
-                    role="status"
-                    style={{
-                        margin: '8px 12px 0', padding: '8px 12px', borderRadius: 8,
-                        background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)',
-                        color: '#fdba74', fontSize: 12.5, lineHeight: 1.4,
-                    }}
-                >
-                    <TriangleAlert size={14} aria-hidden /> <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
-                </div>
-            )}
 
             {/* ─── CAPTURE TAB ─── */}
             {activeTab === 'capture' && (
@@ -755,39 +689,40 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                     );
                                 })}
                             </div>
-                            <button className="tw-capture__btn" onClick={handleCapture} disabled={!text.trim() || loading}>
+                            <button className="tw-capture__btn" onClick={handleCapture} disabled={!text.trim() || loading} aria-busy={loading}>
                                 {loading ? 'Classifying...' : 'Capture'}
                             </button>
                         </div>
                     </div>
 
-                    {/* Classification result toast */}
-                    {lastResult && (
-                        <div className="tw-result" style={{ borderLeftColor: bucketColor(lastResult.filed_to) }}>
-                            <span className="tw-result__icon"><BucketIcon bucket={lastResult.filed_to} size={16} /></span>
-                            <div className="tw-result__text">
-                                <strong>{lastResult.filed_to === 'needs_review' ? 'Needs Review' : `Filed → ${lastResult.destination_name}`}</strong>
-                                <span className={`tw-confidence tw-confidence--${confidenceLabel(lastResult.confidence).toLowerCase()}`}>
-                                    {confidenceLabel(lastResult.confidence)} ({Math.round(lastResult.confidence * 100)}%)
-                                </span>
-                                {captureSource && (
-                                    <span className="tw-source-badge" title="How this thought was sorted">
-                                        {captureSource === 'llm' ? <><Sparkles size={12} aria-hidden /> via your LLM</>
-                                            : captureSource === 'backend' ? <><Satellite size={12} aria-hidden /> via backend</>
-                                            : <><Save size={12} aria-hidden /> sorted locally · offline</>}
+                    {/* Classification result toast — the region is ALWAYS rendered
+                        (plan 067 Phase 3, D9) so a screen reader has already
+                        registered it as a live region before the content inside
+                        changes; a region mounted together with its first content
+                        is often not announced. */}
+                    <div role="status" aria-live="polite">
+                        {lastResult && (
+                            <div className="tw-result" style={{ borderLeftColor: bucketColor(lastResult.filed_to) }}>
+                                <span className="tw-result__icon"><BucketIcon bucket={lastResult.filed_to} size={16} /></span>
+                                <div className="tw-result__text">
+                                    <strong>{lastResult.filed_to === 'needs_review' ? 'Needs Review' : `Filed → ${lastResult.destination_name}`}</strong>
+                                    <span className={`tw-confidence tw-confidence--${confidenceLabel(lastResult.confidence).toLowerCase()}`}>
+                                        {confidenceLabel(lastResult.confidence)} ({Math.round(lastResult.confidence * 100)}%)
                                     </span>
-                                )}
+                                    {captureSource && (
+                                        <span className="tw-source-badge" title="How this thought was sorted">
+                                            {captureSource === 'llm' ? <><Sparkles size={12} aria-hidden /> via your LLM</>
+                                                : captureSource === 'backend' ? <><Satellite size={12} aria-hidden /> via backend</>
+                                                : <><Save size={12} aria-hidden /> sorted locally · offline</>}
+                                        </span>
+                                    )}
+                                </div>
+                                <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }} aria-label="Dismiss result"><X size={16} /></button>
                             </div>
-                            <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }}><X size={16} /></button>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
-                    {/* Seed button */}
-                    {captures.length === 0 && !seeded && (
-                        <button className="tw-seed-btn" onClick={handleSeed}><Sprout size={14} aria-hidden /> Seed demo thoughts</button>
-                    )}
-
-                    {/* Recent captures (merged: local + backend) */}
+                    {/* Recent captures — local store only (plan 067 Phase 2) */}
                     <div className="tw-recent">
                         <div className="tw-recent__header">
                             <h3 className="tw-section-title">Recent Captures</h3>
@@ -816,55 +751,44 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                 <BucketIcon bucket={c.filed_to} /> {c.filed_to === 'needs_review' ? 'Review' : c.filed_to}
                                             </span>
                                             <span className="tw-confidence-mini">{Math.round(c.confidence * 100)}%</span>
-                                            {c.source === 'local' && (
-                                                <span className="tw-local-badge" title="Stored in this browser — only you can delete it"><Save size={12} aria-hidden /> local</span>
-                                            )}
-                                            {/* User override of the AI's category — you always have the final say. */}
-                                            {c.source === 'local' && (
-                                                refileId === c.id ? (
-                                                    <div className="tw-resolve-picker">
-                                                        {BUCKETS.map(b => {
-                                                            const BIcon = b.icon;
-                                                            return (
-                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`} aria-label={`File under ${b.label}`}>
-                                                                <BIcon size={14} aria-hidden />
-                                                            </button>
-                                                            );
-                                                        })}
-                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)} aria-label="Cancel re-file"><X size={16} /></button>
-                                                    </div>
-                                                ) : (
-                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought"><Pencil size={14} aria-hidden /> Re-file</button>
-                                                )
-                                            )}
-                                            {c.status === 'needs_review' && c.source !== 'local' && (
-                                                resolveId === c.id ? (
-                                                    <div className="tw-resolve-picker">
-                                                        {BUCKETS.map(b => {
-                                                            const BIcon = b.icon;
-                                                            return (
-                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleResolve(c.id, b.id)} title={b.label} aria-label={`File under ${b.label}`}>
-                                                                <BIcon size={14} aria-hidden />
-                                                            </button>
-                                                            );
-                                                        })}
-                                                        <button className="tw-resolve-cancel" onClick={() => setResolveId(null)} aria-label="Cancel categorize"><X size={16} /></button>
-                                                    </div>
-                                                ) : (
-                                                    <button className="tw-categorize-btn" onClick={() => setResolveId(c.id)}>Categorize</button>
-                                                )
-                                            )}
-                                            <span className="tw-time">{timeAgo(c.createdAt)}</span>
-                                            {c.source === 'local' && (
+                                            <span className="tw-local-badge" title="Stored in this browser — only you can delete it"><Save size={12} aria-hidden /> local</span>
+                                            {/* User override of the AI's category — you always have the final say.
+                                                This also covers needs_review items (plan 067 Phase 2, D3): every
+                                                capture is local now, so re-filing via `recategorizeLocalCapture`
+                                                is the one categorize path — the old backend `/resolve/:id` picker
+                                                (only reachable for non-local rows) is gone with it. */}
+                                            {refileId === c.id ? (
+                                                <div className="tw-resolve-picker">
+                                                    {BUCKETS.map(b => {
+                                                        const BIcon = b.icon;
+                                                        return (
+                                                        <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`} aria-label={`File under ${b.label}`}>
+                                                            <BIcon size={14} aria-hidden />
+                                                        </button>
+                                                        );
+                                                    })}
+                                                    <button className="tw-resolve-cancel" onClick={() => setRefileId(null)} aria-label="Cancel re-file"><X size={16} /></button>
+                                                </div>
+                                            ) : (
                                                 <button
-                                                    className="tw-delete-btn"
-                                                    onClick={() => handleLocalDelete(c.id)}
-                                                    title="Delete this capture (local only — backend records can't be removed from here)"
-                                                    aria-label="Delete capture"
+                                                    className="tw-categorize-btn"
+                                                    onClick={() => setRefileId(c.id)}
+                                                    title={c.status === 'needs_review'
+                                                        ? 'Categorize — you decide the category; the AI never has the final say on your stored thought'
+                                                        : 'Re-file — you decide the category; the AI never has the final say on your stored thought'}
                                                 >
-                                                    <Trash2 size={14} aria-hidden />
+                                                    <Pencil size={14} aria-hidden /> {c.status === 'needs_review' ? 'Categorize' : 'Re-file'}
                                                 </button>
                                             )}
+                                            <span className="tw-time">{timeAgo(c.createdAt)}</span>
+                                            <button
+                                                className="tw-delete-btn"
+                                                onClick={() => handleDeleteCapture(c.id, c.original_text)}
+                                                title="Delete this capture"
+                                                aria-label={`Delete "${c.original_text.length > 60 ? c.original_text.slice(0, 60) + '…' : c.original_text}"`}
+                                            >
+                                                <Trash2 size={14} aria-hidden />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -885,12 +809,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 onClick={() => {
                                     const generated = synthesizeTodosFromCaptures(mergedCaptures);
                                     const added = syncTodosFromCaptures(generated);
-                                    if (typeof window !== 'undefined') {
-                                        // light feedback through lastResult-style banner reuse
-                                        setLastResult(null);
-                                    }
-                                    // eslint-disable-next-line no-console
-                                    console.log(`[ThoughtWeaver] Synced ${added} new to-do(s) from captures`);
+                                    setSyncMsg(added > 0
+                                        ? `Added ${added} to-do${added === 1 ? '' : 's'} from captures`
+                                        : 'No new to-dos — everything is already on your list');
                                 }}
                                 title="Pull actionable items from your captures"
                             >
@@ -902,6 +823,13 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 </button>
                             )}
                         </div>
+                    </div>
+
+                    {/* Always-rendered live region (plan 067 Phase 3, D9) so the
+                        "Sync from captures" result is actually announced instead
+                        of only landing in the console. */}
+                    <div role="status" aria-live="polite">
+                        {syncMsg && <p className="tw-reports__msg">{syncMsg}</p>}
                     </div>
 
                     {/* Quick-add */}
@@ -954,6 +882,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                 checked={t.done}
                                                 onChange={() => toggleTodo(t.id)}
                                                 className="tw-todo__checkbox"
+                                                aria-label={t.done ? `Mark "${t.text}" not done` : `Mark "${t.text}" done`}
                                             />
                                             <span className="tw-todo__text">{t.text}</span>
                                             {t.sourceCaptureId && (
@@ -1105,12 +1034,12 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {effectiveStats && (
                         <div className="tw-stats-bar">
                             {([
-                                { icon: Brain, label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
-                                { icon: Download, label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
-                                { icon: User, label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
-                                { icon: Folder, label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
-                                { icon: Lightbulb, label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
-                                { icon: ClipboardList, label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },
+                                { icon: Brain, label: 'Captures', value: effectiveStats.totalCaptures, color: twCatText('var(--accent)') },
+                                { icon: Download, label: 'To Review', value: effectiveStats.pendingReviews, color: twCatText('var(--danger)'), highlight: effectiveStats.pendingReviews > 0 },
+                                { icon: User, label: 'People', value: effectiveStats.activePeople, color: twCatText('var(--accent)') },
+                                { icon: Folder, label: 'Active', value: effectiveStats.activeProjects, color: twCatText('var(--danger)') },
+                                { icon: Lightbulb, label: 'Ideas', value: effectiveStats.totalIdeas, color: twCatText('var(--warning)') },
+                                { icon: ClipboardList, label: 'Due', value: effectiveStats.tasksDue, color: twCatText('var(--success)'), highlight: effectiveStats.tasksDue > 0 },
                             ] as { icon: LucideIcon; label: string; value: number; color: string; highlight?: boolean }[]).map(s => {
                                 const StatIcon = s.icon;
                                 return (
@@ -1163,7 +1092,14 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         </div>
                                         <div className="tw-item-card__actions">
                                             <span className="tw-time">{timeAgo(item.createdAt)}</span>
-                                            <button className="tw-delete-btn" onClick={() => (item as { source?: string }).source === 'local' ? deleteLocalCapture(item.id) : handleDelete(item.type || '', item.id)} title="Delete"><Trash2 size={16} /></button>
+                                            <button
+                                                className="tw-delete-btn"
+                                                onClick={() => handleDeleteCapture(item.id, item.notes || item.name)}
+                                                title="Delete"
+                                                aria-label={`Delete "${(item.notes || item.name || '').length > 60 ? (item.notes || item.name).slice(0, 60) + '…' : (item.notes || item.name)}"`}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

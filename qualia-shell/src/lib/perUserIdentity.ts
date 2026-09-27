@@ -102,6 +102,9 @@ export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 058 — per-user Universal Shell nav persistence (universalShellStore). */
 export const universalShellUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 068 phase 2 — per-user monthly AI budget (aiBudgetStore). */
+export const aiBudgetUserIdHolder: UserIdHolder = makeHolder();
+
 /** Plan 067 — ThoughtWeaver captures / imported ids / to-dos / reports. Were
  *  set only when the widget rendered, so readers outside it (unifiedMemory,
  *  dailySynthesis, ConnectionsPanel) could read the PREVIOUS account's
@@ -144,6 +147,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     gridLockUserIdHolder,
     stellaPrefsUserIdHolder,
     universalShellUserIdHolder,
+    aiBudgetUserIdHolder,
     thoughtWeaverUserIdHolder,
     twImportedUserIdHolder,
     todoUserIdHolder,

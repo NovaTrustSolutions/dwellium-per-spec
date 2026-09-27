@@ -22,6 +22,7 @@ vi.mock('../registry/widgetRegistry', () => {
             gamma: { id: 'gamma', label: 'Gamma', icon: 'layout-grid', category: 'core' },
             delta: { id: 'delta', label: 'Delta', icon: 'layout-grid', category: 'core' },
             'advisory-board': { id: 'advisory-board', label: 'Advisory Board', icon: 'scale', category: 'ai' },
+            'ai-spend': { id: 'ai-spend', label: 'AI Spend', icon: 'coins', category: 'ai' },
         },
         // plan 066: registry now also exports resolveWidgetId (retired id → live id); identity suffices for these ids.
         resolveWidgetId: (id: string) => id,
@@ -31,6 +32,7 @@ vi.mock('../registry/widgetRegistry', () => {
             gamma: GammaWidget,
             delta: DeltaWidget,
             'advisory-board': makeWidget('Advisory Board', 'advisory-board-widget'),
+            'ai-spend': makeWidget('AI Spend', 'ai-spend-widget'),
         },
     };
 });
@@ -74,12 +76,7 @@ vi.mock('../lib/llmUsageStore', () => ({
 vi.mock('../lib/subscriptionsStore', () => ({
     useSubscriptions: () => [],
     monthlyTotal: () => 0,
-    saveSubscriptions: vi.fn(),
-    withoutUnconfirmedDefaults: (l: unknown) => l,
-    subscriptionsStore: { set: vi.fn(), getSnapshot: () => [] },
     prorateMonthly: (monthly: number, days: number) => (monthly * days) / 30,
-    applyPlanEdits: (list: unknown[]) => list,
-    parseNewSubscription: () => null,
 }));
 
 vi.mock('../hooks/useIntegrations', () => ({
@@ -209,6 +206,17 @@ describe('Holocron OS smart tab shell', () => {
 
         expect(advisoryLensBus.peek()).toEqual({ lensId: 'risk' });
         expect(screen.getByText('Advisory Board content')).toBeInTheDocument();
+    });
+
+    it('opens the AI Spend widget when the Home card is clicked, instead of window.prompt (plan 068 phase 2)', () => {
+        const promptSpy = vi.spyOn(window, 'prompt');
+        openHalocron();
+
+        fireEvent.click(screen.getByTitle('Open AI Spend to edit'));
+
+        expect(screen.getByText('AI Spend content')).toBeInTheDocument();
+        expect(promptSpy).not.toHaveBeenCalled();
+        promptSpy.mockRestore();
     });
 
     it('renders hosted web tabs through Cloud Browser instead of a blocked embed launch card', async () => {

@@ -114,6 +114,12 @@ export const twImportedUserIdHolder: UserIdHolder = makeHolder();
 export const todoUserIdHolder: UserIdHolder = makeHolder();
 export const reportUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 070 — Synthesis Lab captures and CoPaw auto-facts. Were loose holders
+ *  set by whichever widget rendered last, so an async LLM result could resolve
+ *  the key of an account that signed in after the call started. */
+export const synthesisUserIdHolder: UserIdHolder = makeHolder();
+export const copawUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -152,6 +158,8 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     twImportedUserIdHolder,
     todoUserIdHolder,
     reportUserIdHolder,
+    synthesisUserIdHolder,
+    copawUserIdHolder,
 ];
 
 /**

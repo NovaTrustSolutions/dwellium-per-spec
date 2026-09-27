@@ -11,6 +11,7 @@
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { synthesisUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface Synthesis {
     id: string;
@@ -23,7 +24,14 @@ export interface Synthesis {
     capturedAt: string;
 }
 
-export const synthesisUserIdHolder: { current: string | null } = { current: null };
+export { synthesisUserIdHolder };
+
+/** Oldest captures are dropped past this (copaw caps at 500 facts; a synthesis is a full answer). */
+export const MAX_SYNTHESES = 300;
+
+export type CaptureResult =
+    | { ok: true; synthesis: Synthesis }
+    | { ok: false; reason: 'empty' | 'quota' };
 
 export function resolveSynthesisKey(): string {
     const uid = synthesisUserIdHolder.current;
@@ -49,32 +57,30 @@ export const synthesisStore = withSync(
     { objectType: 'synthesis', holder: synthesisUserIdHolder, resolveKey: resolveSynthesisKey },
 );
 
-function newId(): string {
+/** Id for a synthesis — generated when a run STARTS so tags added before Capture keep their key. */
+export function newSynthesisId(): string {
     try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch { /* */ }
     return `syn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Capture a synthesis (feed it back into the corpus). Most-recent-first. */
+/**
+ * Capture a synthesis (feed it back into the corpus). Most-recent-first, capped
+ * at MAX_SYNTHESES. The caller supplies `id` (its draft id). Returns
+ * `{ok:false, reason:'quota'}` WITHOUT changing the store when localStorage is full.
+ * CONTRACT (plan 070 P0) — implemented by the W1 store agent.
+ */
 export function captureSynthesis(
-    entry: { query: string; result: string; layer?: number; parentId?: string | null },
+    entry: { id: string; query: string; result: string; layer: number; parentId: string | null },
     now: Date = new Date(),
-): Synthesis | null {
-    if (typeof window === 'undefined') return null;
-    if (!entry.result.trim()) return null;
-    const s: Synthesis = {
-        id: newId(),
-        query: entry.query,
-        result: entry.result,
-        layer: entry.layer ?? 1,
-        parentId: entry.parentId ?? null,
-        capturedAt: now.toISOString(),
-    };
-    const cur = synthesisStore.getSnapshot();
-    const next = [s, ...cur];
-    synthesisStore.set(next, () => {
-        try { localStorage.setItem(resolveSynthesisKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
-    });
-    return s;
+): CaptureResult {
+    void entry; void now;
+    throw new Error('plan 070 W1: not implemented');
+}
+
+/** Remove one captured synthesis by id (user-initiated, from the UI). CONTRACT (plan 070 P0). */
+export function removeSynthesis(id: string): void {
+    void id;
+    throw new Error('plan 070 W1: not implemented');
 }
 
 export function clearSyntheses(): void {

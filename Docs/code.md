@@ -456,6 +456,14 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Fix:** `captureOwner()` in `src/lib/perUserIdentity.ts` snapshots the owner before the first await; each async write site checks `stillOwner()` right before the store write and drops (never redirects) on a change. The whiteboard captures at schedule time and re-checks after its own await and in `flushPendingSave`. Tests: `ownerGuard*.test.ts` (mutation-checked). `recordLlmUsage` is fixed separately in PR #147 (required `userId`).
 - **Prevention:** any new code that awaits and then writes a per-user store must capture the owner first. A whiteboard scene still pending at logout is dropped (it previously went to `_anonymous` — lost to A either way).
 
+## 2026-09-26 — AI Spend (plan 068 phase 2): budget, breakdown, subscriptions editor
+
+- **Error 1 (harness screenshot only):** with the new sections the 14-day chart collapsed to a flat sliver. `.spend` is a `height: 100%` flex column; once content exceeded the window, flex children shrank and the fixed-height chart went first. Latent since phase 1 (content still fitted then). **Fix:** `.spend > * { flex-shrink: 0; }` — the widget scrolls, sections never shrink. The harness now asserts chart height ≥ 100 px and today's bar ≥ 60 px with every panel open.
+- **Error 2 (adversarial review, reproduced):** two new subscriptions saved in the same millisecond got the same `slug-Date.now()` id → duplicate React keys and a colliding id in storage. **Fix:** new ids are made unique against the ids already in the list (`-2`, `-3`…), no randomness; mutation-checked test.
+- **Error 3 (harness):** the new components' muted text used `--text-tertiary`/`--text-secondary` → 8 new latte contrast failures at 4.31:1. **Fix:** `color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary))` for muted text in new CSS. The harness diffs the low-contrast list against main to show only NEW items.
+- **Not a bug:** the review said an invalid budget "silently no-ops"; the input's native `min=1` already blocks 0/negatives with a browser message. Only an EMPTY submit passes native validation — it now shows an inline error.
+- **Prevention:** for any widget that gains sections, check the full-height flex container for shrinking children in a real render (jsdom has no layout). Generate new ids unique within the list being saved, never from the clock alone.
+
 ## 2026-09-25 — Plan 069 phase 1: Search widget missed multi-word matches, blank snippets, false copy
 
 - **Error:** the Search widget (`content-search`) found nothing for "security deposit" when the words were apart; snippets came back as just "…" for text containing `İ`; it showed "50 results" when 200 matched; rows stayed near-black after hover in light themes; windows opened from it were titled with the raw widget id; its copy claimed semantic/file-content search and "notes" that it never searched; a failed file-tree fetch was silent.

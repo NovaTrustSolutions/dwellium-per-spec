@@ -13,9 +13,9 @@
  * PURE-AT-THE-SEAMS like hermesRunner: LLM, skills, and clock are injectable;
  * unit-testable with no network.
  */
-import { AGENT_SKILLS, isSkillAllowedForOrigin, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
+import { AGENT_SKILLS, isSkillAllowedForOrigin, describeSkillsForPrompt, runSkillForInput, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
 import { extractJson } from '../../lib/agents/orchestrator';
-import { callLlm, type LlmRequest } from '../../lib/llmClient';
+import { callLlm, hasActiveLlm, type LlmRequest } from '../../lib/llmClient';
 import type { IntegrationsBundle } from '../../types/integrations';
 import type { HermesRunStep } from './hermesRunner';
 import { captureOwner } from '../../lib/perUserIdentity';
@@ -37,6 +37,23 @@ export interface ReactLoopDeps {
     /** Max reason→act iterations before a final answer is forced (default 4). */
     maxSteps?: number;
     now?: () => string;
+}
+
+/** The browser skills Hermes may run on its own: its tool choices are model-chosen, so only the
+ *  autonomous-safe allowlist (skills.ts isSkillAllowedForOrigin). ONE list for the ReAct loop, the
+ *  offline fallback prompt and the Hermes panel. */
+export const HERMES_BROWSER_SKILLS: ReadonlyArray<AgentSkill> = AGENT_SKILLS.filter(s => isSkillAllowedForOrigin(s, 'model'));
+
+/** System prompt for Hermes's single-shot offline fallback (backend down, ReAct produced nothing).
+ *  Lists only the skills Hermes can actually use, so it never offers a human-only one. */
+export function hermesFallbackSystemPrompt(wikiCtx: string): string {
+    return 'You are Hermes, a pragmatic autonomous task agent inside the Dwellium app. ' +
+        'The Hermes backend is offline, so answer the task directly from reasoning and general knowledge. ' +
+        'Be concrete and actionable; say plainly when a step would need live tools or property data.\n' +
+        // Bidirectional memory OUT-path: the LLM Wiki (identity + distilled facts)
+        // flows into every run so the agent knows the operator and their world.
+        `\n# Your memory (LLM Wiki)\n${wikiCtx}\n` +
+        `Browser skills Hermes can use on a follow-up (anything else is human-only):\n${describeSkillsForPrompt(HERMES_BROWSER_SKILLS)}`;
 }
 
 /** Browser-skill names — the registry half the backend can't see. */
@@ -136,10 +153,13 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
  * 'model' — only the autonomous-safe allowlist (skills.ts
  * isSkillAllowedForOrigin) is offered to the model or ever run. The code
  * runner, memory writes, widget actions and paid skills stay human-only.
+ *
+ * `search` is required on purpose: Web Search uses the user's Tavily/Brave key
+ * (without it the loop's searches fell back to "no live web" answers).
  */
-export function buildReactLoopFn(llm: IntegrationsBundle['llm']) {
-    const ctx: SkillContext = { llm };
-    const allowed = AGENT_SKILLS.filter(s => isSkillAllowedForOrigin(s, 'model'));
+export function buildReactLoopFn(llm: IntegrationsBundle['llm'], search: IntegrationsBundle['search']) {
+    const ctx: SkillContext = { llm, search };
+    const allowed = HERMES_BROWSER_SKILLS;
     const byName = new Map<string, AgentSkill>(allowed.map(s => [s.name.toLowerCase(), s]));
     return async (task: string, fewShot: string): Promise<ReactLoopResult | null> => {
         const result = await runReactLoop(task, fewShot, {
@@ -154,5 +174,21 @@ export function buildReactLoopFn(llm: IntegrationsBundle['llm']) {
             skills: allowed.map(s => ({ name: s.name, description: s.description })),
         });
         return result.ok ? result : null;
+    };
+}
+
+/**
+ * Hermes's browser-side offline chain (direct skill match → ReAct loop) for callers that don't build
+ * their own — e.g. the voice persona's `hermes` tool, which used to run Hermes with no fallbacks at all
+ * (a backend miss meant no Web Search, no Tavily/Brave key). The task is model-chosen, so both legs
+ * are origin 'model': only the autonomous-safe skills can run, with the user's search keys.
+ */
+export function hermesBrowserFallbacks(llm: IntegrationsBundle['llm'], search: IntegrationsBundle['search']) {
+    return {
+        skillFallbackFn: async (task: string) => {
+            const hit = await runSkillForInput(task, { llm, search }, undefined, 'model');
+            return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
+        },
+        reactLoopFn: hasActiveLlm(llm) ? buildReactLoopFn(llm, search) : undefined,
     };
 }

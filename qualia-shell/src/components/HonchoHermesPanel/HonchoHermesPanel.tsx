@@ -42,15 +42,12 @@ import { AgentWiki } from './AgentWiki';
 import { HermesAgentWorkspace } from './HermesAgentWorkspace';
 import { agentWikiUserIdHolder, buildWikiContext } from './agentWikiStore';
 import { runHermes } from './hermesRunner';
-import { buildReactLoopFn, mergedToolNames } from './hermesReact';
+import { buildReactLoopFn, mergedToolNames, hermesFallbackSystemPrompt, HERMES_BROWSER_SKILLS } from './hermesReact';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
-import { runSkillForInput, describeSkillsForPrompt, AGENT_SKILLS, isSkillAllowedForOrigin } from '../../lib/agents/skills';
-
-/** The browser skills Hermes may run on its own (model-chosen → autonomous-safe allowlist only). */
-const HERMES_BROWSER_SKILLS = AGENT_SKILLS.filter(s => isSkillAllowedForOrigin(s, 'model'));
+import { runSkillForInput } from '../../lib/agents/skills';
 import CostAdvisorPanel from '../AiSpend/CostAdvisorPanel';
 import {
     arrangeMarkdownFiles,
@@ -339,19 +336,12 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                 const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search }, undefined, 'model');
                 return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
             },
-            reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
+            reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm, integrations.search) : undefined,
             llmFallbackFn: async (t, fewShot) => {
                 if (!hasActiveLlm(integrations.llm)) return null;
                 const wikiCtx = buildWikiContext();
                 const res = await callLlm({
-                    systemPrompt:
-                        'You are Hermes, a pragmatic autonomous task agent inside the Dwellium app. ' +
-                        'The Hermes backend is offline, so answer the task directly from reasoning and general knowledge. ' +
-                        'Be concrete and actionable; say plainly when a step would need live tools or property data.\n' +
-                        // Bidirectional memory OUT-path: the LLM Wiki (identity + distilled facts)
-                        // flows into every run so the agent knows the operator and their world.
-                        `\n# Your memory (LLM Wiki)\n${wikiCtx}\n` +
-                        `Skills available browser-side for follow-ups:\n${describeSkillsForPrompt()}`,
+                    systemPrompt: hermesFallbackSystemPrompt(wikiCtx),
                     prompt: fewShot ? `${fewShot}\n\nTask: ${t}` : `Task: ${t}`,
                     maxTokens: 1024,
                     temperature: 0.4,

@@ -35,6 +35,7 @@ import type { IntegrationsBundle } from '../../types/integrations';
 import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import { getWidgetMeta, getWidgetKeys } from '../../registry/widgetRegistry';
 import { spawnHermesFromStella } from '../StellaAgent/stellaHermesSpawn';
+import { hermesBrowserFallbacks } from '../HonchoHermesPanel/hermesReact';
 import {
     buildPersonaSystemPrompt,
     drainSentences,
@@ -150,6 +151,8 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
     const [thinking, setThinking] = useState(false);
 
     const liveRef = useRef(false);
+    /** Bumped when a call ends: a tool result from an earlier call must never land in (or after) it. */
+    const callGenRef = useRef(0);
     const speakingRef = useRef(false);
     const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
     const whisperHandleRef = useRef<WhisperSessionHandle | null>(null);
@@ -167,6 +170,10 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
     configRef.current = config;
     const llmRef = useRef(integrations.llm);
     llmRef.current = integrations.llm;
+    // Read at use time (like llmRef): the speech handlers are bound once per call, so closures would
+    // keep the keys from when the call started.
+    const searchRef = useRef(integrations.search);
+    searchRef.current = integrations.search;
 
     // ── Speech-queue state (streamed sentences append; stopSpeech flushes) ──
     /** Count of queued/playing speech chunks — speaking stays true until 0. */
@@ -494,7 +501,9 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
                         ...((init?.headers as Record<string, string>) ?? {}),
                     },
                 });
-                const { result } = await spawnHermesFromStella(task, { authFetch, toolNames: [] });
+                // Same offline chain as Stella's /hermes (skill → ReAct, origin 'model', the user's search keys);
+                // without it a backend miss left the persona's Hermes with no fallback at all.
+                const { result } = await spawnHermesFromStella(task, { authFetch, toolNames: [], ...hermesBrowserFallbacks(llmRef.current, searchRef.current) });
                 appendTurn(makeTurn({ role: 'event', text: '', toolBadge: `hermes · ${result.outcome === 'success' ? 'completed' : 'failed'}` }));
                 return result.outcome === 'success'
                     ? `Hermes finished: ${stripForSpeech(result.result || 'done, but no answer text came back.')}`
@@ -680,7 +689,11 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
                 speak(parsed.speech, parsed.cues);
             }
             if (parsed.tool) {
+                // Only the call ending (or a new one starting) drops the answer — not the speech epoch, which every
+                // speak() bumps (an idle nudge or a later reply while Hermes runs must not lose a finished answer).
+                const callGen = callGenRef.current;
                 const followUp = await runTool(parsed.tool.name, parsed.tool.args);
+                if (callGenRef.current !== callGen || !liveRef.current) return;
                 if (followUp) {
                     appendTurn(makeTurn({ role: 'assistant', text: followUp }));
                     speak(followUp);
@@ -818,6 +831,7 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
     // ── Call lifecycle ────────────────────────────────────────────────
     const endCall = useCallback(() => {
         liveRef.current = false;
+        callGenRef.current += 1;
         setCallState('idle');
         stopRecognition();
         stopSpeech();

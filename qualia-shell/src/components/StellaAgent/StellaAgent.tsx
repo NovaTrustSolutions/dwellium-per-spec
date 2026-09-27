@@ -680,7 +680,7 @@ export default function StellaAgent() {
                     const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search }, undefined, 'model');
                     return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
                 },
-                reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
+                reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm, integrations.search) : undefined,
             });
             setMessages(prev => [...prev, {
                 id: `assistant-${Date.now()}`, role: 'assistant', content: reply, timestamp: Date.now(),

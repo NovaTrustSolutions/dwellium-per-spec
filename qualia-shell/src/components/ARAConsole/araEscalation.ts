@@ -194,7 +194,7 @@ async function defaultRunHermes(task: string, deps: AraEscalationDeps): Promise<
             const hit = await runSkillForInput(t, { llm: deps.llm, search: deps.search }, undefined, 'model');
             return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
         },
-        reactLoopFn: hasActiveLlm(deps.llm) ? buildReactLoopFn(deps.llm) : undefined,
+        reactLoopFn: hasActiveLlm(deps.llm) ? buildReactLoopFn(deps.llm, deps.search) : undefined,
     });
 }
 

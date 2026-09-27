@@ -30,7 +30,7 @@ describe('extractFacts', () => {
 
 describe('captureFacts', () => {
     it('persists extracted facts most-recent-first with source', () => {
-        const fresh = captureFacts('Synthesis Lab', 'The maintenance backlog grew twelve percent last quarter across the portfolio.', NOW);
+        const fresh = captureFacts('Synthesis Lab', 'The maintenance backlog grew twelve percent last quarter across the portfolio.', null, NOW);
         expect(fresh.length).toBe(1);
         const snap = copawStore.getSnapshot();
         expect(snap[0].source).toBe('Synthesis Lab');
@@ -39,15 +39,15 @@ describe('captureFacts', () => {
 
     it('de-dupes against existing memory', () => {
         const t = 'Rent increases without notice are a leading driver of tenant churn here.';
-        captureFacts('A', t, NOW);
-        const second = captureFacts('B', t, NOW); // same fact text
+        captureFacts('A', t, null, NOW);
+        const second = captureFacts('B', t, null, NOW); // same fact text
         expect(second.length).toBe(0);
         expect(copawStore.getSnapshot().length).toBe(1);
     });
 
     it('isolates memory per user and clears', () => {
         copawUserIdHolder.current = 'andy';
-        captureFacts('A', 'Andy has a long enough declarative fact to be captured by CoPaw.', NOW);
+        captureFacts('A', 'Andy has a long enough declarative fact to be captured by CoPaw.', 'andy', NOW);
         expect(localStorage.getItem('dwellium:copaw-memory:andy')).toBeTruthy();
         copawUserIdHolder.current = 'lisa';
         copawStore.reset();

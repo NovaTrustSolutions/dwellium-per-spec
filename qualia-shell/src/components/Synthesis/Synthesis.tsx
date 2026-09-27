@@ -42,6 +42,7 @@ export default function Synthesis() {
     const runSynthesis = useCallback(async (prompt: string) => {
         if (!hasActiveLlm(integrations.llm)) { setErr('No LLM configured — add a key above.'); return; }
         setBusy(true); setErr(''); setCaptured(false);
+        const uid = copawUserIdHolder.current; // before the await — see captureFacts
         try {
             const res = await callLlm({
                 systemPrompt: 'You are a synthesis engine. Given a question (and any provided prior context), produce a concise, well-structured synthesis in Markdown — claims grounded, assumptions flagged, ending with the most important open question.',
@@ -51,7 +52,7 @@ export default function Synthesis() {
             }, integrations.llm);
             if (res && res.text.trim()) {
                 setResult(res.text.trim());
-                captureFacts('Synthesis Lab', res.text.trim()); // CoPaw §8.5
+                captureFacts('Synthesis Lab', res.text.trim(), uid); // CoPaw §8.5
             }
             else setErr('The LLM returned an empty synthesis.');
         } catch (e: any) {

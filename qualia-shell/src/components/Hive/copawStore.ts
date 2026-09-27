@@ -75,9 +75,16 @@ function newId(): string {
     return `fact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Extract + persist facts from one agent response. Returns the new facts. */
-export function captureFacts(source: string, response: string, now: Date = new Date()): MemoryFact[] {
+/**
+ * Extract + persist facts from one agent response. Returns the new facts.
+ * `userId` is REQUIRED and must be captured BEFORE the caller's LLM `await`
+ * (same contract as recordLlmUsage): if the account switched while the call
+ * was in flight, the capture is dropped rather than written under the new
+ * account's key.
+ */
+export function captureFacts(source: string, response: string, userId: string | null, now: Date = new Date()): MemoryFact[] {
     if (typeof window === 'undefined') return [];
+    if (userId !== copawUserIdHolder.current) return [];
     const facts = extractFacts(response).map((text) => ({ id: newId(), text, source, createdAt: now.toISOString() }));
     if (facts.length === 0) return [];
     const current = copawStore.getSnapshot();
@@ -90,6 +97,15 @@ export function captureFacts(source: string, response: string, now: Date = new D
         try { localStorage.setItem(resolveCopawKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
     });
     return fresh;
+}
+
+/** Remove one fact (user-initiated, from the Hive memory rail). */
+export function deleteFact(id: string): void {
+    if (typeof window === 'undefined') return;
+    const next = copawStore.getSnapshot().filter((f) => f.id !== id);
+    copawStore.set(next, () => {
+        try { localStorage.setItem(resolveCopawKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    });
 }
 
 export function clearMemory(): void {

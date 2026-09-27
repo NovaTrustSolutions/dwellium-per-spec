@@ -8,7 +8,7 @@ const callLlm = vi.fn();
 vi.mock('../../lib/llmClient', () => ({ callLlm: (...a: unknown[]) => callLlm(...a) }));
 
 import { getCmn, resetCmnForTests } from '../../lib/memoryGraphRag/shared';
-import { recallContext, formatRecall, withRecall, RECALL_HEADING } from '../../lib/memoryGraphRag/recall';
+import { recallContext, recallPassages, formatRecall, withRecall, RECALL_HEADING } from '../../lib/memoryGraphRag/recall';
 import type { SourceDocument } from '../../lib/memoryGraphRag';
 
 const DOCS: SourceDocument[] = [
@@ -42,6 +42,43 @@ describe('recallContext', () => {
         await getCmn('andy').ingest(DOCS, 'test');
         const block = await recallContext('andy', 'Maple Street', { maxChars: 160 });
         expect(block.length).toBeLessThanOrEqual(160);
+    });
+});
+
+describe('recallPassages', () => {
+    it('returns [] when the network is empty', async () => {
+        expect(await recallPassages('andy', 'Who serviced the boiler?')).toEqual([]);
+    });
+
+    it('returns [] for a blank query without touching the network', async () => {
+        await getCmn('andy').ingest(DOCS, 'test');
+        expect(await recallPassages('andy', '   ')).toEqual([]);
+    });
+
+    it('returns the relevant passage with correct sourceId/sourceKind/title', async () => {
+        await getCmn('andy').ingest(DOCS, 'test');
+        const hits = await recallPassages('andy', 'Who serviced the boiler?');
+        expect(hits.length).toBeGreaterThan(0);
+        // ordering on a 2-doc corpus is the engine's PageRank, not asserted here (sister to recallContext's test)
+        const boiler = hits.find((h) => h.text.includes('Acme Heating'));
+        expect(boiler?.sourceId).toBe('note:1');
+        expect(boiler?.sourceKind).toBe('upload');
+        expect(boiler?.title).toBe('Boiler');
+        expect(callLlm).not.toHaveBeenCalled();
+    });
+
+    it('excludeSourceIds removes a source', async () => {
+        await getCmn('andy').ingest(DOCS, 'test');
+        const hits = await recallPassages('andy', 'Maple Street', { excludeSourceIds: ['note:1'] });
+        expect(hits.some((h) => h.sourceId === 'note:1')).toBe(false);
+    });
+
+    it('honours limit even when a wider network ask (limit + excludeSourceIds) returns more hits', async () => {
+        await getCmn('andy').ingest(DOCS, 'test');
+        // A non-matching exclude widens the network ask (limit + 1) without removing any hit,
+        // so both DOCS passages can come back — the `limit` truncation must still apply.
+        const hits = await recallPassages('andy', 'Maple Street', { limit: 1, excludeSourceIds: ['note:none'] });
+        expect(hits.length).toBeLessThanOrEqual(1);
     });
 });
 

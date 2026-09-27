@@ -13,13 +13,19 @@ import type { RetrievalResult, SourceKind } from './types';
 export const RECALL_HEADING = '## Relevant memory (Cognitive M Network)';
 const DEFAULT_LIMIT = 5;
 const DEFAULT_MAX_CHARS = 2400;
+const DEFAULT_PASSAGES_LIMIT = 6;
 const MIN_SCORE = 1e-6;
 
 export interface RecallOptions { limit?: number; maxChars?: number; }
 
+/** Same filter `formatRecall` and `recallPassages` both apply: real score, non-empty text. */
+function relevantHits(r: RetrievalResult): RetrievalResult['rankedPassages'] {
+    return r.rankedPassages.filter((rp) => rp.score > MIN_SCORE && rp.passage.text.trim());
+}
+
 /** Pure formatter — exported for tests. */
 export function formatRecall(r: RetrievalResult, maxChars = DEFAULT_MAX_CHARS): string {
-    const hits = r.rankedPassages.filter((rp) => rp.score > MIN_SCORE && rp.passage.text.trim());
+    const hits = relevantHits(r);
     if (hits.length === 0) return '';
     const lines: string[] = [RECALL_HEADING, 'Facts the user saved earlier. Prefer them over guesses; cite as [M1], [M2]…'];
     let used = lines.join('\n').length;
@@ -66,8 +72,36 @@ export interface RecallPassagesOptions { limit?: number; excludeSourceIds?: stri
  * CONTRACT (plan 070 phase 2 P0) — implemented by the W1 recall agent.
  */
 export async function recallPassages(userId: string | null | undefined, query: string, opts: RecallPassagesOptions = {}): Promise<RecalledPassage[]> {
-    void userId; void query; void opts;
-    throw new Error('plan 070 P2 W1: not implemented');
+    const q = query.trim();
+    if (!q) return [];
+    try {
+        const cmn = getCmn(userId);
+        await cmn.ready;
+        if (cmn.metrics().counts.passages === 0) return [];
+        const limit = opts.limit ?? DEFAULT_PASSAGES_LIMIT;
+        const exclude = new Set(opts.excludeSourceIds ?? []);
+        const result = cmn.recall(q, limit + (opts.excludeSourceIds?.length ?? 0));
+        const seenPassageIds = new Set<string>();
+        const out: RecalledPassage[] = [];
+        for (const rp of relevantHits(result)) {
+            const p = rp.passage;
+            if (exclude.has(p.sourceId)) continue;
+            if (seenPassageIds.has(p.id)) continue;
+            seenPassageIds.add(p.id);
+            out.push({
+                passageId: p.id,
+                sourceId: p.sourceId,
+                sourceKind: p.sourceKind,
+                title: p.title ?? '',
+                text: p.text.trim(),
+                score: rp.score,
+            });
+            if (out.length >= limit) break;
+        }
+        return out;
+    } catch {
+        return []; // ponytail: recall must never break a caller
+    }
 }
 
 /** `systemPrompt` + memory block, or the prompt unchanged when there is no memory. */

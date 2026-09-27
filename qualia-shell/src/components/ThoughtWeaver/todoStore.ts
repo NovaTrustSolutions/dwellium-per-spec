@@ -123,3 +123,16 @@ export function clearDoneTodos(): void {
     const current = todoStore.getSnapshot();
     persist(current.filter(t => !t.done));
 }
+
+/**
+ * Plan 068 phase 4 — generic single-todo patch, used by lib/advisorActions.ts
+ * so it doesn't need its own copy of resolveKey/persist. Returns false and
+ * changes nothing when the id is unknown.
+ */
+export function updateTodo(id: string, patch: (t: TodoItem) => TodoItem): boolean {
+    if (typeof window === 'undefined') return false;
+    const current = todoStore.getSnapshot();
+    if (!current.some(t => t.id === id)) return false;
+    persist(current.map(t => (t.id === id ? patch(t) : t)));
+    return true;
+}

@@ -133,8 +133,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'synthesis': {
         id: 'synthesis',
         label: 'Synthesis Lab',
-        description: 'Ask a question, keep the answer, and build on it with a second pass.',
-        tip: { tryThis: 'Ask one question, capture the answer, then run a second-layer pass.', related: ['wiki', 'foundry'] },
+        description: 'Ask a question grounded in your saved notes, tags and captures, then build on the answer.',
+        tip: { tryThis: 'Ask a question, check which sources it will use, then capture the answer.', related: ['wiki', 'foundry'] },
         tier: 'labs',
         icon: 'sparkles',
         component: lazyWithReload(() => import('../components/Synthesis/Synthesis')),

@@ -19,6 +19,10 @@ vi.mock('../lib/llmClient', () => ({
     hasActiveLlm: () => true,
     callLlm: (...args: any[]) => callLlmMock(...args),
 }));
+const recallPassagesMock = vi.fn();
+vi.mock('../lib/memoryGraphRag/recall', () => ({
+    recallPassages: (...args: any[]) => recallPassagesMock(...args),
+}));
 vi.mock('../hooks/useAIAvailability', () => ({
     useAIAvailability: () => ({ status: 'ready', ready: true, reason: null, configure: () => {}, recheck: () => {} }),
 }));
@@ -76,8 +80,26 @@ function clickSynthesize() {
     fireEvent.click(screen.getByRole('button', { name: /^Synthesize$/ }));
 }
 
+function passage(over: Partial<{ passageId: string; sourceId: string; sourceKind: string; title: string; text: string; score: number }> = {}) {
+    return {
+        passageId: over.passageId ?? `p-${Math.random().toString(36).slice(2, 8)}`,
+        sourceId: over.sourceId ?? 'tag:1',
+        sourceKind: over.sourceKind ?? 'tag',
+        title: over.title ?? 'A saved note',
+        text: over.text ?? 'Some saved text.',
+        score: over.score ?? 0.9,
+    };
+}
+
+async function typeQueryAndWaitForPreview(text: string) {
+    typeQuery(text);
+    await waitFor(() => expect(recallPassagesMock).toHaveBeenCalled(), { timeout: 2000 });
+}
+
 beforeEach(() => {
     callLlmMock.mockReset();
+    recallPassagesMock.mockReset();
+    recallPassagesMock.mockResolvedValue([]);
     synthesisStore.reset();
     copawStore.reset();
     tagStore.reset();
@@ -308,5 +330,186 @@ describe('Synthesis Lab', () => {
         expect((screen.getByLabelText('Question to synthesize') as HTMLTextAreaElement).value).toBe('');
         expect(synthesisFor('user-b')).toEqual([]);
         expect(copawFor('user-b')).toEqual([]);
+    });
+});
+
+describe('Synthesis Lab — retrieval, citations, cancel (plan 070 phase 2)', () => {
+    it('(a) preview shows sources; unticking removes it from the prompt sent to callLlm and from captured sources — MUTATION-CHECK', async () => {
+        recallPassagesMock.mockResolvedValue([
+            passage({ passageId: 'p1', sourceId: 'tag:1', sourceKind: 'tag', title: 'Keep Me' }),
+            passage({ passageId: 'p2', sourceId: 'tag:2', sourceKind: 'tag', title: 'Drop Me' }),
+        ]);
+        render(<Synthesis />);
+        await typeQueryAndWaitForPreview('What does the vendor policy say?');
+        await screen.findByText('Sources (2)');
+        fireEvent.click(screen.getByRole('checkbox', { name: /Drop Me/ }));
+
+        callLlmMock.mockResolvedValue({ text: 'the answer citing [1]' });
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        const sentPrompt = callLlmMock.mock.calls[0][0].prompt;
+        expect(sentPrompt).toContain('Keep Me');
+        expect(sentPrompt).not.toContain('Drop Me');
+
+        await screen.findByText(/the answer citing/);
+        fireEvent.click(screen.getByRole('button', { name: /^Capture$/ }));
+        const snap = synthesisFor(null);
+        expect(snap[0].sources).toEqual([{ sourceId: 'tag:1', sourceKind: 'tag', title: 'Keep Me' }]);
+    });
+
+    it('(b) no matching sources shows the general-knowledge note and sends the raw question as the prompt', async () => {
+        recallPassagesMock.mockResolvedValue([]);
+        render(<Synthesis />);
+        await typeQueryAndWaitForPreview('A question nothing matches');
+        await screen.findByText('No saved sources match — the answer will use general knowledge.');
+
+        callLlmMock.mockResolvedValue({ text: 'plain answer' });
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        expect(callLlmMock.mock.calls[0][0].prompt).toBe('A question nothing matches');
+    });
+
+    it('(c) [1] renders as a button that opens the mapped widget; [9] out of range stays plain text — MUTATION-CHECK', async () => {
+        recallPassagesMock.mockResolvedValue([passage({ passageId: 'p1', sourceId: 'tag:1', sourceKind: 'tag', title: 'Cited Source' })]);
+        callLlmMock.mockResolvedValue({ text: 'See [1] and also [9] for more.' });
+        render(<Synthesis />);
+        await typeQueryAndWaitForPreview('question with citations');
+        await screen.findByText('Sources (1)');
+        clickSynthesize();
+        await screen.findByRole('button', { name: /Open source 1: Cited Source/ });
+
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        fireEvent.click(screen.getByRole('button', { name: /Open source 1: Cited Source/ }));
+        expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'qualia-open-widget', detail: 'tag-file' }));
+        dispatchSpy.mockRestore();
+
+        // [9] is out of range for a 1-source answer — it must not become a button, only plain text.
+        expect(screen.queryByRole('button', { name: /Open source 9/ })).toBeNull();
+        expect(screen.getAllByText('[9]', { exact: true }).length).toBeGreaterThan(0);
+    });
+
+    it('(d) Cancel aborts the in-flight call; an AbortError rejection leaves no error banner and the previous answer intact — MUTATION-CHECK', async () => {
+        callLlmMock.mockResolvedValueOnce({ text: 'first answer' });
+        render(<Synthesis />);
+        typeQuery('first question');
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        await screen.findByText('first answer');
+
+        const d = deferred<{ text: string }>();
+        callLlmMock.mockReturnValue(d.promise);
+        typeQuery('second question, cancel me');
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(2));
+        const signal: AbortSignal = callLlmMock.mock.calls[1][0].signal;
+        expect(signal.aborted).toBe(false);
+
+        fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+        expect(signal.aborted).toBe(true);
+        d.reject(new DOMException('Aborted', 'AbortError'));
+
+        await waitFor(() => expect(screen.queryByRole('button', { name: /^Cancel$/ })).toBeNull());
+        expect(screen.queryByText(/AbortError|Aborted/)).toBeNull();
+        expect(screen.getByText('first answer')).toBeInTheDocument();
+    });
+
+    it('(e) a truncated response shows the length-limit notice', async () => {
+        callLlmMock.mockResolvedValue({ text: 'cut off mid-', truncated: true });
+        render(<Synthesis />);
+        typeQuery('a long question');
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        expect(await screen.findByRole('status')).toHaveTextContent('This answer hit the length limit and may be cut off.');
+    });
+
+    it('(f) second layer excludes the answer\'s own synthesis id, sends the focus text, and the captured layer-2 entry has followUp — MUTATION-CHECK', async () => {
+        callLlmMock.mockResolvedValueOnce({ text: 'root answer' });
+        render(<Synthesis />);
+        typeQuery('root question');
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        await screen.findByText('root answer');
+
+        fireEvent.change(screen.getByLabelText('Focus the second pass on'), { target: { value: 'pricing details' } });
+        callLlmMock.mockResolvedValueOnce({ text: 'deeper answer' });
+        recallPassagesMock.mockResolvedValue([]);
+        fireEvent.click(screen.getByRole('button', { name: /Second-layer query/ }));
+        await waitFor(() => expect(recallPassagesMock).toHaveBeenCalled());
+        const [, recallQuery, recallOpts] = recallPassagesMock.mock.calls[recallPassagesMock.mock.calls.length - 1];
+        expect(recallQuery).toContain('pricing details');
+        expect(recallOpts.excludeSourceIds.some((id: string) => id.startsWith('synthesis:'))).toBe(true);
+
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(2));
+        expect(callLlmMock.mock.calls[1][0].prompt).toContain('pricing details');
+        await screen.findByText('deeper answer');
+
+        fireEvent.click(screen.getByRole('button', { name: /^Capture$/ }));
+        const snap = synthesisFor(null);
+        const layer2 = snap.find((s) => s.result === 'deeper answer');
+        expect(layer2?.followUp).toBe('pricing details');
+    });
+
+    it('(g) a slow response for an old query does not overwrite a newer preview — MUTATION-CHECK', async () => {
+        const first = deferred<ReturnType<typeof passage>[]>();
+        const second = [passage({ passageId: 'new-1', title: 'Fresh Source' })];
+        recallPassagesMock.mockImplementationOnce(() => first.promise);
+        recallPassagesMock.mockImplementationOnce(() => Promise.resolve(second));
+
+        render(<Synthesis />);
+        typeQuery('first slow query');
+        await waitFor(() => expect(recallPassagesMock).toHaveBeenCalledTimes(1));
+
+        typeQuery('second fast query');
+        await waitFor(() => expect(recallPassagesMock).toHaveBeenCalledTimes(2));
+        await screen.findByText('Sources (1)');
+        expect(screen.getByText(/Fresh Source/)).toBeInTheDocument();
+
+        // The stale first request now resolves — it must not clobber the newer preview.
+        first.resolve([passage({ passageId: 'old-1', title: 'Stale Source' })]);
+        await Promise.resolve(); await Promise.resolve();
+        expect(screen.queryByText(/Stale Source/)).toBeNull();
+        expect(screen.getByText(/Fresh Source/)).toBeInTheDocument();
+    });
+
+    it('(h) synthesis calls are tagged source: "synthesis"', async () => {
+        callLlmMock.mockResolvedValue({ text: 'tagged' });
+        render(<Synthesis />);
+        typeQuery('tag this call');
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        expect(callLlmMock.mock.calls[0][0].source).toBe('synthesis');
+    });
+    it('(k) Synthesize before the preview catches up looks up sources for the CURRENT question', async () => {
+        setPerUserIdentity('andy');
+        recallPassagesMock.mockImplementation(async (_uid: string, q: string) =>
+            q.includes('boiler') ? [passage({ passageId: 'pb', sourceId: 'tag:b', sourceKind: 'tag', title: 'Boiler Note' })]
+                : [passage({ passageId: 'pl', sourceId: 'tag:l', sourceKind: 'tag', title: 'Lease Note' })]);
+        callLlmMock.mockResolvedValue({ text: 'done' });
+        render(<Synthesis />);
+        await typeQueryAndWaitForPreview('When does the lease renew?');
+        await screen.findByText('Sources (1)');
+        typeQuery('Who serviced the boiler?');   // click before the 300ms debounce refreshes the preview
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        const prompt = callLlmMock.mock.calls[0][0].prompt as string;
+        expect(prompt).toContain('Boiler Note');
+        expect(prompt).not.toContain('Lease Note');
+    });
+
+    it('(l) Cancel during second-layer source lookup stops the LLM call and clears busy', async () => {
+        setPerUserIdentity('andy');
+        callLlmMock.mockResolvedValueOnce({ text: 'first answer' });
+        render(<Synthesis />);
+        typeQuery('ab');   // under the preview threshold: no preview lookup
+        clickSynthesize();
+        await screen.findByText('first answer');
+        const slow = deferred<unknown[]>();
+        recallPassagesMock.mockImplementationOnce(() => slow.promise);
+        fireEvent.click(screen.getByRole('button', { name: /Second-layer query/ }));
+        fireEvent.click(await screen.findByRole('button', { name: /^Cancel$/ }));
+        slow.resolve([]);
+        await waitFor(() => expect(screen.getByRole('button', { name: /Second-layer query/ })).not.toBeDisabled());
+        expect(callLlmMock).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('first answer')).toBeInTheDocument();
     });
 });

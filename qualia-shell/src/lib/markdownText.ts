@@ -185,6 +185,34 @@ const IN_WORD_UNDERSCORE = /(?<=[\p{L}\p{M}\p{N}])_(?=[\p{L}\p{M}\p{N}])/gu;
 const GROUPED_NUMBER = /(?<![\p{L}\p{N}_])\p{N}{1,3}(?:_\p{N}{3})+(?![\p{N}_])/gu;
 const joinGroups = (t: string) => t.replace(GROUPED_NUMBER, n => n.replace(/_/g, ''));
 
+/** A bare URL, www. address or <autolink> (speech only). Only URL characters are taken, so text glued after the URL
+ *  (请看https://x.org/a。然后… , localhost:3000运行, "a—or", «…», "…") is never swallowed: userinfo (only after
+ *  http(s)://, where "//" bounds its scan — a www. start never scans it), a host in any script or an [IPv6] literal,
+ *  a digits-only :port, then an ASCII-only path. ">" only closes an autolink that opened with "<". A "_" may precede
+ *  the URL (__https://…__ is strong emphasis). No nested quantifiers and every scan stops at "<": linear. */
+const URL_START = String.raw`(?:(?<![A-Za-z0-9])https?:\/\/(?:[A-Za-z0-9\-._~%!$&'()*+,;=:]*@)?|(?<![A-Za-z0-9.@/-])www\.)`;   // CJK may be glued before
+const URL_REST = String.raw`(?:\[[0-9A-Fa-f:.%]*\]|[\p{L}\p{N}.-]*)(?::\d*)?(?:[/?#][!-;=?-~]*)?`;
+const BARE_URL = new RegExp(`<${URL_START}${URL_REST}>|${URL_START}${URL_REST}`, 'giu');
+const URL_TRAILING = '.,;:!?\'"';
+/** Speak a URL as its host and port ("example.org", "localhost:3000"), never letter by letter and never its user:password.
+ *  Punctuation after it belongs to the sentence, and so does a closing ) or ] the URL never opened ("(see https://x.org/a)").
+ *  Peeled with a loop, not a regex: an anchored "[.)]+$" retried at every start of a long run would be quadratic. */
+function spokenUrl(match: string): string {
+    const url = match.startsWith('<') ? match.slice(1, -1) : match;     // an <autolink> always has its ">" 
+    let opensP = 0, closesP = 0, opensS = 0, closesS = 0;
+    for (const c of url) { if (c === '(') opensP += 1; else if (c === ')') closesP += 1; else if (c === '[') opensS += 1; else if (c === ']') closesS += 1; }
+    let end = url.length;
+    while (end > 0) {
+        const c = url[end - 1];
+        if (URL_TRAILING.includes(c)) end -= 1;
+        else if (c === ')' && closesP > opensP) { closesP -= 1; end -= 1; }
+        else if (c === ']' && closesS > opensS) { closesS -= 1; end -= 1; }
+        else break;
+    }
+    const host = /^(?:https?:\/\/)?(?:[^@/?#\s]*@)?(?:www\.)?((?:\[[^\]/?#\s]*\]|[^/?#:\s[\]]+)(?::\d+)?)/i.exec(url.slice(0, end))?.[1];
+    return host ? host + url.slice(end) : match;
+}
+
 function plain(md: string, speech: boolean): string {
     const codes: string[] = [];
     const keep = (c: string) => `${OPEN}${codes.push(c) - 1}${CLOSE}`;
@@ -206,6 +234,7 @@ function plain(md: string, speech: boolean): string {
         .replace(UNDERSCORE_EM, '$1')
         .replace(/~~([\s\S]+?)~~/g, '$1');
     if (speech) {
+        text = text.replace(BARE_URL, spokenUrl);                                                   // outside code only
         // Outside code only: a * _ ~ touching a letter is a leftover marker; "5 * 3", "~5", "~/" stay.
         text = joinGroups(text).replace(IN_WORD_UNDERSCORE, ' ')
             .replace(/(?<![*_~])(?:[*_~]+(?=\p{L})|(?<=\p{L})[*_~]+)/gu, ''); // whole runs only (linear)
@@ -272,7 +301,8 @@ export function chunkForTts(text: string): string[] {
 }
 
 /** Plain text for text-to-speech: code blocks become "code block", user_id_map is read "user id map",
- *  1_000_000 stays one number, leftover markers are never read aloud, "5 * 3" and "~5" are kept. */
+ *  1_000_000 stays one number, leftover markers are never read aloud, "5 * 3" and "~5" are kept,
+ *  a bare URL is read as its host ("https://example.org/a" → "example.org"). */
 export function toSpeechText(md: string): string {
     return plain(md, true);
 }

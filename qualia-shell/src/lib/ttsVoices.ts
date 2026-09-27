@@ -49,7 +49,12 @@ const LEGACY_VOICE_MAP: Record<string, string> = { female: 'openai-alloy', male:
 /** Flatten Markdown to plain prose so the TTS reads it naturally — the same rules as ARA's speech
  *  (lib/markdownText.ts: toSpeechText, speechPauses), plus # > | dropped anywhere, as this helper always did. */
 export function stripMarkdownForSpeech(text: string): string {
-    return speechPauses(toSpeechText(text).replace(/[#>|]/g, ' ')).replace(/\s+/g, ' ').trim();
+    return speechPauses(toSpeechText(text)
+        .replace(/\|/g, ' ')                                      // table pipes
+        .replace(/(?<![\p{L}\p{N}])#+(?!\p{N})/gu, ' ')           // hashtags / stray markers — not C#, F#, #1
+        .replace(/(?<=[-=>])>|>(?=>)|>(?![ \t]?[-−+]?[=\p{N}\p{Sc}])/gu, ' '))   // arrows (->, =>, >>) and stray > go;
+                                                                  // "> 0", "> -5", ">= 650", "> $1,500" stay
+        .replace(/\s+/g, ' ').trim();
 }
 
 export interface SpeakHandle { stop: () => void; }

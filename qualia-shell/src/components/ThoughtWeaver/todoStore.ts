@@ -11,6 +11,15 @@ import { todoUserIdHolder } from '../../lib/perUserIdentity';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
 
+/** Plan 068 phase 4 — the AI Spend advisor's per-to-do state (synced with the to-do). */
+export interface TodoAdvisorState {
+    dismissed?: boolean;
+    /** Epoch ms; the advisor ignores the to-do until then. */
+    snoozedUntil?: number;
+    /** Handed to a Hermes persona: its task id in personaWorkStore. */
+    delegatedTo?: { personaId: string; taskId: string; at: string };
+}
+
 export interface TodoItem {
     id: string;
     text: string;
@@ -19,6 +28,7 @@ export interface TodoItem {
     done: boolean;
     createdAt: string;
     completedAt: string | null;
+    advisor?: TodoAdvisorState;
 }
 
 export { todoUserIdHolder }; // set by setPerUserIdentity (plan 067) — tied to the signed-in user

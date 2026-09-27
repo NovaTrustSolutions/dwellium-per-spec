@@ -10,9 +10,8 @@
  * every callLlm). Together they give: flat monthly (subscriptions) + variable
  * (tokens) = total spend.
  */
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { integrationsStore } from '../utils/integrationsStore';
 import { withSync } from './oneSaveStore';
 import { subscriptionsUserIdHolder } from './perUserIdentity';
 
@@ -28,14 +27,35 @@ function resolveKey(): string {
     return uid ? `subscriptions:${uid}` : 'subscriptions:_anonymous';
 }
 
-// Sensible default reflecting a common stack; the user edits these to match
-// their real plans, at which point the figure is exactly their spend.
+// A new user has no subscriptions until they add them — no sample/demo data
+// (owner rule). Empty by default; the editor lets them add their real plans.
 function defaults(): Subscription[] {
-    return [
-        { id: 'claude-max', name: 'Claude Max 20x', vendor: 'Anthropic', monthly: 200 },
-        { id: 'chatgpt-plus', name: 'ChatGPT Plus', vendor: 'OpenAI', monthly: 20 },
-        { id: 'codex', name: 'Codex', vendor: 'OpenAI · CLI', monthly: 0 },
-    ];
+    return [];
+}
+
+/**
+ * Plan 068: the sample list this store used to ship as defaults. One Save's
+ * migrate() uploaded it for every existing user who never edited, so hydrate
+ * would bring the fake $220/mo straight back. A list that is EXACTLY this
+ * (same ids, names, prices) was never confirmed by the user → treated as
+ * empty. Nothing is deleted: the stored copy is overwritten only when the user
+ * saves their own plans.
+ */
+const OLD_SHIPPED_DEFAULTS = [
+    { id: 'claude-max', name: 'Claude Max 20x', monthly: 200 },
+    { id: 'chatgpt-plus', name: 'ChatGPT Plus', monthly: 20 },
+    { id: 'codex', name: 'Codex', monthly: 0 },
+];
+
+export function withoutUnconfirmedDefaults(list: Subscription[]): Subscription[] {
+    const isOldDefaults = list.length === OLD_SHIPPED_DEFAULTS.length
+        && OLD_SHIPPED_DEFAULTS.every((d, i) => list[i]?.id === d.id && list[i]?.name === d.name && Number(list[i]?.monthly) === d.monthly);
+    return isOldDefaults ? [] : list;
+}
+
+/** Prorates a flat monthly figure to `days` days (30-day month). */
+export function prorateMonthly(monthly: number, days: number): number {
+    return (monthly * days) / 30;
 }
 
 function deserialize(raw: string | null): Subscription[] {
@@ -70,17 +90,11 @@ export function monthlyTotal(list: Subscription[]): number {
     return list.reduce((s, x) => s + (Number(x.monthly) || 0), 0);
 }
 
+// A Gemini API key is not proof of a paid plan — never synthesize a
+// subscription row. useSubscriptions returns the store snapshot directly
+// (stable reference; existing 'google-max' rows some users already
+// persisted via the old bug are left alone — that's real user data now).
 export function useSubscriptions(): Subscription[] {
     const list = useSyncExternalStore(subscriptionsStore.subscribe, subscriptionsStore.getSnapshot, subscriptionsStore.getServerSnapshot);
-    const integrations = useSyncExternalStore(integrationsStore.subscribe, integrationsStore.getSnapshot, integrationsStore.getServerSnapshot);
-    
-    const hasGoogleKey = !!(integrations?.llm?.gemini?.enabled && integrations?.llm?.gemini?.apiKey);
-    const hasGoogleSub = list.some(s => s.id === 'google-max');
-    if (hasGoogleKey && !hasGoogleSub) {
-        return [
-            ...list,
-            { id: 'google-max', name: 'Google Max plan', vendor: 'Google', monthly: 200 }
-        ];
-    }
-    return list;
+    return useMemo(() => withoutUnconfirmedDefaults(list), [list]);
 }

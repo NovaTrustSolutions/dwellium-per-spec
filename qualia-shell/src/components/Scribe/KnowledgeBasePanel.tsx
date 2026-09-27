@@ -15,6 +15,7 @@ import { Lock, Folder, FolderOpen, Link } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useKb, saveKbFolder, linkByConcepts, type KbEntry, type KbFolder } from './kbStore';
+import { captureOwner } from '../../lib/perUserIdentity';
 import FolderPickerModal from './FolderPickerModal';
 
 const MAX_AI_FILES = 30;
@@ -44,6 +45,7 @@ function FolderSection({ folder }: { folder: KbFolder }) {
 
     const index = async () => {
         setError(''); setBusy(true); setProgress('Scanning folder…');
+        const stillOwner = captureOwner();
         try {
             const r = await fetch('/__kb/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: path }) });
             const j = await r.json();
@@ -73,8 +75,10 @@ function FolderSection({ folder }: { folder: KbFolder }) {
                 entries.push({ rel: f.rel, title: f.name, summary, concepts });
             }
             const links = folder.isPrivate ? [] : linkByConcepts(entries);
-            saveKbFolder(folder.category, { folder: j.folder, entries, links, indexedAt: Date.now() });
-            setProgress(`${folder.isPrivate ? 'Listed' : 'Indexed'} ${entries.length} files${folder.isPrivate ? ' (kept private)' : ` · ${links.length} concept links`}.`);
+            if (stillOwner()) { // account switched mid-index — drop, never redirect
+                saveKbFolder(folder.category, { folder: j.folder, entries, links, indexedAt: Date.now() });
+                setProgress(`${folder.isPrivate ? 'Listed' : 'Indexed'} ${entries.length} files${folder.isPrivate ? ' (kept private)' : ` · ${links.length} concept links`}.`);
+            }
         } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
     };
 

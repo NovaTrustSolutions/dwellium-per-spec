@@ -19,14 +19,16 @@
  * 2026-06-10 created (LibreChat skills arc).
  */
 import type { IntegrationsBundle } from '../../types/integrations';
-import { callLlm } from '../llmClient';
-import { recordLlmUsage } from '../llmUsageStore';
+import { callLlm, parseAnthropicUsage } from '../llmClient';
+import { recordLlmUsage, currentUsageUserId } from '../llmUsageStore';
+import { perCallFeeUsd } from '../llmPricing';
 import { DEFAULT_MODELS } from '../../types/integrations';
 import { recall, remember } from '../unifiedMemory';
 import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } from '../widgetActions';
 import { API_BASE } from '../../config';
 import { getAuthHeaders } from '../../context/UserContext';
 import { recordArtifact } from '../artifactStore';
+import { captureOwner } from '../perUserIdentity';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -228,8 +230,11 @@ const webSearchSkill: AgentSkill = {
         /^(?:search(?:\s+the)?\s+web(?:\s+for)?|web\s+search(?:\s+for)?|google|search\s+online(?:\s+for)?|look\s+up\s+online)\s+(.+)$/i,
     ],
     run: async (query, ctx) => {
+        // Plan 068 (A7/C4): capture the ledger owner BEFORE any await.
+        const userId = currentUsageUserId();
         const key = ctx.llm.anthropic?.apiKey;
         if (key && ctx.llm.anthropic?.enabled !== false) {
+            const model = ctx.llm.anthropic?.model || DEFAULT_MODELS.anthropic;
             try {
                 const res = await fetchOf(ctx)('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
@@ -240,7 +245,7 @@ const webSearchSkill: AgentSkill = {
                         'anthropic-dangerous-direct-browser-access': 'true',
                     },
                     body: JSON.stringify({
-                        model: ctx.llm.anthropic?.model || DEFAULT_MODELS.anthropic,
+                        model,
                         max_tokens: 1024,
                         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
                         messages: [{ role: 'user', content: `Search the web and answer concisely with sources: ${query}` }],
@@ -252,11 +257,24 @@ const webSearchSkill: AgentSkill = {
                         .filter((b: any) => b.type === 'text')
                         .map((b: any) => b.text).join('\n').trim();
                     if (text) {
+                        // A7: the web-search results come back as input tokens —
+                        // parseAnthropicUsage already covers the real (measured)
+                        // total, not query.length + 50. The per-search fee is flat
+                        // per actual search performed (server_tool_use count),
+                        // falling back to 1 when the provider doesn't report it;
+                        // skip the fee entirely when the rate is unconfirmed (null).
+                        const searchCount = typeof data?.usage?.server_tool_use?.web_search_requests === 'number'
+                            ? data.usage.server_tool_use.web_search_requests : 1;
+                        const perSearch = perCallFeeUsd('web_search', model);
                         recordLlmUsage({
                             provider: 'anthropic',
-                            model: ctx.llm.anthropic?.model || DEFAULT_MODELS.anthropic,
+                            model,
                             promptChars: query.length + 50,
                             responseChars: text.length,
+                            usage: parseAnthropicUsage(data),
+                            extraCostUsd: perSearch !== null ? searchCount * perSearch : undefined,
+                            source: 'skill:web_search',
+                            userId,
                         });
                         return { ok: true, text, via: 'anthropic web_search' };
                     }
@@ -301,6 +319,7 @@ const webSearchSkill: AgentSkill = {
         const llmRes = await callLlm({
             prompt: `(No live web access right now.) From your knowledge, answer as best you can and SAY what may be outdated: ${query}`,
             maxTokens: 700, temperature: 0.3,
+            source: 'skill:web_search',
         }, ctx.llm).catch(() => null);
         if (llmRes) return { ok: true, text: llmRes.text, via: `${llmRes.provider} (no live web)` };
         return { ok: false, text: 'I need an Anthropic key (live search), a Tavily/Brave key, or any active LLM key to answer that. Add one in Control Panel → API Keys.', via: 'web-search' };
@@ -323,6 +342,9 @@ const imageGenSkill: AgentSkill = {
         /^(?:generate|create|make|draw|render|paint)\s+(?:me\s+)?(?:an?\s+)?(.+?)\s+(?:image|picture|photo|illustration|logo|drawing)$/i,
     ],
     run: async (prompt, ctx) => {
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-await
+        // Plan 068 (A7/C4): capture the ledger owner BEFORE any await.
+        const userId = currentUsageUserId();
         const openaiKey = ctx.llm.openai?.apiKey;
         const geminiKey = ctx.llm.gemini?.apiKey;
         if (!openaiKey && !geminiKey) {
@@ -343,12 +365,19 @@ const imageGenSkill: AgentSkill = {
                 const b64 = data?.data?.[0]?.b64_json;
                 if (!b64) throw new Error('no image in response');
                 // P12-3: generated images land in the Artifact Gallery.
-                recordArtifact({ content: `data:image/png;base64,${b64}`, source: 'skill', title: prompt.slice(0, 60), type: 'image' });
+                if (stillOwner()) recordArtifact({ content: `data:image/png;base64,${b64}`, source: 'skill', title: prompt.slice(0, 60), type: 'image' });
+                // A7: images are billed per-image, not per-token — real model id
+                // (not the old fake "image-generation"), zero token counts, the
+                // per-image flat fee (undefined/unpriced when unconfirmed — dall-e-3
+                // is currently unconfirmed, see llmPricing.perCallFeeUsd).
                 recordLlmUsage({
                     provider: 'openai',
                     model: 'dall-e-3',
-                    promptChars: 4000,
+                    promptChars: 0,
                     responseChars: 0,
+                    extraCostUsd: perCallFeeUsd('image', 'dall-e-3') ?? undefined,
+                    source: 'skill:image',
+                    userId,
                 });
                 return { ok: true, text: `![${prompt.slice(0, 60)}](data:image/png;base64,${b64})`, via: 'dall-e-3' };
             } catch (err: any) {
@@ -371,11 +400,15 @@ const imageGenSkill: AgentSkill = {
                 const part = (data?.candidates?.[0]?.content?.parts || []).find((p: any) => p.inlineData?.data);
                 if (!part) throw new Error('no image in response');
                 const mime = part.inlineData.mimeType || 'image/png';
+                const geminiImageModel = 'gemini-2.0-flash-preview-image-generation';
                 recordLlmUsage({
                     provider: 'gemini',
-                    model: 'image-generation',
-                    promptChars: 4000,
+                    model: geminiImageModel,
+                    promptChars: 0,
                     responseChars: 0,
+                    extraCostUsd: perCallFeeUsd('image', geminiImageModel) ?? undefined,
+                    source: 'skill:image',
+                    userId,
                 });
                 return { ok: true, text: `![${prompt.slice(0, 60)}](data:${mime};base64,${part.inlineData.data})`, via: 'gemini-image' };
             } catch (err: any) {
@@ -480,6 +513,7 @@ const composeIntoWidgetSkill: AgentSkill = {
         /^(?:draft|write|compose)\s+(.+\s+in(?:to)?\s+(?:the\s+)?(?:it|notepad))\.?$/i,
     ],
     run: async (input, ctx) => {
+        const stillOwner = captureOwner(); // owner-race guard: account may switch mid-await
         const m = input.match(/^(.*?)\s+in(?:to)?\s+(?:the\s+)?(it|notepad)\.?$/i);
         const what = (m?.[1] ?? input).trim();
         const explicit = m?.[2]?.toLowerCase() ?? null;
@@ -493,7 +527,7 @@ const composeIntoWidgetSkill: AgentSkill = {
         if (!res?.text) {
             return { ok: false, text: 'Drafting needs an LLM key — add one in Control Panel → API Keys.', via: 'compose-widget' };
         }
-        recordArtifact({ content: res.text, source: 'skill', title: what.slice(0, 60) }); // P12-3
+        if (stillOwner()) recordArtifact({ content: res.text, source: 'skill', title: what.slice(0, 60) }); // P12-3
         const delivered = performWidgetAction(target, 'insert-text', { text: res.text });
         return delivered
             ? { ok: true, text: `Drafted into ${target}:\n\n${res.text.slice(0, 400)}${res.text.length > 400 ? '…' : ''}`, via: 'compose-widget' }

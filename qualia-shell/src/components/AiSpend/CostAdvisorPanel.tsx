@@ -180,18 +180,21 @@ export default function CostAdvisorPanel({ variant = 'full' }: { variant?: 'full
 
                             {variant === 'full' && (
                                 <div className="cadv__actions">
-                                    <button
-                                        type="button"
-                                        className="cadv__action cadv__action--primary"
-                                        ref={(el) => { if (el) rowRefs.set(r.taskId, el); else rowRefs.delete(r.taskId); }}
-                                        aria-label={`Delegate to ${personaName(pickHermesPersona(r.category))}: ${r.title}`}
-                                        onClick={() => handleDelegate(r.taskId, r.category)}
-                                    >
-                                        <Sparkles size={12} aria-hidden /> Delegate to {personaName(pickHermesPersona(r.category))}
-                                    </button>
+                                    {/* Only offer Hermes for work an AI can actually do (not phone calls, design, dev). */}
+                                    {r.aiCostUsd != null && (
+                                        <button
+                                            type="button"
+                                            className="cadv__action cadv__action--primary"
+                                            aria-label={`Delegate to ${personaName(pickHermesPersona(r.category))}: ${r.title}`}
+                                            onClick={() => handleDelegate(r.taskId, r.category)}
+                                        >
+                                            <Sparkles size={12} aria-hidden /> Delegate to {personaName(pickHermesPersona(r.category))}
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         className="cadv__action"
+                                        ref={(el) => { if (el) rowRefs.set(r.taskId, el); else rowRefs.delete(r.taskId); }}
                                         aria-label={`Snooze 1 week: ${r.title}`}
                                         onClick={() => handleSnooze(r.taskId)}
                                     >
@@ -205,7 +208,7 @@ export default function CostAdvisorPanel({ variant = 'full' }: { variant?: 'full
                                     >
                                         <Trash2 size={12} aria-hidden /> Dismiss
                                     </button>
-                                    {!llmActive && (
+                                    {!llmActive && r.aiCostUsd != null && (
                                         <span className="cadv__no-llm">Hermes runs it once an AI key is set</span>
                                     )}
                                 </div>

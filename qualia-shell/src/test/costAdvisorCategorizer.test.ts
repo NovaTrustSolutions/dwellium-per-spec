@@ -14,7 +14,7 @@ const CASES: Array<[string, TaskCategory]> = [
     ['Write the October newsletter', 'writing'],
     ['Draft an email to the landlord', 'writing'],
     ['Book the plumber', 'scheduling'],
-    ['Call the electrician', 'scheduling'],
+    ['Call the electrician', 'phone'], // AI can't place calls (review of the phase 4 screenshot)
     ['Fix the login bug', 'dev'],
     ['Write a script for the promo video', 'writing'],
     ['Reconcile September expenses', 'bookkeeping'],

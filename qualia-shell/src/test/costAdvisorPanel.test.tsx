@@ -209,3 +209,14 @@ describe('CostAdvisorPanel — failed delegation and focus (review fixes)', () =
         expect(document.activeElement?.textContent).toMatch(/Do it cheaper/);
     });
 });
+
+describe('CostAdvisorPanel — only AI-capable work can be delegated to Hermes', () => {
+    it('a phone call is advised as outsourcing to a person, with Snooze/Dismiss but no Delegate button', () => {
+        setCostKpi(100);
+        addOne('Call the electrician about the lobby lights');
+        renderPanel();
+        expect(screen.getByText(/→ outsource/)).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /^Delegate[^:]*: Call the electrician/ })).toBeNull();
+        expect(screen.getByRole('button', { name: /^Snooze[^:]*: Call the electrician/ })).toBeTruthy();
+    });
+});

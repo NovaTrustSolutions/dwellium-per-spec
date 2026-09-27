@@ -45,6 +45,7 @@ export type TaskCategory =
     | 'research'
     | 'design'
     | 'scheduling'
+    | 'phone'
     | 'dev'
     | 'support'
     | 'bookkeeping'
@@ -78,6 +79,8 @@ export const CATEGORY_BENCHMARKS: Record<TaskCategory, CategoryBenchmark> = {
     research: { category: 'research', label: 'Research', role: 'a research VA', humanMinutes: 60, onlineRatePerHour: 30, aiCapable: true, aiCostUsd: 0.25 },
     design: { category: 'design', label: 'Design', role: 'a designer', humanMinutes: 90, onlineRatePerHour: 45, aiCapable: false, aiCostUsd: 0 },
     scheduling: { category: 'scheduling', label: 'Scheduling / admin', role: 'a virtual assistant', humanMinutes: 15, onlineRatePerHour: 20, aiCapable: true, aiCostUsd: 0.03 },
+    // An AI persona can't place a phone call — a person (VA) can.
+    phone: { category: 'phone', label: 'Phone calls', role: 'a virtual assistant', humanMinutes: 15, onlineRatePerHour: 20, aiCapable: false, aiCostUsd: 0 },
     dev: { category: 'dev', label: 'Development', role: 'a developer', humanMinutes: 120, onlineRatePerHour: 65, aiCapable: false, aiCostUsd: 0 },
     support: { category: 'support', label: 'Support / replies', role: 'a support agent', humanMinutes: 20, onlineRatePerHour: 18, aiCapable: true, aiCostUsd: 0.05 },
     bookkeeping: { category: 'bookkeeping', label: 'Bookkeeping', role: 'a bookkeeper', humanMinutes: 60, onlineRatePerHour: 35, aiCapable: true, aiCostUsd: 0.10 },
@@ -96,7 +99,8 @@ const MATCHERS: Array<{ category: TaskCategory; re: RegExp }> = [
     // Unambiguous dev words, OR a generic verb (debug/bug/implement/fix) only when a
     // technical noun is present — "debug why the kitchen sink leaks" is not dev work.
     { category: 'dev', re: /\bcode\b|coding|deploy|\bapi\b|refactor|pull request|\bpr\b|(?=.*\b(?:app|apps|site|website|web ?page|login|server|database|feature|endpoint|frontend|backend|code|plugin|css|html|webhooks?|repo|repository|scripts?|widgets?|dashboard|integration|build|ci|tests?)\b).*\b(?:bugs?|debug\w*|implement\w*|fix\w*)\b/i },
-    { category: 'scheduling', re: /schedul|calendar|\bbook\b|\bcall\b|appointment|remind|follow.?up|coordinat/i },
+    { category: 'phone', re: /\b(?:call|phone|ring)\b/i },
+    { category: 'scheduling', re: /schedul|calendar|\bbook\b|appointment|remind|follow.?up|coordinat/i },
     { category: 'support', re: /support|reply|respond|ticket|customer|inbox|triage|answer/i },
     { category: 'research', re: /research|find |look up|look-up|compile|gather|investigat|comparison|benchmark|sourc/i },
     { category: 'writing', re: /write|writing|draft|blog|email|copy\b|content|\bpost\b|article|summar|proposal|outline|newsletter/i },
@@ -393,6 +397,7 @@ const HERMES_PERSONA_FOR_CATEGORY: Record<TaskCategory, HermesPersonaId> = {
     research: 'hermes-philosopher',
     dev: 'hermes-labyrinth',
     general: 'hermes-mercury',
+    phone: 'hermes-mercury', // not AI-capable, so never offered for delegation; kept for completeness
 };
 
 /** Always a HERMES_PERSONA_IDS member — unknown categories fall back to Mercury. */

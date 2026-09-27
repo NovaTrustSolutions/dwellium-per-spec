@@ -2,7 +2,7 @@
  * CoPaw continuous-capture (spec §8.5) — extractor + per-user memory store.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { copawStore, copawUserIdHolder, extractFacts, captureFacts, clearMemory } from '../components/Hive/copawStore';
+import { copawStore, copawUserIdHolder, extractFacts, captureFacts, clearMemory, deleteFact, isSensitiveFact } from '../components/Hive/copawStore';
 
 const NOW = new Date('2026-06-04T12:00:00.000Z');
 
@@ -26,6 +26,51 @@ describe('extractFacts', () => {
         const many = Array.from({ length: 20 }, (_, i) => `This is a sufficiently long declarative fact number ${i} about the system.`).join(' ');
         expect(extractFacts(many, 5).length).toBe(5);
     });
+
+    it('strips code fences, tables, headings, and secrets/PII — keeps only the real sentence', () => {
+        const text = '## Vendor Onboarding\nHere is the summary.\nThe shared vendor portal password is Summer2026! for all staff.\nTenant John Doe\'s SSN on file is 123-45-6789 per the lease packet.\n```js\nconst apiKey = "sk-live-abc123def456ghi789"; // used for the payment integration.\n```\n| Unit | Rent | Status of the lease renewal for this unit |\nThe maintenance backlog grew twelve percent last quarter across the portfolio.';
+        const facts = extractFacts(text);
+        expect(facts).toEqual(['The maintenance backlog grew twelve percent last quarter across the portfolio.']);
+        for (const f of facts) {
+            expect(f).not.toContain('```');
+            expect(f).not.toContain('|');
+            expect(f).not.toContain('#');
+            expect(f).not.toContain('Summer2026');
+            expect(f).not.toContain('123-45-6789');
+            expect(f).not.toContain('sk-live');
+        }
+    });
+});
+
+describe('isSensitiveFact', () => {
+    it.each([
+        ['The vendor portal password is Summer2026!', true],
+        ['api_key: sk-abcdefghijklmnopqrstuvwx', true],
+        ['AWS key on file: AKIAABCDEFGHIJKLMNOP', true],
+        ['-----BEGIN RSA PRIVATE KEY----- leaked in the log', true],
+        ['auth token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.', true],
+        ['github token ghp_abcdefghijklmnopqrstuvwxyz123456', true],
+        ['slack webhook xoxb-1234-5678', true],
+        ["Tenant's SSN is 123-45-6789 per the file.", true],
+        ['Card on file: 4111 1111 1111 1111', true],
+        ['Contact tenant at john.doe@example.com for renewal.', true],
+        ['Call the office at (415) 555-0199 for the renewal.', true],
+        ['The password reset flow sends an email to the tenant.', false],
+        ['Token-based pricing depends on the model.', false],
+        ['Rent increased by five hundred dollars in 2026.', false],
+        ['The maintenance backlog grew twelve percent last quarter.', false],
+    ])('%s -> %s', (text, expected) => {
+        expect(isSensitiveFact(text)).toBe(expected);
+    });
+});
+
+describe('extractFacts keeps meaning', () => {
+    it('keeps a leading number and inline-code text, strips list markers', () => {
+        const facts = extractFacts('30 days notice is required before any rent increase takes effect.\n1. Run `npm ci` before deploying the tenant portal build.\n> - Vendors must renew their insurance certificate every year.');
+        expect(facts).toContain('30 days notice is required before any rent increase takes effect.');
+        expect(facts).toContain('Run npm ci before deploying the tenant portal build.');
+        expect(facts).toContain('Vendors must renew their insurance certificate every year.');
+    });
 });
 
 describe('captureFacts', () => {
@@ -45,6 +90,19 @@ describe('captureFacts', () => {
         expect(copawStore.getSnapshot().length).toBe(1);
     });
 
+    it('drops the capture when userId differs from the current holder (D7)', () => {
+        copawUserIdHolder.current = 'andy';
+        const fresh = captureFacts('A', 'A fact captured for the wrong account should never be written.', 'lisa', NOW);
+        expect(fresh).toEqual([]);
+        expect(copawStore.getSnapshot()).toEqual([]);
+    });
+
+    it('writes when the passed userId matches the current holder', () => {
+        copawUserIdHolder.current = 'andy';
+        const fresh = captureFacts('A', 'A fact captured for the right account should be written normally.', 'andy', NOW);
+        expect(fresh.length).toBe(1);
+    });
+
     it('isolates memory per user and clears', () => {
         copawUserIdHolder.current = 'andy';
         captureFacts('A', 'Andy has a long enough declarative fact to be captured by CoPaw.', 'andy', NOW);
@@ -57,5 +115,18 @@ describe('captureFacts', () => {
         expect(copawStore.getSnapshot().length).toBe(1);
         clearMemory();
         expect(copawStore.getSnapshot()).toEqual([]);
+    });
+});
+
+describe('deleteFact', () => {
+    it('removes only the targeted fact', () => {
+        copawUserIdHolder.current = 'andy';
+        captureFacts('A', 'The first declarative fact captured for this deletion test case.', 'andy', NOW);
+        captureFacts('A', 'The second declarative fact captured for this deletion test case.', 'andy', NOW);
+        const [keep, drop] = copawStore.getSnapshot();
+        deleteFact(drop.id);
+        const remaining = copawStore.getSnapshot();
+        expect(remaining.length).toBe(1);
+        expect(remaining[0].id).toBe(keep.id);
     });
 });

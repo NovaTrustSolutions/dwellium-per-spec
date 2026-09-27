@@ -41,6 +41,27 @@ export const copawStore = withSync(
     { objectType: 'copaw', holder: copawUserIdHolder, resolveKey: resolveCopawKey },
 );
 
+// ponytail: regex denylist for secret/PII detection; swap for an LLM/aidefence classifier if false negatives show up
+const SECRET_OR_PII: RegExp[] = [
+    /\b(password|passcode|passphrase|api[ _-]?key|secret|token|private key)\b\s{0,2}(is\b|:|=)/i,
+    /\bsk-[A-Za-z0-9_-]{16,}\b/,
+    /\bsk-(live|test|proj)-/,
+    /\bAKIA[0-9A-Z]{16}\b/,
+    /-----BEGIN [A-Z ]*PRIVATE KEY/,
+    /\beyJ[\w-]{8,}\.[\w-]{8,}\./,
+    /\bgh[pousr]_[A-Za-z0-9]{20,}\b/,
+    /\bxox[abpr]-/,
+    /\b\d{3}[ -]?\d{2}[ -]?\d{4}\b/,          // SSN
+    /\b(?:\d[ -]?){13,19}\b/,                  // card-like digit run
+    /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/,             // email
+    /\b(\+?1[ -.]?)?\(?\d{3}\)?[ -.]?\d{3}[ -.]?\d{4}\b/, // US phone
+];
+
+/** True if `text` looks like it contains a secret or PII (see SECRET_OR_PII). */
+export function isSensitiveFact(text: string): boolean {
+    return SECRET_OR_PII.some((re) => re.test(text));
+}
+
 /**
  * Heuristic fact extractor — pure + testable. Pulls declarative, self-contained
  * sentences (not questions/fragments) from a response, deduped, capped. This is
@@ -49,18 +70,33 @@ export const copawStore = withSync(
  */
 export function extractFacts(text: string, max = 5): string[] {
     if (!text) return [];
-    const sentences = text
-        .replace(/\s+/g, ' ')
-        .split(/(?<=[.!?])\s+/)
-        .map((s) => s.trim())
-        // strip leading markdown bullets / numbering
-        .map((s) => s.replace(/^[-*\d.)\s]+/, '').trim());
+    // Strip fenced code blocks first (including an unterminated trailing fence).
+    const withoutCodeBlocks = text.replace(/```[\s\S]*?(```|$)/g, ' ');
+    const sentences: string[] = [];
+    for (const rawLine of withoutCodeBlocks.split('\n')) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        if (line.startsWith('|')) continue;                 // markdown table row
+        if (/^#{1,6}\s/.test(line)) continue;                // markdown heading
+        if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) continue;   // horizontal rule
+        const cleaned = line
+            .replace(/`([^`]*)`/g, '$1')                     // inline code → its text (secret filter still applies)
+            .replace(/^(?:[-*+>]\s*|\d+[.)]\s+)+/, '')          // bullet / "1." numbering / blockquote — not a leading number like "30 days"
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (!cleaned) continue;
+        for (const s of cleaned.split(/(?<=[.!?])\s+/)) {
+            const t = s.trim();
+            if (t) sentences.push(t);
+        }
+    }
     const out: string[] = [];
     const seen = new Set<string>();
     for (const s of sentences) {
         if (s.length < 25 || s.length > 240) continue;   // not a fragment, not a wall
         if (s.endsWith('?')) continue;                    // skip questions
         if (/^(here|okay|ok|sure|let me|i'?ll|i will)\b/i.test(s)) continue; // skip filler openers
+        if (isSensitiveFact(s)) continue;                  // skip secrets/PII
         const key = s.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);

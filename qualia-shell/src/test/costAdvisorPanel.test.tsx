@@ -6,12 +6,12 @@
  * stays real — it's a pure function over the bundle).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CostAdvisorPanel from '../components/AiSpend/CostAdvisorPanel';
 import { UserContext } from '../context/UserContext';
 import { todoStore, todoUserIdHolder, addTodo } from '../components/ThoughtWeaver/todoStore';
-import { personaWorkStore, personaWorkUserIdHolder, addTask, startTask, completeTask } from '../lib/agents/personaWorkStore';
+import { personaWorkStore, personaWorkUserIdHolder, addTask, startTask, completeTask, failTask } from '../lib/agents/personaWorkStore';
 import { llmUsageStore, llmUsageUserIdHolder, recordLlmUsage } from '../lib/llmUsageStore';
 import { costKpiStore, costKpiUserIdHolder, setCostKpi } from '../lib/costKpiStore';
 import { HERMES_PERSONA_IDS } from '../lib/agents/personas';
@@ -177,5 +177,35 @@ describe('CostAdvisorPanel — no active LLM', () => {
         const delegateBtn = screen.getByRole('button', { name: /Delegate to/ });
         await user.click(delegateBtn);
         expect(screen.getByText('Delegated')).toBeInTheDocument();
+    });
+});
+
+describe('CostAdvisorPanel — failed delegation and focus (review fixes)', () => {
+    it('a Failed Hermes task offers "Back to my list"; a Queued one does not; reclaim returns it to the advice list', async () => {
+        const user = userEvent.setup();
+        setCostKpi(100);
+        const id = addOne('Research property tax appeal deadlines');
+        renderPanel();
+        await user.click(screen.getByRole('button', { name: /^Delegate[^:]*: Research property tax/ }));
+        expect(screen.queryByRole('button', { name: /Back to my list/ })).toBeNull(); // Queued
+        const link = todoStore.getSnapshot().find(t => t.id === id)!.advisor!.delegatedTo!;
+        act(() => failTask(link.personaId, link.taskId, 'provider error'));
+        const back = await screen.findByRole('button', { name: 'Back to my list: Research property tax appeal deadlines' });
+        await user.click(back);
+        expect(todoStore.getSnapshot().find(t => t.id === id)!.advisor?.delegatedTo).toBeUndefined();
+        expect(screen.getByRole('button', { name: /^Dismiss: Research property tax/ })).toBeTruthy();
+        expect(document.activeElement?.tagName).not.toBe('BODY');
+    });
+
+    it('Undo keeps keyboard focus in the panel', async () => {
+        const user = userEvent.setup();
+        setCostKpi(100);
+        addOne('Write the October newsletter');
+        renderPanel();
+        await user.click(screen.getByRole('button', { name: /^Dismiss: Write the October/ }));
+        await user.click(screen.getByText(/Hidden \(1\)/));
+        await user.click(screen.getByRole('button', { name: /Undo.*Write the October/ }));
+        expect(document.activeElement).not.toBe(document.body);
+        expect(document.activeElement?.textContent).toMatch(/Do it cheaper/);
     });
 });

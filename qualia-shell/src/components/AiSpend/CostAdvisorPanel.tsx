@@ -27,7 +27,7 @@ import {
     pickHermesPersona,
     type Recommendation,
 } from '../../lib/costAdvisor';
-import { dismissAdvice, snoozeAdvice, undoAdvice, delegateTodo } from '../../lib/advisorActions';
+import { dismissAdvice, snoozeAdvice, undoAdvice, delegateTodo, reclaimTodo } from '../../lib/advisorActions';
 import { findPersona, DEFAULT_PERSONAS } from '../../lib/agents/personas';
 import './CostAdvisorPanel.css';
 
@@ -114,7 +114,9 @@ export default function CostAdvisorPanel({ variant = 'full' }: { variant?: 'full
         delegateTodo(taskId, pickHermesPersona(category));
         focusAfterAction(order, taskId, rowRefs, headingRef);
     };
-    const handleUndo = (taskId: string) => undoAdvice(taskId);
+    // The Undo button unmounts with its row — keep keyboard users in the panel.
+    const handleUndo = (taskId: string) => { undoAdvice(taskId); headingRef.current?.focus(); };
+    const handleReclaim = (todoId: string) => { reclaimTodo(todoId); headingRef.current?.focus(); };
 
     return (
         <section className="cadv" aria-label="Time-value advisor">
@@ -219,12 +221,18 @@ export default function CostAdvisorPanel({ variant = 'full' }: { variant?: 'full
                     <ul className="cadv__list">
                         {delegated.map(t => {
                             const link = t.advisor!.delegatedTo!;
+                            const status = delegatedStatus(work, link.personaId, link.taskId);
                             return (
                                 <li key={t.id} className="cadv__item cadv__item--delegated">
                                     <span className="cadv__item-title" title={t.text}>{t.text}</span>
                                     <span className="cadv__delegated-meta">
-                                        {personaName(link.personaId)} · {delegatedStatus(work, link.personaId, link.taskId)}
+                                        {personaName(link.personaId)} · {status}
                                     </span>
+                                    {(status === 'Failed' || status === 'Missing') && (
+                                        <button type="button" className="cadv__action" onClick={() => handleReclaim(t.id)} aria-label={`Back to my list: ${t.text}`}>
+                                            Back to my list
+                                        </button>
+                                    )}
                                 </li>
                             );
                         })}

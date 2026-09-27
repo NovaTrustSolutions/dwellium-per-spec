@@ -93,7 +93,9 @@ const MATCHERS: Array<{ category: TaskCategory; re: RegExp }> = [
     // ponytail: bare "script"/"build" swallowed non-dev tasks ("write a video
     // script", "build a checklist") — dropped in favor of the unambiguous dev
     // signals below (bug/debug/deploy/api/refactor/implement/pr).
-    { category: 'dev', re: /\bcode\b|coding|bug|debug|deploy|\bapi\b|refactor|implement|pull request|\bpr\b/i },
+    // Unambiguous dev words, OR a generic verb (debug/bug/implement/fix) only when a
+    // technical noun is present — "debug why the kitchen sink leaks" is not dev work.
+    { category: 'dev', re: /\bcode\b|coding|deploy|\bapi\b|refactor|pull request|\bpr\b|(?=.*\b(?:app|apps|site|website|web ?page|login|server|database|feature|endpoint|frontend|backend|code|plugin|css|html|webhooks?|repo|repository|scripts?|widgets?|dashboard|integration|build|ci|tests?)\b).*\b(?:bugs?|debug\w*|implement\w*|fix\w*)\b/i },
     { category: 'scheduling', re: /schedul|calendar|\bbook\b|\bcall\b|appointment|remind|follow.?up|coordinat/i },
     { category: 'support', re: /support|reply|respond|ticket|customer|inbox|triage|answer/i },
     { category: 'research', re: /research|find |look up|look-up|compile|gather|investigat|comparison|benchmark|sourc/i },
@@ -337,6 +339,10 @@ const MIN_HERMES_SAMPLES = 5;
  * very high-volume window can undercount old spend once entries roll off.
  * Upgrade path: sum from the `days` rollups instead of raw `entries` if that
  * ever matters in practice.
+ * ponytail: spend (calls in the window) and completed (tasks finished in the
+ * window) are different populations — a task spanning the window edge, or a
+ * failed run that still burned tokens, skews the ratio a little. Exact per-task
+ * cost needs a task id on each ledger entry.
  */
 export function measuredHermesTaskCost(
     ledger: UsageLedger | null | undefined,

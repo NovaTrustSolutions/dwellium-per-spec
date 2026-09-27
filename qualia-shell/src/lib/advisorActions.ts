@@ -32,6 +32,19 @@ export function undoAdvice(todoId: string): boolean {
 }
 
 /**
+ * Take a delegated to-do back (its Hermes task failed or no longer exists):
+ * clears delegatedTo so the advisor evaluates it again and it can be
+ * re-delegated. Callers offer this only for Failed / Missing tasks — taking
+ * back a queued task would leave Hermes running it anyway.
+ */
+export function reclaimTodo(todoId: string): boolean {
+    return updateTodo(todoId, t => {
+        const { delegatedTo, ...rest } = t.advisor ?? {};
+        return { ...t, advisor: rest };
+    });
+}
+
+/**
  * Hand this to-do to a Hermes persona: enqueues a task on that persona's
  * queue (personaWorkStore) and records the link on the to-do. Idempotent —
  * a second call on an already-delegated to-do returns the existing taskId

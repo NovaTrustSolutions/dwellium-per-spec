@@ -4,7 +4,8 @@
  * src/test/llmUsage.test.ts so withSync's background sync never fires.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { dismissAdvice, snoozeAdvice, undoAdvice, delegateTodo } from '../lib/advisorActions';
+import { dismissAdvice, snoozeAdvice, undoAdvice, delegateTodo, reclaimTodo } from '../lib/advisorActions';
+import { advisorCandidates } from '../lib/costAdvisor';
 import { todoStore, todoUserIdHolder, addTodo, type TodoItem } from '../components/ThoughtWeaver/todoStore';
 import { personaWorkStore, personaWorkUserIdHolder } from '../lib/agents/personaWorkStore';
 import { HERMES_PERSONA_IDS } from '../lib/agents/personas';
@@ -108,5 +109,25 @@ describe('delegateTodo', () => {
 
     it('returns null for an unknown to-do id', () => {
         expect(delegateTodo('nope', HERMES_ID)).toBeNull();
+    });
+});
+
+describe('reclaimTodo', () => {
+    it('clears only the delegation, so the to-do is advised again and can be re-delegated', () => {
+        addTodo({ text: 'Research tax deadlines', sourceCaptureId: null, priority: 'high' });
+        const id = todoStore.getSnapshot()[0].id;
+        const first = delegateTodo(id, HERMES_PERSONA_IDS[0]);
+        expect(advisorCandidates(todoStore.getSnapshot())).toHaveLength(0);
+        expect(reclaimTodo(id)).toBe(true);
+        expect(todoStore.getSnapshot()[0].advisor?.delegatedTo).toBeUndefined();
+        expect(advisorCandidates(todoStore.getSnapshot()).map(t => t.id)).toEqual([id]);
+        const second = delegateTodo(id, HERMES_PERSONA_IDS[0]);
+        expect(second).not.toBeNull();
+        expect(second).not.toBe(first);
+    });
+    it('unknown id → false, nothing changes', () => {
+        const before = todoStore.getSnapshot();
+        expect(reclaimTodo('nope')).toBe(false);
+        expect(todoStore.getSnapshot()).toBe(before);
     });
 });

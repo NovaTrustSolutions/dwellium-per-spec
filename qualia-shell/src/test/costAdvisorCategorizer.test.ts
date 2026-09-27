@@ -28,6 +28,11 @@ const CASES: Array<[string, TaskCategory]> = [
     ['Schedule the move-in walkthrough', 'scheduling'],
     ['Draft the lease renewal letter', 'writing'],
     ['Debug the payment webhook', 'dev'],
+    // Review (plan 068 P4): generic verbs are not dev work without a technical noun.
+    ['Debug why the kitchen sink is leaking', 'general'],
+    ['Implement a new morning routine', 'general'],
+    ['Fix the leaking faucet', 'general'],
+    ['Fix the login bug on the tenant app', 'dev'],
     ['Compile competitor rent comps', 'research'],
     ['Summarize the HOA meeting minutes', 'transcription'],
     ['Update the accounts payable spreadsheet', 'bookkeeping'],

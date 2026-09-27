@@ -32,6 +32,7 @@ import { upsertBrief, todaysBrief } from '../lib/morningBriefStore';
 import { goalsStore, goalProgress } from '../lib/goalsStore';
 import { artifactStore } from '../lib/artifactStore';
 import { lastNDays, planAdvice } from '../lib/llmUsageStore';
+import { budgetBriefLine } from '../lib/aiBudgetStore';
 import { personaWorkStore, personaWorkUserIdHolder } from '../lib/agents/personaWorkStore';
 import { getCostKpi } from '../lib/costKpiStore';
 import { evaluateTasks, liveRateRequestItems, buildLiveRatePrompt, parseLiveRates, LIVE_RATE_SYSTEM } from '../lib/costAdvisor';
@@ -100,6 +101,7 @@ export function useHonchoBackgroundRunner(): void {
             const calls = week.reduce((s, d) => s + d.calls, 0);
             const cost = week.reduce((s, d) => s + d.estCost, 0);
             if (calls > 0) dataLines.push(`AI usage 7d: ${calls} calls (~$${cost.toFixed(2)}). ${planAdvice()}`);
+            const budgetLine = budgetBriefLine(); if (budgetLine) dataLines.push(budgetLine);
             const artifacts = artifactStore.getSnapshot();
             if (artifacts.length > 0) dataLines.push(`Artifacts on file: ${artifacts.length} (latest: ${artifacts[0].title})`);
             // Cost advisor: tasks AI/outsourcing can do below the user's $/hr KPI.

@@ -38,7 +38,7 @@ const CognitiveHarness = lazy(() => import('../CognitiveHarness/CognitiveHarness
 const AdvisoryBoardDiagram = lazy(() => import('../AdvisoryBoard/AdvisoryBoardDiagram'));
 import { advisoryLensBus } from '../../lib/busChannels';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
-import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore, prorateMonthly, applyPlanEdits, parseNewSubscription, withoutUnconfirmedDefaults } from '../../lib/subscriptionsStore';
+import { useSubscriptions, monthlyTotal, prorateMonthly } from '../../lib/subscriptionsStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext, type DwelliumUser } from '../../context/UserContext';
@@ -343,19 +343,6 @@ export default function HalocronOS() {
     const subsForRange = prorateMonthly(flatMonthly, RANGE_DAYS[range]); // prorated to the selected range
     const totalSpend = subsForRange + tokenSpend;
     const fmt = (n: number) => n >= 100 ? `$${Math.round(n).toLocaleString()}` : `$${n.toFixed(2)}`;
-
-    // Edit subscriptions inline so the figure is EXACTLY the user's spend.
-    // Base on the raw store snapshot (not the derived `subs` array) so we
-    // never edit a synthesized row. A real editor is Phase 2.
-    const editPlans = () => {
-        const current = withoutUnconfirmedDefaults(subscriptionsStore.getSnapshot());
-        const editAnswers = current.map((s) => window.prompt(`${s.name} (${s.vendor}) — monthly $`, String(s.monthly)));
-        let next = applyPlanEdits(current, editAnswers);
-        const addAnswer = window.prompt('Add a subscription? name, $/month (blank to skip)');
-        const added = parseNewSubscription(addAnswer);
-        if (added) next = [...next, added];
-        saveSubscriptions(next); // updates the shared snapshot + persists (subscriptionsStore.set) in one call
-    };
 
     // Bus listener MUST be declared before the early return below so the hook
     // count is identical whether the OS is enabled or not — otherwise toggling
@@ -712,13 +699,13 @@ export default function HalocronOS() {
                             </div>
 
                             <div className="hos-glance">
-                                <button type="button" className="hos-glance__card hos-glance__card--spend" onClick={editPlans} title="Click to edit your real plans">
+                                <button type="button" className="hos-glance__card hos-glance__card--spend" onClick={() => openWidget('ai-spend', 'AI Spend')} title="Open AI Spend to edit">
                                     <div className="hos-glance__cap">AI SPEND</div>
                                     <div className="hos-glance__val">{fmt(totalSpend)}</div>
                                     <div className="hos-glance__sub">
                                         {subs.length === 0
-                                            ? 'No subscriptions added · click to add'
-                                            : `${fmt(subsForRange)} subscriptions (prorated, ${RANGE_LABEL[range]}) + ${fmt(tokenSpend)} tokens · click to edit`}
+                                            ? 'No subscriptions added · open AI Spend to edit'
+                                            : `${fmt(subsForRange)} subscriptions (prorated, ${RANGE_LABEL[range]}) + ${fmt(tokenSpend)} tokens · open AI Spend to edit`}
                                     </div>
                                 </button>
                                 <div className="hos-glance__card hos-glance__card--save">

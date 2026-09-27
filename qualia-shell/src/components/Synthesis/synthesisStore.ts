@@ -65,22 +65,67 @@ export function newSynthesisId(): string {
 
 /**
  * Capture a synthesis (feed it back into the corpus). Most-recent-first, capped
- * at MAX_SYNTHESES. The caller supplies `id` (its draft id). Returns
- * `{ok:false, reason:'quota'}` WITHOUT changing the store when localStorage is full.
+ * at MAX_SYNTHESES. The caller supplies `id` (its draft id); re-capturing the
+ * same id (e.g. after an edit) replaces the existing entry in place rather
+ * than duplicating it. Returns `{ok:false, reason:'quota'}` WITHOUT changing
+ * the store when localStorage is full.
  * CONTRACT (plan 070 P0) — implemented by the W1 store agent.
  */
 export function captureSynthesis(
     entry: { id: string; query: string; result: string; layer: number; parentId: string | null },
     now: Date = new Date(),
 ): CaptureResult {
-    void entry; void now;
-    throw new Error('plan 070 W1: not implemented');
+    // SSR: nothing to persist
+    if (typeof window === 'undefined') return { ok: false, reason: 'empty' };
+    if (!entry.result.trim()) return { ok: false, reason: 'empty' };
+
+    const s: Synthesis = {
+        id: entry.id,
+        query: entry.query,
+        result: entry.result,
+        layer: entry.layer,
+        parentId: entry.parentId,
+        capturedAt: now.toISOString(),
+    };
+    const cur = synthesisStore.getSnapshot();
+    const rest = cur.filter((x) => x.id !== entry.id);
+    const next = [s, ...rest].slice(0, MAX_SYNTHESES);
+
+    // Try the write directly first so a quota error can be detected and
+    // reported WITHOUT mutating the store — createLocalStorageStore.set()'s
+    // persistToStorage callback swallows all errors (by design, for private
+    // browsing), so quota can only be surfaced by writing before calling set().
+    try {
+        localStorage.setItem(resolveSynthesisKey(), JSON.stringify(next));
+    } catch (err) {
+        if (isQuotaError(err)) return { ok: false, reason: 'quota' };
+        // Sandboxed / private-mode throw (not quota) — accept in-memory only,
+        // matching createLocalStorageStore's own private-browsing fallback.
+    }
+    // The localStorage write already happened above (or was skipped for a
+    // non-quota sandbox throw) — pass a no-op persist callback so set() does
+    // not write a second time.
+    synthesisStore.set(next, () => {});
+    return { ok: true, synthesis: s };
+}
+
+function isQuotaError(err: unknown): boolean {
+    if (!(err instanceof DOMException)) return false;
+    return err.name === 'QuotaExceededError'
+        || err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+        || err.code === 22
+        || err.code === 1014;
 }
 
 /** Remove one captured synthesis by id (user-initiated, from the UI). CONTRACT (plan 070 P0). */
 export function removeSynthesis(id: string): void {
-    void id;
-    throw new Error('plan 070 W1: not implemented');
+    if (typeof window === 'undefined') return;
+    const cur = synthesisStore.getSnapshot();
+    const next = cur.filter((x) => x.id !== id);
+    if (next.length === cur.length) return; // unknown id — no-op
+    synthesisStore.set(next, () => {
+        try { localStorage.setItem(resolveSynthesisKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    });
 }
 
 export function clearSyntheses(): void {

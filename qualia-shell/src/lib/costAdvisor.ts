@@ -227,9 +227,13 @@ export const LIVE_RATE_SYSTEM =
     'widely-known recent market ranges. Respond as STRICT JSON only — no preamble, no code fences: ' +
     '{"rates":[{"id":"<task id>","usdPerHour":<number>}]} with one entry per task id.';
 
+/**
+ * Plan 068 (E6, privacy): NO `title` field — a task title is user-typed free
+ * text and must never leave the browser. Category + role + benchmark rate are
+ * enough for the LLM to estimate a current market rate.
+ */
 export interface LiveRateRequestItem {
     taskId: string;
-    title: string;
     category: TaskCategory;
     role: string;
     benchmarkRatePerHour: number;
@@ -239,17 +243,16 @@ export interface LiveRateRequestItem {
 export function liveRateRequestItems(recs: Recommendation[]): LiveRateRequestItem[] {
     return recs.map(r => ({
         taskId: r.taskId,
-        title: r.title,
         category: r.category,
         role: r.role,
         benchmarkRatePerHour: r.onlineRatePerHour,
     }));
 }
 
-/** Build the per-task live-rate prompt (pairs with LIVE_RATE_SYSTEM). */
+/** Build the per-task live-rate prompt (pairs with LIVE_RATE_SYSTEM). E6: category + role only, never the verbatim task title. */
 export function buildLiveRatePrompt(items: LiveRateRequestItem[]): string {
     const lines = items
-        .map(it => `- id="${it.taskId}" · "${it.title}" · type: ${it.category} (hire ${it.role}) · benchmark ~$${it.benchmarkRatePerHour}/hr`)
+        .map(it => `- id="${it.taskId}" · type: ${it.category} (hire ${it.role}) · benchmark ~$${it.benchmarkRatePerHour}/hr`)
         .join('\n');
     return `Give the current online freelance rate (USD/hour) for each task.\n` +
         `Return JSON {"rates":[{"id":"...","usdPerHour":<number>}]} only.\n\nTasks:\n${lines}`;

@@ -20,6 +20,7 @@
  */
 import { useContext, useEffect, useRef } from 'react';
 import { UserContext } from '../context/UserContext';
+import { captureOwner } from '../lib/perUserIdentity';
 import { useIntegrations } from '../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../lib/llmClient';
 import { memoryStore, memoryUserIdHolder } from '../components/HonchoHermesPanel/honchoMemoryStore';
@@ -31,6 +32,7 @@ import { upsertBrief, todaysBrief } from '../lib/morningBriefStore';
 import { goalsStore, goalProgress } from '../lib/goalsStore';
 import { artifactStore } from '../lib/artifactStore';
 import { lastNDays, planAdvice } from '../lib/llmUsageStore';
+import { budgetBriefLine } from '../lib/aiBudgetStore';
 import { personaWorkStore, personaWorkUserIdHolder } from '../lib/agents/personaWorkStore';
 import { getCostKpi } from '../lib/costKpiStore';
 import { evaluateTasks, liveRateRequestItems, buildLiveRatePrompt, parseLiveRates, LIVE_RATE_SYSTEM } from '../lib/costAdvisor';
@@ -85,6 +87,8 @@ export function useHonchoBackgroundRunner(): void {
             if (todaysBrief()) return; // plan 046 B2: the server brief (or an earlier client one) wins the day
             try { if (localStorage.getItem(deepDayKey(uid)) === today) return; } catch { return; }
             try { localStorage.setItem(deepDayKey(uid), today); } catch { /* claim the day first */ }
+            // Owner race guard: captured before this cycle's first LLM await.
+            const stillOwner = captureOwner();
 
             // Hard-data lines (always available).
             const dataLines: string[] = [];
@@ -97,6 +101,7 @@ export function useHonchoBackgroundRunner(): void {
             const calls = week.reduce((s, d) => s + d.calls, 0);
             const cost = week.reduce((s, d) => s + d.estCost, 0);
             if (calls > 0) dataLines.push(`AI usage 7d: ${calls} calls (~$${cost.toFixed(2)}). ${planAdvice()}`);
+            const budgetLine = budgetBriefLine(); if (budgetLine) dataLines.push(budgetLine);
             const artifacts = artifactStore.getSnapshot();
             if (artifacts.length > 0) dataLines.push(`Artifacts on file: ${artifacts.length} (latest: ${artifacts[0].title})`);
             // Cost advisor: tasks AI/outsourcing can do below the user's $/hr KPI.
@@ -109,7 +114,7 @@ export function useHonchoBackgroundRunner(): void {
                 try {
                     const rateItems = liveRateRequestItems(costRecs);
                     const rateRes = await callLlm(
-                        { systemPrompt: LIVE_RATE_SYSTEM, prompt: buildLiveRatePrompt(rateItems), responseFormat: 'json', maxTokens: 300, temperature: 0 },
+                        { systemPrompt: LIVE_RATE_SYSTEM, prompt: buildLiveRatePrompt(rateItems), responseFormat: 'json', maxTokens: 300, temperature: 0, source: 'honcho' },
                         llm,
                     );
                     const rateOverrides = parseLiveRates(rateRes?.text, new Set(rateItems.map(i => i.taskId)));
@@ -133,9 +138,10 @@ export function useHonchoBackgroundRunner(): void {
                             maxTokens: 700,
                             temperature: 0.6,
                             responseFormat: 'json',
+                            source: 'honcho',
                         }, llm);
                         const deep = parseDeepDream(res?.text);
-                        if (deep) {
+                        if (deep && stillOwner()) {
                             insights = deep.insights;
                             suggestions = deep.suggestions;
                             for (const i of insights) appendDream({ title: i.title, text: i.text, sources: [] });
@@ -143,7 +149,7 @@ export function useHonchoBackgroundRunner(): void {
                     } catch { /* key-less or provider hiccup — data-only brief */ }
                 }
             }
-            if (dataLines.length > 0 || insights.length > 0) {
+            if ((dataLines.length > 0 || insights.length > 0) && stillOwner()) {
                 upsertBrief({ date: today, insights, suggestions, dataLines });
             }
         };
@@ -154,6 +160,9 @@ export function useHonchoBackgroundRunner(): void {
             try {
                 await deepCycle(); // once per day, LLM-optional
                 if (cancelled || !hasActiveLlm(llm)) return; // light dream needs a key
+                // Owner of the corpus read below — the reflection must not land in
+                // another account if the user switches during the LLM call.
+                const stillOwnerDream = captureOwner();
                 const memories = memoryStore.getSnapshot();
                 if (memories.length < MIN_MEMORIES) return;      // not enough material
                 const now = Date.now();
@@ -179,6 +188,7 @@ export function useHonchoBackgroundRunner(): void {
                     maxTokens: 300,
                     temperature: 0.6,
                     responseFormat: 'json',
+                    source: 'honcho',
                 }, llm);
                 if (cancelled || !res?.text) return;
                 let title = '';
@@ -188,7 +198,7 @@ export function useHonchoBackgroundRunner(): void {
                     title = String(parsed.title || '').slice(0, 80);
                     text = String(parsed.text || '').slice(0, 600);
                 } catch { /* provider returned non-JSON — skip this cycle */ }
-                if (title && text) appendDream({ title, text, sources: memories.slice(0, 12).map((m) => m.id) });
+                if (title && text && stillOwnerDream()) appendDream({ title, text, sources: memories.slice(0, 12).map((m) => m.id) });
             } catch {
                 /* background task — never surface */
             } finally {

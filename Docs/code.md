@@ -464,6 +464,13 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Not a bug:** the review said an invalid budget "silently no-ops"; the input's native `min=1` already blocks 0/negatives with a browser message. Only an EMPTY submit passes native validation — it now shows an inline error.
 - **Prevention:** for any widget that gains sections, check the full-height flex container for shrinking children in a real render (jsdom has no layout). Generate new ids unique within the list being saved, never from the clock alone.
 
+## 2026-09-26 — Leasing sweep test timed out under full-suite load (380 whole-DOM `queryByText` walks)
+
+- **Error:** `leasing.module.test.tsx > sweep: none of the old fake strings render on any changed tab or metric view` failed with "Test timed out in 5000ms" in roughly 1 of 3 full `npx vitest run`s (seen on `feat/069-cognitive-harness`, which does not touch LeasingModule); it passed alone.
+- **Root cause:** not waiting — the test is synchronous. `expectNoneOf` ran one `screen.queryByText(s)` per string, and each call walks the whole DOM computing every element's text: 38 strings × 10 views = 380 walks. Isolated it took **4,891 ms of the 5,000 ms budget**, so any machine load tipped it over.
+- **Fix (branch `fix/leasing-sweep-timeout`):** `expectNoneOf` collects every element's own text once per view (`getNodeText`, trimmed + whitespace-collapsed, script/style skipped, `document.body` included — queryByText's default exact-matcher semantics) and checks all strings against that set. Proven equivalent before keeping it: a throwaway test compared `queryAllByText(s).length > 0` with the new set on 11 views × 43 strings (473 checks; 34 of them strings really on screen) — all agreed. Mutation check: putting `value: '23'` back on the Overview "Avg. Days to Lease" card still fails the sweep (`23: expected true to be false`). Isolated 4,891 → 2,076 ms; 5 full-suite runs 3,317/3,317 each, sweep 1.8–4.0 s under load. Because 10 renders in one test is legitimate work, the sweep also gets an explicit 15 s timeout with a comment (precedent: `Terminal.test.tsx`).
+- **Prevention:** never loop `queryByText` over a long string list — one DOM pass per view. `communication.module.test.tsx:66` and `accounting.module.test.tsx:91` use the same loop (≤ 2.8 s so far). Other tests seen at 3.1–3.6 s under full-suite load, the next timeout candidates: `disclosureTiers.test.tsx` (labs tier), `interactiveDocs.test.tsx` (block DnD…), `InboxZero.test.tsx` (closing mid-drag), `memoryGraphRag/bridge.test.tsx` (feeds Scribe documents).
+
 ## 2026-09-26 — Wiki deep-link test flaked under the full suite
 
 - **Error:** `Wiki.test.tsx` "selects the page named by dwellium:wiki-open-page" failed ~1 in 8 under parallel load (passed alone).

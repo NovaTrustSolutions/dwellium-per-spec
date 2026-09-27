@@ -32,6 +32,8 @@ export interface LlmRequest {
     responseFormat?: 'text' | 'json';   // hint for providers that support it
     /** Plan 068: which feature made the call ('ara' | 'persona' | 'honcho' | 'test' ...) — AI Spend "by feature". */
     source?: string;
+    /** Plan 070: abort the provider request (Cancel button / widget unmount). */
+    signal?: AbortSignal;
 }
 
 /** Plan 068: provider-reported token usage (measured, not estimated). */
@@ -48,6 +50,8 @@ export interface LlmResponse {
     model: string;
     /** Plan 068: real usage when the provider reported it. */
     usage?: LlmUsage;
+    /** Plan 070: the provider stopped at the token limit (answer may be cut off). */
+    truncated?: boolean;
     /**
      * Plan 068 (A5): internal retry-accounting hint, NOT for UI consumption.
      * Number of billed attempts folded into this response. >1 means a

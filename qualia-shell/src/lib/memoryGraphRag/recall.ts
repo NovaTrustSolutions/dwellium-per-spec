@@ -8,7 +8,7 @@
  * empty network changes nothing about how an agent behaves.
  */
 import { getCmn } from './shared';
-import type { RetrievalResult } from './types';
+import type { RetrievalResult, SourceKind } from './types';
 
 export const RECALL_HEADING = '## Relevant memory (Cognitive M Network)';
 const DEFAULT_LIMIT = 5;
@@ -45,6 +45,29 @@ export async function recallContext(userId: string | null | undefined, query: st
     } catch {
         return ''; // ponytail: recall must never break an agent reply
     }
+}
+
+/** One recalled passage, flattened for widgets that show their sources (plan 070 Synthesis Lab). */
+export interface RecalledPassage {
+    passageId: string;
+    sourceId: string;      // e.g. `synthesis:<id>`, `tag:<id>`, `scribe:<path>`, `foundry:<id>`
+    sourceKind: SourceKind;
+    title: string;
+    text: string;
+    score: number;
+}
+
+export interface RecallPassagesOptions { limit?: number; excludeSourceIds?: string[]; }
+
+/**
+ * Structured sibling of `recallContext`: the ranked passages themselves (same
+ * filter: score > MIN_SCORE, non-empty text), minus `excludeSourceIds`. Retrieval
+ * only — never calls an LLM. [] when empty/not hydrated/on any error.
+ * CONTRACT (plan 070 phase 2 P0) — implemented by the W1 recall agent.
+ */
+export async function recallPassages(userId: string | null | undefined, query: string, opts: RecallPassagesOptions = {}): Promise<RecalledPassage[]> {
+    void userId; void query; void opts;
+    throw new Error('plan 070 P2 W1: not implemented');
 }
 
 /** `systemPrompt` + memory block, or the prompt unchanged when there is no memory. */

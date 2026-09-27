@@ -22,7 +22,13 @@ export interface Synthesis {
     /** id of the synthesis this one built on, if any. */
     parentId: string | null;
     capturedAt: string;
+    /** Plan 070 P2: what the second-layer pass was asked to focus on. */
+    followUp?: string;
+    /** Plan 070 P2: the saved sources that were sent with the question. */
+    sources?: SynthesisSource[];
 }
+
+export interface SynthesisSource { sourceId: string; sourceKind: string; title: string; }
 
 export { synthesisUserIdHolder };
 
@@ -72,7 +78,7 @@ export function newSynthesisId(): string {
  * CONTRACT (plan 070 P0) — implemented by the W1 store agent.
  */
 export function captureSynthesis(
-    entry: { id: string; query: string; result: string; layer: number; parentId: string | null },
+    entry: { id: string; query: string; result: string; layer: number; parentId: string | null; followUp?: string; sources?: SynthesisSource[] },
     now: Date = new Date(),
 ): CaptureResult {
     // SSR: nothing to persist
@@ -86,6 +92,8 @@ export function captureSynthesis(
         layer: entry.layer,
         parentId: entry.parentId,
         capturedAt: now.toISOString(),
+        ...(entry.followUp?.trim() ? { followUp: entry.followUp.trim() } : {}),
+        ...(entry.sources?.length ? { sources: entry.sources } : {}),
     };
     const cur = synthesisStore.getSnapshot();
     const rest = cur.filter((x) => x.id !== entry.id);

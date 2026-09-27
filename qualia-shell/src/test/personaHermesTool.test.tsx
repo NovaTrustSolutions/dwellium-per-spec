@@ -106,4 +106,27 @@ describe('voice persona — Hermes tool', () => {
         act(() => { result.current.endCall(); });
         hermesImpl = async () => ({ result: { outcome: 'success', result: 'ok' }, reply: 'ok' });
     });
+
+    it('control: the idle nudge firing while Hermes is still working does NOT drop the Hermes answer (non-streaming)', async () => {
+        streamImpl = async () => null;
+        let release!: (v: unknown) => void;
+        hermesImpl = () => new Promise((r) => { release = r; });
+        state.integrations = { llm: { active: 'gemini', gemini: { apiKey: 'g', enabled: true } }, search: undefined };
+        // Only timers are faked (not React's scheduler), so the 14 s idle nudge can fire without a 14 s test.
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        try {
+            const { result } = renderHook(() => usePersonaCall({ ...defaultPersonaConfig(), skipGreeting: true, voiceId: 'browser-samantha' }, 'stella'));
+            act(() => { result.current.startCall(); });
+            await act(async () => { result.current.sendText('ask hermes about lease law'); await vi.advanceTimersByTimeAsync(50); });
+            const before = result.current.turns.length;
+            await act(async () => { await vi.advanceTimersByTimeAsync(15_000); }); // past IDLE_NUDGE_MS (14 s)
+            expect(result.current.turns.length).toBe(before + 1); // the nudge really fired (and spoke) mid-Hermes
+            await act(async () => { release({ result: { outcome: 'success', result: 'Sixty days.' } }); await vi.advanceTimersByTimeAsync(50); });
+            expect(result.current.turns.some((t) => (t.text ?? '').includes('Hermes finished: Sixty days.'))).toBe(true);
+            act(() => { result.current.endCall(); });
+        } finally {
+            vi.useRealTimers();
+            hermesImpl = async () => ({ result: { outcome: 'success', result: 'ok' }, reply: 'ok' });
+        }
+    });
 });

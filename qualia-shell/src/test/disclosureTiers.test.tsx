@@ -7,7 +7,7 @@
  *   - getStartupStack / STARTER_SETS per role.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { defaultDockItems } from '../data/hierarchy';
 
 vi.mock('../config', () => ({ API_BASE: '' }));
@@ -90,8 +90,12 @@ describe('labs tier is hidden from the sidebar', () => {
             expect(document.querySelector(`.sidebar__widget-group-children [title^="${item.label} —"]`)).toBeNull();
         }
         fireEvent.click(screen.getByTitle('Add or remove widgets'));
-        expect(screen.getByText('Terminal · labs')).toBeInTheDocument();
-        fireEvent.click(screen.getAllByRole('button', { name: 'Open' })[0]);
+        // Scope the role query to Terminal's gallery card: a page-wide getAllByRole('button', { name })
+        // computed accessible names for ~1,244 nodes (≈500 ms of this test's ≈650 ms, several seconds under
+        // full-suite load). Scoping is also stricter — Terminal's own card must offer Open.
+        const terminalCard = screen.getByText('Terminal · labs').closest('.widget-gallery__card') as HTMLElement;
+        expect(terminalCard).toBeInTheDocument();
+        fireEvent.click(within(terminalCard).getByRole('button', { name: 'Open' }));
         expect(openWindow).toHaveBeenCalledWith('terminal', 'Terminal', 'terminal');
     });
     it('registry: every labs widget is either not in the dock or one-shot hidden (structural invariant)', () => {

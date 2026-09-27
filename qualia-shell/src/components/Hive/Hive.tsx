@@ -10,7 +10,7 @@ import { useWindows } from '../../context/WindowContext';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
-import { copawStore, copawUserIdHolder, clearMemory, deleteFact, type MemoryFact } from './copawStore';
+import { copawStore, copawUserIdHolder, clearMemory, deleteFact, isSensitiveFact, type MemoryFact } from './copawStore';
 import './Hive.css';
 
 const ACCENT = '#D6FE51';
@@ -154,15 +154,20 @@ export default function Hive() {
                         </div>
                     ) : (
                         <>
-                            {visibleMemory.map((f) => (
+                            {visibleMemory.map((f, i) => (
                                 <div key={f.id} style={{ padding: '7px 9px', marginBottom: 5, border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--bg-desktop)', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontSize: 11.5, color: 'var(--text-primary)', lineHeight: 1.5 }}>{f.text}</div>
+                                        {isSensitiveFact(f.text) && (
+                                            <div style={{ fontSize: 10, fontWeight: 700, marginTop: 4, color: 'color-mix(in srgb, var(--danger) 60%, var(--text-primary))' }}>
+                                                Looks like a secret or personal data — hidden from agents. Delete it?
+                                            </div>
+                                        )}
                                         <div style={{ fontSize: 9, color: MUTED, marginTop: 4 }}>{f.source} · {new Date(f.createdAt).toLocaleDateString()}</div>
                                     </div>
                                     <button
                                         onClick={() => deleteFact(f.id)}
-                                        aria-label={`Delete fact: ${f.text.slice(0, 40)}`}
+                                        aria-label={`Delete fact ${i + 1}: ${f.text.slice(0, 40)}`}
                                         style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', display: 'flex', flexShrink: 0, padding: 2 }}>
                                         <X size={12} />
                                     </button>

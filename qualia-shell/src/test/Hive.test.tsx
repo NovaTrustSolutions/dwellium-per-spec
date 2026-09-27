@@ -97,11 +97,20 @@ describe('Hive CoPaw memory rail', () => {
         ]);
         const confirmSpy = vi.spyOn(window, 'confirm');
         render(<Hive />);
-        fireEvent.click(screen.getByLabelText(/Delete fact: drop this other fact/));
+        fireEvent.click(screen.getByLabelText(/Delete fact 2: drop this other fact/));
         expect(confirmSpy).not.toHaveBeenCalled();
         const remaining = copawStore.getSnapshot();
         expect(remaining.length).toBe(1);
         expect(remaining[0].id).toBe('keep');
+    });
+
+    it('flags a secret-looking fact so the user can delete it; clean facts are not flagged', () => {
+        seedFacts([
+            { id: 's', text: 'The vendor portal password is Summer2026 for every staff member.' },
+            { id: 'c', text: 'Vendors must renew their insurance certificate every year.' },
+        ]);
+        render(<Hive />);
+        expect(screen.getAllByText(/Looks like a secret or personal data/).length).toBe(1);
     });
 
     it('filter narrows the visible list by text or source', () => {

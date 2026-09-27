@@ -73,6 +73,41 @@ describe('extractFacts keeps meaning', () => {
     });
 });
 
+describe('secret filter — reviewer bypasses (plan 071 W2)', () => {
+    it.each([
+        // Built at runtime so no Stripe-shaped literal is committed (GitHub push protection).
+        `The stripe key is ${['sk', 'live', '51H8xJ2KZvKYlo2C0aBcDeFgHiJ'].join('_')} for payments.`,
+        'The vendor portal login uses pw: hunter2 for every staff member.',
+        'His social security number on file is 123.45.6789 in the lease packet.',
+        'The password for the vendor portal is Summer2026! for all staff.',
+        'The shared pass​word is Summer2026! for the vendor portal.',
+        'Tenant SSN was attached to the application by mistake last week.',
+        'Call the property manager at (404) 555-0134 before any site visit.',
+    ])('flags %s', (t) => {
+        expect(isSensitiveFact(t)).toBe(true);
+    });
+
+    it.each([
+        'The parcel ID 123456789 was recorded by the county assessor last month.',
+        'The secret to low vacancy is fast turnover between tenants.',
+        'The secret is consistent follow-up with every tenant after move-in.',
+        'The building sold for $1,250,000 on 2026-09-27 after a long listing.',
+        'The password reset flow sends an email link to the tenant portal.',
+    ])('keeps %s', (t) => {
+        expect(isSensitiveFact(t)).toBe(false);
+    });
+
+    it('a secret soft-wrapped across lines is not captured', () => {
+        const facts = extractFacts('The password\nis Summer2026 for the vendor portal used by the whole team today.\n\nVendors must renew their insurance certificate every single year.');
+        expect(facts.some((f) => f.includes('Summer2026'))).toBe(false);
+        expect(facts).toContain('Vendors must renew their insurance certificate every single year.');
+    });
+
+    it('soft-wrapped prose is captured as one sentence, not fragments', () => {
+        expect(extractFacts('The maintenance backlog grew twelve percent\nlast quarter across the whole portfolio.')).toEqual(['The maintenance backlog grew twelve percent last quarter across the whole portfolio.']);
+    });
+});
+
 describe('captureFacts', () => {
     it('persists extracted facts most-recent-first with source', () => {
         const fresh = captureFacts('Synthesis Lab', 'The maintenance backlog grew twelve percent last quarter across the portfolio.', null, NOW);

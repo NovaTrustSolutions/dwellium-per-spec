@@ -42,24 +42,29 @@ export const copawStore = withSync(
 );
 
 // ponytail: regex denylist for secret/PII detection; swap for an LLM/aidefence classifier if false negatives show up
+const ZERO_WIDTH = /[​-‍⁠﻿]/g;
 const SECRET_OR_PII: RegExp[] = [
-    /\b(password|passcode|passphrase|api[ _-]?key|secret|token|private key)\b\s{0,2}(is\b|:|=)/i,
-    /\bsk-[A-Za-z0-9_-]{16,}\b/,
-    /\bsk-(live|test|proj)-/,
+    // A credential label followed (within a clause) by is/was/:/= and a value that looks like a secret:
+    // has a digit or symbol, or is 16+ chars. "The secret to low vacancy is fast turnover." stays a fact.
+    /\b(password|passwd|pwd|pw|passcode|passphrase|pin|api[ _-]?key|secret|token|private key)\b[^.!?\n]{0,40}?(?:\bis\b|\bwas\b|:|=)\s*["'`*]*(?=[^\s"'`*]*[\d!@#$%^&_]|[^\s"'`*]{16,})[^\s"'`*]{4,}/i,
+    /\bsk[-_][A-Za-z0-9_-]{16,}/,              // OpenAI / Stripe-style secret keys (sk-…, sk_live_…)
+    /\b[rs]k[-_](live|test|proj)[-_]/,
     /\bAKIA[0-9A-Z]{16}\b/,
     /-----BEGIN [A-Z ]*PRIVATE KEY/,
-    /\beyJ[\w-]{8,}\.[\w-]{8,}\./,
+    /\beyJ[\w-]{8,}\.[\w-]{8,}\./,             // JWT
     /\bgh[pousr]_[A-Za-z0-9]{20,}\b/,
     /\bxox[abpr]-/,
-    /\b\d{3}[ -]?\d{2}[ -]?\d{4}\b/,          // SSN
+    /\b\d{3}([ .-])\d{2}\1\d{4}\b/,           // SSN with separators (a bare 9-digit parcel id stays)
+    /\b(ssn|social security)\b/i,
     /\b(?:\d[ -]?){13,19}\b/,                  // card-like digit run
     /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/,             // email
-    /\b(\+?1[ -.]?)?\(?\d{3}\)?[ -.]?\d{3}[ -.]?\d{4}\b/, // US phone
+    /(?:\+?1[ .-]?)?\(?\b\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b/, // US phone (separators required)
 ];
 
 /** True if `text` looks like it contains a secret or PII (see SECRET_OR_PII). */
 export function isSensitiveFact(text: string): boolean {
-    return SECRET_OR_PII.some((re) => re.test(text));
+    const t = text.replace(ZERO_WIDTH, '');
+    return SECRET_OR_PII.some((re) => re.test(t));
 }
 
 /**
@@ -70,21 +75,28 @@ export function isSensitiveFact(text: string): boolean {
  */
 export function extractFacts(text: string, max = 5): string[] {
     if (!text) return [];
-    // Strip fenced code blocks first (including an unterminated trailing fence).
-    const withoutCodeBlocks = text.replace(/```[\s\S]*?(```|$)/g, ' ');
-    const sentences: string[] = [];
+    // Strip fenced code blocks first (an unterminated fence drops the rest: it is code).
+    const withoutCodeBlocks = text.replace(ZERO_WIDTH, '').replace(/```[\s\S]*?(```|$)/g, '\n');
+    // Re-join soft-wrapped prose into paragraphs; list items, blank lines and
+    // skipped blocks (tables, headings, rules) end a paragraph. Splitting per
+    // raw line let "The password\nis X" slip past the secret filter.
+    const paragraphs: string[] = [];
+    let cur = '';
+    const flush = () => { if (cur.trim()) paragraphs.push(cur); cur = ''; };
     for (const rawLine of withoutCodeBlocks.split('\n')) {
         const line = rawLine.trim();
-        if (!line) continue;
-        if (line.startsWith('|')) continue;                 // markdown table row
-        if (/^#{1,6}\s/.test(line)) continue;                // markdown heading
-        if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) continue;   // horizontal rule
-        const cleaned = line
+        if (!line || line.startsWith('|') || /^#{1,6}\s/.test(line) || /^(-{3,}|\*{3,}|_{3,})$/.test(line)) { flush(); continue; }
+        const item = line.replace(/^(?:[-*+>]\s*|\d+[.)]\s+)+/, ''); // bullet / "1." numbering / blockquote — not "30 days"
+        if (item !== line) flush();
+        cur = cur ? `${cur} ${item}` : item;
+    }
+    flush();
+    const sentences: string[] = [];
+    for (const p of paragraphs) {
+        const cleaned = p
             .replace(/`([^`]*)`/g, '$1')                     // inline code → its text (secret filter still applies)
-            .replace(/^(?:[-*+>]\s*|\d+[.)]\s+)+/, '')          // bullet / "1." numbering / blockquote — not a leading number like "30 days"
             .replace(/\s+/g, ' ')
             .trim();
-        if (!cleaned) continue;
         for (const s of cleaned.split(/(?<=[.!?])\s+/)) {
             const t = s.trim();
             if (t) sentences.push(t);

@@ -13,7 +13,7 @@
  * PURE-AT-THE-SEAMS like hermesRunner: LLM, skills, and clock are injectable;
  * unit-testable with no network.
  */
-import { AGENT_SKILLS, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
+import { AGENT_SKILLS, isSkillAllowedForOrigin, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
 import { extractJson } from '../../lib/agents/orchestrator';
 import { callLlm, type LlmRequest } from '../../lib/llmClient';
 import type { IntegrationsBundle } from '../../types/integrations';
@@ -101,7 +101,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
         let observation = '';
         try {
             const r = await deps.runSkill(tool, v.action?.input ?? '');
-            observation = r ? (r.ok ? r.text : `Tool error: ${r.text}`) : `Unknown tool "${tool}".`;
+            observation = r ? (r.ok ? r.text : `Tool error: ${r.text}`) : `Unknown tool "${tool}" — it is not available here; use only the TOOLS listed.`;
             if (r) toolsUsed.add(tool);
         } catch (err) {
             observation = `Tool threw: ${err instanceof Error ? err.message : String(err)}`;
@@ -130,20 +130,28 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
 /**
  * Production builder: ReAct over the real AGENT_SKILLS with the user's LLM
  * bundle. Returns null-producing fn when no LLM is configured (runner skips).
+ *
+ * PROVENANCE GATE: the tool name and input come from MODEL output (which a
+ * prompt-injected web-search observation can steer), so this loop is origin
+ * 'model' — only the autonomous-safe allowlist (skills.ts
+ * isSkillAllowedForOrigin) is offered to the model or ever run. The code
+ * runner, memory writes, widget actions and paid skills stay human-only.
  */
 export function buildReactLoopFn(llm: IntegrationsBundle['llm']) {
     const ctx: SkillContext = { llm };
-    const byName = new Map<string, AgentSkill>(AGENT_SKILLS.map(s => [s.name.toLowerCase(), s]));
+    const allowed = AGENT_SKILLS.filter(s => isSkillAllowedForOrigin(s, 'model'));
+    const byName = new Map<string, AgentSkill>(allowed.map(s => [s.name.toLowerCase(), s]));
     return async (task: string, fewShot: string): Promise<ReactLoopResult | null> => {
         const result = await runReactLoop(task, fewShot, {
             invoke: async (req) => (await callLlm(req, llm))?.text ?? null,
             runSkill: async (name, input) => {
                 const skill = byName.get(name.toLowerCase());
-                if (!skill) return null;
+                // Not offered, or not safe for a model-chosen call: refused (null → "not available", never counted as used).
+                if (!skill || !isSkillAllowedForOrigin(skill, 'model')) return null;
                 const r = await skill.run(input, ctx);
                 return { ok: r.ok, text: r.text };
             },
-            skills: AGENT_SKILLS.map(s => ({ name: s.name, description: s.description })),
+            skills: allowed.map(s => ({ name: s.name, description: s.description })),
         });
         return result.ok ? result : null;
     };

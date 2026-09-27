@@ -47,7 +47,10 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
-import { runSkillForInput, describeSkillsForPrompt, AGENT_SKILLS } from '../../lib/agents/skills';
+import { runSkillForInput, describeSkillsForPrompt, AGENT_SKILLS, isSkillAllowedForOrigin } from '../../lib/agents/skills';
+
+/** The browser skills Hermes may run on its own (model-chosen → autonomous-safe allowlist only). */
+const HERMES_BROWSER_SKILLS = AGENT_SKILLS.filter(s => isSkillAllowedForOrigin(s, 'model'));
 import CostAdvisorPanel from '../AiSpend/CostAdvisorPanel';
 import {
     arrangeMarkdownFiles,
@@ -700,12 +703,12 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     {/* Tool Registry — backend tools when up, browser-side skills otherwise */}
                     <div className="hhp__tools-section">
                         <h3 className="hhp__section-title">
-                            <Wrench size={16} aria-hidden /> {hermesTools.length > 0 ? `Registered Tools (${hermesTools.length})` : `Browser-side Skills (${AGENT_SKILLS.length})`}
+                            <Wrench size={16} aria-hidden /> {hermesTools.length > 0 ? `Registered Tools (${hermesTools.length})` : `Browser-side Skills (${HERMES_BROWSER_SKILLS.length})`}
                         </h3>
                         <div className="hhp__tools-grid">
                             {(hermesTools.length > 0
                                 ? hermesTools
-                                : AGENT_SKILLS.map(s => ({ name: s.name, description: s.description }))
+                                : HERMES_BROWSER_SKILLS.map(s => ({ name: s.name, description: s.description }))
                             ).map(t => (
                                 <div key={t.name} className="hhp__tool-card">
                                     <span className="hhp__tool-name">{t.name}</span>

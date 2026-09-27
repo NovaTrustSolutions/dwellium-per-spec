@@ -1,0 +1,3 @@
+# Docs/code.md is an append-only log (one entry per fix, always added at the end), so two branches
+# in flight always collide at the tail. union keeps both sides instead of raising a conflict.
+Docs/code.md merge=union

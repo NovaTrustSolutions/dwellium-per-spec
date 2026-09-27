@@ -63,7 +63,12 @@ export interface RecalledPassage {
     score: number;
 }
 
-export interface RecallPassagesOptions { limit?: number; excludeSourceIds?: string[]; }
+export interface RecallPassagesOptions {
+    limit?: number;
+    excludeSourceIds?: string[];
+    /** Don't count this as a network query or log it (live previews while typing). */
+    silent?: boolean;
+}
 
 /**
  * Structured sibling of `recallContext`: the ranked passages themselves (same
@@ -80,7 +85,7 @@ export async function recallPassages(userId: string | null | undefined, query: s
         if (cmn.metrics().counts.passages === 0) return [];
         const limit = opts.limit ?? DEFAULT_PASSAGES_LIMIT;
         const exclude = new Set(opts.excludeSourceIds ?? []);
-        const result = cmn.recall(q, limit + (opts.excludeSourceIds?.length ?? 0));
+        const result = cmn.recall(q, limit + (opts.excludeSourceIds?.length ?? 0), { silent: opts.silent });
         const seenPassageIds = new Set<string>();
         const out: RecalledPassage[] = [];
         for (const rp of relevantHits(result)) {

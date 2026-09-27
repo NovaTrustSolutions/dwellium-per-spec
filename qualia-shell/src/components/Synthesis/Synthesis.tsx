@@ -133,7 +133,7 @@ export default function Synthesis() {
         const seq = ++requestSeqRef.current;
         const stillOwner = captureOwner();
         const timer = setTimeout(() => {
-            void recallPassages(uid, q, { limit: 6 }).then((res) => {
+            void recallPassages(uid, q, { limit: 6, silent: true }).then((res) => {
                 if (seq !== requestSeqRef.current || !stillOwner()) return; // stale query or account switched
                 setPreviewSources(res);
                 setSearchedQuery(q);

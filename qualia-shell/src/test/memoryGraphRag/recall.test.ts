@@ -89,4 +89,14 @@ describe('formatRecall / withRecall', () => {
         expect(withRecall('SYS', empty)).toBe('SYS');
         expect(withRecall('SYS', 'MEM')).toBe('SYS\n\nMEM');
     });
+    it('silent recall does not count as a query (live previews must not flood CMN metrics/log)', async () => {
+        const cmn = getCmn('andy');
+        await cmn.ingest(DOCS, 'test');
+        const before = cmn.metrics().queries;
+        const hits = await recallPassages('andy', 'Who serviced the boiler?', { silent: true });
+        expect(hits.length).toBeGreaterThan(0);
+        expect(cmn.metrics().queries).toBe(before);
+        await recallPassages('andy', 'Who serviced the boiler?');
+        expect(cmn.metrics().queries).toBe(before + 1);
+    });
 });

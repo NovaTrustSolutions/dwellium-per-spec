@@ -12,12 +12,14 @@ const OPEN_FENCE = '<<<SOURCES';
 const CLOSE_FENCE = 'SOURCES>>>';
 
 /** Neutralise fence-spoofing text inside a source's own title/text (ponytail: string swap, not a parser). */
+// Case/spacing variants too (`<<< sources`, `Sources >>>`) — the model reads them the same.
 function neutraliseFences(s: string): string {
-    return s.split(OPEN_FENCE).join('«SOURCES»»»').split(CLOSE_FENCE).join('SOURCES»»»');
+    return s.replace(/<<<\s*sources/gi, '«SOURCES»»»').replace(/sources\s*>>>/gi, 'SOURCES»»»');
 }
 
 function formatSource(rp: RecalledPassage, index: number): string {
-    const title = neutraliseFences(rp.title?.trim() || '(untitled)');
+    // Titles are collapsed like text: a newline in a title could forge an extra `[n]` source line.
+    const title = neutraliseFences(rp.title?.replace(/\s+/g, ' ').trim() || '(untitled)');
     const text = neutraliseFences(rp.text.replace(/\s+/g, ' ').trim());
     return `[${index + 1}] ${title} (${rp.sourceKind})\n${text}`;
 }

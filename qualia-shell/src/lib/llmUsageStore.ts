@@ -556,3 +556,8 @@ export function useLlmUsage(): UsageLedger {
     const stored = useSyncExternalStore(llmUsageStore.subscribe, llmUsageStore.getSnapshot, llmUsageStore.getServerSnapshot);
     return useMemo(() => aggregateCached(stored), [stored]);
 }
+
+/** Non-hook read of the current aggregate ledger (background runners, non-React code). */
+export function currentUsageLedger(): UsageLedger {
+    return aggregateCached(llmUsageStore.getSnapshot());
+}

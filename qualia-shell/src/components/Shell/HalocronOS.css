@@ -52,8 +52,6 @@
 .hos-agent:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--text-primary, #fff); border-color: color-mix(in srgb, var(--accent) 25%, transparent); }
 .hos-agent__orb { width: 16px; height: 16px; border-radius: 50%; flex: none; box-shadow: 0 0 10px -2px currentColor; }
 .hos-agent__name { flex: 1; }
-.hos-agent__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-tertiary, #555); flex: none; }
-.hos-agent__dot.on { background: #34d399; box-shadow: 0 0 8px -1px #34d399; }
 
 .hos--compact .hos-rail {
     width: 56px;
@@ -77,7 +75,6 @@
 }
 .hos--compact .hos-agents__h,
 .hos--compact .hos-agent__name,
-.hos--compact .hos-agent__dot,
 .hos--compact .hos-min {
     display: none;
 }

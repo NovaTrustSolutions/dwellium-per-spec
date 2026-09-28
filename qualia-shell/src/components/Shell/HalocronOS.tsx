@@ -490,7 +490,6 @@ export default function HalocronOS() {
                             title={`Open ${a.name}`}>
                             <span className="hos-agent__orb" style={{ background: a.color }} />
                             <span className="hos-agent__name">{a.name}</span>
-                            <span className={`hos-agent__dot ${a.online ? 'on' : ''}`} />
                         </button>
                     ))}
                 </div>

@@ -79,13 +79,13 @@ describe('mergeSyntheses (pure)', () => {
         expect(merged.map((x) => x.id)).toEqual(['new', 'old']);
     });
 
-    it('caps at MAX_SYNTHESES', () => {
+    it('never drops a capture nobody deleted, even past MAX_SYNTHESES (two full devices)', () => {
         const base = Date.parse('2026-01-01T00:00:00.000Z');
         const local = Array.from({ length: MAX_SYNTHESES }, (_, i) => s(`l${i}`, new Date(base + i * 1000).toISOString()));
-        const remote = [s('extra', '2026-02-01T00:00:00.000Z')];
+        const remote = Array.from({ length: MAX_SYNTHESES }, (_, i) => s(`r${i}`, new Date(base + 500 + i * 1000).toISOString()));
         const merged = mergeSyntheses(local, remote, EMPTY_TOMBSTONES);
-        expect(merged.length).toBe(MAX_SYNTHESES);
-        expect(merged[0].id).toBe('extra'); // newest survives the cap
+        expect(merged.length).toBe(2 * MAX_SYNTHESES);
+        expect(new Date(merged[0].capturedAt).getTime()).toBeGreaterThan(new Date(merged[merged.length - 1].capturedAt).getTime());
     });
 
     it('drops a remote entry that fails sanitization (no string result)', () => {

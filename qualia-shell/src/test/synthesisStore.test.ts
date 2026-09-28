@@ -65,16 +65,25 @@ describe('captureSynthesis', () => {
         expect(snap[0].result).toBe('r1-edited');
     });
 
-    it('caps at MAX_SYNTHESES, dropping the oldest', () => {
-        for (let i = 0; i < MAX_SYNTHESES + 5; i++) {
-            captureSynthesis({ id: `s${i}`, query: `q${i}`, result: `r${i}`, layer: 1, parentId: null }, NOW);
+    it('refuses the capture past MAX_SYNTHESES instead of silently dropping the oldest', () => {
+        for (let i = 0; i < MAX_SYNTHESES; i++) {
+            expect(captureSynthesis({ id: `s${i}`, query: `q${i}`, result: `r${i}`, layer: 1, parentId: null }, NOW).ok).toBe(true);
         }
+        const r = captureSynthesis({ id: 'one-too-many', query: 'q', result: 'r', layer: 1, parentId: null }, NOW);
+        expect(r).toEqual({ ok: false, reason: 'full' });
         const snap = synthesisStore.getSnapshot();
         expect(snap.length).toBe(MAX_SYNTHESES);
-        // newest survives, oldest (s0..s4) were dropped
-        expect(snap[0].id).toBe(`s${MAX_SYNTHESES + 4}`);
-        expect(snap.find((x) => x.id === 's0')).toBeUndefined();
-        expect(snap.find((x) => x.id === 's4')).toBeUndefined();
+        expect(snap.find((x) => x.id === 's0')).toBeDefined();
+        // re-capturing an EXISTING id is still allowed when full (replaces, doesn't grow)
+        expect(captureSynthesis({ id: 's0', query: 'q0', result: 'edited', layer: 1, parentId: null }, NOW).ok).toBe(true);
+    });
+
+    it('a capture on a device whose clock is behind still postdates a clear it already knows about', async () => {
+        const { recordClear, applyTombstones, synthesisTombstoneStore } = await import('../components/Synthesis/synthesisTombstones');
+        recordClear(Date.parse('2026-06-04T12:00:00.000Z') + 60_000); // clear stamped 1 min "after" this device's clock
+        const r = captureSynthesis({ id: 'new', query: 'q', result: 'r', layer: 1, parentId: null }, NOW);
+        expect(r.ok).toBe(true);
+        expect(applyTombstones(synthesisStore.getSnapshot(), synthesisTombstoneStore.getSnapshot()).map((x) => x.id)).toEqual(['new']);
     });
 
     it('returns {ok:false, reason:"quota"} and leaves the store unchanged on QuotaExceededError', () => {

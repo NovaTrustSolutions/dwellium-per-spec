@@ -38,7 +38,7 @@ export const MAX_SYNTHESES = 300;
 
 export type CaptureResult =
     | { ok: true; synthesis: Synthesis }
-    | { ok: false; reason: 'empty' | 'quota' };
+    | { ok: false; reason: 'empty' | 'quota' | 'full' };
 
 export function resolveSynthesisKey(): string {
     const uid = synthesisUserIdHolder.current;
@@ -80,10 +80,12 @@ export function mergeSyntheses(local: Synthesis[], remote: Synthesis[], t: Synth
         if (!existing || capturedAtMs(s) > capturedAtMs(existing)) byId.set(s.id, s);
     }
     const pruned = applyTombstones(Array.from(byId.values()), t);
+    // No cap here: a merge must never drop a capture nobody deleted (two devices
+    // with MAX_SYNTHESES each would otherwise silently lose half). The cap is
+    // enforced only at capture time, as a visible refusal (plan 070 P4 review).
     return pruned
         .slice()
-        .sort((a, b) => capturedAtMs(b) - capturedAtMs(a))
-        .slice(0, MAX_SYNTHESES);
+        .sort((a, b) => capturedAtMs(b) - capturedAtMs(a));
 }
 
 export const synthesisStore = withSync(
@@ -148,13 +150,15 @@ export function captureSynthesis(
         result: entry.result,
         layer: entry.layer,
         parentId: entry.parentId,
-        capturedAt: now.toISOString(),
+        capturedAt: new Date(stampAfterKnownDeletes(entry.id, now.getTime())).toISOString(),
         ...(entry.followUp?.trim() ? { followUp: entry.followUp.trim() } : {}),
         ...(entry.sources?.length ? { sources: entry.sources } : {}),
     };
     const cur = synthesisStore.getSnapshot();
     const rest = cur.filter((x) => x.id !== entry.id);
-    const next = [s, ...rest].slice(0, MAX_SYNTHESES);
+    // Full: refuse visibly instead of silently dropping the oldest capture.
+    if (rest.length >= MAX_SYNTHESES) return { ok: false, reason: 'full' };
+    const next = [s, ...rest];
 
     // Try the write directly first so a quota error can be detected and
     // reported WITHOUT mutating the store — createLocalStorageStore.set()'s
@@ -186,6 +190,17 @@ function isQuotaError(err: unknown): boolean {
 function timeOf(s: Synthesis): number {
     const t = Date.parse(s.capturedAt);
     return Number.isFinite(t) ? t : 0;
+}
+
+/**
+ * A capture must postdate every clear/delete this device already knows about,
+ * or a device whose clock runs behind would have its brand-new capture removed
+ * by an older clear. (A clear this device hasn't synced yet can still win if it
+ * happened within the clock gap before the capture — timestamps can't fix that.)
+ */
+function stampAfterKnownDeletes(id: string, nowMs: number): number {
+    const t = synthesisTombstoneStore.getSnapshot();
+    return Math.max(nowMs, t.clearedAt + 1, (t.deleted[id] ?? -1) + 1);
 }
 
 export function removeSynthesis(id: string): void {

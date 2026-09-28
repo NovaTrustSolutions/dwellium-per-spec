@@ -429,7 +429,10 @@ function makeSynced<T>(
             // A local edit landed while the GET was in flight (e.g. typing in a
             // just-opened lazy widget): local is newer and is already queued for
             // write-through — applying the stale remote would eat the user's input.
-            if (localWriteSeq !== seqAtStart) return;
+            // Stores with a `merge` don't bail: the merge below reads the CURRENT local
+            // snapshot (edit included) and unions it with remote. Bailing would let the
+            // queued local-only write overwrite remote items (plan 070 P4 review).
+            if (!merge && localWriteSeq !== seqAtStart) return;
             // The account switched while the GET was in flight: the dynamic-key base
             // store now resolves to the NEW owner's key, so applying (or merging) the
             // old owner's payload would write it into the new account's storage.
@@ -460,7 +463,13 @@ function makeSynced<T>(
                     // Local-only data survived the merge (differs from what the
                     // backend actually has) — schedule a write-through so it
                     // reaches the backend instead of only living in this tab.
-                    if (JSON.stringify(merged) !== JSON.stringify(remoteValue)) {
+                    // Also re-queue when a write for this object is already pending or in
+                    // flight: it holds an OLDER local value (e.g. a prune that ran before
+                    // this hydrate) and would otherwise land after the merge and overwrite
+                    // remote with it. Re-queuing the merged value replaces a queued entry,
+                    // or follows an in-flight one — the last write is always the merge.
+                    // Plan 070 P4 review: bootstrap hydrates stores concurrently.
+                    if (JSON.stringify(merged) !== JSON.stringify(remoteValue) || flushQueue.has(objectId()) || pending.has(objectId())) {
                         scheduleWriteThrough(merged);
                     }
                 } else {

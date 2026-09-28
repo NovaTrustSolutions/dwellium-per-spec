@@ -339,4 +339,47 @@ describe('Synthesis Lab cross-device sync', () => {
         expect(synthesisStore.getSnapshot().map((s) => s.id)).toEqual(['y']);
         expect(capturesOf(OWNER).map((s) => s.id)).toEqual(['y']);
     });
+    it('10. real bootstrap hydrates both stores CONCURRENTLY — a pruned stale local never overwrites the server', async () => {
+        await asDevice('B', () => {
+            captureSynthesis({ id: 'ghost', query: 'q', result: 'rg', layer: 1, parentId: null }, new Date('2026-01-01T00:00:00.000Z'));
+        });
+        await flush();
+        await asDevice('A', async () => {
+            await synthesisTombstoneStore.hydrate();
+            await synthesisStore.hydrate();
+            removeSynthesis('ghost');
+            captureSynthesis({ id: 'a', query: 'q', result: 'ra', layer: 1, parentId: null }, new Date('2026-01-02T00:00:00.000Z'));
+        });
+        await flush();
+        expect(capturesOf(OWNER).map((s) => s.id)).toEqual(['a']);
+        // B still has only its stale local ['ghost']; bootstrap hands both stores
+        // their prefetched objects and hydrates them without awaiting in between.
+        await asDevice('B', async () => {
+            const tomb = server.get(`synthesis-tombstones_${OWNER}`) ?? null;
+            const caps = server.get(`synthesis_${OWNER}`) ?? null;
+            await Promise.all([synthesisTombstoneStore.hydrate(tomb), synthesisStore.hydrate(caps)]);
+        });
+        await flush();
+        expect(capturesOf(OWNER).map((s) => s.id)).toEqual(['a']);
+        await asDevice('B', () => { expect(synthesisStore.getSnapshot().map((s) => s.id)).toEqual(['a']); });
+    });
+
+    it('11. a capture made while the hydrate GET is in flight is merged with remote, not uploaded alone over it', async () => {
+        await asDevice('A', () => {
+            captureSynthesis({ id: 'remote-1', query: 'q', result: 'r1', layer: 1, parentId: null }, new Date('2026-01-01T00:00:00.000Z'));
+        });
+        await flush();
+        await asDevice('B', async () => {
+            let release!: () => void;
+            const gate = new Promise<void>((r) => { release = r; });
+            const realGet = vi.mocked(oneSaveClient.get).getMockImplementation()!;
+            vi.mocked(oneSaveClient.get).mockImplementationOnce(async (id: string) => { await gate; return realGet(id); });
+            const h = synthesisStore.hydrate();
+            captureSynthesis({ id: 'local-1', query: 'q', result: 'l1', layer: 1, parentId: null }, new Date('2026-01-02T00:00:00.000Z'));
+            release();
+            await h;
+        });
+        await flush();
+        expect(capturesOf(OWNER).map((s) => s.id).sort()).toEqual(['local-1', 'remote-1']);
+    });
 });

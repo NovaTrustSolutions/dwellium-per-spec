@@ -35,7 +35,7 @@ import { recallPassages, type RecalledPassage } from '../../lib/memoryGraphRag/r
 import { buildGroundedPrompt, sourceWidget } from './synthesisContext';
 import { renderAnswerHtml } from './synthesisRender';
 import {
-    synthesisStore, captureSynthesis, removeSynthesis, clearSyntheses,
+    synthesisStore, captureSynthesis, removeSynthesis, clearSyntheses, MAX_SYNTHESES,
     newSynthesisId, buildSecondLayerPrompt, type Synthesis as SynthesisEntry, type SynthesisSource,
 } from './synthesisStore';
 import { captureFacts } from '../Hive/copawStore';
@@ -235,6 +235,8 @@ export default function Synthesis() {
         const res = captureSynthesis({ id: answer.id, query: answer.query, result: answer.result, layer: answer.layer, parentId: answer.parentId, followUp: answer.followUp, sources: answer.sources });
         if (res.ok) {
             captureFacts('Synthesis Lab', answer.result); // CoPaw §8.5 — only on Capture, never on a bare Synthesize
+        } else if (res.reason === 'full') {
+            setErr(`You have ${MAX_SYNTHESES} captured syntheses — delete some to capture more.`);
         } else if (res.reason === 'quota') {
             setErr('Storage is full — delete some captured syntheses and try again.');
         }

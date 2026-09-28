@@ -102,6 +102,7 @@ export default function Synthesis() {
         setPreviewSources([]);
         setChecked({});
         setSearchedQuery(null);
+        setHistoryQuery('');
     }
 
     // Debounced source preview — never blocks typing; ignores stale responses
@@ -219,6 +220,8 @@ export default function Synthesis() {
     };
 
     const onQueryKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        // IME: Enter confirms a CJK composition — never submit mid-composition.
+        if (e.nativeEvent.isComposing) return;
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
             onSynthesize();

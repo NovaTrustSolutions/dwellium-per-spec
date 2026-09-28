@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { setPerUserIdentity, copawUserIdHolder } from '../lib/perUserIdentity';
-import { synthesisStore, synthesisUserIdHolder } from '../components/Synthesis/synthesisStore';
+import { synthesisStore, synthesisUserIdHolder, captureSynthesis } from '../components/Synthesis/synthesisStore';
 import { copawStore } from '../components/Hive/copawStore';
 import { tagStore, tagsForItem } from '../lib/tagStore';
 
@@ -659,5 +659,27 @@ describe('Synthesis Lab — styling/a11y/markdown polish (plan 070 phase 3)', ()
 
         expect(screen.getByText('root answer')).toBeInTheDocument();
         expect((screen.getByLabelText('Question to synthesize') as HTMLTextAreaElement).value).toBe('root question');
+    });
+    it('Cmd/Ctrl+Enter during an IME composition does not submit', async () => {
+        callLlmMock.mockResolvedValue({ text: 'answer body' });
+        render(<Synthesis />);
+        typeQuery('日本語の質問');
+        fireEvent.keyDown(screen.getByLabelText('Question to synthesize'), { key: 'Enter', ctrlKey: true, isComposing: true });
+        await new Promise((r) => setTimeout(r, 50));
+        expect(callLlmMock).not.toHaveBeenCalled();
+    });
+    it('an account switch clears the history search text', () => {
+        for (const uid of ['user-a', 'user-b']) {
+            synthesisUserIdHolder.current = uid;
+            captureSynthesis({ id: `s-${uid}`, query: `q for ${uid}`, result: 'r', layer: 1, parentId: null });
+        }
+        setPerUserIdentity('user-a');
+        const { rerender } = render(asUser('user-a'));
+        fireEvent.change(screen.getByLabelText('Search captured syntheses'), { target: { value: 'leftover filter' } });
+        expect(screen.getByText('No captures match')).toBeInTheDocument();
+        setPerUserIdentity('user-b');
+        rerender(asUser('user-b'));
+        expect((screen.getByLabelText('Search captured syntheses') as HTMLInputElement).value).toBe('');
+        expect(screen.getByText('q for user-b')).toBeInTheDocument();
     });
 });

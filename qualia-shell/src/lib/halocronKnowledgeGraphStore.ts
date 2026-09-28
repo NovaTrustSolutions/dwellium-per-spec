@@ -138,11 +138,11 @@ function normalize(raw: unknown): HalocronKnowledgeGraphState {
 }
 
 /**
- * One-time adoption of the pre-per-user, device-wide keys. Only the FIRST account
- * to load on this device inherits them (they were that person's tabs); the keys are
- * then removed and a flag set, so every later new account starts from defaults
- * instead of inheriting — and One Save migrate() uploading — someone else's tabs
- * (plan 072 E2). The adopted copy lives on in that account's own per-user key.
+ * One-time adoption of the pre-per-user, device-wide keys. Only the FIRST signed-in
+ * account to load on this device inherits them (they were that person's tabs); a
+ * flag then stops every later new account from inheriting — and One Save migrate()
+ * uploading — someone else's tabs (plan 072 E2). The adopted copy is written to that
+ * account's own key; the device-wide keys are left in place (never deleted).
  */
 function legacyState(): HalocronKnowledgeGraphState {
     if (typeof window === 'undefined') return { ...DEFAULT_KG_STATE, graphs: {} };
@@ -150,9 +150,6 @@ function legacyState(): HalocronKnowledgeGraphState {
     if (!halocronKnowledgeGraphUserIdHolder.current) return { ...DEFAULT_KG_STATE, graphs: {} };
     try {
         if (window.localStorage.getItem(LEGACY_MIGRATED_KEY)) return { ...DEFAULT_KG_STATE, graphs: {} };
-        window.localStorage.setItem(LEGACY_MIGRATED_KEY, new Date().toISOString());
-    } catch { return { ...DEFAULT_KG_STATE, graphs: {} }; }
-    try {
         const projectRaw = window.localStorage.getItem(LEGACY_PROJECTS_KEY);
         const activeRaw = window.localStorage.getItem(LEGACY_ACTIVE_KEY);
         const parsedProjects = projectRaw ? JSON.parse(projectRaw) : [];
@@ -170,11 +167,12 @@ function legacyState(): HalocronKnowledgeGraphState {
         }
         const adopted = normalize({ extras, activeId: activeRaw || DEFAULT_KG_STATE.activeId, graphs });
         if (projectRaw) {
-            // Persist into the adopting account's own key BEFORE dropping the device-wide copy.
+            // Flag only AFTER a successful parse (a corrupt blob stays adoptable), and keep
+            // the device-wide keys: a One Save hydrate can still replace this adoption with
+            // the account's existing remote record (remote wins, as before), and the device
+            // copy is then the only way back. The flag alone stops the cross-account leak.
             window.localStorage.setItem(resolveKey(), JSON.stringify(adopted));
-            window.localStorage.removeItem(LEGACY_PROJECTS_KEY);
-            window.localStorage.removeItem(LEGACY_ACTIVE_KEY);
-            for (const project of extras) window.localStorage.removeItem(LEGACY_GDATA_PREFIX + project.id);
+            window.localStorage.setItem(LEGACY_MIGRATED_KEY, new Date().toISOString());
         }
         return adopted;
     } catch {

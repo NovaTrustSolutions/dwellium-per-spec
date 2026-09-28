@@ -30,10 +30,10 @@ function loadAs(uid: string | null) {
 describe('KG legacy-key adoption (E2)', () => {
     beforeEach(() => { localStorage.clear(); });
 
-    it('the first signed-in account adopts the legacy tabs, keeps them, and the device copy is gone', () => {
+    it('the first signed-in account adopts the legacy tabs and keeps them; the device copy is never deleted', () => {
         seedLegacy();
         expect(loadAs('user-a').extras.map((p) => p.id)).toEqual([legacyProject.id]);
-        expect(localStorage.getItem('dwellium:kg-projects')).toBeNull();
+        expect(localStorage.getItem('dwellium:kg-projects')).not.toBeNull();
         expect(localStorage.getItem('dwellium:kg:user-a')).toContain(legacyProject.id);
         expect(loadAs('user-a').extras.map((p) => p.id)).toEqual([legacyProject.id]); // survives reload
     });
@@ -44,6 +44,14 @@ describe('KG legacy-key adoption (E2)', () => {
         const b = loadAs('user-b');
         expect(b.extras).toEqual([]);
         expect(b.activeId).toBe(DEFAULT_KG_PROJECTS[0].id);
+    });
+
+    it('a corrupt legacy blob does not lock adoption out (flag set only after a good parse)', () => {
+        localStorage.setItem('dwellium:kg-projects', '{not json');
+        expect(loadAs('user-a').extras).toEqual([]);
+        expect(localStorage.getItem('dwellium:kg-legacy-migrated')).toBeNull();
+        seedLegacy();
+        expect(loadAs('user-c').extras.map((p) => p.id)).toEqual([legacyProject.id]);
     });
 
     it('a signed-out read never claims (or deletes) the legacy tabs', () => {

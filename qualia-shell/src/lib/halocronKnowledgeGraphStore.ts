@@ -22,7 +22,14 @@ export interface KgGraphData {
     nodes: { label: string; cluster: number; importance: number; deg: number }[];
     links: [number, number][];
     builtAt: string;
+    /** Absent = 'static-import-graph' (public/data/kg/*.json). 'github-tree' links are synthesized directory hubs. */
+    source?: 'static-import-graph' | 'github-tree';
+    /** Files in the repo before the render cap (nodes.length is what is drawn). */
+    totalFiles?: number;
 }
+
+/** 'knowledge' = the user's own graphify graph (GraphifyView); 'repos' = the code-repo tabs. */
+export type KgView = 'knowledge' | 'repos';
 
 export interface HalocronKnowledgeGraphState {
     /** User-added graph tabs. Shipped defaults stay in DEFAULT_KG_PROJECTS. */
@@ -31,6 +38,8 @@ export interface HalocronKnowledgeGraphState {
     activeId: string;
     /** Generated graph payloads for user-added repos, keyed by project id. */
     graphs: Record<string, KgGraphData>;
+    /** Which view the widget shows. Defaults to the user's own graph. */
+    view: KgView;
 }
 
 // files/clusters are REAL counts from the static import-graph build
@@ -49,6 +58,7 @@ export const DEFAULT_KG_STATE: HalocronKnowledgeGraphState = {
     extras: [],
     activeId: DEFAULT_KG_PROJECTS[0].id,
     graphs: {},
+    view: 'knowledge',
 };
 
 const LEGACY_PROJECTS_KEY = 'dwellium:kg-projects';
@@ -121,6 +131,7 @@ function normalize(raw: unknown): HalocronKnowledgeGraphState {
         extras,
         activeId,
         graphs: normalizeGraphs(parsed.graphs),
+        view: parsed.view === 'repos' ? 'repos' : 'knowledge',
     };
 }
 
@@ -186,6 +197,12 @@ export function setKgActiveProject(activeId: string): void {
     saveHalocronKnowledgeGraphState({ ...current, activeId });
 }
 
+export function setKgView(view: KgView): void {
+    const current = halocronKnowledgeGraphStore.getSnapshot();
+    if (current.view === view) return;
+    saveHalocronKnowledgeGraphState({ ...current, view });
+}
+
 export function upsertKgProject(project: KgProject, graph?: KgGraphData): void {
     const current = halocronKnowledgeGraphStore.getSnapshot();
     const normalizedProject = normalizeProject(project);
@@ -193,6 +210,7 @@ export function upsertKgProject(project: KgProject, graph?: KgGraphData): void {
         ? current.extras.map((item) => item.id === normalizedProject.id ? normalizedProject : item)
         : [...current.extras, normalizedProject];
     saveHalocronKnowledgeGraphState({
+        ...current,
         extras,
         activeId: normalizedProject.id,
         graphs: graph ? { ...current.graphs, [normalizedProject.id]: graph } : current.graphs,

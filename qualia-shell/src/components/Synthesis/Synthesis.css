@@ -1,0 +1,17 @@
+/* Synthesis Lab — plan 070 phase 3. CONTRACT (P0): class names below are shared by
+   the CSS agent (owns this file) and the integrator (owns Synthesis.tsx).
+   Theme tokens only — no hardcoded hex (see Wiki.css header for the verified list).
+
+   .syn-host (container-type: inline-size)   .syn-root
+   .syn-header .syn-title .syn-layer .syn-steps .syn-step .syn-step--done
+   .syn-body .syn-main .syn-side
+   .syn-query  .syn-focus (second-pass focus input)
+   .syn-actions .syn-btn .syn-btn--primary .syn-btn--accent .syn-btn--ghost .syn-icon-btn
+   .syn-hint (muted helper text)  .syn-spin (spinner icon)  .syn-sr-only
+   .syn-sources .syn-sources__head .syn-sources__item .syn-sources__empty
+   .syn-error (role=alert)  .syn-notice (role=status, e.g. cut-off)
+   .syn-answer .syn-answer__head .syn-answer__label .syn-answer__body (rendered Markdown)
+   .syn-answer__sources .syn-answer__foot .syn-cite (inline [n] button) .syn-lineage
+   .syn-side__head .syn-side__search .syn-side__list .syn-side__empty
+   .syn-hist .syn-hist__open .syn-hist__title .syn-hist__meta .syn-hist__del
+*/

@@ -61,7 +61,6 @@ describe('DocViewer annotation render sizes scale with viewport.scale (adversari
         HTMLCanvasElement.prototype.getContext = vi.fn(function (this: HTMLCanvasElement) {
             return this.classList.contains('dv-overlay-canvas') ? overlayCtx : baseCtx;
         }) as never;
-        vi.stubGlobal('prompt', vi.fn(() => 'HI'));
         vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = String(input);
             const method = init?.method || 'GET';
@@ -86,11 +85,17 @@ describe('DocViewer annotation render sizes scale with viewport.scale (adversari
         fireEvent.change(await screen.findByRole('combobox'), { target: { value: FILE.id } });
 
         // Place a 16pt text annotation — committed font should read
-        // `${16 * VIEWPORT_SCALE}px`.
+        // `${16 * VIEWPORT_SCALE}px`. P2 item 13 (a11y): the 'text' tool no
+        // longer uses window.prompt() — pointer-up opens an inline,
+        // ref-focused field (aria-label "New text annotation") that commits
+        // on Enter.
         fireEvent.click(await screen.findByTitle('Add Text'));
         const overlay = container.querySelector('.dv-overlay-canvas')!;
         fireEvent.pointerDown(overlay, { clientX: 10, clientY: 10, pointerId: 1 });
         fireEvent.pointerUp(overlay, { clientX: 10, clientY: 10, pointerId: 1 });
+        const textInput = await screen.findByLabelText('New text annotation');
+        fireEvent.change(textInput, { target: { value: 'HI' } });
+        fireEvent.keyDown(textInput, { key: 'Enter' });
         await waitFor(() => expect(overlayCtx.font).toContain(`${16 * VIEWPORT_SCALE}px`));
 
         // Draw a freehand stroke at the default size (3) — committed

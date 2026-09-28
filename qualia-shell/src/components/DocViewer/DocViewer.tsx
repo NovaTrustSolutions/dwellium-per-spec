@@ -571,13 +571,66 @@ export default function DocViewer() {
         });
     }, [pushUndo]);
 
+    // P2 item 13 (a11y): 'text' tool placement — an inline, ref-focused field
+    // positioned at the click point, replacing window.prompt(). The pointer
+    // hook only hands back the placement point (viewport + PDF space); the
+    // Annotation is built and committed here on Enter/blur, since fontSize/
+    // drawColor already live in this component.
+    const [pendingTextInsert, setPendingTextInsert] = useState<{ screenX: number; screenY: number; pdfPos: Point; rotation: number } | null>(null);
+    const [pendingTextValue, setPendingTextValue] = useState('');
+    const pendingTextInputRef = useRef<HTMLInputElement | null>(null);
+    useEffect(() => {
+        if (pendingTextInsert) pendingTextInputRef.current?.focus();
+    }, [pendingTextInsert]);
+
+    // R1/R2 fix: addAnnotation is a side effect (writes annotation state +
+    // pushes undo history) and must NOT run inside a setState functional
+    // updater — React 18 StrictMode invokes updaters twice to check purity
+    // and only discards the RETURN value, not side effects performed inside
+    // them, so the bug doubled every placed text annotation. Read
+    // pendingTextInsert as a plain value instead and call addAnnotation
+    // outside any updater.
+    // R1/R2 fix: addAnnotation is a side effect (writes annotation state +
+    // pushes undo history) and must NOT run inside a setState functional
+    // updater — React 18 StrictMode invokes updaters twice to check purity
+    // and only discards the RETURN value, not side effects performed inside
+    // them, so the bug doubled every placed text annotation. Read
+    // pendingTextInsert as a plain value instead and call addAnnotation
+    // outside any updater.
+    const commitPendingTextInsert = useCallback(() => {
+        if (pendingTextInsert && pendingTextValue.trim()) {
+            addAnnotation({
+                id: crypto.randomUUID(),
+                type: 'text',
+                page: currentPage,
+                color: drawColor,
+                opacity: 1,
+                text: pendingTextValue,
+                fontSize,
+                position: pendingTextInsert.pdfPos,
+                rotation: pendingTextInsert.rotation,
+            });
+        }
+        setPendingTextInsert(null);
+        setPendingTextValue('');
+    }, [pendingTextInsert, pendingTextValue, addAnnotation, currentPage, drawColor, fontSize]);
+
+    const cancelPendingTextInsert = useCallback(() => {
+        setPendingTextInsert(null);
+        setPendingTextValue('');
+    }, []);
+
     const pointerTool = useAnnotationPointerTool({
         overlayRef, viewportRef, rootRef,
-        activeTool, currentPage, drawColor, drawSize, fontSize, selectedShape, selectedStamp, signatureStrokes,
+        activeTool, currentPage, drawColor, drawSize, selectedShape, selectedStamp, signatureStrokes,
         renderOverlay: invokeRenderOverlay,
         addAnnotation,
         showToast,
         onNeedSignature: () => setShowSignatureModal(true),
+        onRequestTextInput: (screenPos, pdfPos, rotation) => {
+            setPendingTextValue('');
+            setPendingTextInsert({ screenX: screenPos.x, screenY: screenPos.y, pdfPos, rotation });
+        },
     });
     const { isDrawing, drawStart, currentPath, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } = pointerTool;
 
@@ -1077,7 +1130,13 @@ export default function DocViewer() {
                     // blank) until the user navigated. The `canvasMounted`
                     // dependency on the render effect (above) is the other
                     // half of this fix.
-                    <div className="dv-canvas-container" ref={containerRef}>
+                    // P2 item 13 (a11y): this is the axe scrollable-region-focusable
+                    // fix — an overflow:auto region must be in the tab order so
+                    // keyboard users can scroll it, even though jsx-a11y's default
+                    // config treats a plain <div> as non-interactive (see FluidOS.tsx
+                    // for the same established exception pattern in this repo).
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                    <div className="dv-canvas-container" ref={containerRef} tabIndex={0}>
                         {isLoading && (
                             <div className="dv-loading dv-loading--overlay">
                                 <div className="dv-loading__spinner" />
@@ -1089,13 +1148,33 @@ export default function DocViewer() {
                             {renderError && (
                                 <div className="dv-canvas-error" role="status">{renderError}</div>
                             )}
-                            <canvas ref={setCanvasNode} />
-                            <canvas ref={overlayRef} className="dv-overlay-canvas"
+                            {/* P2 item 13 (a11y): the page canvas itself carries a
+                                meaningful name — which document, which page of how
+                                many — instead of being an unlabeled graphic. */}
+                            <canvas ref={setCanvasNode} aria-label={`${selectedFile.name} — page ${currentPage} of ${totalPages}`} />
+                            <canvas ref={overlayRef} className="dv-overlay-canvas" aria-hidden="true"
                                 onPointerDown={handlePointerDown}
                                 onPointerMove={handlePointerMove}
                                 onPointerUp={handlePointerUp}
                                 onPointerCancel={handlePointerCancel}
                             />
+
+                            {pendingTextInsert && (
+                                <input
+                                    ref={pendingTextInputRef}
+                                    className="dv-inline-text-input"
+                                    style={{ left: pendingTextInsert.screenX, top: pendingTextInsert.screenY, fontSize: `${fontSize}px` }}
+                                    value={pendingTextValue}
+                                    onChange={e => setPendingTextValue(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') { e.preventDefault(); commitPendingTextInsert(); }
+                                        else if (e.key === 'Escape') { e.preventDefault(); cancelPendingTextInsert(); }
+                                    }}
+                                    onBlur={commitPendingTextInsert}
+                                    aria-label="New text annotation"
+                                    placeholder="Enter text…"
+                                />
+                            )}
 
                             {/* Text Layer — visible in editText mode */}
                             {activeTool === 'editText' && textItems.length > 0 && (
@@ -1177,10 +1256,15 @@ export default function DocViewer() {
                 showToast={showToast}
             />
 
-            {/* Toast */}
-            {toast && (
-                <div className="dv-toast">{toast}</div>
-            )}
+            {/* Toast — the visible bubble is unchanged (still mounts only
+                while a toast is showing). P2 item 13 (a11y): a SEPARATE,
+                permanently-mounted role="status" region carries the same
+                text for assistive tech — a live region that itself mounts
+                and unmounts on every toast is not reliably announced, since
+                AT needs the region to already exist in the DOM before its
+                content changes. */}
+            {toast && <div className="dv-toast">{toast}</div>}
+            <div className="sr-only" role="status" aria-live="polite">{toast}</div>
         </div>
     );
 }

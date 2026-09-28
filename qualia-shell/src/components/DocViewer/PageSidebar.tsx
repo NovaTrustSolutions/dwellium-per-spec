@@ -13,14 +13,23 @@ export default function PageSidebar({ totalPages, currentPage, onGoToPage, onIns
     if (totalPages <= 0) return null;
     return (
         <div className="dv-nav">
-            {Array.from({ length: totalPages }, (_, i) => (
-                <div key={i + 1}
-                    className={`dv-nav__thumb ${currentPage === i + 1 ? 'dv-nav__thumb--active' : ''}`}
-                    onClick={() => onGoToPage(i + 1)}>
-                    p.{i + 1}
-                </div>
-            ))}
-            <button className="dv-nav__add-page" onClick={onInsertPage} title="Insert blank page">
+            {Array.from({ length: totalPages }, (_, i) => {
+                const page = i + 1;
+                const active = currentPage === page;
+                return (
+                    // P2 item 13 (a11y): real <button>s — focusable, Enter/Space
+                    // activate them natively, aria-current marks the open page.
+                    <button key={page} type="button" data-page={page}
+                        className={`dv-nav__thumb ${active ? 'dv-nav__thumb--active' : ''}`}
+                        aria-current={active ? 'true' : undefined}
+                        aria-label={`Page ${page}`}
+                        onClick={() => onGoToPage(page)}>
+                        p.{page}
+                    </button>
+                );
+            })}
+            <button type="button" className="dv-nav__add-page" onClick={onInsertPage}
+                aria-label="Insert blank page after current page" title="Insert blank page">
                 +
             </button>
         </div>

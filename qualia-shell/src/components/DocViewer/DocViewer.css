@@ -50,6 +50,16 @@
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
+    /* Now a real <button> (P2 item 13) — reset UA button chrome so it still
+       looks like the plain thumbnail it always was. */
+    font-family: inherit;
+    margin: 0;
+}
+
+.dv-nav__thumb:focus-visible,
+.dv-nav__add-page:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .dv-nav__thumb::before {
@@ -313,9 +323,18 @@
 .dv-color-picker {
     position: absolute;
     top: 100%;
-    left: 0;
+    /* R5 fix: was `left: 0`, which anchors the panel's left edge to the
+       toggle button and lets it run off the right edge of the viewport when
+       the toggle sits late in a wrapped toolbar row (measured 76px off at
+       375px, 36px off at 600px). Center under the toggle instead, same
+       technique as .dv-stamp-picker below (which doesn't have this
+       problem), and cap the width so it still fits a 375px phone. */
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(220px, calc(100vw - 32px));
     z-index: 100;
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     padding: 8px;
     background: #1a1a2e;
@@ -363,6 +382,13 @@
     background: var(--accent);
     cursor: pointer;
     box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* P2 item 13 (a11y): the slider sets `outline: none` above — restore a
+   visible ring for keyboard focus. */
+.dv-size-slider:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 /* ===== FONT SIZE INPUT ===== */
@@ -724,7 +750,9 @@
 }
 
 .dv-modal-btn--primary:hover {
-    background: linear-gradient(135deg, #9198fa, #7c7ff5);
+    /* P2 item 13: was a hard-coded blue/violet gradient — use the design
+       tokens (same --accent-hover .btn-primary:hover uses in global.css). */
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
     transform: translateY(-1px);
     box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 40%, transparent);
 }
@@ -786,17 +814,28 @@
     white-space: nowrap;
     border-radius: 2px;
     transition: background 0.15s ease, box-shadow 0.15s ease;
+    /* Now a real <button> (P2 item 13) — reset UA button chrome so it stays
+       an invisible hit-target until hovered/focused/edited. */
+    appearance: none;
+    background: transparent;
+    border: none;
+    text-align: left;
+    margin: 0;
 }
 
 .dv-text-item:hover {
-    background: rgba(59, 130, 246, 0.15);
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
+    /* P2 item 13: was a hard-coded rgba(59,130,246,…) blue — use the
+       design token instead. */
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
     color: transparent;
 }
 
-.dv-text-item--editing {
-    background: rgba(59, 130, 246, 0.25);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.7);
+.dv-text-item--editing,
+.dv-text-item:focus-visible {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent);
+    color: transparent;
 }
 
 .dv-text-item--edited {
@@ -820,7 +859,8 @@
 .dv-text-editor-input {
     background: var(--bg-surface);
     color: #1a1a2e;
-    border: 2px solid #3b82f6;
+    /* P2 item 13: was a hard-coded #3b82f6 blue — use the design token. */
+    border: 2px solid var(--accent);
     border-radius: 3px;
     padding: 2px 6px;
     font-family: sans-serif;
@@ -831,6 +871,27 @@
 
 .dv-text-editor-input:focus {
     border-color: var(--accent);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* P2 item 13: inline field for the 'text' tool's new-annotation placement —
+   replaces window.prompt(). Same look as the existing-text editor above. */
+.dv-inline-text-input {
+    position: absolute;
+    z-index: 20;
+    background: var(--bg-surface);
+    color: #1a1a2e;
+    border: 2px solid var(--accent);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-family: sans-serif;
+    outline: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-height: 20px;
+    min-width: 100px;
+}
+
+.dv-inline-text-input:focus {
     box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
@@ -897,8 +958,10 @@
 }
 
 .dv-text-preview__editor:focus {
-    border-color: rgba(59, 130, 246, 0.45);
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.18);
+    /* P2 item 13: was a hard-coded rgba(59,130,246,…) blue — use the
+       design token instead. */
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .dv-image-preview {
@@ -915,4 +978,86 @@
     transition: transform 120ms ease;
     border-radius: 16px;
     box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+}
+
+/* ============================================
+   RESPONSIVE — P2 item 13. Desktop layout (above 800px) is untouched; this
+   is the one breakpoint that keeps everything usable down to a 375px phone.
+   ============================================ */
+@media (max-width: 800px) {
+
+    /* File toolbar: wrap instead of overflowing — .dv-edit-toolbar already
+       wraps unconditionally (existing desktop behavior, left alone). */
+    .dv-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .dv-toolbar__file-select {
+        max-width: none;
+        flex-basis: 100%;
+    }
+
+    /* Page thumbnail rail becomes a horizontal strip along the top instead
+       of a fixed 100px-wide vertical column eating a quarter of a phone
+       screen. */
+    .doc-viewer {
+        flex-direction: column;
+    }
+
+    /* R7 fix: flipping .doc-viewer to a column here flips the flex squeeze
+       axis from width to height. .dv-main had no min-height:0, so its
+       automatic minimum height defaulted to its tall PDF-canvas content and
+       it refused to shrink; .dv-nav's overflow-y:hidden zeroed ITS automatic
+       minimum per the flexbox spec, so it lost the space contest and
+       collapsed to its 16px of padding. min-height:0 on .dv-main lets it
+       shrink to the remaining space; flex-shrink:0 + min-height on .dv-nav
+       is belt-and-suspenders so the rail never gets squeezed below its
+       thumbnail height even on very short viewports. */
+    .dv-main {
+        min-height: 0;
+    }
+
+    .dv-nav {
+        width: 100%;
+        min-height: 88px;
+        flex-shrink: 0;
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 8px;
+    }
+
+    .dv-nav__thumb {
+        width: 56px;
+        height: 72px;
+        font-size: 10px;
+    }
+
+    .dv-nav__add-page {
+        width: 56px;
+        height: 56px;
+    }
+
+    /* Signature dialog: fit a 375px phone with margin either side. */
+    .dv-modal {
+        width: min(520px, calc(100vw - 32px));
+    }
+
+    .dv-sig-canvas {
+        height: 160px;
+    }
+}
+
+/* Pointer-target size. Every control already clears the WCAG 2.2 AA floor (24x24 CSS px); on a coarse
+   pointer (touch/pen) they grow to the comfortable 44x44 from WCAG 2.5.5, without loosening the dense
+   desktop toolbar a mouse can hit precisely. */
+@media (pointer: coarse) {
+    .doc-viewer button,
+    .doc-viewer .dv-edit-btn,
+    .doc-viewer .dv-toolbar__btn,
+    .doc-viewer .dv-nav__thumb,
+    .doc-viewer .dv-nav__add-page {
+        min-width: 44px;
+        min-height: 44px;
+    }
 }

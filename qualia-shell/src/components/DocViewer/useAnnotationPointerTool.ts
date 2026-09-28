@@ -32,7 +32,6 @@ export interface UseAnnotationPointerToolOptions {
     currentPage: number;
     drawColor: string;
     drawSize: number;
-    fontSize: number;
     selectedShape: ShapeType;
     selectedStamp: StampType;
     signatureStrokes: Point[][];
@@ -46,6 +45,12 @@ export interface UseAnnotationPointerToolOptions {
     showToast: (msg: string) => void;
     /** No signature drawn yet — open the signature modal. */
     onNeedSignature: () => void;
+    /** P2 item 13 (a11y): 'text' tool pointer-up no longer opens a
+     * window.prompt() — it hands the placement point (viewport + PDF space)
+     * back to DocViewer, which owns an inline, ref-focused text field and
+     * commits the Annotation itself once the user confirms (fontSize/
+     * drawColor already live there). */
+    onRequestTextInput: (screenPos: Point, pdfPos: Point, rotation: number) => void;
 }
 
 export interface UseAnnotationPointerTool {
@@ -61,8 +66,8 @@ export interface UseAnnotationPointerTool {
 export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions): UseAnnotationPointerTool {
     const {
         overlayRef, viewportRef, rootRef, activeTool, currentPage,
-        drawColor, drawSize, fontSize, selectedShape, selectedStamp, signatureStrokes,
-        renderOverlay, addAnnotation, showToast, onNeedSignature,
+        drawColor, drawSize, selectedShape, selectedStamp, signatureStrokes,
+        renderOverlay, addAnnotation, showToast, onNeedSignature, onRequestTextInput,
     } = opts;
 
     const [isDrawing, setIsDrawing] = useState(false);
@@ -201,21 +206,12 @@ export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions):
         // — everything downstream (overlay render, bake) works in PDF space.
         const viewport = viewportRef.current;
 
-        if (activeTool === 'text') {
-            const text = prompt('Enter text:');
-            if (text && viewport) {
-                addAnnotation({
-                    id: crypto.randomUUID(),
-                    type: 'text',
-                    page: currentPage,
-                    color: drawColor,
-                    opacity: 1,
-                    text,
-                    fontSize,
-                    position: pdfCoords.viewportToPdf(viewport, pos.x, pos.y),
-                    rotation: viewport.rotation ?? 0,
-                });
-            }
+        if (activeTool === 'text' && viewport) {
+            // P2 item 13 (a11y): hand placement off to DocViewer's inline
+            // ref-focused text field instead of window.prompt() — it builds
+            // and commits the Annotation itself (fontSize/drawColor live
+            // there), so nothing is added here.
+            onRequestTextInput(pos, pdfCoords.viewportToPdf(viewport, pos.x, pos.y), viewport.rotation ?? 0);
         } else if (activeTool === 'highlight' && viewport) {
             const rx = Math.min(drawStart.x, pos.x);
             const ry = Math.min(drawStart.y, pos.y);
@@ -311,8 +307,8 @@ export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions):
         setDrawStart(null);
     }, [
         isDrawing, drawStart, getCanvasCoords, viewportRef, activeTool, currentPage,
-        drawColor, fontSize, currentPath, drawSize, selectedShape, selectedStamp,
-        signatureStrokes, addAnnotation, showToast, onNeedSignature,
+        drawColor, currentPath, drawSize, selectedShape, selectedStamp,
+        signatureStrokes, addAnnotation, showToast, onNeedSignature, onRequestTextInput,
     ]);
 
     const handlePointerCancel = useCallback((e: React.PointerEvent) => {

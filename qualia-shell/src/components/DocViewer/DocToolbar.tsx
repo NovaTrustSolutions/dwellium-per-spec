@@ -43,6 +43,7 @@ export default function DocToolbar(props: DocToolbarProps) {
         <>
             <div className="dv-toolbar">
                 <select className="dv-toolbar__file-select"
+                    aria-label="Select a document"
                     value={selectedFile?.id || ''}
                     onChange={(e) => {
                         const file = files.find(f => f.id === e.target.value);
@@ -57,22 +58,26 @@ export default function DocToolbar(props: DocToolbarProps) {
                 {selectedFile && (
                     <>
                         {previewMode === 'pdf' && (
-                            <>
-                                <div className="dv-toolbar__page">
-                                    <button className="dv-toolbar__btn" onClick={() => onGoToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page"><ChevronLeft size={14} aria-hidden /></button>
-                                    <input className="dv-toolbar__page-input" type="number" value={currentPage}
-                                        onChange={e => onGoToPage(parseInt(e.target.value) || 1)}
-                                        min={1} max={totalPages} />
-                                    <span>/ {totalPages}</span>
-                                    <button className="dv-toolbar__btn" onClick={() => onGoToPage(currentPage + 1)} disabled={currentPage >= totalPages} aria-label="Next page"><ChevronRight size={14} aria-hidden /></button>
-                                </div>
+                            <div className="dv-toolbar__page">
+                                <button className="dv-toolbar__btn" onClick={() => onGoToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page"><ChevronLeft size={14} aria-hidden /></button>
+                                <input className="dv-toolbar__page-input" type="number" value={currentPage} aria-label="Current page"
+                                    onChange={e => onGoToPage(parseInt(e.target.value) || 1)}
+                                    min={1} max={totalPages} />
+                                <span>/ {totalPages}</span>
+                                <button className="dv-toolbar__btn" onClick={() => onGoToPage(currentPage + 1)} disabled={currentPage >= totalPages} aria-label="Next page"><ChevronRight size={14} aria-hidden /></button>
+                            </div>
+                        )}
 
-                                <div className="dv-zoom">
-                                    <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}>−</button>
-                                    <span className="dv-zoom__level">{Math.round(zoom * 100)}%</span>
-                                    <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.min(3, z + 0.25))}>+</button>
-                                </div>
-                            </>
+                        {/* P2 item 13 / audit #19: zoom now works for image previews
+                            too, not just PDF — the image preview already honors
+                            `zoom` via a CSS transform (see DocViewer.tsx), the
+                            controls just weren't rendered for it. */}
+                        {(previewMode === 'pdf' || previewMode === 'image') && (
+                            <div className="dv-zoom">
+                                <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} aria-label="Zoom out">−</button>
+                                <span className="dv-zoom__level">{Math.round(zoom * 100)}%</span>
+                                <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.min(3, z + 0.25))} aria-label="Zoom in">+</button>
+                            </div>
                         )}
 
                         <button className="dv-toolbar__btn dv-toolbar__btn--download" onClick={onExport} title="Export current document">

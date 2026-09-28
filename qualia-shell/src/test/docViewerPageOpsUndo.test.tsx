@@ -166,15 +166,19 @@ describe('DocViewer page ops + undo — real byte round-trip through the live co
     });
 
     it('R1: rotating a page AFTER placing a text annotation re-syncs its baked rotation (adversarial review of item6-coordinates)', async () => {
-        vi.stubGlobal('prompt', vi.fn(() => 'HELLO'));
         const { container } = render(<DocViewer />);
         const select = await screen.findByRole('combobox');
         fireEvent.change(select, { target: { value: FILE.id } });
 
+        // P2 item 13 (a11y): the 'text' tool no longer uses window.prompt() —
+        // pointer-up opens an inline, ref-focused field that commits on Enter.
         fireEvent.click(await screen.findByTitle('Add Text'));
         const overlay = container.querySelector('.dv-overlay-canvas')!;
         fireEvent.pointerDown(overlay, { clientX: 50, clientY: 50, pointerId: 1 });
         fireEvent.pointerUp(overlay, { clientX: 50, clientY: 50, pointerId: 1 });
+        const textInput = await screen.findByLabelText('New text annotation');
+        fireEvent.change(textInput, { target: { value: 'HELLO' } });
+        fireEvent.keyDown(textInput, { key: 'Enter' });
 
         const saveBtn = await screen.findByRole('button', { name: /save back/i });
         await waitFor(() => expect(saveBtn).not.toBeDisabled());

@@ -5,6 +5,7 @@
  * stays owned by DocViewer and is threaded through as explicit props, so
  * behavior is byte-for-byte what the inline JSX did before the split.
  */
+import { useEffect, useRef } from 'react';
 import {
     ArrowRight, ArrowUp, Bookmark, Circle, Eraser, Highlighter, Minus, PenTool, Pencil,
     Plus, Redo2, RotateCw, Square, Trash2, Undo2,
@@ -13,6 +14,12 @@ import type { ToolMode, ShapeType, StampType } from './docViewerTypes';
 import { STAMP_COLORS } from './docViewerTypes';
 
 const COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#D6FE51', '#ec4899', '#1a1a2e', '#ffffff'];
+// P2 item 13 (a11y): the color swatches are icon-only (a colored square, no
+// text) — each needs a name a screen reader can say.
+const COLOR_NAMES: Record<string, string> = {
+    '#ef4444': 'Red', '#f59e0b': 'Orange', '#22c55e': 'Green', '#3b82f6': 'Blue',
+    '#D6FE51': 'Lime', '#ec4899': 'Pink', '#1a1a2e': 'Dark navy', '#ffffff': 'White',
+};
 const SHAPES: ShapeType[] = ['rectangle', 'circle', 'line', 'arrow'];
 
 export interface EditToolbarProps {
@@ -58,36 +65,65 @@ export default function EditToolbar(props: EditToolbarProps) {
         onUndo, onRedo, canUndo, canRedo, onClearAnnotations,
     } = props;
 
+    // P2 item 13 (a11y): the color/stamp pickers close on Escape and on a
+    // click outside both the picker panel and its own toggle button (the
+    // toggle click bubbles to `document` too, so checking its own ref stops
+    // that click from closing the panel it just opened).
+    const colorToggleRef = useRef<HTMLButtonElement | null>(null);
+    const colorPanelRef = useRef<HTMLDivElement | null>(null);
+    const stampToggleRef = useRef<HTMLButtonElement | null>(null);
+    const stampPanelRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        if (!showColorPicker && !showStampPicker) return;
+        const inside = (ref: React.RefObject<HTMLElement | null>, target: Node) => !!ref.current && ref.current.contains(target);
+        const handlePointer = (e: PointerEvent) => {
+            const target = e.target as Node;
+            if (showColorPicker && !inside(colorToggleRef, target) && !inside(colorPanelRef, target)) setShowColorPicker(false);
+            if (showStampPicker && !inside(stampToggleRef, target) && !inside(stampPanelRef, target)) setShowStampPicker(false);
+        };
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            setShowColorPicker(false);
+            setShowStampPicker(false);
+        };
+        document.addEventListener('pointerdown', handlePointer);
+        document.addEventListener('keydown', handleKey);
+        return () => {
+            document.removeEventListener('pointerdown', handlePointer);
+            document.removeEventListener('keydown', handleKey);
+        };
+    }, [showColorPicker, showStampPicker, setShowColorPicker, setShowStampPicker]);
+
     return (
         <div className="dv-edit-toolbar">
             <div className="dv-edit-toolbar__group">
                 <button className={`dv-edit-btn ${activeTool === 'select' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={onEnterSelectTool} title="Select">
+                    onClick={onEnterSelectTool} title="Select" aria-pressed={activeTool === 'select'}>
                     <span className="dv-edit-btn__icon"><ArrowUp size={14} /></span>
                     <span className="dv-edit-btn__label">Select</span>
                 </button>
                 <button className={`dv-edit-btn ${activeTool === 'editText' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={() => { setActiveTool('editText'); showToast('Click on any text to edit it'); }} title="Edit Existing Text">
+                    onClick={() => { setActiveTool('editText'); showToast('Click on any text to edit it'); }} title="Edit Existing Text" aria-pressed={activeTool === 'editText'}>
                     <span className="dv-edit-btn__icon"><Pencil size={14} /></span>
                     <span className="dv-edit-btn__label">Edit Text</span>
                 </button>
                 <button className={`dv-edit-btn ${activeTool === 'text' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={() => setActiveTool('text')} title="Add Text">
-                    <span className="dv-edit-btn__icon">T</span>
+                    onClick={() => setActiveTool('text')} title="Add Text" aria-pressed={activeTool === 'text'}>
+                    <span className="dv-edit-btn__icon" aria-hidden="true">T</span>
                     <span className="dv-edit-btn__label">Text</span>
                 </button>
                 <button className={`dv-edit-btn ${activeTool === 'highlight' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={() => { setActiveTool('highlight'); setDrawColor('#f59e0b'); }} title="Highlight">
+                    onClick={() => { setActiveTool('highlight'); setDrawColor('#f59e0b'); }} title="Highlight" aria-pressed={activeTool === 'highlight'}>
                     <span className="dv-edit-btn__icon"><Highlighter size={14} /></span>
                     <span className="dv-edit-btn__label">Highlight</span>
                 </button>
                 <button className={`dv-edit-btn ${activeTool === 'draw' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={() => setActiveTool('draw')} title="Freehand Draw">
+                    onClick={() => setActiveTool('draw')} title="Freehand Draw" aria-pressed={activeTool === 'draw'}>
                     <span className="dv-edit-btn__icon"><Pencil size={14} /></span>
                     <span className="dv-edit-btn__label">Draw</span>
                 </button>
                 <button className={`dv-edit-btn ${activeTool === 'shape' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={() => setActiveTool('shape')} title="Shapes">
+                    onClick={() => setActiveTool('shape')} title="Shapes" aria-pressed={activeTool === 'shape'}>
                     <span className="dv-edit-btn__icon"><Square size={14} aria-hidden /></span>
                     <span className="dv-edit-btn__label">Shapes</span>
                 </button>
@@ -97,12 +133,13 @@ export default function EditToolbar(props: EditToolbarProps) {
 
             <div className="dv-edit-toolbar__group">
                 <button className={`dv-edit-btn ${activeTool === 'signature' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={onOpenSignatureModal} title="Signature">
+                    onClick={onOpenSignatureModal} title="Signature" aria-pressed={activeTool === 'signature'}>
                     <span className="dv-edit-btn__icon"><PenTool size={14} /></span>
                     <span className="dv-edit-btn__label">Sign</span>
                 </button>
-                <button className={`dv-edit-btn ${activeTool === 'stamp' ? 'dv-edit-btn--active' : ''}`}
-                    onClick={() => { setActiveTool('stamp'); setShowStampPicker(!showStampPicker); }} title="Stamps">
+                <button ref={stampToggleRef} className={`dv-edit-btn ${activeTool === 'stamp' ? 'dv-edit-btn--active' : ''}`}
+                    onClick={() => { setActiveTool('stamp'); setShowStampPicker(!showStampPicker); }} title="Stamps"
+                    aria-pressed={activeTool === 'stamp'} aria-expanded={showStampPicker} aria-haspopup="true">
                     <span className="dv-edit-btn__icon"><Bookmark size={14} /></span>
                     <span className="dv-edit-btn__label">Stamp</span>
                 </button>
@@ -145,17 +182,19 @@ export default function EditToolbar(props: EditToolbarProps) {
             {(activeTool === 'text' || activeTool === 'draw' || activeTool === 'highlight' || activeTool === 'shape') && (
                 <div className="dv-edit-toolbar__group dv-color-group">
                     <div className="dv-edit-toolbar__divider" />
-                    <button className="dv-edit-btn dv-color-toggle"
+                    <button ref={colorToggleRef} className="dv-edit-btn dv-color-toggle"
                         onClick={() => setShowColorPicker(!showColorPicker)}
-                        title="Color">
+                        title="Color" aria-label="Color" aria-expanded={showColorPicker} aria-haspopup="true">
                         <span className="dv-color-swatch" style={{ background: drawColor }} />
                     </button>
                     {showColorPicker && (
-                        <div className="dv-color-picker">
+                        <div className="dv-color-picker" ref={colorPanelRef}>
                             {COLORS.map(c => (
                                 <button key={c}
                                     className={`dv-color-picker__item ${drawColor === c ? 'dv-color-picker__item--active' : ''}`}
                                     style={{ background: c }}
+                                    aria-label={COLOR_NAMES[c] ?? c}
+                                    aria-pressed={drawColor === c}
                                     onClick={() => { setDrawColor(c); setShowColorPicker(false); }}
                                 />
                             ))}
@@ -168,7 +207,7 @@ export default function EditToolbar(props: EditToolbarProps) {
                 <div className="dv-edit-toolbar__group">
                     <input type="range" min="1" max="12" value={drawSize}
                         onChange={e => setDrawSize(parseInt(e.target.value))}
-                        className="dv-size-slider" title={`Size: ${drawSize}`} />
+                        className="dv-size-slider" title={`Size: ${drawSize}`} aria-label={`Draw size: ${drawSize}`} />
                 </div>
             )}
 
@@ -176,7 +215,7 @@ export default function EditToolbar(props: EditToolbarProps) {
                 <div className="dv-edit-toolbar__group">
                     <input type="number" min="8" max="72" value={fontSize}
                         onChange={e => setFontSize(parseInt(e.target.value) || 16)}
-                        className="dv-font-size-input" title="Font size" />
+                        className="dv-font-size-input" title="Font size" aria-label="Font size" />
                 </div>
             )}
 
@@ -186,7 +225,7 @@ export default function EditToolbar(props: EditToolbarProps) {
                     {SHAPES.map(s => (
                         <button key={s}
                             className={`dv-edit-btn dv-edit-btn--small ${selectedShape === s ? 'dv-edit-btn--active' : ''}`}
-                            onClick={() => setSelectedShape(s)} title={s}>
+                            onClick={() => setSelectedShape(s)} title={s} aria-label={s} aria-pressed={selectedShape === s}>
                             <span className="dv-edit-btn__icon">
                                 {s === 'rectangle' ? <Square size={14} aria-hidden /> : s === 'circle' ? <Circle size={14} aria-hidden /> : s === 'line' ? <Minus size={14} aria-hidden /> : <ArrowRight size={14} aria-hidden />}
                             </span>
@@ -196,11 +235,12 @@ export default function EditToolbar(props: EditToolbarProps) {
             )}
 
             {showStampPicker && activeTool === 'stamp' && (
-                <div className="dv-stamp-picker">
+                <div className="dv-stamp-picker" ref={stampPanelRef}>
                     {(Object.keys(STAMP_COLORS) as StampType[]).map(s => (
                         <button key={s}
                             className={`dv-stamp-picker__item ${selectedStamp === s ? 'dv-stamp-picker__item--active' : ''}`}
                             style={{ borderColor: STAMP_COLORS[s], color: STAMP_COLORS[s] }}
+                            aria-pressed={selectedStamp === s}
                             onClick={() => { setSelectedStamp(s); setShowStampPicker(false); }}>
                             {s}
                         </button>

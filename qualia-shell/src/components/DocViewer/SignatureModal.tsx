@@ -8,9 +8,10 @@
  * per-stroke-in-progress refs) is local — no reason for DocViewer to know
  * about them.
  */
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { Point } from './docViewerTypes';
+import { useFocusTrap } from '../../hooks/useA11y';
 
 export interface SignatureModalProps {
     open: boolean;
@@ -112,14 +113,33 @@ export default function SignatureModal({ open, strokes, onStrokesChange, onClose
         onConfirmed();
     };
 
+    // P2 item 13 (a11y): role="dialog" + aria-modal, focus moves in on open
+    // and Tab is trapped inside (useFocusTrap — also restores focus to
+    // whatever was focused before the modal opened, i.e. the Sign button,
+    // once it closes), and Escape closes it.
+    const dialogRef = useFocusTrap<HTMLDivElement>(open);
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+    }, [open, onClose]);
+
     if (!open) return null;
 
     return (
-        <div className="dv-modal-overlay" onClick={onClose}>
-            <div className="dv-modal" onClick={e => e.stopPropagation()}>
+        // Scrim click closes (only when the click lands on the scrim itself,
+        // not something inside the card bubbling up — no separate
+        // stopPropagation needed on the card below); role="presentation"
+        // keeps this out of jsx-a11y's interactive-element rules, same
+        // pattern as ShortcutSheet's scrim.
+        <div className="dv-modal-overlay" role="presentation" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="dv-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="dv-signature-modal-title">
                 <div className="dv-modal__header">
-                    <h3>Draw Your Signature</h3>
-                    <button className="dv-modal__close" onClick={onClose} aria-label="Close"><X size={16} /></button>
+                    <h3 id="dv-signature-modal-title">Draw Your Signature</h3>
+                    <button className="dv-modal__close" onClick={onClose} aria-label="Close signature dialog"><X size={16} /></button>
                 </div>
                 <div className="dv-modal__body">
                     <canvas

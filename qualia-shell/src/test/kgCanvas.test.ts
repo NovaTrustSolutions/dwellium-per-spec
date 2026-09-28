@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    seedFor, forceLayout, buildGraph, pickNearest, neighbours, rescale, type KgNode,
+    seedFor, forceLayout, buildGraph, pickNearest, neighbours, rescale, matchNodes, centreOn, toExportJson, type KgNode,
 } from '../components/Shell/kgCanvas';
 import type { KgAgent } from '../components/Shell/HalocronKnowledgeGraph.agents';
 import type { KgGraphData, KgProject } from '../lib/halocronKnowledgeGraphStore';
@@ -103,5 +103,50 @@ describe('rescale', () => {
         const nodes: KgNode[] = [{ x: 10, y: 20, hx: 10, hy: 20, vx: 0, vy: 0, r: 1, cluster: 0, label: 'n', importance: 0 }];
         rescale(nodes, 100, 100, 100, 100);
         expect(nodes[0]).toMatchObject({ x: 10, y: 20, hx: 10, hy: 20 });
+    });
+});
+
+describe('matchNodes', () => {
+    const NODES: Pick<KgNode, 'label' | 'god'>[] = [
+        { label: 'WindowContext.tsx' },
+        { label: 'llmClient.ts' },
+        { label: 'Hermes', god: AGENTS[0] },
+        { label: 'windowState.ts' },
+    ];
+    it('matches case-insensitively, in stable ascending index order', () => {
+        expect(matchNodes(NODES, 'window')).toEqual([0, 3]);
+    });
+    it('excludes god/agent nodes even when the label matches', () => {
+        expect(matchNodes(NODES, 'hermes')).toEqual([]);
+    });
+    it('returns [] for an empty (or whitespace-only) query', () => {
+        expect(matchNodes(NODES, '')).toEqual([]);
+        expect(matchNodes(NODES, '   ')).toEqual([]);
+    });
+});
+
+describe('centreOn', () => {
+    it('places the node at the centre of a w x h canvas, keeping zoom', () => {
+        const view = centreOn({ zoom: 2, ox: 5, oy: 5 }, { x: 40, y: 30 }, 800, 520);
+        expect(view.zoom).toBe(2);
+        // screen = ox + x*zoom must equal w/2, h/2
+        expect(view.ox + 40 * view.zoom).toBeCloseTo(400);
+        expect(view.oy + 30 * view.zoom).toBeCloseTo(260);
+    });
+});
+
+describe('toExportJson', () => {
+    it('has no positions, no god nodes, and correct degree from the given links', () => {
+        const g = gdata(3, 0);
+        const links: [number, number][] = [[0, 1], [0, 2]];
+        const out = toExportJson({ id: 'p1', name: 'Project One' }, g, links);
+        expect(out.project).toEqual({ id: 'p1', name: 'Project One' });
+        expect(out.builtAt).toBe(g.builtAt);
+        expect(out.links).toEqual(links);
+        expect(out.nodes).toHaveLength(3);
+        expect(out.nodes.every((n) => !('x' in n) && !('y' in n))).toBe(true);
+        expect(out.nodes[0]).toEqual({ label: 'f0', cluster: 0, importance: 1, degree: 2 });
+        expect(out.nodes[1]).toEqual({ label: 'f1', cluster: 1, importance: 1, degree: 1 });
+        expect(out.nodes[2]).toEqual({ label: 'f2', cluster: 2, importance: 1, degree: 1 });
     });
 });

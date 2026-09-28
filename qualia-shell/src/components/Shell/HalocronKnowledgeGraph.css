@@ -4,7 +4,10 @@
 /* ── "My knowledge" / "Code repos" view switch (plan 072 phase 1) ── */
 .kg-viewtabs { display: inline-flex; flex: none; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; overflow: hidden; align-self: flex-start; }
 .kg-viewtab { padding: 6px 14px; cursor: pointer; font-size: 12px; font-family: inherit; color: var(--text-secondary); background: none; border: none; }
-.kg-viewtab.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent-text); }
+.kg-viewtab.on { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent-text); }
+/* latte's app-wide --text-secondary/--text-tertiary (--muted #7c6aad) is 4.31:1 on its surface — below AA. Scoped
+   to this widget until the global token is fixed (plan 064); #6e5c9f = 5.28:1. */
+.theme-latte .kg-shell { --text-secondary: #6e5c9f; --text-tertiary: #6e5c9f; }
 .kg-viewtab:not(.on):hover { color: var(--text-primary); }
 
 .kg-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -121,6 +124,7 @@
 .kg-imp__bar { flex: 0 0 54px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--text-secondary) 18%, transparent); overflow: hidden; }
 .kg-imp__bar span { display: block; height: 100%; background: var(--accent); }
 .kg-save { font-family: var(--font-heading); font-size: 30px; color: var(--success, var(--accent-text)); margin-bottom: 6px; }
+.theme-latte .kg-save { color: #0b7a55; } /* --success is 2.35:1 on latte; 4.96:1 */
 /* ── Ask the map — full-width bottom dock (same width as the graph) ── */
 .kg-chatdock { flex: none; border: 1px solid var(--border-default, rgba(255,255,255,.12)); border-radius: 12px; background: var(--bg-surface, rgba(20,16,11,.55)); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 .kg-chatdock__hdr { display: flex; align-items: center; gap: 14px; }
@@ -147,5 +151,29 @@
 .kg-sel__neighbours { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .kg-sel__neighbour { font-size: 11px; padding: 3px 8px; border-radius: 999px; cursor: pointer; font-family: inherit; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text, var(--accent)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
 .kg-sel__neighbour:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+/* ── search (plan 072 phase 3 C2) ── */
+.kg-search { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.06)); flex: none; }
+.kg-search__input { flex: 1; min-width: 0; padding: 6px 10px; border-radius: 8px; font-family: inherit; font-size: 12px; background: var(--bg-desktop, #0a0a0a); color: var(--text-primary); border: 1px solid var(--border-default, rgba(255,255,255,.15)); }
+.kg-search__input:focus { outline: none; border-color: var(--accent); }
+.kg-search__status { flex: none; font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+
+/* ── accessible node list (plan 072 phase 3 C1) ── */
+.kg-card__toggle { width: 100%; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 12px; background: none; color: var(--accent-text, var(--accent)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.kg-card__toggle:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.kg-nodelist { margin-top: 10px; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.kg-nodelist__row { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; text-align: left; background: none; border: 1px solid transparent; color: var(--text-primary); }
+.kg-nodelist__row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.kg-nodelist__row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.kg-nodelist__row[aria-current="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.kg-nodelist__name { font-size: 12px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.kg-nodelist__meta { font-size: 10.5px; color: var(--text-secondary); }
+.kg-nodelist__row[aria-current="true"] .kg-nodelist__meta { color: var(--text-primary); } /* tinted bg drops secondary below AA */
+
+/* ── export (plan 072 phase 3 C3) ── */
+.kg-export { display: flex; gap: 8px; }
+.kg-export button { flex: 1; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 12px; background: none; color: var(--text-secondary); border: 1px solid var(--border-default, rgba(255,255,255,.15)); }
+.kg-export button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-text, var(--accent)); }
+.kg-export button:disabled { opacity: .5; cursor: default; }
 
 @media (prefers-reduced-motion: reduce) { .kg-conf span { transition: none; } }

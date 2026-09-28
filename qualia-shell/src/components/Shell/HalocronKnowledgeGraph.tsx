@@ -1,25 +1,32 @@
 /**
- * HalocronKnowledgeGraph — the Graphify-style Knowledge Graph OS screen, shown
- * inside Holocron OS when "Knowledge Graph" is selected (2026-06-14).
+ * HalocronKnowledgeGraph — the Knowledge Graph OS screen, shown inside
+ * Holocron OS when "Knowledge Graph" is selected.
  *
- * Modeled 1:1 on the reference (Claude Code OS + Graphify):
- *   • top:    project "file-base" tabs + "Add a project" (graph a repo)
- *   • center: a LIVE, INTERACTIVE force graph — nodes drift, clusters are
- *             colour-coded, agent "god nodes" glow; click a node to inspect it
- *   • right:  Map Confidence · Most Important Files · Est. Savings · Selected
+ * Split (plan 072 phase 1) into a thin view-switching wrapper (default export,
+ * below) over two tabs:
+ *   • "My knowledge" — GraphifyView, the real graphify graph over the user's
+ *     own One Save knowledge (memories, captures, notes, tasks).
+ *   • "Code repos"   — RepoGraph, the reference-repo canvas this file
+ *     originally was: project tabs + a live force-directed <canvas> + rail +
+ *     "Ask the map" chat. Data is either a static per-repo import graph
+ *     (public/data/kg/*.json, capped at 600 nodes) or a GitHub-file-tree
+ *     structure graph for a pasted repo (links are directory hubs, not
+ *     real imports) — the rail discloses which.
  *
- * Theme-token driven (matches the active theme like the rest of the OS). The
- * graph is rendered on <canvas> with requestAnimationFrame for real motion and
- * hit-testing for clicks. Data is a representative map over the active project
- * (clearly an illustrative graph, not a claim of a live repo scan).
+ * Both tabs are keyed by the signed-in user's id: switching accounts remounts
+ * them, so one user's chat/selection/viewer never leaks to the next, and a
+ * reply that lands after the switch has nowhere to render into.
  */
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { MessageSquare, Sparkles, Star } from 'lucide-react';
+import { useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { MessageSquare, Sparkles } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
+import { UserContext } from '../../context/UserContext';
+import GraphifyView from '../KnowledgeGraph/GraphifyView';
 import {
     DEFAULT_KG_PROJECTS,
     setKgActiveProject,
+    setKgView,
     upsertKgProject,
     useHalocronKnowledgeGraphState,
     type KgGraphData,
@@ -49,7 +56,7 @@ const KG_CODE_EXT = /\.(ts|tsx|js|jsx|py|rs|go|java|rb|c|h|hpp|cpp|cc|cs|php|swi
  * links). It is NOT a deep import graph (the browser can't fetch every file's
  * contents within rate limits), but it graphs any public repo with no backend.
  */
-async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProject; gdata: KgGraphData }> {
+export async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProject; gdata: KgGraphData }> {
     const cleaned = rawUrl.trim().replace(/\.git$/i, '');
     const m = cleaned.match(/github\.com[/:]([^/\s]+)\/([^/?#\s]+)/i) || cleaned.match(/^([\w.-]+)\/([\w.-]+)$/);
     if (!m) throw new Error('Paste a GitHub URL like https://github.com/owner/repo');
@@ -112,6 +119,8 @@ async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProject; gd
         nodes,
         links,
         builtAt: new Date().toISOString(),
+        source: 'github-tree',
+        totalFiles: pool.length,
     };
     const id = `gh-${owner}-${repo}`.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-');
     const project: KgProject = {
@@ -120,7 +129,7 @@ async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProject; gd
         lang,
         files: blobs.length,
         clusters: Math.min(dirs.length, CLUSTER_COLORS.length),
-        blurb: `${owner}/${repo} — graphed from the GitHub file tree.`,
+        blurb: `${owner}/${repo} — graphed from the GitHub file tree${treeJson.truncated ? ' (GitHub listed only part of this repo)' : ''}.`,
     };
     return { project, gdata };
 }
@@ -248,11 +257,13 @@ function buildGraph(project: KgProject, w: number, h: number, data: KgGraphData 
     return { nodes, links };
 }
 
-export default function HalocronKnowledgeGraph() {
+function RepoGraph() {
     const kgState = useHalocronKnowledgeGraphState();
     const [selected, setSelected] = useState<Node | null>(null);
     const [paused, setPaused] = useState(false);
     const [gdata, setGdata] = useState<KgGraphData | null>(null);
+    const [loadState, setLoadState] = useState<'loading' | 'error' | 'loaded'>('loading');
+    const [retryCount, setRetryCount] = useState(0);
     // The graph "owns" wheel zoom only while focused (clicked) or hovered, so the
     // gesture never bubbles up and scrolls the page. Refs mirror the state so the
     // native (non-passive) wheel listener reads the latest value without re-binding.
@@ -279,23 +290,26 @@ export default function HalocronKnowledgeGraph() {
         ? kgState.activeId
         : DEFAULT_KG_PROJECTS[0].id;
     const project = useMemo(() => projects.find((p) => p.id === activeId) ?? projects[0], [projects, activeId]);
-    const graphed = !!gdata;
 
     // Load the REAL per-repo graph JSON (public/data/kg/<id>.json) on selection.
+    // Tracks loadState so a fetch failure shows "couldn't load" + Retry instead
+    // of "loading…" forever (E3) — bumping retryCount re-runs this effect.
     useEffect(() => {
         let cancelled = false;
         setGdata(null);
+        setLoadState('loading');
         const cached = kgState.graphs[activeId];
         if (cached) {
             setGdata(cached);
-        } else {
-            fetch(`/data/kg/${activeId}.json`)
-                .then((r) => (r.ok ? r.json() : null))
-                .then((j) => { if (!cancelled && j) setGdata(j as KgGraphData); })
-                .catch(() => { /* no graph file for this project — fall back to representative */ });
+            setLoadState('loaded');
+            return;
         }
+        fetch(`/data/kg/${activeId}.json`)
+            .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+            .then((j) => { if (!cancelled) { setGdata(j as KgGraphData); setLoadState('loaded'); } })
+            .catch(() => { if (!cancelled) setLoadState('error'); });
         return () => { cancelled = true; };
-    }, [activeId, kgState.graphs]);
+    }, [activeId, kgState.graphs, retryCount]);
 
     // (Re)build the render graph when the project, data, or canvas size changes.
     const rebuild = useCallback(() => {
@@ -581,6 +595,14 @@ export default function HalocronKnowledgeGraph() {
         }
     };
 
+    const source = gdata?.source ?? 'static-import-graph';
+    const isGithub = source === 'github-tree';
+    const totalFiles = gdata?.totalFiles ?? gdata?.files;
+    const shownCount = gdata?.nodes.length ?? 0;
+    const showCap = !!gdata && !!totalFiles && totalFiles > shownCount;
+    const builtDate = gdata?.builtAt ? new Date(gdata.builtAt) : null;
+    const ageDays = builtDate ? Math.max(0, Math.floor((Date.now() - builtDate.getTime()) / 86_400_000)) : null;
+
     return (
         <div className="kg">
             {/* ── top: project tabs ── */}
@@ -606,16 +628,29 @@ export default function HalocronKnowledgeGraph() {
                 <div className="kg-stage">
                     <div className="kg-stage__hdr">
                         <div>
-                            <div className="kg-stage__proj">● {project.name}{graphed ? <span className="kg-live">GRAPHED</span> : <span className="kg-rep">loading…</span>}</div>
+                            <div className="kg-stage__proj">
+                                ● {project.name}
+                                {loadState === 'error'
+                                    ? <span className="kg-err">Couldn't load</span>
+                                    : loadState === 'loaded' && builtDate
+                                        ? <span className="kg-live" title={`${ageDays} day${ageDays === 1 ? '' : 's'} ago`}>Graphed {builtDate.toLocaleDateString()}</span>
+                                        : <span className="kg-rep">loading…</span>}
+                            </div>
                             <div className="kg-stage__sub">
-                                {gdata
-                                    ? <>{gdata.files.toLocaleString()} files · {gdata.edges.toLocaleString()} edges · {gdata.clusters} clusters · {gdata.nodes.length} rendered</>
-                                    : <>{project.files.toLocaleString()} files · {project.clusters} clusters</>}
+                                {loadState === 'error'
+                                    ? "Couldn't load this project's graph."
+                                    : gdata
+                                        ? <>{gdata.files.toLocaleString()} files · {gdata.edges.toLocaleString()} edges · {gdata.clusters} clusters{!showCap && <> · {gdata.nodes.length} rendered</>}
+                                            {showCap && <> · {shownCount} of {totalFiles!.toLocaleString()} files shown ({isGithub ? 'the largest' : 'the most imported'})</>}
+                                        </>
+                                        : <>{project.files.toLocaleString()} files · {project.clusters} clusters</>}
                             </div>
                         </div>
                         <div className="kg-seg">
-                            <button className="on">Full</button>
-                            <button onClick={() => setPaused((p) => !p)}>{paused ? 'Play' : 'Pause'}</button>
+                            {loadState === 'error' && (
+                                <button type="button" onClick={() => setRetryCount((c) => c + 1)}>Retry</button>
+                            )}
+                            <button type="button" aria-pressed={paused} onClick={() => setPaused((p) => !p)}>{paused ? 'Play' : 'Pause'}</button>
                         </div>
                     </div>
                     <div
@@ -625,22 +660,24 @@ export default function HalocronKnowledgeGraph() {
                         onMouseLeave={() => { hoverRef.current = false; }}
                     >
                         <canvas ref={canvasRef} className="kg-canvas" onClick={onCanvasClick} />
-                        <div className="kg-legend">size = importance · <Star size={11} aria-hidden style={{ verticalAlign: 'middle' }} /> = agent · colour = cluster · scroll to zoom</div>
+                        <div className="kg-legend">size = importance · glow = agent · colour = cluster · scroll to zoom</div>
                     </div>
                 </div>
 
                 {/* ── right: intelligence rail ── */}
                 <aside className="kg-rail">
                     <section className="kg-card">
-                        <div className="kg-card__cap">MAP CONFIDENCE</div>
-                        <div className="kg-conf"><span style={{ width: '100%' }} /></div>
-                        <div className="kg-conf__row"><span className="kg-dot" style={{ background: '#34d399' }} /> Found in code <b>100%</b></div>
-                        <div className="kg-conf__row"><span className="kg-dot" style={{ background: '#a855f7' }} /> Inferred (model's guess) <b>0%</b></div>
+                        <div className="kg-card__cap">HOW THIS MAP WAS MADE</div>
+                        <p className="kg-card__note">
+                            {isGithub
+                                ? "Structure only — links join files to their folder's largest file, not real imports."
+                                : 'Links are real imports read from the code.'}
+                        </p>
                     </section>
 
                     <section className="kg-card">
                         <div className="kg-card__cap"><Sparkles size={12} aria-hidden /> MOST IMPORTANT FILES</div>
-                        <p className="kg-card__note">The files everything else relies on — by how many other files import them.</p>
+                        <p className="kg-card__note">The files everything else relies on — ranked by {isGithub ? 'size' : 'how many other files import them'}.</p>
                         {(gdata?.importantFiles ?? IMPORTANT_FILES).map((f, i) => (
                             <div key={f.name + i} className="kg-imp">
                                 <span className="kg-imp__n">{i + 1}. {f.name}</span>
@@ -652,7 +689,13 @@ export default function HalocronKnowledgeGraph() {
                     <section className="kg-card">
                         <div className="kg-card__cap">EST. SAVINGS / SESSION</div>
                         <div className="kg-save">~${gdata ? gdata.usdPerSession.toFixed(2) : '0.00'}</div>
-                        <p className="kg-card__note">{gdata ? `${(gdata.tokens / 1000).toFixed(0)}k tokens to re-read ${project.name} each session (≈ $3/MTok) — answered from the map instead.` : `Graph loading…`}</p>
+                        <p className="kg-card__note">
+                            {loadState === 'error'
+                                ? "Couldn't load this project's graph."
+                                : gdata
+                                    ? `${(gdata.tokens / 1000).toFixed(0)}k tokens to re-read ${project.name} each session (≈ $3/MTok) — answered from the map instead.`
+                                    : 'Graph loading…'}
+                        </p>
                     </section>
 
                     <section className="kg-card">
@@ -699,6 +742,41 @@ export default function HalocronKnowledgeGraph() {
                     <button className="kg-chat__send" onClick={sendChat} disabled={chatBusy || !chatInput.trim()}>↑</button>
                 </div>
             </section>
+        </div>
+    );
+}
+
+/**
+ * Default export — a thin view switch over the two "knowledge graph" tabs
+ * (plan 072 phase 1, fixes A1-A3: the registry/Connections/ARA all promised
+ * the user's OWN graph but opened the code-repo canvas; this mounts the real
+ * one). Reads the signed-in user's id via a raw `useContext(UserContext)`
+ * (not `useUser()`) per the house test-resilience convention — widget tests
+ * render with no provider and must not throw.
+ */
+export default function HalocronKnowledgeGraph() {
+    // Raw context read (not useUser()) per test-resilience convention.
+    const uid = useContext(UserContext)?.user?.id ?? '_anonymous';
+    const kgState = useHalocronKnowledgeGraphState();
+    return (
+        <div className="kg-shell">
+            <div className="kg-viewtabs" role="tablist" aria-label="Knowledge graph view">
+                <button
+                    type="button" role="tab" aria-selected={kgState.view === 'knowledge'}
+                    className={`kg-viewtab ${kgState.view === 'knowledge' ? 'on' : ''}`}
+                    onClick={() => setKgView('knowledge')}
+                >
+                    My knowledge
+                </button>
+                <button
+                    type="button" role="tab" aria-selected={kgState.view === 'repos'}
+                    className={`kg-viewtab ${kgState.view === 'repos' ? 'on' : ''}`}
+                    onClick={() => setKgView('repos')}
+                >
+                    Code repos
+                </button>
+            </div>
+            {kgState.view === 'knowledge' ? <GraphifyView key={uid} /> : <RepoGraph key={uid} />}
         </div>
     );
 }

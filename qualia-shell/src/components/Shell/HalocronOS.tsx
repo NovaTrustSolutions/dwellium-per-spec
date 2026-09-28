@@ -648,7 +648,7 @@ export default function HalocronOS() {
                                 <p className="hos-sub">Every memory system in Dwellium — open any one:</p>
                                 <div className="hos-mem-cards">
                                     {([
-                                        ['__kg__', 'Knowledge Graph', 'Interactive import-graph of your repos — most-important files, clusters, and an "ask the map" chat.'],
+                                        ['__kg__', 'Knowledge Graph', 'Your own knowledge as a graph — memories, captures, notes and tasks — plus code repos you add.'],
                                         ['memory-graph-rag', 'Cognitive M Network', 'Retrieval-augmented memory graph that stores and recalls knowledge as linked nodes.'],
                                         ['cognitive-harness', 'Cognitive Harness', 'Live status of memory, retrieval, routing, tools and agent tasks — read-only.'],
                                         ['honcho', 'Honcho', 'Durable per-user memory the agents read and write — plus background "dreams" that consolidate it.'],

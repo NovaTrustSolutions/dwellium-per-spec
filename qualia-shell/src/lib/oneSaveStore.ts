@@ -401,7 +401,10 @@ function makeSynced<T>(
                 // Replay only while the SAME owner is still active — scheduleWriteThrough
                 // re-captures ownerId() at call time, so without this guard a switched
                 // account would inherit the previous user's payload.
-                failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId) scheduleWriteThrough(value); });
+                // Merge stores replay the CURRENT local value: a hydrate may have merged
+                // remote into it since this write failed, and replaying the captured
+                // `value` would overwrite that merge with a stale copy (plan 070 P4).
+                failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId) scheduleWriteThrough(merge ? base.getSnapshot() : value); });
                 emitSync();
             },
         });

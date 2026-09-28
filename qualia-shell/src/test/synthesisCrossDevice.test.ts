@@ -22,6 +22,7 @@ import {
 } from '../components/Synthesis/synthesisStore';
 import { synthesisTombstoneStore } from '../components/Synthesis/synthesisTombstones';
 import { setPerUserIdentity } from '../lib/perUserIdentity';
+import { backendStatusStore } from '../lib/backendStatusStore';
 
 vi.mock('../lib/oneSaveClient', () => ({
     ONE_SAVE_ENABLED: true,
@@ -378,6 +379,23 @@ describe('Synthesis Lab cross-device sync', () => {
             captureSynthesis({ id: 'local-1', query: 'q', result: 'l1', layer: 1, parentId: null }, new Date('2026-01-02T00:00:00.000Z'));
             release();
             await h;
+        });
+        await flush();
+        expect(capturesOf(OWNER).map((s) => s.id).sort()).toEqual(['local-1', 'remote-1']);
+    });
+    it('12. a write that failed while offline replays the MERGED value, not the stale one, when the backend returns', async () => {
+        await asDevice('A', () => {
+            captureSynthesis({ id: 'remote-1', query: 'q', result: 'r1', layer: 1, parentId: null }, new Date('2026-01-01T00:00:00.000Z'));
+        });
+        await flush();
+        await asDevice('B', async () => {
+            const realPut = vi.mocked(oneSaveClient.put).getMockImplementation()!;
+            vi.mocked(oneSaveClient.put).mockResolvedValue(null as never); // offline: every PUT fails
+            captureSynthesis({ id: 'local-1', query: 'q', result: 'l1', layer: 1, parentId: null }, new Date('2026-01-02T00:00:00.000Z'));
+            await vi.advanceTimersByTimeAsync(10_000);                     // exhaust retries → parked in `failed`
+            vi.mocked(oneSaveClient.put).mockImplementation(realPut);      // back online
+            await synthesisStore.hydrate(server.get(`synthesis_${OWNER}`) ?? null); // merges remote-1 in
+            backendStatusStore.markOnline();                                // replay fires BEFORE the merged write flushes
         });
         await flush();
         expect(capturesOf(OWNER).map((s) => s.id).sort()).toEqual(['local-1', 'remote-1']);

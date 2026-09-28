@@ -17,7 +17,7 @@
  * them, so one user's chat/selection/viewer never leaks to the next, and a
  * reply that lands after the switch has nowhere to render into.
  */
-import { useContext, useEffect, useMemo, useRef, useState, useCallback, type KeyboardEvent } from 'react';
+import { useContext, useEffect, useId, useMemo, useRef, useState, useCallback, type KeyboardEvent } from 'react';
 import { MessageSquare, Sparkles } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
@@ -190,6 +190,7 @@ function RepoGraph() {
     const matchSetRef = useRef<Set<number>>(new Set());
     const activeMatchRef = useRef(-1);
     const [showList, setShowList] = useState(false);
+    const nodeListId = `kg-nodelist${useId().replace(/:/g, "")}`; // unique per mounted instance (OS tab + desktop window)
 
     const projects = useMemo(() => {
         const defaultIds = new Set(DEFAULT_KG_PROJECTS.map((p) => p.id));
@@ -667,7 +668,9 @@ function RepoGraph() {
     const selectedNeighbourIndices = selectedIndex >= 0 ? neighbours(linksRef.current, selectedIndex) : [];
     const selectedDegree = selectedNeighbourIndices.length;
     const rankedFiles = gdata?.importantFiles ?? IMPORTANT_FILES;
-    const canvasLabel = `${project.name} code map: ${shownCount.toLocaleString()} of `
+    const canvasLabel = loadState !== 'loaded'
+        ? `${project.name} code map — ${loadState === 'error' ? "couldn't load this project's graph" : 'loading'}; a placeholder layout is drawn.`
+        : `${project.name} code map: ${shownCount.toLocaleString()} of `
         + `${(totalFiles ?? shownCount).toLocaleString()} files, ${(gdata?.edges ?? 0).toLocaleString()} links, `
         + `${gdata?.clusters ?? project.clusters} clusters. ${isGithub ? 'Largest' : 'Most imported'}: `
         + `${rankedFiles.slice(0, 3).map((f) => f.name).join(', ')}. Use the node list for keyboard access.`;
@@ -875,13 +878,13 @@ function RepoGraph() {
                     <section className="kg-card">
                         <button
                             type="button" className="kg-card__toggle"
-                            aria-expanded={showList} aria-controls="kg-nodelist"
+                            aria-expanded={showList} aria-controls={nodeListId}
                             onClick={() => setShowList((v) => !v)}
                         >
                             {showList ? 'Hide node list' : 'Show node list'}
                         </button>
                         {showList && (
-                            <div id="kg-nodelist" className="kg-nodelist" role="group" aria-label="Files, most important first">
+                            <div id={nodeListId} className="kg-nodelist" role="group" aria-label="Files, most important first">
                                 <p className="kg-card__note">Showing {listShown.length.toLocaleString()} of {listAll.length.toLocaleString()}</p>
                                 {listShown.map(({ i, n }) => (
                                     <button
@@ -953,6 +956,7 @@ export default function HalocronKnowledgeGraph() {
     // Raw context read (not useUser()) per test-resilience convention.
     const uid = useContext(UserContext)?.user?.id ?? '_anonymous';
     const kgState = useHalocronKnowledgeGraphState();
+    const idBase = `kg${useId().replace(/:/g, '')}`; // unique per mounted instance
     const tabs = [{ view: 'knowledge', label: 'My knowledge' }, { view: 'repos', label: 'Code repos' }] as const;
     // WAI-ARIA tabs: roving tabindex; Left/Right/Home/End move and select.
     const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -963,15 +967,15 @@ export default function HalocronKnowledgeGraph() {
         if (next < 0) return;
         e.preventDefault();
         setKgView(tabs[next].view);
-        document.getElementById(`kg-tab-${tabs[next].view}`)?.focus();
+        document.getElementById(`${idBase}-tab-${tabs[next].view}`)?.focus();
     };
     return (
         <div className="kg-shell">
             <div className="kg-viewtabs" role="tablist" aria-label="Knowledge graph view">
                 {tabs.map((t) => (
                     <button
-                        key={t.view} id={`kg-tab-${t.view}`} type="button" role="tab"
-                        aria-selected={kgState.view === t.view} aria-controls={`kg-panel-${t.view}`}
+                        key={t.view} id={`${idBase}-tab-${t.view}`} type="button" role="tab"
+                        aria-selected={kgState.view === t.view} aria-controls={`${idBase}-panel-${t.view}`}
                         tabIndex={kgState.view === t.view ? 0 : -1}
                         className={`kg-viewtab ${kgState.view === t.view ? 'on' : ''}`}
                         onClick={() => setKgView(t.view)} onKeyDown={onTabKey}
@@ -980,7 +984,7 @@ export default function HalocronKnowledgeGraph() {
                     </button>
                 ))}
             </div>
-            <div className="kg-panel" role="tabpanel" id={`kg-panel-${kgState.view}`} aria-labelledby={`kg-tab-${kgState.view}`}>
+            <div className="kg-panel" role="tabpanel" id={`${idBase}-panel-${kgState.view}`} aria-labelledby={`${idBase}-tab-${kgState.view}`}>
                 {kgState.view === 'knowledge' ? <GraphifyView key={uid} /> : <RepoGraph key={uid} />}
             </div>
         </div>

@@ -109,6 +109,10 @@
     overflow-y: auto;
 }
 
+/* The column scrolls, its sections never shrink (Docs/code.md, AI Spend 2026-09-26):
+   otherwise the answer squashes into a tiny inner scroller once content overflows. */
+.syn-main > * { flex-shrink: 0; }
+
 .syn-side {
     width: 240px;
     flex-shrink: 0;
@@ -295,7 +299,7 @@
     align-items: center;
     gap: 6px;
     font-size: 11px;
-    color: var(--text-secondary);
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
     cursor: pointer;
     padding: 2px 0;
 }
@@ -530,7 +534,7 @@
     background: transparent;
     border: 1px solid var(--border-default);
     border-radius: 6px;
-    color: var(--text-secondary);
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
     cursor: pointer;
     font: inherit;
 }
@@ -583,3 +587,11 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
+
+/* Pushes trailing header controls (Copy, clear-all) to the row end. */
+.syn-push { margin-left: auto; }
+
+/* Placeholders: browser default grey measured 4.3:1 on the dark surface. */
+.syn-query::placeholder,
+.syn-focus::placeholder,
+.syn-side__search::placeholder { color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)); opacity: 1; }

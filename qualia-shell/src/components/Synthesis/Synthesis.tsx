@@ -14,9 +14,15 @@
  * user see and uncheck what will ground the answer before it's sent; the
  * grounded prompt is built by synthesisContext.buildGroundedPrompt; runs are
  * cancellable; citations in the rendered answer open their source widget.
+ *
+ * Plan 070 phase 3: styling moved to Synthesis.css (token-only, container
+ * query for narrow windows); the answer body is rendered Markdown with
+ * citation buttons via synthesisRender.renderAnswerHtml (one delegated click
+ * handler); accessibility pass (alert/status roles, unique delete names,
+ * keyboard submit); Copy-to-clipboard; history search; lineage chip back to
+ * a captured parent.
  */
 import { useState, useSyncExternalStore, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
-import type { CSSProperties } from 'react';
 import { UserContext } from '../../context/UserContext';
 import { Sparkles, RefreshCw, Save, Layers, Trash2, TriangleAlert, X } from 'lucide-react';
 import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
@@ -27,17 +33,17 @@ import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { recallPassages, type RecalledPassage } from '../../lib/memoryGraphRag/recall';
 import { buildGroundedPrompt, sourceWidget } from './synthesisContext';
+import { renderAnswerHtml } from './synthesisRender';
 import {
     synthesisStore, captureSynthesis, removeSynthesis, clearSyntheses,
     newSynthesisId, buildSecondLayerPrompt, type Synthesis as SynthesisEntry, type SynthesisSource,
 } from './synthesisStore';
 import { captureFacts } from '../Hive/copawStore';
+import './Synthesis.css';
 
-const ACCENT = '#D6FE51';
 const MIN_QUERY_CHARS = 3;
 const PREVIEW_DEBOUNCE_MS = 300;
-
-const SR_ONLY: CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
+const COPY_FEEDBACK_MS = 1500;
 
 const SYSTEM_PROMPT = 'You are a synthesis engine. Given a question (and any provided prior context and numbered sources), produce a concise, well-structured synthesis in Markdown. When numbered sources are provided, cite them inline as [1], [2]… where they ground a claim; when they do not cover part of the question, say so and answer from general knowledge, flagged as such. Flag other assumptions too, and end with the most important open question.';
 
@@ -57,31 +63,6 @@ function openWidget(widget: string) {
     window.dispatchEvent(new CustomEvent('qualia-open-widget', { detail: widget }));
 }
 
-/** Render `text` with `[n]` tokens (1..sources.length) turned into inline citation buttons. */
-function renderAnswerText(text: string, sources: SynthesisSource[] | undefined) {
-    if (!sources || sources.length === 0) return text;
-    const parts = text.split(/(\[\d+\])/g);
-    return parts.map((part, i) => {
-        const m = /^\[(\d+)\]$/.exec(part);
-        if (!m) return <span key={i}>{part}</span>;
-        const n = parseInt(m[1], 10);
-        if (n < 1 || n > sources.length) return <span key={i}>{part}</span>;
-        const src = sources[n - 1];
-        const widget = sourceWidget(src.sourceKind);
-        return (
-            <button
-                key={i}
-                type="button"
-                disabled={!widget}
-                aria-label={`Open source ${n}: ${src.title || '(untitled)'}`}
-                title={widget ? (src.title || '(untitled)') : 'No widget opens this source'}
-                onClick={() => widget && openWidget(widget)}
-                style={{ display: 'inline', border: 'none', background: 'none', padding: 0, font: 'inherit', textDecoration: 'underline dotted', color: widget ? ACCENT : '#666', cursor: widget ? 'pointer' : 'default' }}
-            >{part}</button>
-        );
-    });
-}
-
 export default function Synthesis() {
     usePerUserIdentity();
     const { integrations } = useIntegrations();
@@ -94,6 +75,8 @@ export default function Synthesis() {
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
     const [focusText, setFocusText] = useState('');
+    const [copied, setCopied] = useState(false);
+    const [historyQuery, setHistoryQuery] = useState('');
 
     // Source preview (debounced recallPassages over the question textarea).
     const [previewSources, setPreviewSources] = useState<RecalledPassage[]>([]);
@@ -102,7 +85,9 @@ export default function Synthesis() {
     const requestSeqRef = useRef(0);
 
     const abortRef = useRef<AbortController | null>(null);
+    const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => () => { abortRef.current?.abort(); }, []);
+    useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
     // Account switch (UserContext changes without a remount): drop everything the
     // previous user had on screen so the next user can't see or Capture it.
@@ -154,6 +139,25 @@ export default function Synthesis() {
     );
 
     const captured = answer ? history.some((h) => h.id === answer.id) : false;
+    const parentEntry = useMemo(
+        () => (answer?.parentId ? history.find((h) => h.id === answer.parentId) : undefined),
+        [answer?.parentId, history],
+    );
+
+    const answerHtml = useMemo(
+        () => (answer ? renderAnswerHtml(answer.result, answer.sources ?? []) : ''),
+        [answer?.result, answer?.sources],
+    );
+
+    const filteredHistory = useMemo(() => {
+        const q = historyQuery.trim().toLowerCase();
+        if (!q) return history;
+        return history.filter((h) =>
+            h.query.toLowerCase().includes(q)
+            || h.result.toLowerCase().includes(q)
+            || (h.followUp ?? '').toLowerCase().includes(q));
+    }, [history, historyQuery]);
+    const isFiltering = historyQuery.trim() !== '';
 
     type Prepared = { prompt: string; pending: { id: string; query: string; layer: number; parentId: string | null; followUp?: string }; used: RecalledPassage[] };
 
@@ -214,6 +218,13 @@ export default function Synthesis() {
         });
     };
 
+    const onQueryKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            onSynthesize();
+        }
+    };
+
     const onCancel = () => { abortRef.current?.abort(); };
 
     const onCapture = () => {
@@ -261,6 +272,33 @@ export default function Synthesis() {
         removeSynthesis(h.id);
     };
 
+    const onCopy = async () => {
+        if (!answer) return;
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+            await navigator.clipboard.writeText(answer.result);
+            setErr('');
+            setCopied(true);
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+            copyTimerRef.current = setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
+        } catch {
+            // MUTATION-CHECK: never show "Copied" on a clipboard failure (Docs/code.md).
+            setCopied(false);
+            setErr("Couldn't copy — select the text instead.");
+        }
+    };
+
+    /** One delegated handler for every rendered `[n]` citation button (synthesisRender). */
+    const onCiteClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        const btn = (e.target as HTMLElement).closest('button.syn-cite');
+        if (!btn || !answer?.sources) return;
+        const n = parseInt(btn.getAttribute('data-cite') || '', 10);
+        const src = answer.sources[n - 1];
+        if (!src) return;
+        const widget = sourceWidget(src.sourceKind);
+        if (widget) openWidget(widget);
+    };
+
     const badges = [
         { label: 'Retrieve', done: !!(answer?.sources && answer.sources.length > 0) },
         { label: 'Synthesize', done: !!answer },
@@ -269,42 +307,47 @@ export default function Synthesis() {
     ];
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
-            {/* Header + pipeline */}
-            <div style={{ padding: '10px 16px', borderBottom: '1px solid #222', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Sparkles size={15} style={{ color: ACCENT }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Synthesis Lab</span>
-                    {answer && answer.layer > 1 && <span style={{ marginLeft: 'auto', fontSize: 11, color: ACCENT, fontFamily: 'monospace' }}>layer {answer.layer}</span>}
+        <div className="syn-host">
+            <div className="syn-root">
+                {/* Header + pipeline */}
+                <div className="syn-header">
+                    <div className="syn-title">
+                        <Sparkles size={15} aria-hidden />
+                        <span>Synthesis Lab</span>
+                        {answer && answer.layer > 1 && <span className="syn-layer">layer {answer.layer}</span>}
+                    </div>
+                    <div className="syn-steps">
+                        {badges.map((b) => (
+                            <span key={b.label} aria-current={b.done ? 'step' : undefined} className={`syn-step${b.done ? ' syn-step--done' : ''}`}>
+                                {b.label}{b.done && <span className="syn-sr-only"> (done)</span>}
+                            </span>
+                        ))}
+                    </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-                    {badges.map((b) => (
-                        <span key={b.label} aria-current={b.done ? 'step' : undefined}
-                            style={{ fontSize: 9, padding: '2px 7px', borderRadius: 999, background: b.done ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'color-mix(in srgb, var(--accent) 6%, transparent)', border: `1px solid ${b.done ? ACCENT : '#222'}`, color: b.done ? ACCENT : 'var(--text-tertiary)', letterSpacing: '0.04em' }}>
-                            {b.label}{b.done && <span style={SR_ONLY}> (done)</span>}
+
+                <div className="syn-body">
+                    {/* Main column */}
+                    <div className="syn-main">
+                        <label htmlFor="syn-query-input" className="syn-sr-only">Question to synthesize</label>
+                        <textarea
+                            id="syn-query-input"
+                            className="syn-query"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={onQueryKeyDown}
+                            placeholder="Ask a question — matching saved notes, tags and captures are used as sources…"
+                            aria-label="Question to synthesize"
+                            rows={3}
+                        />
+                        <span className="syn-sr-only" aria-live="polite">
+                            {busy ? 'Synthesizing…' : answer ? 'Synthesis ready' : ''}
                         </span>
-                    ))}
-                </div>
-            </div>
 
-            <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-                {/* Main column */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, padding: 16, gap: 10, overflowY: 'auto' }}>
-                    <textarea
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Ask a question — matching saved notes, tags and captures are used as sources…"
-                        aria-label="Question to synthesize"
-                        rows={3}
-                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-desktop)', border: '1px solid #333', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '10px 12px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
-                    />
-
-                    {previewSources.length > 0 ? (
-                        <details open>
-                            <summary style={{ cursor: 'pointer', fontSize: 11, color: 'var(--text-tertiary)' }}>Sources ({previewSources.length})</summary>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, paddingLeft: 4 }}>
+                        {previewSources.length > 0 ? (
+                            <details open className="syn-sources">
+                                <summary className="syn-sources__head">Sources ({previewSources.length})</summary>
                                 {previewSources.map((rp) => (
-                                    <label key={rp.passageId} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#bbb', cursor: 'pointer' }}>
+                                    <label key={rp.passageId} className="syn-sources__item">
                                         <input
                                             type="checkbox"
                                             checked={checked[rp.passageId] !== false}
@@ -313,103 +356,126 @@ export default function Synthesis() {
                                         {(rp.title.trim() || '(untitled)')} · {rp.sourceKind}
                                     </label>
                                 ))}
-                            </div>
-                        </details>
-                    ) : searchedQuery !== null && searchedQuery === query.trim() ? (
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No saved sources match — the answer will use general knowledge.</div>
-                    ) : null}
+                            </details>
+                        ) : searchedQuery !== null && searchedQuery === query.trim() ? (
+                            <div className="syn-sources__empty">No saved sources match — the answer will use general knowledge.</div>
+                        ) : null}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button onClick={onSynthesize} disabled={busy || !query.trim()}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 7, border: 'none', background: (busy || !query.trim()) ? '#1a1a1a' : ACCENT, color: (busy || !query.trim()) ? '#666' : '#000', fontSize: 12, fontWeight: 700, cursor: (busy || !query.trim()) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-                            {busy ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Sparkles size={13} />}
-                            {busy ? 'Synthesizing…' : 'Synthesize'}
-                        </button>
-                        {busy && (
-                            <button onClick={onCancel} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 7, border: '1px solid #333', background: 'transparent', color: '#ccc', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                                <X size={12} /> Cancel
+                        <div className="syn-actions">
+                            <button className="syn-btn syn-btn--primary" onClick={onSynthesize} disabled={busy || !query.trim()}>
+                                {busy ? <RefreshCw size={13} className="syn-spin" /> : <Sparkles size={13} />}
+                                {busy ? 'Synthesizing…' : 'Synthesize'}
                             </button>
-                        )}
-                        {!llmReady && <span style={{ fontSize: 11, color: '#666' }}>· add an LLM in Settings to enable</span>}
-                    </div>
-
-                    <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" />
-                    {err && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}><TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} /><span>{err}</span></div>}
-
-                    {answer && (
-                        <div style={{ border: '1px solid #222', borderRadius: 8, background: '#070707', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '8px 12px', borderBottom: '1px solid #222' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT }}>
-                                    {busy ? 'Synthesizing…' : `Synthesis${answer.layer > 1 ? ` · layer ${answer.layer}` : ''}`}
-                                </span>
-                                <div style={{ flex: 1 }} />
-                                <button onClick={onCapture} disabled={captured || busy} title="Capture as a document — feeds back into the corpus"
-                                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 6, border: '1px solid #333', background: captured ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent', color: captured ? ACCENT : '#ccc', fontSize: 11, fontWeight: 600, cursor: (captured || busy) ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                                    <Save size={12} /> {captured ? 'Captured' : 'Capture'}
+                            {busy && (
+                                <button className="syn-btn syn-btn--ghost" onClick={onCancel}>
+                                    <X size={12} /> Cancel
                                 </button>
-                                <input
-                                    type="text"
-                                    value={focusText}
-                                    onChange={(e) => setFocusText(e.target.value)}
-                                    placeholder="Focus the second pass on… (optional)"
-                                    aria-label="Focus the second pass on"
-                                    style={{ width: 160, background: 'var(--bg-desktop)', border: '1px solid #333', borderRadius: 6, color: 'var(--text-primary)', fontSize: 11, padding: '4px 8px', fontFamily: 'inherit' }}
-                                />
-                                <button onClick={onSecondLayer} disabled={busy} title="Second-layer query — re-query using this synthesis as added context"
-                                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 6, border: `1px solid ${ACCENT}`, background: 'transparent', color: ACCENT, fontSize: 11, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
-                                    <Layers size={12} /> Second-layer query
-                                </button>
-                            </div>
-                            {answer.truncated && (
-                                <div role="status" style={{ padding: '6px 14px', fontSize: 11, color: '#ffb84d', borderBottom: '1px solid #222' }}>
-                                    This answer hit the length limit and may be cut off.
-                                </div>
                             )}
-                            <div style={{ padding: '12px 14px', overflowY: 'auto', whiteSpace: 'pre-wrap', color: '#ddd', fontSize: 13, lineHeight: 1.7 }}>{renderAnswerText(answer.result, answer.sources)}</div>
-                            {answer.sources && answer.sources.length > 0 && (
-                                <div style={{ padding: '6px 14px', fontSize: 11, color: 'var(--text-tertiary)', borderTop: '1px solid #222' }}>
-                                    Sources: {answer.sources.map((s, i) => (
-                                        <span key={`${s.sourceId}-${i}`}>{i > 0 ? ' · ' : ''}[{i + 1}] {s.title || '(untitled)'}</span>
-                                    ))}
-                                </div>
-                            )}
-                            <div style={{ padding: '8px 12px', borderTop: '1px solid #222' }}>
-                                <TagInput source="synthesis" sourceId={answer.id} title={answer.query || 'Synthesis'} />
-                            </div>
+                            {!llmReady && <span className="syn-hint">· add an LLM in Settings to enable</span>}
                         </div>
-                    )}
-                </div>
 
-                {/* Captured corpus */}
-                <div style={{ width: 240, flexShrink: 0, borderLeft: '1px solid #222', background: '#070707', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid #222' }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', flex: 1 }}>Captured ({history.length})</span>
-                        {history.length > 0 && (
-                            <button onClick={onClearAll} title="Clear captured syntheses" aria-label="Delete all captured syntheses" style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', display: 'flex' }}><Trash2 size={12} /></button>
+                        <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" />
+                        {busy && <div role="status" className="syn-notice">Synthesizing…</div>}
+                        {err && (
+                            <div role="alert" className="syn-error">
+                                <TriangleAlert size={14} aria-hidden /><span>{err}</span>
+                            </div>
+                        )}
+
+                        {answer && (
+                            <div className="syn-answer">
+                                <div className="syn-answer__head">
+                                    <span className="syn-answer__label">
+                                        {busy ? 'Synthesizing…' : `Synthesis${answer.layer > 1 ? ` · layer ${answer.layer}` : ''}`}
+                                    </span>
+                                    <button className="syn-btn syn-btn--ghost syn-push" onClick={onCopy} disabled={busy} title="Copy the answer text" >
+                                        {copied ? 'Copied' : 'Copy'}
+                                    </button>
+                                    <button className="syn-btn syn-btn--accent" onClick={onCapture} disabled={captured || busy} title="Capture as a document — feeds back into the corpus">
+                                        <Save size={12} /> {captured ? 'Captured' : 'Capture'}
+                                    </button>
+                                    <label htmlFor="syn-focus-input" className="syn-sr-only">Second-pass focus (optional)</label>
+                                    <input
+                                        id="syn-focus-input"
+                                        type="text"
+                                        className="syn-focus"
+                                        value={focusText}
+                                        onChange={(e) => setFocusText(e.target.value)}
+                                        placeholder="Focus the second pass on… (optional)"
+                                        aria-label="Second-pass focus (optional)"
+                                    />
+                                    <button className="syn-btn syn-btn--accent" onClick={onSecondLayer} disabled={busy} title="Second-layer query — re-query using this synthesis as added context">
+                                        <Layers size={12} /> Second-layer query
+                                    </button>
+                                </div>
+                                {parentEntry && (
+                                    <button type="button" className="syn-lineage" onClick={() => loadFromHistory(parentEntry)}>
+                                        Built on: {parentEntry.query || '(untitled)'} (layer {parentEntry.layer})
+                                    </button>
+                                )}
+                                {answer.truncated && (
+                                    <div role="status" className="syn-notice">
+                                        This answer hit the length limit and may be cut off.
+                                    </div>
+                                )}
+                                <div className="syn-answer__body" onClick={onCiteClick} dangerouslySetInnerHTML={{ __html: answerHtml }} />
+                                {answer.sources && answer.sources.length > 0 && (
+                                    <div className="syn-answer__sources">
+                                        Sources: {answer.sources.map((s, i) => (
+                                            <span key={`${s.sourceId}-${i}`}>{i > 0 ? ' · ' : ''}[{i + 1}] {s.title || '(untitled)'}</span>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="syn-answer__foot">
+                                    <TagInput source="synthesis" sourceId={answer.id} title={answer.query || 'Synthesis'} />
+                                </div>
+                            </div>
                         )}
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
-                        {history.length === 0 ? (
-                            <div style={{ padding: 12, color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.6 }}>Captured syntheses feed search, Memory Graph RAG and the knowledge graph.</div>
-                        ) : history.map((h) => (
-                            <div key={h.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 4, marginBottom: 4 }}>
-                                <button onClick={() => loadFromHistory(h)}
-                                    style={{ flex: 1, minWidth: 0, display: 'block', textAlign: 'left', padding: '7px 9px', background: 'transparent', border: '1px solid #222', borderRadius: 6, color: '#bbb', cursor: 'pointer', fontFamily: 'inherit' }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#161616'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
-                                    <div style={{ fontSize: 11, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.query || '(untitled)'}</div>
-                                    <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>layer {h.layer} · {new Date(h.capturedAt).toLocaleDateString()}</div>
-                                </button>
-                                <button onClick={() => onDeleteOne(h)} aria-label={`Delete synthesis: ${h.query || 'untitled'}`} title="Delete"
-                                    style={{ flexShrink: 0, background: 'none', border: 'none', color: '#666', cursor: 'pointer', display: 'flex', padding: 4 }}>
-                                    <Trash2 size={11} />
-                                </button>
-                            </div>
-                        ))}
+
+                    {/* Captured corpus */}
+                    <div className="syn-side">
+                        <div className="syn-side__head">
+                            <span>Captured ({isFiltering ? `${filteredHistory.length}/${history.length}` : history.length})</span>
+                            {history.length > 0 && (
+                                <button className="syn-icon-btn syn-push" onClick={onClearAll} title="Clear captured syntheses" aria-label="Delete all captured syntheses" ><Trash2 size={12} /></button>
+                            )}
+                        </div>
+                        {history.length > 0 && (
+                            <input
+                                type="text"
+                                className="syn-side__search"
+                                value={historyQuery}
+                                onChange={(e) => setHistoryQuery(e.target.value)}
+                                placeholder="Search captured syntheses…"
+                                aria-label="Search captured syntheses"
+                            />
+                        )}
+                        <div className="syn-side__list">
+                            {history.length === 0 ? (
+                                <div className="syn-side__empty">Captured syntheses feed search, Memory Graph RAG and the knowledge graph.</div>
+                            ) : filteredHistory.length === 0 ? (
+                                <div className="syn-side__empty">No captures match</div>
+                            ) : filteredHistory.map((h) => (
+                                <div key={h.id} className="syn-hist">
+                                    <button className="syn-hist__open" onClick={() => loadFromHistory(h)}>
+                                        <div className="syn-hist__title">{h.query || '(untitled)'}</div>
+                                        <div className="syn-hist__meta">layer {h.layer} · {new Date(h.capturedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+                                    </button>
+                                    <button
+                                        className="syn-hist__del syn-icon-btn"
+                                        onClick={() => onDeleteOne(h)}
+                                        aria-label={`Delete synthesis: ${h.query || 'untitled'} (captured ${new Date(h.capturedAt).toLocaleString()})`}
+                                        title="Delete"
+                                    >
+                                        <Trash2 size={11} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
-            <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 }

@@ -267,7 +267,7 @@ describe('Synthesis Lab', () => {
         expect(synthesisFor('andy')).toHaveLength(2);
 
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-        fireEvent.click(screen.getByRole('button', { name: 'Delete synthesis: q1' }));
+        fireEvent.click(screen.getByRole('button', { name: /^Delete synthesis: q1/ }));
         confirmSpy.mockRestore();
 
         const remaining = synthesisFor('andy');
@@ -384,8 +384,10 @@ describe('Synthesis Lab — retrieval, citations, cancel (plan 070 phase 2)', ()
         dispatchSpy.mockRestore();
 
         // [9] is out of range for a 1-source answer — it must not become a button, only plain text.
+        // (The renderer emits plain text runs, not per-token spans, so match the
+        // surrounding text rather than an exact-text node.)
         expect(screen.queryByRole('button', { name: /Open source 9/ })).toBeNull();
-        expect(screen.getAllByText('[9]', { exact: true }).length).toBeGreaterThan(0);
+        expect(screen.getByText(/\[9\] for more\./)).toBeInTheDocument();
     });
 
     it('(d) Cancel aborts the in-flight call; an AbortError rejection leaves no error banner and the previous answer intact — MUTATION-CHECK', async () => {
@@ -430,7 +432,7 @@ describe('Synthesis Lab — retrieval, citations, cancel (plan 070 phase 2)', ()
         await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
         await screen.findByText('root answer');
 
-        fireEvent.change(screen.getByLabelText('Focus the second pass on'), { target: { value: 'pricing details' } });
+        fireEvent.change(screen.getByLabelText('Second-pass focus (optional)'), { target: { value: 'pricing details' } });
         callLlmMock.mockResolvedValueOnce({ text: 'deeper answer' });
         recallPassagesMock.mockResolvedValue([]);
         fireEvent.click(screen.getByRole('button', { name: /Second-layer query/ }));
@@ -511,5 +513,151 @@ describe('Synthesis Lab — retrieval, citations, cancel (plan 070 phase 2)', ()
         await waitFor(() => expect(screen.getByRole('button', { name: /Second-layer query/ })).not.toBeDisabled());
         expect(callLlmMock).toHaveBeenCalledTimes(1);
         expect(screen.getByText('first answer')).toBeInTheDocument();
+    });
+});
+
+describe('Synthesis Lab — styling/a11y/markdown polish (plan 070 phase 3)', () => {
+    it('Cmd+Enter and Ctrl+Enter submit the question; plain Enter does not', async () => {
+        callLlmMock.mockResolvedValue({ text: 'answer body' });
+        render(<Synthesis />);
+        typeQuery('a question');
+        fireEvent.keyDown(screen.getByLabelText('Question to synthesize'), { key: 'Enter' });
+        expect(callLlmMock).not.toHaveBeenCalled();
+
+        fireEvent.keyDown(screen.getByLabelText('Question to synthesize'), { key: 'Enter', metaKey: true });
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        await screen.findByText('answer body');
+
+        typeQuery('another question');
+        callLlmMock.mockResolvedValue({ text: 'second body' });
+        fireEvent.keyDown(screen.getByLabelText('Question to synthesize'), { key: 'Enter', ctrlKey: true });
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(2));
+        await screen.findByText('second body');
+    });
+
+    it('Copy shows "Copied" on success; a clipboard rejection shows the error and never "Copied" — MUTATION-CHECK', async () => {
+        callLlmMock.mockResolvedValue({ text: 'copy me' });
+        render(<Synthesis />);
+        typeQuery('q');
+        clickSynthesize();
+        await screen.findByText('copy me');
+
+        const writeText = vi.fn().mockResolvedValueOnce(undefined);
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+        fireEvent.click(screen.getByRole('button', { name: /^Copy$/ }));
+        await screen.findByRole('button', { name: /^Copied$/ });
+
+        writeText.mockRejectedValueOnce(new Error('denied'));
+        fireEvent.click(await screen.findByRole('button', { name: /^Copied$|^Copy$/ }));
+        // Wait for the previous "Copied" state to lapse or the click to register the failure.
+        await waitFor(() => expect(screen.getByText("Couldn't copy — select the text instead.")).toBeInTheDocument());
+        expect(screen.queryByRole('button', { name: /^Copied$/ })).toBeNull();
+
+        delete (navigator as any).clipboard;
+    });
+
+    it('history search filters captures and shows "No captures match"', async () => {
+        setPerUserIdentity('andy');
+        render(<Synthesis />);
+        for (const [q, a] of [['find the cat', 'a1'], ['find the dog', 'a2']] as const) {
+            const d = deferred<{ text: string }>();
+            callLlmMock.mockReturnValue(d.promise);
+            typeQuery(q);
+            clickSynthesize();
+            await waitFor(() => expect(callLlmMock).toHaveBeenCalled());
+            d.resolve({ text: a });
+            await waitFor(() => expect(screen.getByText(a)).toBeInTheDocument());
+            fireEvent.click(screen.getByRole('button', { name: /^Capture$/ }));
+        }
+        await screen.findByText('Captured (2)');
+
+        fireEvent.change(screen.getByLabelText('Search captured syntheses'), { target: { value: 'cat' } });
+        await screen.findByText('Captured (1/2)');
+        expect(screen.getByText('find the cat', { selector: '.syn-hist__title' })).toBeInTheDocument();
+        expect(screen.queryByText('find the dog', { selector: '.syn-hist__title' })).toBeNull();
+
+        fireEvent.change(screen.getByLabelText('Search captured syntheses'), { target: { value: 'nothing matches this' } });
+        await screen.findByText('No captures match');
+        expect(screen.getByText('Captured (0/2)')).toBeInTheDocument();
+    });
+
+    it('two captures with the same query get distinct delete-button accessible names — MUTATION-CHECK', async () => {
+        setPerUserIdentity('andy');
+        render(<Synthesis />);
+        let first = true;
+        for (const a of ['answer one', 'answer two']) {
+            const d = deferred<{ text: string }>();
+            callLlmMock.mockReturnValue(d.promise);
+            typeQuery('same question');
+            clickSynthesize();
+            await waitFor(() => expect(callLlmMock).toHaveBeenCalled());
+            d.resolve({ text: a });
+            await waitFor(() => expect(screen.getByText(a)).toBeInTheDocument());
+            // capturedAt is second-precision in the rendered label — force the two
+            // captures into different seconds so the labels are genuinely distinct.
+            if (!first) await new Promise((r) => setTimeout(r, 1100));
+            first = false;
+            fireEvent.click(screen.getByRole('button', { name: /^Capture$/ }));
+        }
+        const deleteButtons = screen.getAllByRole('button', { name: /^Delete synthesis: same question/ });
+        expect(deleteButtons).toHaveLength(2);
+        expect(deleteButtons[0].getAttribute('aria-label')).not.toBe(deleteButtons[1].getAttribute('aria-label'));
+    }, 10000);
+
+    it('renders Markdown in the answer body (bold + list)', async () => {
+        callLlmMock.mockResolvedValue({ text: '**Bold claim**\n\n- first item\n- second item' });
+        const { container } = render(<Synthesis />);
+        typeQuery('markdown please');
+        clickSynthesize();
+        await waitFor(() => expect(callLlmMock).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(container.querySelector('.syn-answer__body strong')).not.toBeNull());
+        expect(container.querySelector('.syn-answer__body strong')?.textContent).toBe('Bold claim');
+        expect(container.querySelectorAll('.syn-answer__body li').length).toBe(2);
+    });
+
+    it('a [1] inside inline code is not rendered as a citation button', async () => {
+        recallPassagesMock.mockResolvedValue([passage({ passageId: 'p1', sourceId: 'tag:1', sourceKind: 'tag', title: 'Cited Source' })]);
+        callLlmMock.mockResolvedValue({ text: 'Use `[1]` in code, but [1] outside cites.' });
+        const { container } = render(<Synthesis />);
+        await typeQueryAndWaitForPreview('question with code citation');
+        await screen.findByText('Sources (1)');
+        clickSynthesize();
+        await screen.findByRole('button', { name: /Open source 1: Cited Source/ });
+
+        const codeEl = container.querySelector('.syn-answer__body code');
+        expect(codeEl?.textContent).toBe('[1]');
+        expect(codeEl?.querySelector('button.syn-cite')).toBeNull();
+    });
+
+    it('the error banner uses role="alert"', async () => {
+        callLlmMock.mockRejectedValue(new Error('boom'));
+        render(<Synthesis />);
+        typeQuery('q');
+        clickSynthesize();
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('boom');
+    });
+
+    it('a lineage chip appears on a captured→second-layer answer and loads the parent on click', async () => {
+        callLlmMock.mockResolvedValueOnce({ text: 'root answer' });
+        render(<Synthesis />);
+        typeQuery('root question');
+        clickSynthesize();
+        await screen.findByText('root answer');
+        fireEvent.click(screen.getByRole('button', { name: /^Capture$/ }));
+
+        callLlmMock.mockResolvedValueOnce({ text: 'deeper answer' });
+        fireEvent.click(screen.getByRole('button', { name: /Second-layer query/ }));
+        await screen.findByText('deeper answer');
+
+        const chip = await screen.findByRole('button', { name: /Built on: root question \(layer 1\)/ });
+
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        fireEvent.click(chip);
+        confirmSpy.mockRestore();
+
+        expect(screen.getByText('root answer')).toBeInTheDocument();
+        expect((screen.getByLabelText('Question to synthesize') as HTMLTextAreaElement).value).toBe('root question');
     });
 });

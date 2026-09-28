@@ -9,7 +9,20 @@
 
 .kg-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .kg-panel > * { flex: 1; min-height: 0; }
-.kg { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 14px; }
+/* ── canvas draw palette (plan 072 phase 2 B5) — read via getComputedStyle(canvas)
+   at draw time, re-read on theme change. Cluster colours are fixed saturated hues
+   that already clear 3:1 against the canvas's own black background in every theme,
+   so they need no per-theme override. --kg-sel does: --text-primary is a DARK
+   colour in the light themes (meant for a light page background), which would be
+   near-invisible against the always-black canvas — so latte/corporate override it
+   to a fixed light colour below. */
+.kg {
+    display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 14px;
+    --kg-c0: #4d8aff; --kg-c1: #34d399; --kg-c2: #e7c879; --kg-c3: #ff5a8a;
+    --kg-c4: #a855f7; --kg-c5: #22d3ee; --kg-c6: #f97316; --kg-c7: #e01e2b;
+    --kg-sel: var(--text-primary);
+}
+.theme-latte .kg, .theme-corporate .kg { --kg-sel: #f5f5f5; }
 .kg-err { margin-left: 8px; font-size: 9px; letter-spacing: .1em; padding: 1px 6px; border-radius: 4px; color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); font-family: var(--font-mono, monospace); vertical-align: middle; }
 
 /* ── project tabs ── */
@@ -37,15 +50,31 @@
     .kg-tabs { scrollbar-width: thin; scrollbar-color: var(--accent) color-mix(in srgb, var(--text-secondary) 14%, transparent); }
 }
 .kg-tab {
+    position: relative;
     flex: 0 0 230px; text-align: left; cursor: pointer;
     background: var(--bg-surface, rgba(20,16,11,.55));
     border: 1px solid var(--border-default, rgba(255,255,255,.1));
     border-radius: 12px; padding: 12px 14px; transition: all .2s; font-family: inherit; color: var(--text-secondary, #9a8757);
 }
+.kg-tab__remove {
+    position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--border-default, rgba(255,255,255,.15));
+    background: var(--bg-desktop, rgba(0,0,0,.4)); color: var(--text-secondary); font-size: 12px; cursor: pointer;
+}
+.kg-tab__remove:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.kg-addform { display: flex; flex-direction: column; gap: 6px; flex: 0 0 230px; }
+.kg-addform__input { padding: 8px 10px; border-radius: 8px; font-family: inherit; font-size: 12px; background: var(--bg-desktop, #0a0a0a); color: var(--text-primary, #fff); border: 1px solid var(--border-default, rgba(255,255,255,.15)); }
+.kg-addform__input:focus { outline: none; border-color: var(--accent); }
+.kg-addform__row { display: flex; gap: 6px; }
+.kg-addform__row button { flex: 1; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 12px; border: 1px solid var(--border-default, rgba(255,255,255,.15)); background: none; color: var(--text-secondary); }
+.kg-addform__row button:first-child { background: var(--accent); color: var(--accent-text, #000); border-color: transparent; }
+.kg-addform__row button:disabled { opacity: .5; cursor: default; }
+.kg-addform__err { font-size: 11px; color: var(--danger); margin: 0; }
 .kg-tab:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); transform: translateY(-2px); }
 .kg-tab.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 12px 30px -18px color-mix(in srgb, var(--accent) 80%, transparent); }
 .kg-tab__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.kg-tab__name { font-family: 'Georgia', serif; font-size: 15px; color: var(--text-primary, #fff); }
+.kg-tab__name { font-family: var(--font-heading); font-size: 15px; color: var(--text-primary, #fff); }
 .kg-tab__lang { font-size: 9px; letter-spacing: .08em; padding: 2px 6px; border-radius: 5px; color: var(--accent-text, var(--accent)); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
 .kg-tab__blurb { font-size: 11.5px; line-height: 1.4; color: var(--text-secondary, #9a8757); margin-bottom: 8px; min-height: 32px; }
 .kg-tab__meta { font-size: 11px; color: var(--text-tertiary, #6f6244); }
@@ -61,7 +90,7 @@
 .kg-body { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 14px; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .kg-stage { flex: 1 1 380px; min-width: 320px; min-height: 380px; display: flex; flex-direction: column; border: 1px solid var(--border-default, rgba(255,255,255,.1)); border-radius: 14px; overflow: hidden; overscroll-behavior: contain; background: var(--bg-surface, rgba(12,9,7,.5)); }
 .kg-stage__hdr { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.06)); flex: none; }
-.kg-stage__proj { font-family: 'Georgia', serif; color: var(--accent-text, var(--accent)); font-size: 14px; }
+.kg-stage__proj { font-family: var(--font-heading); color: var(--accent-text, var(--accent)); font-size: 14px; }
 .kg-stage__sub { font-size: 11px; color: var(--text-secondary, #9a8757); margin-top: 2px; }
 .kg-live { margin-left: 8px; font-size: 9px; letter-spacing: .1em; padding: 1px 6px; border-radius: 4px; color: #06231a; background: #34d399; font-family: var(--font-mono, monospace); vertical-align: middle; }
 .kg-rep { margin-left: 8px; font-size: 9px; letter-spacing: .1em; padding: 1px 6px; border-radius: 4px; color: var(--text-tertiary, #888); border: 1px solid var(--border-default, rgba(255,255,255,.18)); font-family: var(--font-mono, monospace); vertical-align: middle; }
@@ -91,7 +120,7 @@
 .kg-imp__n { font-size: 12px; color: var(--text-primary, #ece0c4); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kg-imp__bar { flex: 0 0 54px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--text-secondary) 18%, transparent); overflow: hidden; }
 .kg-imp__bar span { display: block; height: 100%; background: var(--accent); }
-.kg-save { font-family: 'Georgia', serif; font-size: 30px; color: #34d399; margin-bottom: 6px; }
+.kg-save { font-family: var(--font-heading); font-size: 30px; color: var(--success, var(--accent-text)); margin-bottom: 6px; }
 /* ── Ask the map — full-width bottom dock (same width as the graph) ── */
 .kg-chatdock { flex: none; border: 1px solid var(--border-default, rgba(255,255,255,.12)); border-radius: 12px; background: var(--bg-surface, rgba(20,16,11,.55)); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 .kg-chatdock__hdr { display: flex; align-items: center; gap: 14px; }
@@ -113,7 +142,10 @@
 .kg-chat__send { flex: none; width: 34px; border-radius: 8px; cursor: pointer; background: var(--accent); color: var(--accent-text, #000); border: none; font-size: 15px; }
 .kg-chat__send:disabled { opacity: .4; cursor: default; }
 
-.kg-sel__name { font-family: 'Georgia', serif; color: var(--accent-text, var(--accent)); font-size: 14px; margin-bottom: 6px; }
+.kg-sel__name { font-family: var(--font-heading); color: var(--accent-text, var(--accent)); font-size: 14px; margin-bottom: 6px; }
 .kg-sel__row { font-size: 12px; color: var(--text-secondary, #9a8757); margin-top: 2px; }
+.kg-sel__neighbours { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.kg-sel__neighbour { font-size: 11px; padding: 3px 8px; border-radius: 999px; cursor: pointer; font-family: inherit; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text, var(--accent)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.kg-sel__neighbour:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 
 @media (prefers-reduced-motion: reduce) { .kg-conf span { transition: none; } }

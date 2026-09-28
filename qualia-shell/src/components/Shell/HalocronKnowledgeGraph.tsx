@@ -25,6 +25,7 @@ import { UserContext } from '../../context/UserContext';
 import GraphifyView from '../KnowledgeGraph/GraphifyView';
 import {
     DEFAULT_KG_PROJECTS,
+    removeKgProject,
     setKgActiveProject,
     setKgView,
     upsertKgProject,
@@ -36,6 +37,7 @@ import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import { captureOwner } from '../../lib/perUserIdentity';
 import AgentEta from '../common/AgentEta';
 import { KG_AGENTS, type KgAgent } from './HalocronKnowledgeGraph.agents';
+import { buildGraph, neighbours, pickNearest, rescale, seedFor, type KgNode } from './kgCanvas';
 import './HalocronKnowledgeGraph.css';
 
 // KG_AGENTS + KgAgent are now hoisted to the data-only
@@ -44,8 +46,10 @@ import './HalocronKnowledgeGraph.css';
 // for backward compatibility with existing importers of this file.
 export { KG_AGENTS, type KgAgent };
 
-// Cluster palette (colour = cluster, as the reference legend says).
-const CLUSTER_COLORS = ['#4d8aff', '#34d399', '#e7c879', '#ff5a8a', '#a855f7', '#22d3ee', '#f97316', '#e01e2b'];
+// Cluster count (colour = cluster, as the reference legend says). Actual
+// colours are theme tokens (--kg-c0..--kg-c7, plan 072 phase 2 B5) read at
+// draw time, not hard-coded here — this constant is only "how many clusters".
+const KG_CLUSTER_COUNT = 8;
 
 const KG_CODE_EXT = /\.(ts|tsx|js|jsx|py|rs|go|java|rb|c|h|hpp|cpp|cc|cs|php|swift|kt|scala|vue|svelte|mjs|cjs|sql)$/i;
 
@@ -87,7 +91,7 @@ export async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProj
     const source = blobs.filter((b) => KG_CODE_EXT.test(b.path));
     const pool = source.length ? source : blobs;
     const dirs = Array.from(new Set(pool.map((b) => dirOf(b.path))));
-    const clusterOf = new Map(dirs.map((d, i) => [d, i % CLUSTER_COLORS.length] as const));
+    const clusterOf = new Map(dirs.map((d, i) => [d, i % KG_CLUSTER_COUNT] as const));
 
     const capped = pool.slice().sort((a, b) => b.size - a.size).slice(0, 120);
     const maxSize = Math.max(1, ...capped.map((b) => b.size));
@@ -128,15 +132,10 @@ export async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProj
         name: repo,
         lang,
         files: blobs.length,
-        clusters: Math.min(dirs.length, CLUSTER_COLORS.length),
+        clusters: Math.min(dirs.length, KG_CLUSTER_COUNT),
         blurb: `${owner}/${repo} — graphed from the GitHub file tree${treeJson.truncated ? ' (GitHub listed only part of this repo)' : ''}.`,
     };
     return { project, gdata };
-}
-
-interface Node {
-    x: number; y: number; hx: number; hy: number; vx: number; vy: number;
-    r: number; c: string; cluster: number; label: string; god?: KgAgent; importance: number;
 }
 
 const IMPORTANT_FILES = [
@@ -149,117 +148,9 @@ const IMPORTANT_FILES = [
     { name: 'oneSaveClient.ts', score: 47 },
 ];
 
-// Real Fruchterman-Reingold force layout — positions are driven by the actual
-// edges: connected files attract, all files repel, settled once on load. This
-// makes clusters and hubs emerge from real connectivity, not a cosmetic ring.
-function forceLayout(nodes: Node[], links: [number, number][], w: number, h: number): void {
-    const n = nodes.length;
-    if (!n) return;
-    const k = Math.sqrt((w * h) / n) * 0.8;       // ideal edge length
-    const iters = n > 350 ? 90 : 150;
-    const capSq = (k * 6) * (k * 6);
-    let temp = Math.min(w, h) * 0.18;
-    const cool = temp / (iters + 1);
-    for (let it = 0; it < iters; it++) {
-        for (let i = 0; i < n; i++) { nodes[i].vx = 0; nodes[i].vy = 0; }
-        // repulsion (distance-capped so it stays O(n²)-cheap and stable)
-        for (let i = 0; i < n; i++) {
-            const a = nodes[i];
-            for (let j = i + 1; j < n; j++) {
-                const b = nodes[j];
-                let dx = a.x - b.x, dy = a.y - b.y;
-                let d2 = dx * dx + dy * dy;
-                if (d2 < 0.01) { d2 = 0.01; dx = Math.random() - 0.5; dy = Math.random() - 0.5; }
-                if (d2 > capSq) continue;
-                const f = (k * k) / d2;
-                a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
-            }
-        }
-        // attraction along real edges
-        for (const [s, t] of links) {
-            const a = nodes[s], b = nodes[t]; if (!a || !b) continue;
-            let dx = a.x - b.x, dy = a.y - b.y;
-            const dist = Math.hypot(dx, dy) || 0.01;
-            const f = (dist * dist) / k;
-            const fx = (dx / dist) * f, fy = (dy / dist) * f;
-            a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
-        }
-        // integrate (cooled) + light center gravity + bounds
-        for (let i = 0; i < n; i++) {
-            const a = nodes[i];
-            const disp = Math.hypot(a.vx, a.vy) || 0.01;
-            a.x += (a.vx / disp) * Math.min(disp, temp);
-            a.y += (a.vy / disp) * Math.min(disp, temp);
-            // Center gravity keeps the graph compact WITHOUT clamping to the
-            // edge (the hard clamp piled nodes into a "border of dots").
-            a.x += (w / 2 - a.x) * 0.022; a.y += (h / 2 - a.y) * 0.022;
-        }
-        temp = Math.max(temp - cool, 1);
-    }
-    for (const a of nodes) { a.hx = a.x; a.hy = a.y; a.vx = 0; a.vy = 0; }
-}
-
-// Build the render graph. When `data` (the real per-repo import graph) is
-// present, nodes/edges/clusters/importance are REAL (from public/data/kg). The
-// agent "god nodes" are overlaid on top for the Old-Republic look.
-function buildGraph(project: KgProject, w: number, h: number, data: KgGraphData | null): { nodes: Node[]; links: [number, number][] } {
-    const nodes: Node[] = [];
-    const links: [number, number][] = [];
-
-    if (data && data.nodes.length) {
-        const clusterCount = Math.max(1, data.clusters);
-        const centers = Array.from({ length: clusterCount }, (_, i) => {
-            const ang = (i / clusterCount) * Math.PI * 2;
-            const rad = Math.min(w, h) * 0.32;
-            return { x: w / 2 + Math.cos(ang) * rad, y: h / 2 + Math.sin(ang) * rad };
-        });
-        const maxImp = Math.max(1, ...data.nodes.map((n) => n.importance));
-        data.nodes.forEach((n) => {
-            const ctr = centers[n.cluster % clusterCount] ?? { x: w / 2, y: h / 2 };
-            const spread = 60 + Math.random() * 80;
-            const a = Math.random() * Math.PI * 2;
-            const x = ctr.x + Math.cos(a) * spread * Math.random();
-            const y = ctr.y + Math.sin(a) * spread * Math.random();
-            nodes.push({
-                x, y, hx: x, hy: y, vx: 0, vy: 0,
-                r: 1.6 + (n.importance / maxImp) * 5, c: CLUSTER_COLORS[n.cluster % CLUSTER_COLORS.length],
-                cluster: n.cluster, label: n.label, importance: n.importance,
-            });
-        });
-        data.links.forEach(([a, b]) => { if (a < nodes.length && b < nodes.length) links.push([a, b]); });
-    } else {
-        // representative fallback (only used before the JSON loads)
-        const clusterCount = Math.min(8, Math.max(4, Math.round(project.clusters / 14)));
-        const centers = Array.from({ length: clusterCount }, (_, i) => {
-            const ang = (i / clusterCount) * Math.PI * 2;
-            const rad = Math.min(w, h) * 0.30;
-            return { x: w / 2 + Math.cos(ang) * rad, y: h / 2 + Math.sin(ang) * rad };
-        });
-        const total = Math.min(160, Math.max(60, Math.round(project.files / 7)));
-        for (let i = 0; i < total; i++) {
-            const cl = i % clusterCount; const ctr = centers[cl];
-            const a = Math.random() * Math.PI * 2; const spread = 70 + Math.random() * 70;
-            const x = ctr.x + Math.cos(a) * spread * Math.random(), y = ctr.y + Math.sin(a) * spread * Math.random();
-            nodes.push({ x, y, hx: x, hy: y, vx: 0, vy: 0, r: 1.6 + Math.random() * 2.6, c: CLUSTER_COLORS[cl % CLUSTER_COLORS.length], cluster: cl, label: `file-${i}`, importance: 0 });
-        }
-    }
-
-    // Settle the file nodes by their REAL connectivity before overlaying agents.
-    forceLayout(nodes, links, w, h);
-
-    // Agent god nodes overlaid near center.
-    KG_AGENTS.forEach((g, i) => {
-        const a = (i / KG_AGENTS.length) * Math.PI * 2;
-        const rad = Math.min(w, h) * 0.13;
-        const x = w / 2 + Math.cos(a) * rad, y = h / 2 + Math.sin(a) * rad;
-        nodes.push({ x, y, hx: x, hy: y, vx: 0, vy: 0, r: 9, c: g.color, cluster: -1, label: g.name, god: g, importance: 100 });
-    });
-    return { nodes, links };
-}
-
 function RepoGraph() {
     const kgState = useHalocronKnowledgeGraphState();
-    const [selected, setSelected] = useState<Node | null>(null);
+    const [selected, setSelected] = useState<KgNode | null>(null);
     const [paused, setPaused] = useState(false);
     const [gdata, setGdata] = useState<KgGraphData | null>(null);
     const [loadState, setLoadState] = useState<'loading' | 'error' | 'loaded'>('loading');
@@ -273,13 +164,22 @@ function RepoGraph() {
     const hoverRef = useRef(false);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const wrapRef = useRef<HTMLDivElement | null>(null);
-    const nodesRef = useRef<Node[]>([]);
+    const nodesRef = useRef<KgNode[]>([]);
     const linksRef = useRef<[number, number][]>([]);
     const rafRef = useRef<number>(0);
     const sizeRef = useRef({ w: 800, h: 520 });
     const viewRef = useRef({ zoom: 1, ox: 0, oy: 0 });   // scroll-wheel zoom + pan
     const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: boolean } | null>(null);
     const suppressNextClickRef = useRef(false);
+    // Draw-on-demand plumbing (B4): `pausedRef`/`selectedRef` let the rAF loop
+    // effect (mount-once, below) read the latest paused/selected state without
+    // being torn down and rebuilt on every change. `drawRef`/`ensureLoopRef` are
+    // filled in by that effect and called by every OTHER effect/handler that
+    // changes what should be on screen (resize, rebuild, zoom/pan, selection).
+    const pausedRef = useRef(false);
+    const selectedRef = useRef<KgNode | null>(null);
+    const drawRef = useRef<(drift: boolean) => void>(() => {});
+    const ensureLoopRef = useRef<() => void>(() => {});
 
     const projects = useMemo(() => {
         const defaultIds = new Set(DEFAULT_KG_PROJECTS.map((p) => p.id));
@@ -290,17 +190,35 @@ function RepoGraph() {
         ? kgState.activeId
         : DEFAULT_KG_PROJECTS[0].id;
     const project = useMemo(() => projects.find((p) => p.id === activeId) ?? projects[0], [projects, activeId]);
+    // Layout depends only on project.id + gdata identity (B3) — but buildGraph's
+    // fallback path also reads project.files/clusters, so keep the latest full
+    // object in a ref rather than widening the rebuild dependency array.
+    const projectRef = useRef(project);
+    projectRef.current = project;
+
+    useEffect(() => {
+        pausedRef.current = paused;
+        if (paused) drawRef.current(false); else ensureLoopRef.current();
+    }, [paused]);
+
+    useEffect(() => {
+        selectedRef.current = selected;
+        drawRef.current(false);
+    }, [selected]);
 
     // Load the REAL per-repo graph JSON (public/data/kg/<id>.json) on selection.
     // Tracks loadState so a fetch failure shows "couldn't load" + Retry instead
     // of "loading…" forever (E3) — bumping retryCount re-runs this effect.
+    // Depends on the ACTIVE project's cached graph identity (not the whole
+    // `graphs` map, B3) — an unrelated store write (e.g. a different tab's
+    // upsert) leaves this key's reference untouched, so this never refetches.
+    const cachedGraph = kgState.graphs[activeId];
     useEffect(() => {
         let cancelled = false;
         setGdata(null);
         setLoadState('loading');
-        const cached = kgState.graphs[activeId];
-        if (cached) {
-            setGdata(cached);
+        if (cachedGraph) {
+            setGdata(cachedGraph);
             setLoadState('loaded');
             return;
         }
@@ -309,50 +227,86 @@ function RepoGraph() {
             .then((j) => { if (!cancelled) { setGdata(j as KgGraphData); setLoadState('loaded'); } })
             .catch(() => { if (!cancelled) setLoadState('error'); });
         return () => { cancelled = true; };
-    }, [activeId, kgState.graphs, retryCount]);
+    }, [activeId, cachedGraph, retryCount]);
 
-    // (Re)build the render graph when the project, data, or canvas size changes.
+    // (Re)build the render graph — ONLY when the project or its graph data
+    // actually changes (B3), never on an unrelated resize (B2) or store write.
     const rebuild = useCallback(() => {
         const { w, h } = sizeRef.current;
-        const { nodes, links } = buildGraph(project, w, h, gdata);
+        const { nodes, links } = buildGraph(projectRef.current, w, h, gdata, KG_AGENTS, seedFor(project.id));
         nodesRef.current = nodes;
         linksRef.current = links;
         viewRef.current = { zoom: 1, ox: 0, oy: 0 };   // reset zoom/pan on (re)build
         setSelected(null);
-    }, [project, gdata]);
-
-    useEffect(() => {
-        const wrap = wrapRef.current, canvas = canvasRef.current;
-        if (!wrap || !canvas) return;
-        const ro = new ResizeObserver(() => {
-            const r = wrap.getBoundingClientRect();
-            sizeRef.current = { w: Math.max(320, r.width), h: Math.max(280, r.height) };
-            const dpr = Math.min(2, window.devicePixelRatio || 1);
-            canvas.width = sizeRef.current.w * dpr; canvas.height = sizeRef.current.h * dpr;
-            canvas.style.width = sizeRef.current.w + 'px'; canvas.style.height = sizeRef.current.h + 'px';
-            const ctx = canvas.getContext('2d'); if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            rebuild();
-        });
-        ro.observe(wrap);
-        return () => ro.disconnect();
-    }, [rebuild]);
+        drawRef.current(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [project.id, gdata]);
 
     useEffect(() => { rebuild(); }, [rebuild]);
 
-    // Animation loop — gentle drift around home positions + draw edges/nodes.
+    // Resize (B2): debounced 150 ms, and RESCALES existing positions instead of
+    // re-laying-out (no re-seeding, no scramble while dragging a window edge).
+    useEffect(() => {
+        const wrap = wrapRef.current, canvas = canvasRef.current;
+        if (!wrap || !canvas) return;
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+        const applyResize = () => {
+            debounceTimer = null;
+            const r = wrap.getBoundingClientRect();
+            const nextW = Math.max(320, r.width), nextH = Math.max(280, r.height);
+            const prev = sizeRef.current;
+            const dpr = Math.min(2, window.devicePixelRatio || 1);
+            canvas.width = nextW * dpr; canvas.height = nextH * dpr;
+            canvas.style.width = nextW + 'px'; canvas.style.height = nextH + 'px';
+            const ctx = canvas.getContext('2d'); if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            if (prev.w !== nextW || prev.h !== nextH) {
+                rescale(nodesRef.current, prev.w, prev.h, nextW, nextH);
+                sizeRef.current = { w: nextW, h: nextH };
+            }
+            drawRef.current(false);
+        };
+        const ro = new ResizeObserver(() => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(applyResize, 150);
+        });
+        ro.observe(wrap);
+        return () => { ro.disconnect(); if (debounceTimer) clearTimeout(debounceTimer); };
+    }, []);
+
+    // Canvas draw machinery (B4/B5) — set up ONCE. The rAF loop only runs while
+    // drifting is actually wanted (not paused, no reduced-motion, tab visible,
+    // canvas on-screen); otherwise a single static frame is drawn on demand by
+    // every other effect/handler via `drawRef.current(false)`. Colours are read
+    // from theme tokens on the canvas element and re-read whenever <html>'s
+    // class changes (theme switch), never hard-coded.
     useEffect(() => {
         const canvas = canvasRef.current; if (!canvas) return;
         const ctx = canvas.getContext('2d'); if (!ctx) return;
-        const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        let t = 0;
-        const css = getComputedStyle(document.documentElement);
-        const edgeColor = (css.getPropertyValue('--accent').trim() || '#4d8aff');
 
-        const frame = () => {
+        const reducedMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        let visible = true;
+        let docVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+        let t = 0;
+        let palette = {
+            edge: '#4d8aff', sel: '#fff',
+            clusters: ['#4d8aff', '#34d399', '#e7c879', '#ff5a8a', '#a855f7', '#22d3ee', '#f97316', '#e01e2b'],
+        };
+        const readPalette = () => {
+            const cs = getComputedStyle(canvas);
+            const get = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+            palette = {
+                edge: get('--accent', palette.edge),
+                sel: get('--kg-sel', palette.sel),
+                clusters: palette.clusters.map((c, i) => get(`--kg-c${i}`, c)),
+            };
+        };
+        readPalette();
+
+        const draw = (drift: boolean) => {
             const { w, h } = sizeRef.current;
             const nodes = nodesRef.current;
             ctx.clearRect(0, 0, w, h);
-            t += 0.016;
+            if (drift) t += 0.016;
             // Apply scroll-wheel zoom + pan (drawn in world coords inside save/restore).
             const v = viewRef.current;
             ctx.save();
@@ -360,7 +314,7 @@ function RepoGraph() {
             ctx.scale(v.zoom, v.zoom);
             // REAL edges: every import relationship found in the repo.
             const links = linksRef.current;
-            ctx.globalAlpha = 0.14; ctx.strokeStyle = edgeColor; ctx.lineWidth = 0.5;
+            ctx.globalAlpha = 0.14; ctx.strokeStyle = palette.edge; ctx.lineWidth = 0.5;
             ctx.beginPath();
             for (let i = 0; i < links.length; i++) {
                 const a = nodes[links[i][0]], b = nodes[links[i][1]];
@@ -369,30 +323,79 @@ function RepoGraph() {
             ctx.stroke();
             ctx.globalAlpha = 1;
             for (const n of nodes) {
-                if (!reduce && !paused) {
+                if (drift) {
                     // drift around home
                     n.x += Math.sin(t + n.hx * 0.01) * 0.12;
                     n.y += Math.cos(t + n.hy * 0.01) * 0.12;
                 }
-                const isSel = selected === n;
+                const isSel = selectedRef.current === n;
+                const color = n.god ? n.god.color : palette.clusters[((n.cluster % 8) + 8) % 8];
                 if (n.god) {
                     // glowing god node
                     const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r * 2.6);
-                    grd.addColorStop(0, n.c); grd.addColorStop(1, 'transparent');
+                    grd.addColorStop(0, color); grd.addColorStop(1, 'transparent');
                     ctx.globalAlpha = 0.55; ctx.fillStyle = grd;
                     ctx.beginPath(); ctx.arc(n.x, n.y, n.r * 2.6, 0, Math.PI * 2); ctx.fill();
                     ctx.globalAlpha = 1;
                 }
-                ctx.fillStyle = n.c;
+                ctx.fillStyle = color;
                 ctx.beginPath(); ctx.arc(n.x, n.y, isSel ? n.r * 1.8 : n.r, 0, Math.PI * 2); ctx.fill();
-                if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.stroke(); }
+                if (isSel) { ctx.strokeStyle = palette.sel; ctx.lineWidth = 1.4; ctx.stroke(); }
             }
             ctx.restore();
-            rafRef.current = requestAnimationFrame(frame);
         };
-        rafRef.current = requestAnimationFrame(frame);
-        return () => cancelAnimationFrame(rafRef.current);
-    }, [selected, paused]);
+        drawRef.current = draw;
+
+        const shouldRun = () => !pausedRef.current && !reducedMotion && docVisible && visible;
+        const loop = () => {
+            draw(true);
+            rafRef.current = shouldRun() ? requestAnimationFrame(loop) : 0;
+        };
+        const stopLoop = () => {
+            if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }
+        };
+        const ensureLoop = () => {
+            if (rafRef.current) return;
+            if (shouldRun()) rafRef.current = requestAnimationFrame(loop);
+            else draw(false);
+        };
+        ensureLoopRef.current = ensureLoop;
+
+        let intersectionObserver: IntersectionObserver | null = null;
+        if (typeof IntersectionObserver !== 'undefined') {
+            intersectionObserver = new IntersectionObserver((entries) => {
+                const entry = entries[entries.length - 1];
+                visible = entry ? entry.isIntersecting : true;
+                if (shouldRun()) ensureLoop(); else { stopLoop(); draw(false); }
+            });
+            intersectionObserver.observe(canvas);
+        }
+
+        const onVisibilityChange = () => {
+            docVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+            if (shouldRun()) ensureLoop(); else { stopLoop(); draw(false); }
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        let mutationObserver: MutationObserver | null = null;
+        if (typeof MutationObserver !== 'undefined') {
+            mutationObserver = new MutationObserver(() => { readPalette(); draw(false); });
+            mutationObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        }
+
+        if (shouldRun()) rafRef.current = requestAnimationFrame(loop); else draw(false);
+
+        return () => {
+            stopLoop();
+            intersectionObserver?.disconnect();
+            mutationObserver?.disconnect();
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
+    }, []);
+
+    const selectByIndex = useCallback((idx: number) => {
+        setSelected(idx >= 0 ? nodesRef.current[idx] ?? null : null);
+    }, []);
 
     const onCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (suppressNextClickRef.current) {
@@ -406,12 +409,8 @@ function RepoGraph() {
         // invert the zoom/pan transform to get world coords
         const mx = (e.clientX - rect.left - v.ox) / v.zoom;
         const my = (e.clientY - rect.top - v.oy) / v.zoom;
-        let best: Node | null = null, bestD = 16 / v.zoom;
-        for (const n of nodesRef.current) {
-            const d = Math.hypot(n.x - mx, n.y - my);
-            if (d < Math.max(bestD, n.r + 6)) { best = n; bestD = d; }
-        }
-        setSelected(best);
+        // B1: nearest node within range, not the last one examined.
+        selectByIndex(pickNearest(nodesRef.current, mx, my, v.zoom));
     };
 
     const zoomCanvasAt = useCallback((clientX: number, clientY: number, deltaY: number) => {
@@ -426,6 +425,7 @@ function RepoGraph() {
         v.ox = mx - ((mx - v.ox) / v.zoom) * nz;
         v.oy = my - ((my - v.oy) / v.zoom) * nz;
         v.zoom = nz;
+        drawRef.current(false);
     }, []);
 
     useEffect(() => {
@@ -484,6 +484,7 @@ function RepoGraph() {
             drag.lastX = event.clientX;
             drag.lastY = event.clientY;
             drag.moved = true;
+            drawRef.current(false);
         };
 
         canvas.addEventListener('pointerdown', handlePointerDown);
@@ -565,7 +566,8 @@ function RepoGraph() {
         setChat((c) => [...c, { role: 'user', text: q }]);
         setChatBusy(true);
         try {
-            const history = chat.map((m) => `${m.role === 'user' ? 'User' : agent.name}: ${m.text}`).join('\n');
+            // B6: cap to the last 8 messages — an unbounded history was sent every turn.
+            const history = chat.slice(-8).map((m) => `${m.role === 'user' ? 'User' : agent.name}: ${m.text}`).join('\n');
             const res = await callLlm({
                 prompt: `${history ? history + '\n' : ''}User: ${q}\n${agent.name}:`,
                 systemPrompt: `${seedPrompt()}\nYou are ${agent.name}, the project's ${agent.god}. Be concise and specific.`,
@@ -576,20 +578,26 @@ function RepoGraph() {
         } finally { setChatBusy(false); }
     }, [chatInput, chatBusy, chat, agent, seedPrompt, bundle.llm]);
 
+    // B7: inline form in the tab strip instead of window.prompt/alert.
     const [adding, setAdding] = useState(false);
+    const [addOpen, setAddOpen] = useState(false);
+    const [addUrl, setAddUrl] = useState('');
+    const [addError, setAddError] = useState<string | null>(null);
+    const closeAddForm = () => { setAddOpen(false); setAddUrl(''); setAddError(null); };
     const addProject = async () => {
-        const url = window.prompt('Graph a repo — paste a GitHub URL (https://github.com/owner/repo):');
-        if (!url) return;
+        const url = addUrl.trim();
+        if (!url || adding) return;
         setAdding(true);
+        setAddError(null);
         const stillOwner = captureOwner();
         try {
             // Graph the repo CLIENT-SIDE via the GitHub API (no backend needed) — two
             // calls (repo + recursive file tree). Save the result to the account
             // resume store so it renders on every machine after login.
-            const { project, gdata } = await graphGithubRepo(url);
-            if (stillOwner()) upsertKgProject(project, gdata); // account switched mid-fetch — drop, never redirect
+            const { project: newProject, gdata: newGdata } = await graphGithubRepo(url);
+            if (stillOwner()) { upsertKgProject(newProject, newGdata); closeAddForm(); } // account switched mid-fetch — drop, never redirect
         } catch (e) {
-            window.alert(`Could not graph that repo:\n${(e as Error).message}`);
+            if (stillOwner()) setAddError((e as Error).message);
         } finally {
             setAdding(false);
         }
@@ -603,25 +611,56 @@ function RepoGraph() {
     const showCap = !!gdata && !!totalFiles && totalFiles > shownCount;
     const builtDate = gdata?.builtAt ? new Date(gdata.builtAt) : null;
     const ageDays = builtDate ? Math.max(0, Math.floor((Date.now() - builtDate.getTime()) / 86_400_000)) : null;
+    const defaultTabIds = useMemo(() => new Set(DEFAULT_KG_PROJECTS.map((p) => p.id)), []);
+    const selectedIndex = selected ? nodesRef.current.indexOf(selected) : -1;
+    const selectedNeighbourIndices = selectedIndex >= 0 ? neighbours(linksRef.current, selectedIndex) : [];
+    const selectedDegree = selectedNeighbourIndices.length;
+    const selectedNeighbours = selectedNeighbourIndices.slice(0, 8)
+        .map((i) => ({ i, node: nodesRef.current[i] }))
+        .filter((n): n is { i: number; node: KgNode } => !!n.node);
 
     return (
         <div className="kg">
             {/* ── top: project tabs ── */}
             <div className="kg-tabs">
                 {projects.map((p) => (
-                    <button key={p.id} type="button"
+                    <div key={p.id} role="button" tabIndex={0} aria-pressed={p.id === activeId}
                         className={`kg-tab ${p.id === activeId ? 'on' : ''}`}
-                        onClick={() => setKgActiveProject(p.id)}>
+                        onClick={() => setKgActiveProject(p.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKgActiveProject(p.id); } }}>
+                        {!defaultTabIds.has(p.id) && (
+                            <button type="button" className="kg-tab__remove" aria-label={`Remove ${p.name}`}
+                                onClick={(e) => { e.stopPropagation(); removeKgProject(p.id); }}>×</button>
+                        )}
                         <div className="kg-tab__top"><span className="kg-tab__name">{p.name}</span><span className="kg-tab__lang">{p.lang}</span></div>
                         <div className="kg-tab__blurb">{p.blurb}</div>
                         <div className="kg-tab__meta">{p.files.toLocaleString()} files · {p.clusters} clusters</div>
-                    </button>
+                    </div>
                 ))}
-                <button type="button" className="kg-tab kg-tab--add" onClick={addProject} disabled={adding}>
-                    <span className="kg-add__plus">{adding ? '◌' : '+'}</span>
-                    <span className="kg-add__label">{adding ? 'Graphing…' : 'Add a project'}</span>
-                    <span className="kg-add__sub">{adding ? 'cloning + analyzing' : 'graph a repo · $0'}</span>
-                </button>
+                {addOpen ? (
+                    <div className="kg-addform">
+                        <input
+                            className="kg-addform__input" autoFocus disabled={adding}
+                            value={addUrl} onChange={(e) => setAddUrl(e.target.value)}
+                            placeholder="https://github.com/owner/repo"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') addProject();
+                                else if (e.key === 'Escape') closeAddForm();
+                            }}
+                        />
+                        <div className="kg-addform__row">
+                            <button type="button" onClick={addProject} disabled={adding || !addUrl.trim()}>{adding ? 'Graphing…' : 'Graph'}</button>
+                            <button type="button" onClick={closeAddForm} disabled={adding}>Cancel</button>
+                        </div>
+                        {addError && <p className="kg-addform__err" role="alert">{addError}</p>}
+                    </div>
+                ) : (
+                    <button type="button" className="kg-tab kg-tab--add" onClick={() => setAddOpen(true)}>
+                        <span className="kg-add__plus">+</span>
+                        <span className="kg-add__label">Add a project</span>
+                        <span className="kg-add__sub">graph a repo · $0</span>
+                    </button>
+                )}
             </div>
 
             <div className="kg-body">
@@ -706,6 +745,17 @@ function RepoGraph() {
                                 <div className="kg-sel__name">{selected.god ? `${selected.god.name} · ${selected.god.god}` : selected.label}</div>
                                 <div className="kg-sel__row">{selected.god ? 'Agent (god node)' : `Cluster ${selected.cluster + 1}`}</div>
                                 <div className="kg-sel__row">importance {selected.importance}</div>
+                                <div className="kg-sel__row">degree {selectedDegree}</div>
+                                {selectedNeighbours.length > 0 && (
+                                    <div className="kg-sel__neighbours">
+                                        {selectedNeighbours.map(({ i, node }) => (
+                                            <button key={i} type="button" className="kg-sel__neighbour"
+                                                onClick={() => selectByIndex(i)}>
+                                                {node.god ? node.god.name : node.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <p className="kg-card__note">Click a node (or a god node) to inspect it.</p>

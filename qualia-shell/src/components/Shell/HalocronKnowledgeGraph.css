@@ -7,6 +7,8 @@
 .kg-viewtab.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent-text); }
 .kg-viewtab:not(.on):hover { color: var(--text-primary); }
 
+.kg-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.kg-panel > * { flex: 1; min-height: 0; }
 .kg { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 14px; }
 .kg-err { margin-left: 8px; font-size: 9px; letter-spacing: .1em; padding: 1px 6px; border-radius: 4px; color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); font-family: var(--font-mono, monospace); vertical-align: middle; }
 

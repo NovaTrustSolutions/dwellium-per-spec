@@ -47,8 +47,10 @@ function ageLabel(days: number): string {
 }
 
 function builtAtLabel(builtAt: string): string {
+    const days = ageInDays(builtAt);
+    if (Number.isNaN(days)) return '';
     const dateStr = new Date(builtAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-    return `built ${dateStr} (${ageLabel(ageInDays(builtAt))})`;
+    return `built ${dateStr} (${ageLabel(days)})`;
 }
 
 async function kgFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -98,9 +100,15 @@ export default function GraphifyView() {
         } catch { /* not built yet */ }
     }, []);
 
+    // Set on every mount (StrictMode re-runs the effect), cleared on unmount.
+    const aliveRef = useRef(false);
     useEffect(() => {
+        aliveRef.current = true;
         void loadStatus().then(s => { if (s?.built) void loadViewer(); });
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+        return () => {
+            aliveRef.current = false;
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        };
     }, [loadStatus, loadViewer]);
 
     const rebuild = useCallback(async () => {
@@ -110,6 +118,9 @@ export default function GraphifyView() {
             const res = await kgFetch('/rebuild', { method: 'POST' });
             const json = await res.json();
             if (!json?.success) throw new Error(json?.error ?? 'rebuild failed');
+            // Unmounted while the POST was in flight (account switch / closed) — the
+            // cleanup already ran, so an interval started now would never be cleared.
+            if (!aliveRef.current) return;
             pollRef.current = setInterval(async () => {
                 const s = await loadStatus();
                 if (s && !s.building) {
@@ -155,7 +166,7 @@ export default function GraphifyView() {
             <div className="gfy__bar">
                 <div className="gfy__stats">
                     {status?.built
-                        ? <>{status.nodes} nodes · {status.edges} edges · {status.corpusFiles} sources{status.builtAt ? ` · ${builtAtLabel(status.builtAt)}` : ''}</>
+                        ? <>{status.nodes} nodes · {status.edges} edges · {status.corpusFiles} sources{status.builtAt && builtAtLabel(status.builtAt) ? ` · ${builtAtLabel(status.builtAt)}` : ''}</>
                         : statusError ? "Couldn't reach the knowledge-graph service." : 'Not built yet'}
                 </div>
                 <button

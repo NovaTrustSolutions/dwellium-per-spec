@@ -17,7 +17,7 @@
  * them, so one user's chat/selection/viewer never leaks to the next, and a
  * reply that lands after the switch has nowhere to render into.
  */
-import { useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState, useCallback, type KeyboardEvent } from 'react';
 import { MessageSquare, Sparkles } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
@@ -596,7 +596,8 @@ function RepoGraph() {
     };
 
     const source = gdata?.source ?? 'static-import-graph';
-    const isGithub = source === 'github-tree';
+    // GitHub tabs saved before plan 072 have no `source`; their ids are always gh-*.
+    const isGithub = source === 'github-tree' || project.id.startsWith('gh-');
     const totalFiles = gdata?.totalFiles ?? gdata?.files;
     const shownCount = gdata?.nodes.length ?? 0;
     const showCap = !!gdata && !!totalFiles && totalFiles > shownCount;
@@ -671,7 +672,7 @@ function RepoGraph() {
                         <p className="kg-card__note">
                             {isGithub
                                 ? "Structure only — links join files to their folder's largest file, not real imports."
-                                : 'Links are real imports read from the code.'}
+                                : 'Links are imports found by scanning the code.'}
                         </p>
                     </section>
 
@@ -758,25 +759,36 @@ export default function HalocronKnowledgeGraph() {
     // Raw context read (not useUser()) per test-resilience convention.
     const uid = useContext(UserContext)?.user?.id ?? '_anonymous';
     const kgState = useHalocronKnowledgeGraphState();
+    const tabs = [{ view: 'knowledge', label: 'My knowledge' }, { view: 'repos', label: 'Code repos' }] as const;
+    // WAI-ARIA tabs: roving tabindex; Left/Right/Home/End move and select.
+    const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
+        const i = tabs.findIndex((t) => t.view === kgState.view);
+        const next = e.key === 'ArrowRight' ? (i + 1) % tabs.length
+            : e.key === 'ArrowLeft' ? (i - 1 + tabs.length) % tabs.length
+            : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+        if (next < 0) return;
+        e.preventDefault();
+        setKgView(tabs[next].view);
+        document.getElementById(`kg-tab-${tabs[next].view}`)?.focus();
+    };
     return (
         <div className="kg-shell">
             <div className="kg-viewtabs" role="tablist" aria-label="Knowledge graph view">
-                <button
-                    type="button" role="tab" aria-selected={kgState.view === 'knowledge'}
-                    className={`kg-viewtab ${kgState.view === 'knowledge' ? 'on' : ''}`}
-                    onClick={() => setKgView('knowledge')}
-                >
-                    My knowledge
-                </button>
-                <button
-                    type="button" role="tab" aria-selected={kgState.view === 'repos'}
-                    className={`kg-viewtab ${kgState.view === 'repos' ? 'on' : ''}`}
-                    onClick={() => setKgView('repos')}
-                >
-                    Code repos
-                </button>
+                {tabs.map((t) => (
+                    <button
+                        key={t.view} id={`kg-tab-${t.view}`} type="button" role="tab"
+                        aria-selected={kgState.view === t.view} aria-controls={`kg-panel-${t.view}`}
+                        tabIndex={kgState.view === t.view ? 0 : -1}
+                        className={`kg-viewtab ${kgState.view === t.view ? 'on' : ''}`}
+                        onClick={() => setKgView(t.view)} onKeyDown={onTabKey}
+                    >
+                        {t.label}
+                    </button>
+                ))}
             </div>
-            {kgState.view === 'knowledge' ? <GraphifyView key={uid} /> : <RepoGraph key={uid} />}
+            <div className="kg-panel" role="tabpanel" id={`kg-panel-${kgState.view}`} aria-labelledby={`kg-tab-${kgState.view}`}>
+                {kgState.view === 'knowledge' ? <GraphifyView key={uid} /> : <RepoGraph key={uid} />}
+            </div>
         </div>
     );
 }

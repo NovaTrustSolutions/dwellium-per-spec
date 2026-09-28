@@ -213,7 +213,7 @@ describe('HalocronKnowledgeGraph', () => {
     });
 
     describe('per-source rail copy + N-of-M disclosure', () => {
-        it('static-import-graph source: "real imports", ranked by importers, N-of-M when capped', () => {
+        it('static-import-graph source: imports found by scanning, ranked by importers, N-of-M when capped', () => {
             halocronKnowledgeGraphStore.set(
                 { ...halocronKnowledgeGraphStore.getSnapshot(), activeId: 'hermes', graphs: { hermes: fixtureGraph() } },
                 () => {},
@@ -221,7 +221,7 @@ describe('HalocronKnowledgeGraph', () => {
             setKgView('repos');
             const { container } = render(<HalocronKnowledgeGraph />);
 
-            expect(container.textContent).toContain('Links are real imports read from the code.');
+            expect(container.textContent).toContain('Links are imports found by scanning the code.');
             expect(container.textContent).toContain('ranked by how many other files import them');
             expect(container.textContent).toContain('3 of 3,278 files shown (the most imported)');
         });

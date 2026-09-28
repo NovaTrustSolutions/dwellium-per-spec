@@ -12,6 +12,7 @@
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
 import { synthesisUserIdHolder } from '../../lib/perUserIdentity';
+import { applyTombstones, synthesisTombstoneStore, recordDelete, recordClear, type SynthesisTombstones } from './synthesisTombstones';
 
 export interface Synthesis {
     id: string;
@@ -44,14 +45,45 @@ export function resolveSynthesisKey(): string {
     return uid ? `dwellium:synthesis:${uid}` : 'dwellium:synthesis:_anonymous';
 }
 
+/** Drop non-objects / entries missing a string `result` — the shape every
+ *  reader (local deserialize AND remote merge) requires. */
+function sanitizeSyntheses(raw: unknown): Synthesis[] {
+    return Array.isArray(raw) ? (raw as unknown[]).filter((x): x is Synthesis => !!x && typeof x === 'object' && typeof (x as Synthesis).result === 'string') : [];
+}
+
 function deserialize(raw: string | null): Synthesis[] {
     if (!raw) return [];
     try {
-        const o = JSON.parse(raw);
-        return Array.isArray(o) ? o.filter((x) => x && typeof x.result === 'string') : [];
+        return sanitizeSyntheses(JSON.parse(raw));
     } catch {
         return [];
     }
+}
+
+function capturedAtMs(s: Synthesis): number {
+    const t = Date.parse(s.capturedAt);
+    return Number.isNaN(t) ? 0 : t;
+}
+
+/**
+ * Pure: union local + remote captures by id (same id on both sides → later
+ * capturedAt wins; an exact tie favors local, mirroring mergeWikiMaps), apply
+ * tombstones, sort newest-first (stable), and cap at MAX_SYNTHESES.
+ * CONTRACT (plan 070 P4) — the cross-device merge for `synthesisStore`.
+ */
+export function mergeSyntheses(local: Synthesis[], remote: Synthesis[], t: SynthesisTombstones): Synthesis[] {
+    const byId = new Map<string, Synthesis>();
+    for (const s of local) byId.set(s.id, s);
+    for (const s of sanitizeSyntheses(remote)) {
+        const existing = byId.get(s.id);
+        // Tie (or existing newer) keeps the LOCAL entry already in the map.
+        if (!existing || capturedAtMs(s) > capturedAtMs(existing)) byId.set(s.id, s);
+    }
+    const pruned = applyTombstones(Array.from(byId.values()), t);
+    return pruned
+        .slice()
+        .sort((a, b) => capturedAtMs(b) - capturedAtMs(a))
+        .slice(0, MAX_SYNTHESES);
 }
 
 export const synthesisStore = withSync(
@@ -60,8 +92,33 @@ export const synthesisStore = withSync(
         deserializer: deserialize,
         defaultValue: [],
     }),
-    { objectType: 'synthesis', holder: synthesisUserIdHolder, resolveKey: resolveSynthesisKey },
+    {
+        objectType: 'synthesis',
+        holder: synthesisUserIdHolder,
+        resolveKey: resolveSynthesisKey,
+        merge: (l, r) => mergeSyntheses(l, r, synthesisTombstoneStore.getSnapshot()),
+    },
 );
+
+// Prune captures the moment a tombstone arrives from ANOTHER device — One
+// Save's bootstrap order between `synthesis` and `synthesis-tombstones` is
+// not guaranteed, so a delete/clear that hydrates AFTER the captures already
+// landed must still take effect. Both stores resolve their owner from the
+// same `synthesisUserIdHolder`-driven holders at the moment this fires, so
+// there's no cross-owner leak. `applyTombstones` returns the SAME array
+// reference when nothing is removed, so `set()` only fires (and this can
+// only loop) when the pruned result actually differs.
+if (typeof window !== 'undefined') {
+    synthesisTombstoneStore.subscribe(() => {
+        const cur = synthesisStore.getSnapshot();
+        const next = applyTombstones(cur, synthesisTombstoneStore.getSnapshot());
+        if (next !== cur) {
+            synthesisStore.set(next, () => {
+                try { localStorage.setItem(resolveSynthesisKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+            });
+        }
+    });
+}
 
 /** Id for a synthesis — generated when a run STARTS so tags added before Capture keep their key. */
 export function newSynthesisId(): string {
@@ -126,11 +183,23 @@ function isQuotaError(err: unknown): boolean {
 }
 
 /** Remove one captured synthesis by id (user-initiated, from the UI). CONTRACT (plan 070 P0). */
+function timeOf(s: Synthesis): number {
+    const t = Date.parse(s.capturedAt);
+    return Number.isFinite(t) ? t : 0;
+}
+
 export function removeSynthesis(id: string): void {
     if (typeof window === 'undefined') return;
     const cur = synthesisStore.getSnapshot();
     const next = cur.filter((x) => x.id !== id);
-    if (next.length === cur.length) return; // unknown id — no-op
+    // Unknown id — no-op, and no tombstone either: nothing here was deleted,
+    // so recording one would just be dead weight in synthesisTombstoneStore.
+    if (next.length === cur.length) return;
+    // Clock skew: capturedAt may come from another device whose clock runs ahead.
+    // Stamp the delete strictly after the capture so the rule (survive iff captured
+    // after the delete) removes it on every device.
+    const item = cur.find((x) => x.id === id)!;
+    recordDelete(id, Math.max(Date.now(), timeOf(item) + 1));
     synthesisStore.set(next, () => {
         try { localStorage.setItem(resolveSynthesisKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
     });
@@ -138,6 +207,9 @@ export function removeSynthesis(id: string): void {
 
 export function clearSyntheses(): void {
     if (typeof window === 'undefined') return;
+    // Same clock-skew rule: the clear must postdate every capture it is clearing.
+    const newest = synthesisStore.getSnapshot().reduce((m, x) => Math.max(m, timeOf(x)), 0);
+    recordClear(Math.max(Date.now(), newest + 1));
     synthesisStore.set([], () => {
         try { localStorage.removeItem(resolveSynthesisKey()); } catch { /* sandboxed */ }
     });

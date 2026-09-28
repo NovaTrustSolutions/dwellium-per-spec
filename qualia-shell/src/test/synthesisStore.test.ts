@@ -6,12 +6,14 @@ import {
     synthesisStore, synthesisUserIdHolder, captureSynthesis, removeSynthesis, clearSyntheses,
     buildSecondLayerPrompt, MAX_SYNTHESES,
 } from '../components/Synthesis/synthesisStore';
+import { synthesisTombstoneStore } from '../components/Synthesis/synthesisTombstones';
 
 const NOW = new Date('2026-06-04T12:00:00.000Z');
 
 beforeEach(() => {
     localStorage.clear();
     synthesisStore.reset();
+    synthesisTombstoneStore.reset();
     synthesisUserIdHolder.current = null;
 });
 
@@ -121,6 +123,25 @@ describe('removeSynthesis', () => {
         const before = synthesisStore.getSnapshot();
         removeSynthesis('does-not-exist');
         expect(synthesisStore.getSnapshot()).toEqual(before);
+    });
+
+    it('records a tombstone for a real id (survives a later re-hydrate of it)', () => {
+        captureSynthesis({ id: 'a', query: 'q1', result: 'r1', layer: 1, parentId: null }, NOW);
+        removeSynthesis('a');
+        expect(synthesisTombstoneStore.getSnapshot().deleted.a).toBeDefined();
+    });
+
+    it('does NOT record a tombstone for an unknown id', () => {
+        removeSynthesis('never-existed');
+        expect(synthesisTombstoneStore.getSnapshot().deleted['never-existed']).toBeUndefined();
+    });
+});
+
+describe('clearSyntheses tombstone', () => {
+    it('records clearedAt', () => {
+        captureSynthesis({ id: 'a', query: 'q1', result: 'r1', layer: 1, parentId: null }, NOW);
+        clearSyntheses();
+        expect(synthesisTombstoneStore.getSnapshot().clearedAt).toBeGreaterThan(0);
     });
 });
 

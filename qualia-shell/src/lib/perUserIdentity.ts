@@ -114,6 +114,12 @@ export const twImportedUserIdHolder: UserIdHolder = makeHolder();
 export const todoUserIdHolder: UserIdHolder = makeHolder();
 export const reportUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 071 — CoPaw auto-captured memory (copawStore). Was written during
+ *  render by Hive / Synthesis / Builder Agents / Content Search. */
+export const copawUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 071 phase 3 — per-user last run / status per agent (agentActivityStore). */
+export const agentActivityUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -152,6 +158,8 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     twImportedUserIdHolder,
     todoUserIdHolder,
     reportUserIdHolder,
+    copawUserIdHolder,
+    agentActivityUserIdHolder,
 ];
 
 /**

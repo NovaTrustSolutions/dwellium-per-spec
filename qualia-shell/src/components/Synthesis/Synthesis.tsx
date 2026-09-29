@@ -28,7 +28,6 @@ export default function Synthesis() {
     const llmReady = hasActiveLlm(integrations.llm);
     const userCtx = useContext(UserContext);
     synthesisUserIdHolder.current = userCtx?.user?.id ?? null;
-    copawUserIdHolder.current = userCtx?.user?.id ?? null;
     const history: SynthesisEntry[] = useSyncExternalStore(synthesisStore.subscribe, synthesisStore.getSnapshot, synthesisStore.getServerSnapshot);
 
     const [query, setQuery] = useState('');

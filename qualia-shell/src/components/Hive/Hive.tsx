@@ -4,13 +4,12 @@
  * CoPaw auto-captured memory feed. Per-agent cost isn't tracked yet (see the
  * AI Spend widget for totals by provider).
  */
-import { useContext, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Brain, Bot, Cpu, MessageSquare, Network, Layers, Sparkles, Play, Trash2, Eye, X } from 'lucide-react';
 import { useWindows } from '../../context/WindowContext';
-import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
-import { copawStore, copawUserIdHolder, clearMemory, deleteFact, isSensitiveFact, type MemoryFact } from './copawStore';
+import { copawStore, clearMemory, deleteFact, isSensitiveFact, type MemoryFact } from './copawStore';
 import './Hive.css';
 
 const ACCENT = '#D6FE51';
@@ -46,8 +45,6 @@ export default function Hive() {
     const { integrations } = useIntegrations();
     const provider = integrations.llm.active || 'none';
     const llmReady = hasActiveLlm(integrations.llm);
-    const userCtx = useContext(UserContext);
-    copawUserIdHolder.current = userCtx?.user?.id ?? null;
     const memory: MemoryFact[] = useSyncExternalStore(copawStore.subscribe, copawStore.getSnapshot, copawStore.getServerSnapshot);
     const [filter, setFilter] = useState('');
     const [showAllMemory, setShowAllMemory] = useState(false);

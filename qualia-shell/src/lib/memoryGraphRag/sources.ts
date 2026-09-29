@@ -43,6 +43,30 @@ export function captureDocuments(uid: string | null): SourceDocument[] {
     ];
 }
 
+/** Wiki pages (plan 070 P5): one document per page — sourceId `wiki:<path>`, kind 'wiki'.
+ *  Text = name + overview + concepts + open questions. CONTRACT (P0) — W1 sources agent. */
+export function wikiDocuments(uid: string | null): SourceDocument[] {
+    void uid; throw new Error('plan 070 P5 W1: not implemented');
+}
+
+/** CoPaw memory facts (plan 070 P5): one document per fact — sourceId `memory:<id>`, kind 'memory',
+ *  title = fact source. EXCLUDES facts whose source is 'Synthesis Lab' (the captured synthesis is
+ *  already a document; including its facts would duplicate it and defeat second-layer self-exclusion).
+ *  CONTRACT (P0) — W1 sources agent. */
+export function memoryDocuments(uid: string | null): SourceDocument[] {
+    void uid; throw new Error('plan 070 P5 W1: not implemented');
+}
+
+/** Source kinds whose existence the app can check. Scribe is NOT here: closing a file isn't deleting it. */
+export const LIVENESS_KINDS: ReadonlySet<string> = new Set(['tag', 'capture', 'synthesis', 'wiki', 'memory']);
+
+/** sourceIds that currently exist for LIVENESS_KINDS (from the same builders the bridge uses).
+ *  The CMN is add-only, so recall filters out passages of these kinds whose source was deleted.
+ *  CONTRACT (P0) — W1 sources agent. */
+export function liveSourceIds(uid: string | null): Set<string> {
+    void uid; throw new Error('plan 070 P5 W1: not implemented');
+}
+
 /** Everything the app holds locally for this user — what the bridge feeds in. */
 export function allLocalDocuments(uid: string | null): SourceDocument[] {
     return [...tagDocuments(uid), ...scribeDocuments(), ...captureDocuments(uid)];

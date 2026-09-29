@@ -38,7 +38,7 @@ export default function BuilderAgents() {
         const uid = copawUserIdHolder.current; // before the await — see captureFacts
         try {
             const { systemPrompt, prompt } = composePrompt(mode, values);
-            const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text' }, integrations.llm);
+            const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text', source: 'builder-agents' }, integrations.llm);
             if (res && res.text.trim()) {
                 setOutput(res.text.trim());
                 captureFacts(def.label, res.text.trim(), uid); // CoPaw §8.5

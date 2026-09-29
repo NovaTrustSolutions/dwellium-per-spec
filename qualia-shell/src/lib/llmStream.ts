@@ -25,6 +25,7 @@ import {
 import { pumpSseBody } from './readSse';
 import { recordAiFailure, recordAiSuccess } from './aiHealthStore';
 import { recordLlmUsage, currentUsageUserId } from './llmUsageStore';
+import { recordAgentActivity } from './agentActivityStore';
 import { DEFAULT_MODELS, type IntegrationsBundle, type LlmProvider } from '../types/integrations';
 
 export interface StreamEvent {
@@ -301,10 +302,17 @@ export async function* streamLlm(
         } catch (err) {
             if (err instanceof LlmError) recordAiFailure(err.provider, err.status);
             else recordAiFailure(target.provider, 0);
+            recordAgentActivity({
+                source: req.source,
+                ok: false,
+                error: err instanceof LlmError ? `${err.status}: ${err.message}` : err instanceof Error ? err.message : String(err),
+                userId,
+            });
             throw err;
         }
 
         recordAiSuccess();
+        recordAgentActivity({ source: req.source, ok: true, text, userId });
         yield { delta: '', text, done: true };
         return text;
     } finally {

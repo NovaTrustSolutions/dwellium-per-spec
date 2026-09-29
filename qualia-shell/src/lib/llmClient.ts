@@ -20,6 +20,7 @@
 import type { IntegrationsBundle, LlmProvider } from '../types/integrations';
 import { recordAiFailure, recordAiSuccess } from './aiHealthStore';
 import { recordLlmUsage, currentUsageUserId } from './llmUsageStore';
+import { recordAgentActivity } from './agentActivityStore';
 import { DEFAULT_MODELS } from '../types/integrations';
 
 // ── Request / response types ─────────────────────────────────────────
@@ -115,6 +116,12 @@ export async function callLlm(
         // itself. Recording never swallows the error.
         if (err instanceof LlmError) recordAiFailure(err.provider, err.status);
         else recordAiFailure(llm.active ?? 'unknown', 0);
+        recordAgentActivity({
+            source: req.source,
+            ok: false,
+            error: err instanceof LlmError ? `${err.status}: ${err.message}` : err instanceof Error ? err.message : String(err),
+            userId,
+        });
         throw err;
     }
     // P12-1 AI-spend ledger: one chokepoint records usage for every
@@ -135,6 +142,7 @@ export async function callLlm(
             source: req.source,
             userId,
         });
+        recordAgentActivity({ source: req.source, ok: true, text: res.text, userId });
     }
     return res;
 }

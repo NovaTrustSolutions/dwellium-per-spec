@@ -4,9 +4,11 @@
  * ApiKeysWidget test convention). WindowContext is mocked so `windows` /
  * `openWindow` are controllable per test.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, cleanup } from '@testing-library/react';
 import { copawStore, copawUserIdHolder, type MemoryFact } from '../components/Hive/copawStore';
+import { agentActivityStore, agentActivityUserIdHolder, recordAgentActivity, HIDDEN_SNIPPET } from '../lib/agentActivityStore';
+import { llmUsageUserIdHolder, recordLlmUsage, resetLlmUsage, _resetDeviceIdForTests } from '../lib/llmUsageStore';
 
 const openWindow = vi.fn((component: string) => component);
 let mockWindows: Array<{ component: string; minimized?: boolean }> = [];
@@ -37,9 +39,18 @@ beforeEach(() => {
     try { localStorage.clear(); } catch { /* jsdom */ }
     copawUserIdHolder.current = null;
     copawStore.reset();
+    agentActivityUserIdHolder.current = null;
+    agentActivityStore.reset();
+    llmUsageUserIdHolder.current = null;
+    _resetDeviceIdForTests();
+    resetLlmUsage();
     mockWindows = [];
     openWindow.mockClear();
     cleanup();
+});
+
+afterEach(() => {
+    vi.useRealTimers();
 });
 
 describe('Hive agent grid', () => {
@@ -124,3 +135,69 @@ describe('Hive CoPaw memory rail', () => {
         expect(screen.queryByText('unrelated fact about something else')).toBeNull();
     });
 });
+
+describe('Hive agent activity + usage (plan 071 phase 3 part C)', () => {
+    it('shows "5 min ago" for a synthesis activity', () => {
+        const fixedNow = new Date('2026-09-28T12:00:00.000Z').getTime();
+        vi.setSystemTime(fixedNow);
+        recordAgentActivity({ source: 'synthesis', ok: true, text: 'compounded the notes', userId: null, now: fixedNow - 5 * 60_000 });
+        render(<Hive />);
+        expect(screen.getByText('5 min ago')).toBeTruthy();
+    });
+
+    it('a failed hydra run shows an error badge with the message', () => {
+        recordAgentActivity({ source: 'hydra', ok: false, error: 'timeout talking to provider', userId: null });
+        render(<Hive />);
+        expect(screen.getByText('error: timeout talking to provider')).toBeTruthy();
+    });
+
+    it('shows the hidden-snippet placeholder as-is for a secret-looking response', () => {
+        recordAgentActivity({ source: 'stella', ok: true, text: 'the vendor portal password is Summer2026', userId: null });
+        render(<Hive />);
+        expect(screen.getByText(HIDDEN_SNIPPET)).toBeTruthy();
+    });
+
+    it('two-brains shows "Not an AI-model agent" instead of a run timestamp', () => {
+        render(<Hive />);
+        expect(screen.getByText('Not an AI-model agent')).toBeTruthy();
+    });
+
+    it('sums two synthesis entries into the 7-day card cost', () => {
+        llmUsageUserIdHolder.current = null;
+        recordLlmUsage({ provider: 'anthropic', model: 'claude-sonnet-5', promptChars: 4_000_000, responseChars: 0, source: 'synthesis', userId: null });
+        recordLlmUsage({ provider: 'anthropic', model: 'claude-sonnet-5', promptChars: 4_000_000, responseChars: 0, source: 'synthesis', userId: null });
+        render(<Hive />);
+        // priceFor(claude-sonnet-5).inPerM is whatever llmPricing says; what matters here is
+        // both calls landed on the SAME card, not the exact dollar figure (covered by llmUsage.test.ts).
+        expect(screen.getByText(/7 d: 2 calls/)).toBeTruthy();
+    });
+
+    it('an untagged call is counted under "Other features", not on any agent card', () => {
+        llmUsageUserIdHolder.current = null;
+        recordLlmUsage({ provider: 'anthropic', model: 'claude-sonnet-5', promptChars: 400, responseChars: 100, userId: null }); // no `source` → 'other'
+        render(<Hive />);
+        expect(screen.getByText(/Other features:/)).toBeTruthy();
+        // None of the 7 per-agent cards should have picked up this untagged call.
+        expect(screen.queryByText(/7 d: 1 call\b/)).toBeNull();
+    });
+
+    // Mutation check: if `ara-console`'s sources were emptied (e.g. someone maps it to []
+    // instead of ['ara', 'team-run']), this test must fail — proving the sources wiring
+    // actually drives the "last run" lookup rather than a card always reading "No runs".
+    it('mutation guard — an ara activity must be attributed to the ARA card', () => {
+        recordAgentActivity({ source: 'ara', ok: true, userId: null });
+        render(<Hive />);
+        expect(screen.queryAllByText('No runs recorded yet').length).toBeGreaterThan(0); // other agents still idle
+        expect(screen.queryAllByText('just now').length).toBe(1); // exactly the ARA card
+    });
+});
+
+describe('Hive cost row — unknown model prices', () => {
+    it('discloses calls with an unknown model price instead of showing them as free', () => {
+        recordLlmUsage({ provider: 'custom', model: 'mystery-model-9', promptChars: 4000, responseChars: 1000, source: 'synthesis', userId: null });
+        render(<Hive />);
+        expect(screen.getByText(/1 call with an unknown model price \(not in totals\)/)).toBeTruthy();
+        expect(screen.getByText(/7 d: 1 call ·/)).toBeTruthy();
+    });
+});
+

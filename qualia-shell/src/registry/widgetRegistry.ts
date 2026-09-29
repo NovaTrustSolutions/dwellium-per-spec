@@ -197,7 +197,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'hive': {
         id: 'hive',
         label: 'The Hive',
-        description: 'Launch any built-in AI agent, see which are open, and browse or prune CoPaw memory.',
+        description: 'Launch built-in AI agents, see last run, errors and 7-day cost, and prune CoPaw memory.',
         tip: { tryThis: 'Run an agent, then check the CoPaw memory rail for what it captured.', related: ['agent-lab', 'ai-spend'] },
         tier: 'labs',
         icon: 'layout-grid',

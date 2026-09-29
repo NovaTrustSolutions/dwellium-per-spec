@@ -22,7 +22,8 @@ import { useFileExplorer } from './useFileExplorer';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
 import { getWorkspaceRoot } from './workspaceRoot';
 import { MoveToModal } from './MoveToModal';
-import { destFor } from './moveTargets';
+import { destFor, childNames } from './moveTargets';
+import { uploadDroppedFiles } from './dropUpload';
 import { API_BASE } from '../../config';
 import { getAuthHeaders, UserContext } from '../../context/UserContext';
 
@@ -103,6 +104,11 @@ export default function FileExplorer() {
     const doMove = useCallback(async (destPath: string) => {
         const src = moveTarget;
         if (!src) return;
+        // The backend's rename() replaces an existing destination — refuse instead of overwriting.
+        if (childNames(entries, destPath).includes(src.name)) {
+            alert(`"${src.name}" already exists in ${destPath || 'root'}. Rename one of them first.`);
+            return;
+        }
         try {
             await apiMove(src.path, destFor(destPath, src.name), false);
             setMoveTarget(null);
@@ -113,7 +119,7 @@ export default function FileExplorer() {
             alert(`Move failed: ${err?.message ?? err}`);
             setMoveTarget(null);
         }
-    }, [moveTarget, refresh]);
+    }, [moveTarget, refresh, entries]);
 
     useEffect(() => {
         if (newEntry) newInputRef.current?.focus();
@@ -250,6 +256,7 @@ export default function FileExplorer() {
                 let moved = 0;
                 for (const p of payloads) {
                     if (!p.path || !p.path.includes('/')) continue; // already at root
+                    if (childNames(entries, '').includes(p.name)) continue; // would overwrite
                     try { await apiMove(p.path, p.name, copy); moved++; } catch { /* skip */ }
                 }
                 if (moved > 0) await refresh();
@@ -265,6 +272,10 @@ export default function FileExplorer() {
             try {
                 const payload = JSON.parse(pathRaw) as { name: string; path: string };
                 if (!payload.path || !payload.path.includes('/')) return; // already at root
+                if (childNames(entries, '').includes(payload.name)) {
+                    alert(`"${payload.name}" already exists at root. Rename one of them first.`);
+                    return;
+                }
                 await apiMove(payload.path, payload.name, e.altKey);
                 await refresh();
             } catch (err: any) {
@@ -273,17 +284,8 @@ export default function FileExplorer() {
             return;
         }
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            for (const f of Array.from(e.dataTransfer.files)) {
-                try {
-                    const text = await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-                        reader.onerror = () => reject(reader.error);
-                        reader.readAsText(f);
-                    });
-                    await touch(f.name, text);
-                } catch { /* ignore individual failures */ }
-            }
+            const summary = await uploadDroppedFiles(Array.from(e.dataTransfer.files), '', childNames(entries, ''));
+            if (summary) alert(summary);
             await refresh();
         }
     };
@@ -456,6 +458,36 @@ export default function FileExplorer() {
                 role="tree"
                 aria-label="File explorer"
             >
+                {/* Inline new-entry form — outside the list branches so it also shows for an empty tree and for nested parents */}
+                {newEntry && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '4px 8px',
+                        background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
+                        borderLeft: '2px solid var(--accent)',
+                    }}>
+                        <span style={{ width: 12 }} />
+                        <span style={{ fontSize: 11, color: 'var(--accent)', opacity: 0.6, display: 'inline-flex' }}>{newEntry.type === 'folder' ? <Folder size={14} aria-hidden /> : <FileText size={14} aria-hidden />}</span>
+                        <input
+                            ref={newInputRef}
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') void commitNewEntry();
+                                else if (e.key === 'Escape') cancelNewEntry();
+                            }}
+                            onBlur={() => void commitNewEntry()}
+                            placeholder={(newEntry.type === 'folder' ? (newEntry.parentPath ? 'Folder name' : 'Domain name') : 'filename.md') + (newEntry.parentPath ? ` in ${newEntry.parentPath}` : '')}
+                            style={{
+                                flex: 1, minWidth: 0,
+                                background: 'var(--bg-desktop)', color: 'var(--text-primary)',
+                                border: '1px solid var(--accent)', borderRadius: 3,
+                                padding: '2px 6px', fontSize: 12, fontFamily: 'inherit',
+                                outline: 'none',
+                            }}
+                        />
+                    </div>
+                )}
                 {error ? (
                     <div style={{
                         padding: '16px', color: '#ff4d6d', fontSize: 11, lineHeight: 1.6,
@@ -493,36 +525,6 @@ export default function FileExplorer() {
                     </div>
                 ) : (
                     <>
-                        {/* Inline new-entry form at root (when active) */}
-                        {newEntry && newEntry.parentPath === '' && (
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                padding: '4px 8px',
-                                background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
-                                borderLeft: '2px solid var(--accent)',
-                            }}>
-                                <span style={{ width: 12 }} />
-                                <span style={{ fontSize: 11, color: 'var(--accent)', opacity: 0.6, display: 'inline-flex' }}>{newEntry.type === 'folder' ? <Folder size={14} aria-hidden /> : <FileText size={14} aria-hidden />}</span>
-                                <input
-                                    ref={newInputRef}
-                                    value={newName}
-                                    onChange={(e) => setNewName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') void commitNewEntry();
-                                        else if (e.key === 'Escape') cancelNewEntry();
-                                    }}
-                                    onBlur={() => void commitNewEntry()}
-                                    placeholder={newEntry.type === 'folder' ? 'Domain name' : 'filename.md'}
-                                    style={{
-                                        flex: 1, minWidth: 0,
-                                        background: 'var(--bg-desktop)', color: 'var(--text-primary)',
-                                        border: '1px solid var(--accent)', borderRadius: 3,
-                                        padding: '2px 6px', fontSize: 12, fontFamily: 'inherit',
-                                        outline: 'none',
-                                    }}
-                                />
-                            </div>
-                        )}
                         {displayedEntries.map((entry) => (
                             <FileExplorerCell
                                 key={entry.path}
@@ -533,8 +535,6 @@ export default function FileExplorer() {
                                 showFullPath={viewMode === 'flat'}
                             />
                         ))}
-                        {/* Inline new-entry form when target is a folder/tier — shown right after the parent */}
-                        {/* Render is handled inside FileExplorerCell.children for nested cases; root-level handled above. */}
                     </>
                 )}
             </div>

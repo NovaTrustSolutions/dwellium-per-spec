@@ -10,6 +10,7 @@ import {
     currentAgentActivityUserId,
     agentActivityUserIdHolder,
     HIDDEN_SNIPPET,
+    HIDDEN_ERROR,
 } from '../lib/agentActivityStore';
 import { callLlm } from '../lib/llmClient';
 import { llmUsageUserIdHolder } from '../lib/llmUsageStore';
@@ -130,3 +131,25 @@ describe('agentActivityStore x callLlm chokepoint integration', () => {
         expect(entry.error).toBeTruthy();
     });
 });
+
+describe('agentActivityStore — error text (plan 071 W2 review)', () => {
+    beforeEach(() => {
+        try { localStorage.clear(); } catch { /* jsdom */ }
+        agentActivityStore.reset();
+        agentActivityUserIdHolder.current = null;
+    });
+
+    it('hides a provider error that echoes an API key', () => {
+        const key = ['sk', 'proj', 'abcdefghijklmnopqrstuvwx'].join('-'); // built at runtime — no key-shaped literal committed
+        recordAgentActivity({ source: 'synthesis', ok: false, error: `401: Incorrect API key provided: ${key}`, userId: null });
+        const e = agentActivityStore.getSnapshot().synthesis.error ?? '';
+        expect(e).toBe(HIDDEN_ERROR);
+        expect(e).not.toContain('abcdefghij');
+    });
+
+    it('keeps an ordinary error readable', () => {
+        recordAgentActivity({ source: 'synthesis', ok: false, error: '429: Rate limit reached, retry after 20s', userId: null });
+        expect(agentActivityStore.getSnapshot().synthesis.error).toBe('429: Rate limit reached, retry after 20s');
+    });
+});
+

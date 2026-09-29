@@ -25,7 +25,7 @@ import {
 import { pumpSseBody } from './readSse';
 import { recordAiFailure, recordAiSuccess } from './aiHealthStore';
 import { recordLlmUsage, currentUsageUserId } from './llmUsageStore';
-import { recordAgentActivity } from './agentActivityStore';
+import { recordAgentActivity, currentAgentActivityUserId } from './agentActivityStore';
 import { DEFAULT_MODELS, type IntegrationsBundle, type LlmProvider } from '../types/integrations';
 
 export interface StreamEvent {
@@ -237,6 +237,7 @@ export async function* streamLlm(
 
     // Plan 068 (C4): capture the ledger owner before any await, same discipline as callLlm.
     const userId = currentUsageUserId();
+    const activityUid = currentAgentActivityUserId(); // own holder, captured before the await
     // Buffer deltas from the pump callback; the generator drains between reads.
     const pending: string[] = [];
     let text = '';
@@ -306,13 +307,13 @@ export async function* streamLlm(
                 source: req.source,
                 ok: false,
                 error: err instanceof LlmError ? `${err.status}: ${err.message}` : err instanceof Error ? err.message : String(err),
-                userId,
+                userId: activityUid,
             });
             throw err;
         }
 
         recordAiSuccess();
-        recordAgentActivity({ source: req.source, ok: true, text, userId });
+        recordAgentActivity({ source: req.source, ok: true, text, userId: activityUid });
         yield { delta: '', text, done: true };
         return text;
     } finally {

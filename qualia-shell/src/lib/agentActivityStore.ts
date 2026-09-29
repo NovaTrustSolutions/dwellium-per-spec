@@ -31,6 +31,7 @@ export { agentActivityUserIdHolder };
 
 const SNIPPET_MAX = 140;
 const ERROR_MAX = 120;
+export const HIDDEN_ERROR = '(error text hidden — it looked like it contained a secret)';
 export const HIDDEN_SNIPPET = '(preview hidden — looks like a secret or personal data)';
 
 function resolveKey(): string {
@@ -80,7 +81,11 @@ export function recordAgentActivity(input: { source?: string; ok: boolean; text?
         if (typeof window === 'undefined' || !input.source) return;
         if (input.userId !== agentActivityUserIdHolder.current) return;
         const entry: AgentActivity = { source: input.source, lastRunAt: input.now ?? Date.now(), ok: input.ok };
-        if (!input.ok && input.error) entry.error = clip(input.error, ERROR_MAX);
+        if (!input.ok && input.error) {
+            // Provider error bodies can echo the API key or the request — same check as the snippet.
+            const e = clip(input.error, ERROR_MAX);
+            entry.error = isSensitiveFact(e) ? HIDDEN_ERROR : e;
+        }
         if (input.ok && input.text) {
             const snip = clip(input.text, SNIPPET_MAX);
             entry.snippet = isSensitiveFact(snip) ? HIDDEN_SNIPPET : snip; // check what is shown, not the whole answer

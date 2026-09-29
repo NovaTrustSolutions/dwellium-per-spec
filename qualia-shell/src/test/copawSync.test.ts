@@ -141,3 +141,14 @@ describe('copaw hydrate() interleave (mocked oneSave client)', () => {
         expect(oneSaveClient.put).toHaveBeenCalledWith(expect.objectContaining({ id: 'copaw-sync-test_user-1' }));
     });
 });
+
+describe('copaw normalize — id stability (plan 071 W2 review)', () => {
+    it('gives an id-less stored fact the same id every time it is read', () => {
+        const raw = [{ text: 'Vendors must renew their insurance certificate every year.', source: 'x', createdAt: '2026-09-01T00:00:00.000Z' }];
+        const a = normalize(raw).facts[0].id;
+        const b = normalize(JSON.parse(JSON.stringify(raw))).facts[0].id;
+        expect(a).toBe(b);
+        expect(a.startsWith('legacy-')).toBe(true);
+    });
+});
+

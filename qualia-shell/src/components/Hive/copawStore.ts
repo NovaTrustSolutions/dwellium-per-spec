@@ -67,12 +67,19 @@ function newId(): string {
     return `fact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Deterministic id for an id-less stored fact, so re-reading the same data never mints new ids. */
+function legacyId(text: string): string {
+    let h = 5381;
+    for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+    return `legacy-${h.toString(36)}`;
+}
+
 function sanitizeFact(x: unknown): MemoryFact | null {
     if (!x || typeof x !== 'object') return null;
     const o = x as Partial<MemoryFact>;
     if (typeof o.text !== 'string') return null;
     return {
-        id: typeof o.id === 'string' && o.id ? o.id : newId(),
+        id: typeof o.id === 'string' && o.id ? o.id : legacyId(o.text), // stable across normalizations
         text: o.text,
         source: typeof o.source === 'string' ? o.source : 'unknown',
         createdAt: typeof o.createdAt === 'string' ? o.createdAt : new Date(0).toISOString(),

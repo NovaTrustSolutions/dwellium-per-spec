@@ -31,7 +31,12 @@ function fakeCanvasContext() {
 }
 
 // R7's render-count check needs to know how many times page.render() actually
-// ran on the mocked pdf.js doc — reset per test.
+// ran on the mocked pdf.js doc — reset per test. Counts ONLY the MAIN
+// (visible, DOM-attached) canvas render — P3 16c's page thumbnails legitimately
+// call page.render() too, on an offscreen `document.createElement('canvas')`
+// that's never attached to the DOM, so `canvas.isConnected` tells them apart;
+// this test's own concern (a concurrent-render RACE on the main canvas) is
+// unrelated to how many thumbnails happen to re-render for the same edit.
 let pageRenderCalls = 0;
 
 vi.mock('pdfjs-dist', () => ({
@@ -52,7 +57,10 @@ vi.mock('pdfjs-dist', () => ({
                     convertToViewportPoint: (x: number, y: number) => [x, y],
                     convertToPdfPoint: (x: number, y: number) => [x, y],
                 }),
-                render: () => { pageRenderCalls += 1; return { promise: Promise.resolve() }; },
+                render: (renderOpts: { canvas?: HTMLCanvasElement }) => {
+                    if (renderOpts?.canvas?.isConnected) pageRenderCalls += 1;
+                    return { promise: Promise.resolve() };
+                },
                 getTextContent: async () => ({ items: [] }),
             }),
         }),

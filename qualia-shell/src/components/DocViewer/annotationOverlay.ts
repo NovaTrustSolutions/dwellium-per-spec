@@ -13,10 +13,11 @@
  * viewport space directly (nothing to convert, not yet an Annotation), so it
  * draws with no scaling at all.
  */
-import type { Annotation, Point, ToolMode } from './docViewerTypes';
+import type { Annotation, Point, Rect, ToolMode } from './docViewerTypes';
 import { STAMP_COLORS } from './docViewerTypes';
 import * as pdfCoords from './pdfCoords';
 import type { ViewportLike } from './pdfCoords';
+import { annotationBounds } from './annotationModel';
 
 export interface OverlayViewport extends ViewportLike {
     scale?: number;
@@ -33,10 +34,26 @@ export interface DrawAnnotationOverlayParams {
     currentPath: Point[];
     drawColor: string;
     drawSize: number;
+    /** 16a: id of the currently-selected annotation (Select tool) — draws a
+     * dashed outline around its bounds. Undefined/null draws nothing extra. */
+    selectedAnnotationId?: string | null;
+    /** 16b: this page's search-match rects, already in viewport space (see
+     * docSearch.ts's computeMatchHighlightRects) — UI-only, never fed to
+     * pdfBake. */
+    searchHighlights?: Array<{ rect: Rect; isCurrent: boolean }>;
 }
 
 export function drawAnnotationOverlay(ctx: CanvasRenderingContext2D, params: DrawAnnotationOverlayParams): void {
-    const { pageAnnotations, viewport, isDrawing, drawStart, activeTool, currentPath, drawColor, drawSize } = params;
+    const { pageAnnotations, viewport, isDrawing, drawStart, activeTool, currentPath, drawColor, drawSize, selectedAnnotationId, searchHighlights } = params;
+
+    // 16b: search highlights draw FIRST (underneath annotations/selection),
+    // same visual layering as a browser's own find-in-page.
+    if (searchHighlights) {
+        for (const { rect, isCurrent } of searchHighlights) {
+            ctx.fillStyle = isCurrent ? 'rgba(255, 140, 0, 0.55)' : 'rgba(255, 230, 0, 0.45)';
+            ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+        }
+    }
 
     // R3 (adversarial review of P1 item 6): converting ANN POSITIONS through
     // pdfCoords already accounts for zoom (baked into the viewport's own
@@ -189,5 +206,21 @@ export function drawAnnotationOverlay(ctx: CanvasRenderingContext2D, params: Dra
             ctx.lineTo(currentPath[i].x, currentPath[i].y);
         }
         ctx.stroke();
+    }
+
+    // 16a: selection outline — drawn last so it's always on top of the
+    // annotation it belongs to.
+    if (selectedAnnotationId && viewport) {
+        const selected = pageAnnotations.find(a => a.id === selectedAnnotationId);
+        const bounds = selected && annotationBounds(selected, viewport.rotation ?? 0);
+        if (bounds) {
+            const r = pdfCoords.pdfRectToViewportRect(viewport, bounds);
+            ctx.save();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 3]);
+            ctx.strokeRect(r.x - 3, r.y - 3, r.w + 6, r.h + 6);
+            ctx.restore();
+        }
     }
 }

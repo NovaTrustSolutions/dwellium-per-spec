@@ -29,6 +29,14 @@ function fakeCanvasContext() {
     };
 }
 
+// Only the MAIN (visible, DOM-attached) canvas render's scale is tracked —
+// P3 16c's page thumbnails legitimately call getViewport/render too (their
+// own, unrelated-to-zoom thumbnail scale, on an offscreen
+// `document.createElement('canvas')` that's never attached to the DOM), so
+// recording from getViewport() itself would pollute this array with
+// thumbnail scales having nothing to do with the zoom bug this test pins.
+// `canvas.isConnected` (checked at render() time, once BOTH the canvas and
+// its viewport/scale are known) tells the two apart.
 const getViewportScales: number[] = [];
 
 vi.mock('pdfjs-dist', () => ({
@@ -38,11 +46,15 @@ vi.mock('pdfjs-dist', () => ({
         promise: Promise.resolve({
             numPages: 1,
             getPage: async () => ({
-                getViewport: ({ scale }: { scale: number }) => {
-                    getViewportScales.push(scale);
-                    return { width: 300, height: 300, scale, convertToViewportPoint: (x: number, y: number) => [x, y] };
+                getViewport: ({ scale }: { scale: number }) => (
+                    { width: 300, height: 300, scale, convertToViewportPoint: (x: number, y: number) => [x, y] }
+                ),
+                render: (renderOpts: { canvas?: HTMLCanvasElement; viewport?: { scale: number } }) => {
+                    if (renderOpts?.canvas?.isConnected && renderOpts.viewport) {
+                        getViewportScales.push(renderOpts.viewport.scale);
+                    }
+                    return { promise: Promise.resolve() };
                 },
-                render: () => ({ promise: Promise.resolve() }),
                 getTextContent: async () => ({ items: [] }),
             }),
         }),

@@ -82,6 +82,41 @@
     opacity: 1;
 }
 
+/* 16c: real page thumbnails */
+.dv-nav__thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+/* R7/R10/R12/R14/R15: the "p.N" label stays in the DOM even once a
+   thumbnail image renders (sighted-user readability + this project's own
+   live-browser regression scripts locate page buttons by this text) — as a
+   small overlay badge over the image, or plain centered text when there's
+   no thumbnail yet. */
+.dv-nav__thumb-label {
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    font-size: 10px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    pointer-events: none;
+}
+
+.dv-nav__thumb:not(:has(.dv-nav__thumb-img)) .dv-nav__thumb-label {
+    position: static;
+    background: none;
+    padding: 0;
+    font-size: 11px;
+    color: inherit;
+}
+
 .dv-nav__thumb--active {
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 8%, transparent);
@@ -910,6 +945,31 @@
     gap: 12px;
     padding-top: 8px;
     padding-bottom: 8px;
+}
+
+/* 16b: text search bar */
+.dv-toolbar--search {
+    justify-content: flex-start;
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.dv-toolbar__search-input {
+    flex: 0 1 260px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.dv-toolbar__search-input:focus {
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .dv-toolbar__hint {

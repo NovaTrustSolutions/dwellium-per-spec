@@ -15,12 +15,16 @@ import { useCallback, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { Annotation, Point, ShapeType, StampType, ToolMode } from './docViewerTypes';
 import { STAMP_COLORS } from './docViewerTypes';
-import { normalizeSignatureStrokes } from './annotationModel';
+import { normalizeSignatureStrokes, hitTestAnnotation, translateAnnotation } from './annotationModel';
 import * as pdfCoords from './pdfCoords';
 import type { ViewportLike } from './pdfCoords';
 
 // Width (annotation-space units) a placed signature is scaled to.
 const SIGNATURE_TARGET_WIDTH = 160;
+// 16a: minimum PDF-space movement before a select-tool pointer-down-then-move
+// counts as a drag (and pushes ONE undo step) rather than a plain click that
+// only changes selection.
+const DRAG_THRESHOLD = 1;
 
 type LiveViewport = ViewportLike & { width?: number; height?: number; scale?: number };
 
@@ -45,6 +49,18 @@ export interface UseAnnotationPointerToolOptions {
     showToast: (msg: string) => void;
     /** No signature drawn yet — open the signature modal. */
     onNeedSignature: () => void;
+    /** 16a: the Select tool's annotations to hit-test are the CURRENT page's
+     * only — pass the already-filtered list. */
+    pageAnnotations: Annotation[];
+    /** Selects (or, with null, deselects) an annotation by id. */
+    onSelectAnnotation: (id: string | null) => void;
+    /** Pushes ONE undo step, called exactly once at the start of an actual
+     * drag (after DRAG_THRESHOLD is crossed) — a plain click-to-select never
+     * pushes history. */
+    onBeginMove: () => void;
+    /** Replaces one annotation in place while dragging — NOT undoable itself
+     * (onBeginMove already captured the pre-drag state once). */
+    onMoveAnnotation: (id: string, next: Annotation) => void;
     /** P2 item 13 (a11y): 'text' tool pointer-up no longer opens a
      * window.prompt() — it hands the placement point (viewport + PDF space)
      * back to DocViewer, which owns an inline, ref-focused text field and
@@ -61,6 +77,13 @@ export interface UseAnnotationPointerTool {
     handlePointerMove: (e: React.PointerEvent) => void;
     handlePointerUp: (e: React.PointerEvent) => void;
     handlePointerCancel: (e: React.PointerEvent) => void;
+    /** R5 (adversarial review): stops an in-progress Select-tool drag —
+     * releases pointer capture and clears the drag ref so a SUBSEQUENT
+     * pointermove (the physical pointer may still be down) is a no-op
+     * instead of continuing to move the annotation with no visible
+     * selection outline. A no-op when no drag is in progress. Called from
+     * DocViewer's Escape handler alongside deselecting. */
+    cancelSelectDrag: () => void;
 }
 
 export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions): UseAnnotationPointerTool {
@@ -68,11 +91,18 @@ export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions):
         overlayRef, viewportRef, rootRef, activeTool, currentPage,
         drawColor, drawSize, selectedShape, selectedStamp, signatureStrokes,
         renderOverlay, addAnnotation, showToast, onNeedSignature, onRequestTextInput,
+        pageAnnotations, onSelectAnnotation, onBeginMove, onMoveAnnotation,
     } = opts;
 
     const [isDrawing, setIsDrawing] = useState(false);
     const [drawStart, setDrawStart] = useState<Point | null>(null);
     const [currentPath, setCurrentPath] = useState<Point[]>([]);
+
+    // 16a: drag state for the Select tool — a ref (not state), since it's
+    // written/read entirely inside the pointer-event sequence and never
+    // needs to trigger a re-render itself (onMoveAnnotation's setAnnotations
+    // call already does that).
+    const dragRef = useRef<{ id: string; original: Annotation; startPdf: Point; moved: boolean } | null>(null);
 
     // R6 (adversarial review of P1 item 10): only ONE pointer contact drives
     // the overlay at a time. Without this, a second concurrent touch (e.g. a
@@ -119,7 +149,21 @@ export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions):
         // pointer interaction keeps Cmd+Z working right after a draw.
         rootRef.current?.focus({ preventScroll: true });
         if (activePointerIdRef.current !== null) return; // a pointer is already active — ignore a second contact
-        if (activeTool === 'select' || activeTool === 'editText') return;
+        if (activeTool === 'editText') return;
+
+        if (activeTool === 'select') {
+            const viewport = viewportRef.current;
+            if (!viewport) return;
+            activePointerIdRef.current = e.pointerId;
+            capturePointer(e);
+            const pos = getCanvasCoords(e);
+            const pdfPos = pdfCoords.viewportToPdf(viewport, pos.x, pos.y);
+            const hit = hitTestAnnotation(pageAnnotations, pdfPos, viewport.rotation ?? 0);
+            onSelectAnnotation(hit?.id ?? null);
+            dragRef.current = hit ? { id: hit.id, original: hit, startPdf: pdfPos, moved: false } : null;
+            return;
+        }
+
         activePointerIdRef.current = e.pointerId;
         capturePointer(e);
         const pos = getCanvasCoords(e);
@@ -129,10 +173,28 @@ export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions):
         if (activeTool === 'draw') {
             setCurrentPath([pos]);
         }
-    }, [rootRef, activeTool, getCanvasCoords]);
+    }, [rootRef, activeTool, getCanvasCoords, viewportRef, pageAnnotations, onSelectAnnotation]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (e.pointerId !== activePointerIdRef.current) return;
+
+        if (activeTool === 'select') {
+            const drag = dragRef.current;
+            const viewport = viewportRef.current;
+            if (!drag || !viewport) return;
+            const pos = getCanvasCoords(e);
+            const pdfPos = pdfCoords.viewportToPdf(viewport, pos.x, pos.y);
+            const dx = pdfPos.x - drag.startPdf.x;
+            const dy = pdfPos.y - drag.startPdf.y;
+            if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+            if (!drag.moved) {
+                drag.moved = true;
+                onBeginMove();
+            }
+            onMoveAnnotation(drag.id, translateAnnotation(drag.original, dx, dy));
+            return;
+        }
+
         if (!isDrawing || !drawStart) return;
         const pos = getCanvasCoords(e);
 
@@ -190,12 +252,18 @@ export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions):
                 }
             }
         }
-    }, [isDrawing, drawStart, activeTool, getCanvasCoords, overlayRef, viewportRef, renderOverlay, drawColor, drawSize, selectedShape]);
+    }, [isDrawing, drawStart, activeTool, getCanvasCoords, overlayRef, viewportRef, renderOverlay, drawColor, drawSize, selectedShape, onBeginMove, onMoveAnnotation]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         if (e.pointerId !== activePointerIdRef.current) return;
         activePointerIdRef.current = null;
         releasePointer(e);
+
+        if (activeTool === 'select') {
+            dragRef.current = null;
+            return;
+        }
+
         if (!isDrawing || !drawStart) {
             setIsDrawing(false);
             return;
@@ -315,10 +383,31 @@ export function useAnnotationPointerTool(opts: UseAnnotationPointerToolOptions):
         if (e.pointerId !== activePointerIdRef.current) return;
         activePointerIdRef.current = null;
         releasePointer(e);
+        // 16a: a cancelled drag leaves the annotation at its last dragged
+        // position (the undo step onBeginMove already pushed covers it —
+        // same "no revert, use Undo" behavior as the draw tool's own cancel
+        // path below, which doesn't restore currentPath either).
+        dragRef.current = null;
         setIsDrawing(false);
         setDrawStart(null);
         setCurrentPath([]);
     }, []);
 
-    return { isDrawing, drawStart, currentPath, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel };
+    // R5: release capture via the overlay element directly (no PointerEvent
+    // is available here — Escape is a keyboard event) using the pointerId
+    // the drag started with, then clear the refs so handlePointerMove's
+    // `e.pointerId !== activePointerIdRef.current` guard makes the next move
+    // (the physical pointer may still be down) a no-op.
+    const cancelSelectDrag = useCallback(() => {
+        if (!dragRef.current) return;
+        const overlay = overlayRef.current;
+        const pointerId = activePointerIdRef.current;
+        if (overlay && pointerId !== null) {
+            try { overlay.releasePointerCapture(pointerId); } catch { /* not supported / already released */ }
+        }
+        dragRef.current = null;
+        activePointerIdRef.current = null;
+    }, [overlayRef]);
+
+    return { isDrawing, drawStart, currentPath, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel, cancelSelectDrag };
 }

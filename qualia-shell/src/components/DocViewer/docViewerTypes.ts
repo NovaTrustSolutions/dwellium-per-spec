@@ -11,6 +11,12 @@ export interface DocFile {
     name: string;
     type: string;
     url?: string;
+    // 16d: the file's own size (bytes)/updatedAt as the backend's GET
+    // /api/files reports it — the fingerprint a draft is checked against
+    // (useAnnotationDrafts.ts). Optional: older callers / test fixtures that
+    // build a DocFile by hand don't need to carry these.
+    size?: number;
+    updatedAt?: string;
 }
 
 export type ToolMode = 'select' | 'text' | 'editText' | 'highlight' | 'draw' | 'shape' | 'signature' | 'stamp';

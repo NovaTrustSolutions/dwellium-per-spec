@@ -11,6 +11,10 @@ import {
     shiftAnnotationsForInsert, shiftAnnotationsForDelete,
     shiftTextEditsForInsert, shiftTextEditsForDelete,
 } from './annotationModel';
+import { useAnnotationDrafts } from './useAnnotationDrafts';
+import { useDocumentSearch } from './useDocumentSearch';
+import { computeMatchHighlightRects } from './docSearch';
+import { usePageThumbnails } from './usePageThumbnails';
 import { bakeAnnotations } from './pdfBake';
 import { useAnnotationHistory, type DocSnapshot } from './useAnnotationHistory';
 import { usePdfDocument, type PdfDocLike } from './usePdfDocument';
@@ -35,6 +39,9 @@ import SignatureModal from './SignatureModal';
 const API_FILES = `${API_BASE}/api/files`;
 const TEXT_FILE_TYPES = new Set(['txt', 'md', 'csv', 'json', 'html']);
 const IMAGE_FILE_TYPES = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']);
+// 16e: office formats pdf.js can't parse directly — converted server-side
+// (LibreOffice) to a read-only PDF preview via POST /api/docs/convert.
+const OFFICE_PREVIEW_TYPES = new Set(['doc', 'docx', 'odt', 'rtf']);
 /** Everything that isn't text/image is attempted as a PDF (P1 N1: needed to
  * decide whether to keep the canvas mounted while that attempt is loading). */
 const isPdfAttemptType = (type: string) => !TEXT_FILE_TYPES.has(type) && !IMAGE_FILE_TYPES.has(type);
@@ -70,6 +77,11 @@ export default function DocViewer() {
     const [textDraft, setTextDraft] = useState('');
     const [textReadOnly, setTextReadOnly] = useState(false);
     const [savedLocalPath, setSavedLocalPath] = useState<string | null>(null);
+    // 16e: true when the currently-loaded pdfDoc/pdfBytes came from a
+    // LibreOffice doc->PDF conversion, not the file's own bytes — gates
+    // Save Back (would overwrite the original .docx/.odt/.rtf with an
+    // unrelated PDF) and read-only editing.
+    const [isConvertedPreview, setIsConvertedPreview] = useState(false);
 
     // PDF state — lifecycle (sequence token + destroy()) owned by
     // usePdfDocument (P1 item 7). `pdfDoc`/`pdfBytes` alias its state so the
@@ -90,6 +102,44 @@ export default function DocViewer() {
     // Editing state
     const [activeTool, setActiveTool] = useState<ToolMode>('select');
     const [annotations, setAnnotations] = useState<AnnotationMap>(new Map());
+
+    // ---- 16d: ANNOTATION DRAFTS ----
+    // ready once the PDF is loaded and stable — during loadDocument/
+    // resetDocumentState churn, fileId/pdfBytes are mid-flight and must not
+    // trigger a GET or an autosave PUT.
+    const annotationDrafts = useAnnotationDrafts({
+        apiFilesBase: API_FILES,
+        fileId: selectedFile?.id ?? null,
+        baseSize: selectedFile?.size ?? null,
+        baseUpdatedAt: selectedFile?.updatedAt ?? null,
+        annotations,
+        ready: previewMode === 'pdf' && !!pdfBytes,
+        showToast: (msg: string) => showToast(msg),
+    });
+
+    const onRestoreDraft = useCallback(() => {
+        const restored = annotationDrafts.restoreDraft();
+        if (restored) {
+            setAnnotations(restored);
+            setPdfDirty(true);
+            showToast('Draft restored');
+        }
+    }, [annotationDrafts]);
+
+    // ---- 16b: TEXT SEARCH ----
+    // onJumpToPage must be a STABLE callback — useDocumentSearch's own search
+    // effect depends on it, and goToPage (defined later in this component) is
+    // a plain function recreated every render. A ref (same forward-reference
+    // pattern as deleteSelectedAnnotationRef above) gives the hook an
+    // identity-stable function while still always calling the CURRENT
+    // goToPage; without this, the effect re-subscribes every render, which
+    // resets search state to a brand-new [] every time and loops forever.
+    const goToPageRef = useRef<(page: number) => void>(() => {});
+    const onJumpToPage = useCallback((page: number) => goToPageRef.current(page), []);
+    const docSearch = useDocumentSearch({ pdfDoc, totalPages, bytesVersion: pdfBytes, onJumpToPage });
+
+    // ---- 16c: PAGE THUMBNAILS ----
+    const pageThumbnails = usePageThumbnails({ pdfDoc, bytesVersion: pdfBytes });
     const [drawColor, setDrawColor] = useState('#ef4444');
     const [drawSize, setDrawSize] = useState(3);
     const [fontSize, setFontSize] = useState(16);
@@ -100,6 +150,11 @@ export default function DocViewer() {
     const [showSignatureModal, setShowSignatureModal] = useState(false);
     const [signatureStrokes, setSignatureStrokes] = useState<Point[][]>([]);
     const [toast, setToast] = useState<string | null>(null);
+    // 16a: id of the annotation currently selected by the Select tool.
+    // Cleared on page change and file switch (see the effects below /
+    // resetDocumentState) — a selection never survives navigating away from
+    // the page it lives on.
+    const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 
     // Text editing state
     const [textItems, setTextItems] = useState<TextItem[]>([]);
@@ -155,7 +210,7 @@ export default function DocViewer() {
             const json = await res.json();
             if (json.success) {
                 const docs = json.data.filter((f: any) =>
-                    ['pdf', 'doc', 'docx', 'txt', 'md', 'csv', 'json', 'html', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(f.type)
+                    ['pdf', 'doc', 'docx', 'odt', 'rtf', 'txt', 'md', 'csv', 'json', 'html', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(f.type)
                 );
                 setFiles(docs);
                 return docs;
@@ -204,6 +259,15 @@ export default function DocViewer() {
     // the shortcut whenever focus is in an input/textarea/select/
     // contenteditable descendant.
     const rootRef = useRef<HTMLDivElement | null>(null);
+    // 16a: deleteSelectedAnnotation is defined later in this component (it
+    // needs currentPage/selectedAnnotationId/pushUndo) — a ref (same pattern
+    // as renderOverlayRef below) lets this earlier keydown effect call
+    // whatever the CURRENT deleteSelectedAnnotation is without having to
+    // reorder the file or re-subscribe the listener on every dependency change.
+    const deleteSelectedAnnotationRef = useRef<() => void>(() => {});
+    // R5 (adversarial review): same forward-ref pattern — pointerTool (which
+    // owns the in-progress drag) is defined later in this component.
+    const cancelSelectDragRef = useRef<() => void>(() => {});
     useEffect(() => {
         const el = rootRef.current;
         if (!el) return;
@@ -214,11 +278,28 @@ export default function DocViewer() {
             if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) redo(); else undo();
+                return;
+            }
+            // 16a: Delete/Backspace removes the selected annotation, Escape
+            // deselects — only while the Select tool is active and something
+            // is actually selected, so these keys stay no-ops otherwise.
+            if (activeTool === 'select' && selectedAnnotationId) {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    deleteSelectedAnnotationRef.current();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    // R5: an Escape mid-drag must stop the drag itself, not
+                    // just clear the (now-invisible) selection outline — the
+                    // physical pointer may still be down.
+                    cancelSelectDragRef.current();
+                    setSelectedAnnotationId(null);
+                }
             }
         };
         el.addEventListener('keydown', handler);
         return () => el.removeEventListener('keydown', handler);
-    }, [undo, redo]);
+    }, [undo, redo, activeTool, selectedAnnotationId]);
 
     const resetDocumentState = useCallback((file: DocFile) => {
         setSelectedFile(file);
@@ -255,9 +336,21 @@ export default function DocViewer() {
         setTextDraft('');
         setTextReadOnly(false);
         setSavedLocalPath(null);
+        setSelectedAnnotationId(null);
+        setIsConvertedPreview(false);
+        // R2/R4 (adversarial review): a tool selected on a PRIOR file (e.g.
+        // 'draw') must not carry over to a freshly-opened file that turns out
+        // to be a read-only converted office-doc preview. The pointer
+        // handlers are also gated by canEditPdf below (the actual root-cause
+        // fix — belt-and-suspenders here).
+        setActiveTool('select');
         history.reset();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pdfLifecycle.destroy]);
+
+    // 16a: selection also clears on a plain page navigation within the same
+    // file (resetDocumentState above only covers a file switch).
+    useEffect(() => { setSelectedAnnotationId(null); }, [currentPage]);
 
     // P1 item 7 (audit #10): a sequence token at the loadDocument level too —
     // pdfLifecycle's own token stops a stale PDF doc/bytes from winning, but
@@ -315,6 +408,57 @@ export default function DocViewer() {
                 setPreviewUrl(url);
                 setTotalPages(1);
                 setIsLoading(false);
+                return;
+            }
+
+            // 16e: doc/docx/odt/rtf — fetch the stored bytes, POST them to the
+            // backend's LibreOffice conversion route, and render the
+            // returned PDF READ-ONLY. The original file is never touched:
+            // this path never writes anything back, and canEditPdf/
+            // saveBackDisabled below both gate off isConvertedPreview.
+            if (OFFICE_PREVIEW_TYPES.has(file.type)) {
+                try {
+                    const rawRes = await fetch(`${API_FILES}/${file.id}`);
+                    if (!rawRes.ok) throw new Error(`Could not load file (${rawRes.status})`);
+                    const raw = new Uint8Array(await rawRes.arrayBuffer());
+                    if (stale()) return;
+
+                    const formData = new FormData();
+                    formData.append('file', new Blob([raw]), file.name);
+                    formData.append('targetFormat', 'pdf-from-docx');
+                    const convertRes = await fetch(`${API_BASE}/api/docs/convert`, { method: 'POST', body: formData });
+                    if (stale()) return;
+
+                    if (convertRes.status === 503) {
+                        // Same wording PDFGear.tsx already uses for this exact
+                        // backend-unavailable case — keep it recognizable.
+                        setPreviewMode('unavailable');
+                        setPreviewUrl(url);
+                        setPreviewMessage(`.${file.type.toUpperCase()} preview requires LibreOffice on the backend (not installed). You can still open the original or cache a local copy.`);
+                        setIsLoading(false);
+                        return;
+                    }
+                    if (!convertRes.ok) throw new Error(`Conversion failed (${convertRes.status})`);
+
+                    const convertedBytes = new Uint8Array(await convertRes.arrayBuffer());
+                    if (stale()) return;
+                    const newDoc = await pdfLifecycle.replaceBytes(convertedBytes);
+                    if (stale()) return;
+                    if (!newDoc) return; // superseded by a newer load
+
+                    setTotalPages(newDoc.numPages);
+                    setIsConvertedPreview(true);
+                    setPreviewMode('pdf');
+                    setPreviewMessage(
+                        `Converted preview — this is a PDF rendering generated on the backend from the original .${file.type} file, which is unchanged. Save Back is disabled here; use Export/Download for the converted PDF, or Open Original for the .${file.type}.`
+                    );
+                } catch (err) {
+                    if (stale()) return;
+                    setPreviewMode('unavailable');
+                    setPreviewUrl(url);
+                    setPreviewMessage(err instanceof Error ? err.message : `Preview not available for .${file.type} files.`);
+                }
+                if (!stale()) setIsLoading(false);
                 return;
             }
 
@@ -571,6 +715,48 @@ export default function DocViewer() {
         });
     }, [pushUndo]);
 
+    // ---- 16a: SELECT / MOVE / DELETE ----
+    // Pushes the ONE undo step for a drag — called by useAnnotationPointerTool
+    // exactly once, right when a select-tool pointer-down-then-move crosses
+    // DRAG_THRESHOLD (a plain click-to-select never gets here).
+    const beginMoveSelectedAnnotation = useCallback(() => {
+        pushUndo(false);
+        setPdfDirty(true);
+    }, [pushUndo]);
+
+    // Replaces one annotation in place on the CURRENT page — called on every
+    // pointermove of a drag. Not undoable itself (beginMoveSelectedAnnotation
+    // already captured the pre-drag snapshot once).
+    const moveSelectedAnnotation = useCallback((id: string, nextAnn: Annotation) => {
+        setAnnotations(prev => {
+            const pageAnns = prev.get(currentPage);
+            if (!pageAnns) return prev;
+            const idx = pageAnns.findIndex(a => a.id === id);
+            if (idx === -1) return prev;
+            const nextPageAnns = [...pageAnns];
+            nextPageAnns[idx] = nextAnn;
+            const next = new Map(prev);
+            next.set(currentPage, nextPageAnns);
+            return next;
+        });
+    }, [currentPage]);
+
+    const deleteSelectedAnnotation = useCallback(() => {
+        if (!selectedAnnotationId) return;
+        pushUndo(false);
+        setPdfDirty(true);
+        setAnnotations(prev => {
+            const pageAnns = prev.get(currentPage);
+            if (!pageAnns) return prev;
+            const next = new Map(prev);
+            next.set(currentPage, pageAnns.filter(a => a.id !== selectedAnnotationId));
+            return next;
+        });
+        setSelectedAnnotationId(null);
+        showToast('Annotation deleted');
+    }, [selectedAnnotationId, currentPage, pushUndo, showToast]);
+    deleteSelectedAnnotationRef.current = deleteSelectedAnnotation;
+
     // P2 item 13 (a11y): 'text' tool placement — an inline, ref-focused field
     // positioned at the click point, replacing window.prompt(). The pointer
     // hook only hands back the placement point (viewport + PDF space); the
@@ -631,8 +817,13 @@ export default function DocViewer() {
             setPendingTextValue('');
             setPendingTextInsert({ screenX: screenPos.x, screenY: screenPos.y, pdfPos, rotation });
         },
+        pageAnnotations: annotations.get(currentPage) || [],
+        onSelectAnnotation: setSelectedAnnotationId,
+        onBeginMove: beginMoveSelectedAnnotation,
+        onMoveAnnotation: moveSelectedAnnotation,
     });
-    const { isDrawing, drawStart, currentPath, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel } = pointerTool;
+    const { isDrawing, drawStart, currentPath, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel, cancelSelectDrag } = pointerTool;
+    cancelSelectDragRef.current = cancelSelectDrag;
 
     const renderOverlay = useCallback(() => {
         const overlay = overlayRef.current;
@@ -653,16 +844,26 @@ export default function DocViewer() {
         // annotationOverlay.ts (P2 item 11 module split) — this wrapper only
         // owns the DOM/canvas plumbing (sizing the overlay to the base
         // canvas, DPR scaling, clearing) that has to live next to the refs.
+        // 16b: this page's search matches, converted to viewport-space rects
+        // via the CURRENT page's already-extracted textItems — UI-only, never
+        // touches `annotations`/pdfBake (see docSearch.ts / useDocumentSearch.ts).
+        const pageMatches = docSearch.matches.filter(m => m.page === currentPage);
+        const searchHighlights = pageMatches.length > 0
+            ? computeMatchHighlightRects(textItems, pageMatches, docSearch.currentMatch)
+            : undefined;
+
         drawAnnotationOverlay(ctx, {
             pageAnnotations: annotations.get(currentPage) || [],
             viewport: viewportRef.current,
             isDrawing, drawStart, activeTool, currentPath, drawColor, drawSize,
+            selectedAnnotationId: activeTool === 'select' ? selectedAnnotationId : null,
+            searchHighlights,
         });
         // renderVersion isn't read directly — it's the trigger that makes this
         // redraw whenever renderPage produces a NEW viewport (zoom, rotate,
         // page nav, insert/delete, undo/redo), not only on a zoom change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [annotations, currentPage, renderVersion, isDrawing, drawStart, activeTool, currentPath, drawColor, drawSize]);
+    }, [annotations, currentPage, renderVersion, isDrawing, drawStart, activeTool, currentPath, drawColor, drawSize, selectedAnnotationId, docSearch.matches, docSearch.currentMatch, textItems]);
     renderOverlayRef.current = renderOverlay;
 
     useEffect(() => { renderOverlay(); }, [renderOverlay]);
@@ -982,13 +1183,18 @@ export default function DocViewer() {
             }
             setPdfDirty(false);
             showToast('Changes saved back into Qualia');
+            // 16d: the draft (if any) was only standing in for these now-saved
+            // changes — clear it. clearAfterSave() never throws (a failed
+            // delete is toasted internally and otherwise ignored), so it can
+            // never turn a save that already succeeded into an error.
+            void annotationDrafts.clearAfterSave();
         } catch (err) {
             console.error('Save document error:', err);
             showToast(err instanceof Error ? err.message : 'Failed to save document');
         } finally {
             setIsSaving(false);
         }
-    }, [buildPdfBytes, pdfBytes, previewMode, selectedFile, textDraft, textReadOnly]);
+    }, [buildPdfBytes, pdfBytes, previewMode, selectedFile, textDraft, textReadOnly, annotationDrafts]);
 
     // ---- SIGNATURE MODAL ----
     // Drawing mechanics (canvas ref, pointer handlers, clear) live in
@@ -1006,6 +1212,7 @@ export default function DocViewer() {
         const clamped = Math.max(1, Math.min(totalPages, page));
         setCurrentPage(clamped);
     };
+    goToPageRef.current = goToPage;
 
     // ---- CLEAR ALL ANNOTATIONS ----
     const clearAnnotations = () => {
@@ -1020,7 +1227,8 @@ export default function DocViewer() {
     };
 
     // ---- TOOL CONFIG ----
-    const canEditPdf = previewMode === 'pdf' && !!pdfBytes;
+    // 16e: a converted office-doc preview is read-only — no annotation tools.
+    const canEditPdf = previewMode === 'pdf' && !!pdfBytes && !isConvertedPreview;
     const canSaveBack = previewMode === 'pdf' || previewMode === 'text';
     const isTextDirty = previewMode === 'text' && textDraft !== textContent;
 
@@ -1030,6 +1238,11 @@ export default function DocViewer() {
     let saveBackTitle = 'Save changes back into Qualia';
     if (isSaving) {
         saveBackTitle = 'Saving…';
+    } else if (previewMode === 'pdf' && isConvertedPreview) {
+        // 16e: Save Back would PUT a converted PDF's bytes onto a file whose
+        // original format is doc/docx/odt/rtf — never allowed.
+        saveBackDisabled = true;
+        saveBackTitle = 'Read-only — this is a converted preview; the original file is unchanged and cannot be overwritten from here';
     } else if (previewMode === 'pdf') {
         if (!pdfBytes) {
             saveBackDisabled = true;
@@ -1053,7 +1266,9 @@ export default function DocViewer() {
         <div className="doc-viewer" ref={rootRef} tabIndex={-1}>
             {/* Page Thumbnails */}
             {selectedFile && previewMode === 'pdf' && totalPages > 0 && (
-                <PageSidebar totalPages={totalPages} currentPage={currentPage} onGoToPage={goToPage} onInsertPage={insertPage} />
+                <PageSidebar totalPages={totalPages} currentPage={currentPage} onGoToPage={goToPage} onInsertPage={insertPage}
+                    getThumbnail={pageThumbnails.getThumbnail} requestThumbnail={pageThumbnails.requestThumbnail}
+                    thumbnailEpoch={pageThumbnails.invalidationEpoch} />
             )}
 
             {/* Main Area */}
@@ -1079,6 +1294,15 @@ export default function DocViewer() {
                     onOpenOriginal={openOriginalFile}
                     previewMessage={previewMessage}
                     savedLocalPath={savedLocalPath}
+                    searchOpen={docSearch.isOpen}
+                    onToggleSearch={docSearch.toggleOpen}
+                    searchQuery={docSearch.query}
+                    onSearchQueryChange={docSearch.setQuery}
+                    searchIsSearching={docSearch.isSearching}
+                    searchMatchCount={docSearch.matchCount}
+                    searchCurrentIndex={docSearch.currentIndex}
+                    onSearchNext={docSearch.goNext}
+                    onSearchPrev={docSearch.goPrev}
                 />
 
                 {/* Editing Toolbar */}
@@ -1120,6 +1344,23 @@ export default function DocViewer() {
                     />
                 )}
 
+                {/* 16d: a restorable draft — only ever shown when the draft's
+                    baseSize/baseUpdatedAt matched this exact file (see
+                    useAnnotationDrafts.ts); never applied without this prompt. */}
+                {selectedFile && annotationDrafts.pendingRestore && (
+                    <div className="dv-toolbar dv-toolbar--info" role="status">
+                        <span className="dv-toolbar__hint">
+                            An unsaved draft of markup was found for this document.
+                        </span>
+                        <button type="button" className="dv-toolbar__btn" onClick={onRestoreDraft}>
+                            Restore draft
+                        </button>
+                        <button type="button" className="dv-toolbar__btn" onClick={annotationDrafts.discardDraft}>
+                            Discard
+                        </button>
+                    </div>
+                )}
+
                 {/* Content */}
                 {selectedFile && isPdfAttemptType(selectedFile.type) && (isLoading || previewMode === 'pdf') ? (
                     // N1 (found live): the canvas stays MOUNTED under the
@@ -1152,11 +1393,20 @@ export default function DocViewer() {
                                 meaningful name — which document, which page of how
                                 many — instead of being an unlabeled graphic. */}
                             <canvas ref={setCanvasNode} aria-label={`${selectedFile.name} — page ${currentPage} of ${totalPages}`} />
+                            {/* R2/R4 (adversarial review): a converted office-doc
+                                preview (isConvertedPreview) is read-only — Save
+                                Back is disabled and EditToolbar is hidden above,
+                                but neither of those actually stops a pointer
+                                drag from creating a NEW annotation. Every
+                                pointer interaction with the overlay routes
+                                through these four handlers, so gating them
+                                here (root cause, not per-tool-branch) is the
+                                one place that closes it for every tool. */}
                             <canvas ref={overlayRef} className="dv-overlay-canvas" aria-hidden="true"
-                                onPointerDown={handlePointerDown}
-                                onPointerMove={handlePointerMove}
-                                onPointerUp={handlePointerUp}
-                                onPointerCancel={handlePointerCancel}
+                                onPointerDown={canEditPdf ? handlePointerDown : undefined}
+                                onPointerMove={canEditPdf ? handlePointerMove : undefined}
+                                onPointerUp={canEditPdf ? handlePointerUp : undefined}
+                                onPointerCancel={canEditPdf ? handlePointerCancel : undefined}
                             />
 
                             {pendingTextInsert && (

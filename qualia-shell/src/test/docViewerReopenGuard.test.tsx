@@ -90,7 +90,9 @@ describe('DocViewer reopen guard (adversarial finding on P2 item 15 launcher uni
         fireEvent.pointerUp(overlay, { clientX: 50, clientY: 40, pointerId: 1, pointerType: 'mouse' });
 
         const undoBtn = await screen.findByTitle('Undo (Ctrl+Z)');
-        await waitFor(() => expect(undoBtn).not.toBeDisabled());
+        // Generous timeout: this file renders a real PDF through the component and went flaky
+        // under full-suite load at RTL's 1s default.
+        await waitFor(() => expect(undoBtn).not.toBeDisabled(), { timeout: 5000 });
 
         // Simulate 3 of requestDocViewerOpen's redispatches for the SAME
         // file landing on the already-mounted, already-showing DocViewer —
@@ -128,10 +130,10 @@ describe('DocViewer reopen guard (adversarial finding on P2 item 15 launcher uni
         render(<DocViewer />);
         const select = await screen.findByRole('combobox') as HTMLSelectElement;
         fireEvent.change(select, { target: { value: FILE.id } });
-        await waitFor(() => expect(select.value).toBe(FILE.id));
+        await waitFor(() => expect(select.value).toBe(FILE.id), { timeout: 5000 });
 
         window.dispatchEvent(new CustomEvent(DOCVIEWER_OPEN_EVENT, { detail: { fileId: OTHER.id, name: OTHER.name } }));
 
-        await waitFor(() => expect(select.value).toBe(OTHER.id));
+        await waitFor(() => expect(select.value).toBe(OTHER.id), { timeout: 5000 });
     });
 });

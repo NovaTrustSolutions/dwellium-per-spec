@@ -4,6 +4,8 @@
    scoped under .avd so nothing leaks into the rest of the app. ──────────── */
 .avd {
     --avd-text: #e2f3ff;
+    /* The dossier frame is dark on every theme, so its danger text mixes toward its own light text colour. */
+    --avd-danger: color-mix(in srgb, var(--danger, #ef4444) 55%, var(--avd-text));
     --avd-muted: #86a3b8;
     --avd-primary: #51d4ff;
     --avd-primary-2: #a78bfa;
@@ -96,7 +98,7 @@ textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var
 .avd-row:hover .avd-del, .avd-channel:hover .avd-del, .avd-note:hover .avd-del { opacity: 1; }
 .avd-row:focus-within .avd-del, .avd-channel:focus-within .avd-del, .avd-note:focus-within .avd-del { opacity: 1; }
 .avd-del:focus-visible { opacity: 1; outline: 2px solid var(--avd-primary); outline-offset: 2px; }
-.avd-del:hover { background: rgba(239, 68, 68, .18); color: #fca5a5; }
+.avd-del:hover { background: color-mix(in srgb, var(--danger, #ef4444) 18%, transparent); color: var(--avd-danger); }
 .avd-add {
     margin-top: 4px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
     color: var(--avd-primary); background: rgba(81, 212, 255, .06);

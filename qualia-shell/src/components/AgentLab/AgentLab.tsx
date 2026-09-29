@@ -22,7 +22,7 @@ import { type Persona, type AgentTeam, type Discipline, ORCHESTRATOR_ID, findPer
 import AvatarDossier from './AvatarDossier';
 import PersonaWorkspace, { type WorkspaceView } from './PersonaWorkspace';
 import {
-    recordRun as recordPersonaRun, addTask, startTask, completeTask, failTask, logAudit, formatMemory, usePersonaWork,
+    recordRun as recordPersonaRun, addTask, startTask, completeTask, failTask, retryTask, logAudit, formatMemory, usePersonaWork,
 } from '../../lib/agents/personaWorkStore';
 import { personaStats } from '../../lib/agents/hermesStatus';
 import {
@@ -226,10 +226,12 @@ export default function AgentLab() {
     // unconditionally (rules of hooks) — usePersonaWork tolerates an empty id.
     const personaWork = usePersonaWork(selectedPersona?.id ?? '');
 
-    // Run a single task the persona was given (timed → completed with duration).
-    const runTask = useCallback(async (taskId: string, taskTitle: string) => {
+    // Run a single task the persona was given (timed → completed with duration). A retry resets the failed
+    // task only here, once the run is sure to start — never before a guard that may refuse it (D16).
+    const runTask = useCallback(async (taskId: string, taskTitle: string, retry = false) => {
         if (!selectedPersona || running || runningTasks[selectedPersona.id]) return;
         const personaId = selectedPersona.id;
+        if (retry) retryTask(personaId, taskId);
         const stillOwner = captureOwner(); // owner-race guard (see run)
         const augmented = { ...selectedPersona, systemPrompt: selectedPersona.systemPrompt + formatMemory(personaId) };
         setRunningTasks(prev => ({ ...prev, [personaId]: taskId }));
@@ -411,6 +413,7 @@ export default function AgentLab() {
                                     onRunTask={runTask}
                                     runningTaskId={runningTasks[selectedPersona.id] ?? null}
                                     llmReady={llmReady}
+                                    busy={running}
                                 />
                             )}
                         </div>

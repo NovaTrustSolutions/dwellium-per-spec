@@ -564,6 +564,62 @@ describe('AgentLab — D8/D16 task runs', () => {
     });
 });
 
+describe('AgentLab — D16 task buttons during a Goal or team run', () => {
+    const addTask = (title: string) => {
+        fireEvent.change(screen.getByPlaceholderText('Give this persona a task…'), { target: { value: title } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+    };
+
+    it('while a Goal run is going, task Run and Retry are disabled and say why; Retry never turns a failed task into an un-run to-do', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }));
+        addTask('Task A');
+        plan.byPersona.researcher = async () => { throw new LlmError('anthropic', 500, 'server exploded'); };
+        fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+        await screen.findByText('failed');
+        addTask('Task B');
+
+        const goal = deferred<MockLlmResponse>();
+        plan.byPersona.researcher = () => goal.promise;
+        fireEvent.change(screen.getByLabelText('Goal'), { target: { value: 'Summarize this' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Run Researcher' }));
+        await screen.findByRole('button', { name: /Running/ });
+
+        const runB = screen.getByRole('button', { name: 'Run' });
+        const retryA = screen.getByRole('button', { name: 'Retry' });
+        expect(runB).toBeDisabled();
+        expect(retryA).toBeDisabled();
+        expect(runB).toHaveAttribute('title', expect.stringMatching(/current run/i));
+        expect(retryA).toHaveAttribute('title', expect.stringMatching(/current run/i));
+        fireEvent.click(retryA);
+        expect(screen.getByText('failed')).toBeInTheDocument();          // still failed, not silently back to to-do
+
+        await act(async () => { goal.resolve({ text: 'Goal done', provider: 'anthropic', model: 'x' }); });
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled());
+        expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled();
+    });
+
+    it('control: when nothing else runs, Retry re-runs the failed task and it completes', async () => {
+        saveIntegrations(activeLlm());
+        render(<StrictMode><AgentLab /></StrictMode>);
+        selectPersona('Researcher');
+        fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }));
+        addTask('Task A');
+        plan.byPersona.researcher = async () => { throw new LlmError('anthropic', 500, 'server exploded'); };
+        fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+        await screen.findByText('failed');
+
+        plan.byPersona.researcher = async () => ({ text: 'Outline drafted', provider: 'anthropic', model: 'x' });
+        fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+        await screen.findByText('Completed (1)');
+        expect(screen.queryByText('failed')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('tab', { name: 'Audit' }));
+        expect(screen.getAllByText('Task re-queued')).toHaveLength(1);   // the audit trail still records the retry
+    });
+});
+
 describe('AgentLab — D19 accessibility', () => {
     it('getByLabelText("Goal") resolves to the goal textarea; ArrowRight moves the tab selection', () => {
         render(<StrictMode><AgentLab /></StrictMode>);

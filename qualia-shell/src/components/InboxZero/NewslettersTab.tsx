@@ -1,21 +1,56 @@
 /**
  * NewslettersTab — Newsletter management sub-view for InboxZero
- * 
+ *
  * Shows detected newsletter senders with read rate stats and unsubscribe controls.
- * Extracted from InboxZero.tsx monolith (Phase 2.1).
+ * Unsubscribe (plan 066 §5d): PATCH `${inboxApiBase}/newsletters/:sender/unsubscribe`.
  */
-
-import { Bell, BellOff, Newspaper } from 'lucide-react';
+import { useState } from 'react';
+import { Newspaper } from 'lucide-react';
 import type { NewsletterSender } from './InboxZeroTypes';
+
+type AuthFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 interface Props {
     newsletters: NewsletterSender[];
-    authFetch: (url: string, init?: RequestInit) => Promise<Response>;
+    authFetch: AuthFetch;
     inboxApiBase: string;
     onRefresh: () => void;
 }
 
+function toast(detail: string) {
+    window.dispatchEvent(new CustomEvent('qualia-toast', { detail }));
+}
+
 export default function NewslettersTab({ newsletters, authFetch, inboxApiBase, onRefresh }: Props) {
+    const [busySender, setBusySender] = useState<string | null>(null);
+
+    const handleUnsubscribe = async (sender: string) => {
+        setBusySender(sender);
+        try {
+            const res = await authFetch(`${inboxApiBase}/newsletters/${encodeURIComponent(sender)}/unsubscribe`, { method: 'PATCH' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                toast(data.error || `Failed to unsubscribe (${res.status})`);
+                return;
+            }
+            const method = data.data?.method;
+            const target: string | undefined = data.data?.target;
+            if (method === 'one-click') {
+                toast('Unsubscribed');
+                onRefresh();
+            } else if ((method === 'url' || method === 'mailto') && typeof target === 'string' && (target.startsWith('https:') || target.startsWith('mailto:'))) {
+                window.open(target, '_blank', 'noopener,noreferrer');
+                toast('Open link to finish');
+            } else {
+                toast('No unsubscribe link');
+            }
+        } catch {
+            toast('Network error');
+        } finally {
+            setBusySender(null);
+        }
+    };
+
     return (
         <div className="iz-newsletters">
             {newsletters.length === 0 ? (
@@ -46,25 +81,23 @@ export default function NewslettersTab({ newsletters, authFetch, inboxApiBase, o
                                 />
                             </div>
                         </div>
-                        {/* GAP-03: Unsubscribe button that calls the real API */}
-                        <button
-                            className={`iz-nl__status ${nl.unsubscribed ? 'iz-nl__status--off' : ''}`}
-                            style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }}
-                            onClick={async () => {
-                                try {
-                                    const encodedSender = encodeURIComponent(nl.sender);
-                                    const res = await authFetch(`${inboxApiBase}/newsletters/${encodedSender}/unsubscribe`, {
-                                        method: 'PATCH',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ unsubscribed: !nl.unsubscribed }),
-                                    });
-                                    if (res.ok) onRefresh();
-                                } catch { /* offline */ }
-                            }}
-                            title={nl.unsubscribed ? 'Click to re-subscribe' : 'Click to unsubscribe'}
-                        >
-                            {nl.unsubscribed ? <><BellOff size={13} aria-hidden /> Unsubscribed</> : <><Bell size={13} aria-hidden /> Click to Unsubscribe</>}
-                        </button>
+                        {nl.unsubscribed ? (
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-default)' }}>
+                                Unsubscribed
+                            </span>
+                        ) : (
+                            <button
+                                onClick={() => handleUnsubscribe(nl.sender)}
+                                disabled={busySender === nl.sender}
+                                style={{
+                                    fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
+                                    border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-primary)',
+                                    cursor: 'pointer', opacity: busySender === nl.sender ? 0.6 : 1,
+                                }}
+                            >
+                                {busySender === nl.sender ? 'Unsubscribing…' : 'Unsubscribe'}
+                            </button>
+                        )}
                     </div>
                 ))
             )}

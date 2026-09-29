@@ -14,7 +14,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Plus, X, Globe, AppWindow, Columns2, Rows2, ExternalLink, StickyNote } from 'lucide-react';
-import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
+import { WIDGET_REGISTRY, WINDOW_COMPONENTS, resolveWidgetId } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
 // CloudBrowser is lazy so it splits into its own chunk (plan 008) — a static
@@ -40,9 +40,9 @@ const normalizeUrl = (raw: string): string => {
 const hostOf = (url: string): string => { try { return new URL(url).host; } catch { return url; } };
 
 const tabTitle = (t: WsTab): string =>
-    t.kind === 'app' ? (WIDGET_REGISTRY[t.ref]?.label ?? t.ref) : (t.title || hostOf(t.ref));
+    t.kind === 'app' ? (WIDGET_REGISTRY[resolveWidgetId(t.ref)]?.label ?? t.ref) : (t.title || hostOf(t.ref));
 const tabIconOf = (t: WsTab) =>
-    t.kind === 'web' ? Globe : (getIcon(WIDGET_REGISTRY[t.ref]?.icon ?? '') ?? AppWindow);
+    t.kind === 'web' ? Globe : (getIcon(WIDGET_REGISTRY[resolveWidgetId(t.ref)]?.icon ?? '') ?? AppWindow);
 
 const appIdsFrom = (tabs: WsTab[]): string[] => tabs.filter((t) => t.kind === 'app').map((t) => t.ref);
 
@@ -119,8 +119,9 @@ function effectiveTree(ws: Workspace): WsNode {
 }
 
 function AppPane({ id }: { id: string }) {
-    const meta = WIDGET_REGISTRY[id];
-    const C = WINDOW_COMPONENTS[id];
+    const resolvedId = resolveWidgetId(id);
+    const meta = WIDGET_REGISTRY[resolvedId];
+    const C = WINDOW_COMPONENTS[resolvedId];
     return (
         <WidgetErrorBoundary widgetLabel={meta?.label ?? id} enabled surfaceErrors>
             <Suspense fallback={<div className="hos-hosted__loading">Igniting {meta?.label ?? id}…</div>}>
@@ -338,7 +339,7 @@ export default function HalocronWorkspaces() {
         const t = tabs.find((x) => x.key === key);
         if (!t) return;
         if (t.kind === 'app') {
-            const meta = WIDGET_REGISTRY[t.ref];
+            const meta = WIDGET_REGISTRY[resolveWidgetId(t.ref)];
             try {
                 window.dispatchEvent(new CustomEvent('dwellium:open-widget', {
                     detail: { widgetId: t.ref, label: meta?.label ?? t.ref, icon: meta?.icon ?? '' },

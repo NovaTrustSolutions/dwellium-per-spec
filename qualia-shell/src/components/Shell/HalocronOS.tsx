@@ -18,7 +18,7 @@
  */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, createElement, type ReactNode } from 'react';
 import { Brain, ChevronLeft, ChevronRight, Columns2, Columns3, Grid2X2, Maximize2, Moon, PanelLeftClose, PanelLeftOpen, Pin, Settings, Sparkles, Square, Star, X } from 'lucide-react';
-import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
+import { WIDGET_REGISTRY, WINDOW_COMPONENTS, resolveWidgetId } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import { halocronOsStore, type HalocronOsState } from '../../lib/halocronOsStore';
 import { fluidOsStore } from '../../lib/fluidOsStore';
@@ -38,7 +38,7 @@ const CognitiveHarness = lazy(() => import('../CognitiveHarness/CognitiveHarness
 const AdvisoryBoardDiagram = lazy(() => import('../AdvisoryBoard/AdvisoryBoardDiagram'));
 import { advisoryLensBus } from '../../lib/busChannels';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
-import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
+import { useSubscriptions, monthlyTotal, prorateMonthly } from '../../lib/subscriptionsStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext, type DwelliumUser } from '../../context/UserContext';
@@ -112,7 +112,7 @@ function restoredHosTabs(): { tabs: HosTab[]; active: string | null } {
         key: `w:${id}`,
         kind: 'widget',
         id,
-        label: WIDGET_REGISTRY[id]?.label ?? id,
+        label: WIDGET_REGISTRY[resolveWidgetId(id)]?.label ?? id,
         lastActiveAt: Date.now() * 1000 + (++seq),
     }));
     return { tabs, active: slice.active ? `w:${slice.active}` : null };
@@ -340,18 +340,9 @@ export default function HalocronOS() {
     const tokenSpend = days.reduce((s, d) => s + d.estCost, 0);   // real est. $ from the ledger
     const calls = days.reduce((s, d) => s + d.calls, 0);          // real LLM turns
     const flatMonthly = monthlyTotal(subs);                       // real subscriptions / month
-    const totalSpend = flatMonthly + tokenSpend;
+    const subsForRange = prorateMonthly(flatMonthly, RANGE_DAYS[range]); // prorated to the selected range
+    const totalSpend = subsForRange + tokenSpend;
     const fmt = (n: number) => n >= 100 ? `$${Math.round(n).toLocaleString()}` : `$${n.toFixed(2)}`;
-
-    // Edit subscriptions inline so the figure is EXACTLY the user's spend.
-    const editPlans = () => {
-        const next = subs.map((s) => {
-            const v = window.prompt(`${s.name} (${s.vendor}) — monthly $`, String(s.monthly));
-            return v == null ? s : { ...s, monthly: Number(v.replace(/[^0-9.]/g, '')) || 0 };
-        });
-        saveSubscriptions(next);
-        subscriptionsStore.set(next, () => {}); // ensure snapshot update for SSR-store consumers
-    };
 
     // Bus listener MUST be declared before the early return below so the hook
     // count is identical whether the OS is enabled or not — otherwise toggling
@@ -359,7 +350,8 @@ export default function HalocronOS() {
     // until reload. (setTabs/setActiveKey are stable; safe to register always.)
     useEffect(() => {
         const onOpen = (e: Event) => {
-            const id = (e as CustomEvent).detail?.widgetId;
+            const rawId = (e as CustomEvent).detail?.widgetId;
+            const id = rawId ? resolveWidgetId(rawId) : rawId;
             if (!id || !WINDOW_COMPONENTS[id]) return;
             if (!halocronOsStore.getSnapshot().enabled) return;
             const key = `w:${id}`;
@@ -658,7 +650,7 @@ export default function HalocronOS() {
                                     {([
                                         ['__kg__', 'Knowledge Graph', 'Interactive import-graph of your repos — most-important files, clusters, and an "ask the map" chat.'],
                                         ['memory-graph-rag', 'Cognitive M Network', 'Retrieval-augmented memory graph that stores and recalls knowledge as linked nodes.'],
-                                        ['cognitive-harness', 'Cognitive Harness', 'Tune the cognitive parameters that shape how agents weight, retain, and recall context.'],
+                                        ['cognitive-harness', 'Cognitive Harness', 'Live status of memory, retrieval, routing, tools and agent tasks — read-only.'],
                                         ['honcho', 'Honcho', 'Durable per-user memory the agents read and write — plus background "dreams" that consolidate it.'],
                                         ['thought-weaver', 'Thought Weaver', 'Capture fleeting thoughts and notes; they are auto-categorized and woven into your memory.'],
                                         ['two-brains', 'Two Brains', 'A shared second brain — notes, tasks, and reactions you and the team build together.'],
@@ -707,10 +699,14 @@ export default function HalocronOS() {
                             </div>
 
                             <div className="hos-glance">
-                                <button type="button" className="hos-glance__card hos-glance__card--spend" onClick={editPlans} title="Click to edit your real plans">
+                                <button type="button" className="hos-glance__card hos-glance__card--spend" onClick={() => openWidget('ai-spend', 'AI Spend')} title="Open AI Spend to edit">
                                     <div className="hos-glance__cap">AI SPEND</div>
                                     <div className="hos-glance__val">{fmt(totalSpend)}</div>
-                                    <div className="hos-glance__sub">{fmt(flatMonthly)} subscriptions + {fmt(tokenSpend)} tokens ({RANGE_LABEL[range]}) · click to edit</div>
+                                    <div className="hos-glance__sub">
+                                        {subs.length === 0
+                                            ? 'No subscriptions added · open AI Spend to edit'
+                                            : `${fmt(subsForRange)} subscriptions (prorated, ${RANGE_LABEL[range]}) + ${fmt(tokenSpend)} tokens · open AI Spend to edit`}
+                                    </div>
                                 </button>
                                 <div className="hos-glance__card hos-glance__card--save">
                                     <div className="hos-glance__cap">TOKENS · EST</div>

@@ -92,7 +92,7 @@ To get a fully green system: start the backend, add an LLM key, and start any ex
 - **Hydra AI** — multi-LLM orchestrator (run several providers).
 - **Honcho** — long-term memory + an always-on background "reflection" runner that synthesizes your memories on a throttled schedule (needs an LLM key + ≥3 memories).
 - **Two Brains** — screen-sharing + human/AI collaboration.
-- **Thought Weaver** — capture thoughts; AI categorizes them (LLM-first with backend fallback). The Capture button has dark text and no emojis.
+- **Thought Weaver** — capture thoughts; AI categorizes them into People / Projects / Ideas / Tasks (LLM-first with backend fallback). The Capture button has dark text and no emojis. Sign-in required — captures, to-dos, and reports are per account. Phone capture: sign in to Dwellium on your phone, then open `/capture` there — no Supabase link or key needed. Deleting a capture asks for confirmation first.
 - **Cognitive M Network** (MemoryGraphRAG) — 3D cognitive memory graph visualization with a one-click "Load demo" to import sample files and ask questions; pulls from transcripts, captures, and your workspace. Runs locally.
 - **The Hive** — agent-management console: cost tracking, triggers, continuous capture (§8.1–8.5).
 - **Builder Agents** — schema-producer, PRD-synthesis, and gap-analysis agents.

@@ -42,7 +42,7 @@ import { Copy, FileUp, ImageDown, Shapes, Users, X } from 'lucide-react';
 import { themeStore } from '../../context/ThemeContext';
 import { UserContext } from '../../context/UserContext';
 import type { Theme } from '../../data/types';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { captureOwner, usePerUserIdentity } from '../../lib/perUserIdentity';
 import { CollabSession } from './collab/Collab';
 import { getCollaborationLinkData } from './collab/protocol';
 import {
@@ -298,8 +298,12 @@ export default function Whiteboard() {
     const importBlob = useCallback(async (file: Blob) => {
         const api = apiRef.current;
         if (!api) return;
+        const stillOwner = captureOwner();
         try {
             const result = await loadSceneOrLibraryFromBlob(file, null, null);
+            // Account switched during the read — the mounted canvas now
+            // belongs to a different user; never apply A's import onto it.
+            if (!stillOwner()) return;
             if (result.type === MIME_TYPES.excalidraw) {
                 const hasContent = api.getSceneElements().length > 0;
                 if (hasContent && !window.confirm('Replace the current board with the imported drawing?')) return;

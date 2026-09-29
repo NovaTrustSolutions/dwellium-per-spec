@@ -1,18 +1,22 @@
 /**
  * thoughtWeaverSync — P11-13: phone↔desktop capture sync (injectable fetch,
- * no network). Verifies config gating, push payload shape, pull mapping, and
- * the offline-first never-throw guarantees.
+ * no network). Verifies config gating, pull mapping, offline-first
+ * never-throw guarantees, and the one-time-import decision (planImport).
+ *
+ * twImportedStore — per-user "already imported" id set backing planImport's
+ * "deleted stays deleted" guarantee.
  */
-import { describe, it, expect, vi } from 'vitest';
-import { twSyncConfig, pushCapture, pullCaptures } from '../components/ThoughtWeaver/thoughtWeaverSync';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { twSyncConfig, pullCaptures, planImport } from '../components/ThoughtWeaver/thoughtWeaverSync';
+import { twImportedStore, twImportedUserIdHolder, markImported } from '../components/ThoughtWeaver/twImportedStore';
 import type { IntegrationsBundle } from '../types/integrations';
 import type { LocalCapture } from '../components/ThoughtWeaver/thoughtWeaverStore';
 
 const CFG = { url: 'https://x.supabase.co', anonKey: 'anon-1' };
-const CAPTURE: LocalCapture = {
-    id: 'local-1', text: 'call the roofer', filed_to: 'admin', confidence: 0.8,
-    destination_name: 'Maintenance', source: 'local', createdAt: '2026-06-12T00:00:00Z',
-};
+
+function row(id: string, createdAt: string): Omit<LocalCapture, 'source'> {
+    return { id, text: `text-${id}`, filed_to: 'admin', confidence: 0.8, destination_name: null, createdAt };
+}
 
 describe('twSyncConfig', () => {
     it('requires enabled + url + anonKey', () => {
@@ -24,28 +28,6 @@ describe('twSyncConfig', () => {
 });
 
 function CFG_LIKE(url: string, anonKey: string) { return { url, anonKey }; }
-
-describe('pushCapture', () => {
-    it('POSTs the snake_case row with the user id', async () => {
-        let captured: { url: string; body: any } | null = null;
-        const fetchFn = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-            captured = { url: String(url), body: JSON.parse(String(init?.body)) };
-            return { ok: true } as Response;
-        });
-        const ok = await pushCapture(CFG, 'user-9', CAPTURE, fetchFn as never);
-        expect(ok).toBe(true);
-        expect(captured!.url).toContain('/rest/v1/thought_weaver_captures');
-        expect(captured!.body).toMatchObject({
-            id: 'local-1', user_id: 'user-9', text: 'call the roofer',
-            filed_to: 'admin', destination_name: 'Maintenance',
-        });
-    });
-
-    it('network failure resolves false (offline-first, never throws)', async () => {
-        const fetchFn = vi.fn(async () => { throw new Error('offline'); });
-        await expect(pushCapture(CFG, 'u', CAPTURE, fetchFn as never)).resolves.toBe(false);
-    });
-});
 
 describe('pullCaptures', () => {
     it('maps rows back to LocalCapture shape (snake_case preserved)', async () => {
@@ -64,5 +46,107 @@ describe('pullCaptures', () => {
     it('bad responses resolve to [] (never throws)', async () => {
         const fetchFn = vi.fn(async () => ({ ok: false } as Response));
         await expect(pullCaptures(CFG, 'u', fetchFn as never)).resolves.toEqual([]);
+    });
+
+    it('network failure resolves [] (offline-first, never throws)', async () => {
+        const fetchFn = vi.fn(async () => { throw new Error('offline'); });
+        await expect(pullCaptures(CFG, 'u', fetchFn as never)).resolves.toEqual([]);
+    });
+});
+
+describe('planImport', () => {
+    it('appends a row that is new (not local, not imported)', () => {
+        const pulled = [row('a', '2026-06-12T01:00:00Z')];
+        const { toAppend, seenIds } = planImport(pulled, new Set(), {});
+        expect(toAppend).toEqual(pulled);
+        expect(seenIds).toEqual(['a']);
+    });
+
+    it('skips a row already present locally', () => {
+        const pulled = [row('a', '2026-06-12T01:00:00Z')];
+        const { toAppend, seenIds } = planImport(pulled, new Set(['a']), {});
+        expect(toAppend).toEqual([]);
+        expect(seenIds).toEqual(['a']); // still marked seen
+    });
+
+    it('does NOT re-append a row previously imported then deleted locally (deleted stays deleted)', () => {
+        const pulled = [row('a', '2026-06-12T01:00:00Z')];
+        const { toAppend, seenIds } = planImport(pulled, new Set(), { a: '2026-06-12T02:00:00Z' });
+        expect(toAppend).toEqual([]); // MUTATION CHECK: flipping `row.id in imported` to always-false makes this fail
+        expect(seenIds).toEqual(['a']);
+    });
+
+    it('dedupes duplicate ids within `pulled`, keeping the row once', () => {
+        const a1 = row('a', '2026-06-12T01:00:00Z');
+        const a2 = row('a', '2026-06-12T01:00:00Z');
+        const { toAppend, seenIds } = planImport([a1, a2], new Set(), {});
+        expect(toAppend).toEqual([a1]);
+        expect(seenIds).toEqual(['a', 'a']); // every pulled id is recorded as seen
+    });
+
+    it('seenIds contains every pulled id regardless of import decision', () => {
+        const pulled = [row('local', '2026-06-12T01:00:00Z'), row('imported', '2026-06-12T02:00:00Z'), row('new', '2026-06-12T03:00:00Z')];
+        const { seenIds } = planImport(pulled, new Set(['local']), { imported: '2026-06-12T00:00:00Z' });
+        expect(seenIds).toEqual(['local', 'imported', 'new']);
+    });
+
+    it('returns toAppend oldest-first so sequential prepend preserves newest-first store order', () => {
+        // pullCaptures returns newest-first (order=created_at.desc)
+        const pulled = [row('newest', '2026-06-12T03:00:00Z'), row('oldest', '2026-06-12T01:00:00Z')];
+        const { toAppend } = planImport(pulled, new Set(), {});
+        expect(toAppend.map(r => r.id)).toEqual(['oldest', 'newest']);
+    });
+});
+
+describe('twImportedStore', () => {
+    beforeEach(() => {
+        twImportedStore.reset();
+        twImportedUserIdHolder.current = null;
+        localStorage.clear();
+    });
+
+    it('markImported unions new ids and persists under the per-user key', () => {
+        twImportedUserIdHolder.current = 'user-1';
+        markImported(['a', 'b'], '2026-06-12T00:00:00Z');
+        expect(twImportedStore.getSnapshot()).toEqual({ a: '2026-06-12T00:00:00Z', b: '2026-06-12T00:00:00Z' });
+
+        markImported(['b', 'c'], '2026-06-13T00:00:00Z'); // 'b' already present — untouched; 'c' added
+        expect(twImportedStore.getSnapshot()).toEqual({
+            a: '2026-06-12T00:00:00Z', b: '2026-06-12T00:00:00Z', c: '2026-06-13T00:00:00Z',
+        });
+
+        const persisted = JSON.parse(localStorage.getItem('thought-weaver:imported:user-1')!);
+        expect(persisted).toEqual({ a: '2026-06-12T00:00:00Z', b: '2026-06-12T00:00:00Z', c: '2026-06-13T00:00:00Z' });
+    });
+
+    it('markImported is a no-op when every id is already imported', () => {
+        twImportedUserIdHolder.current = 'user-1';
+        markImported(['a'], '2026-06-12T00:00:00Z');
+        const before = twImportedStore.getSnapshot();
+        markImported(['a'], '2026-06-13T00:00:00Z');
+        expect(twImportedStore.getSnapshot()).toBe(before); // same reference: no re-set
+    });
+
+    it('falls back to the anonymous namespace when no user is set', () => {
+        markImported(['a'], '2026-06-12T00:00:00Z');
+        expect(localStorage.getItem('thought-weaver:imported:_anonymous')).not.toBeNull();
+    });
+
+    it('deserializer rejects a non-object payload (array)', () => {
+        twImportedUserIdHolder.current = 'user-2';
+        localStorage.setItem('thought-weaver:imported:user-2', JSON.stringify(['not', 'an', 'object']));
+        expect(twImportedStore.getSnapshot()).toEqual({});
+    });
+
+    it('deserializer drops non-string-valued entries, keeps string-valued ones', () => {
+        twImportedUserIdHolder.current = 'user-2';
+        localStorage.setItem('thought-weaver:imported:user-2', JSON.stringify({ a: 42, b: 'ok' }));
+        expect(twImportedStore.getSnapshot()).toEqual({ b: 'ok' });
+    });
+
+    it('deserializer rejects unparseable JSON', () => {
+        twImportedUserIdHolder.current = 'user-2';
+        localStorage.setItem('thought-weaver:imported:user-2', 'not json');
+        expect(twImportedStore.getSnapshot()).toEqual({});
     });
 });

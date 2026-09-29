@@ -21,6 +21,7 @@
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { thoughtWeaverUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface LocalCapture {
     id: string;
@@ -32,8 +33,8 @@ export interface LocalCapture {
     createdAt: string;                      // ISO
 }
 
-/** Holder updated by the ThoughtWeaver render path BEFORE useSyncExternalStore reads. */
-export const thoughtWeaverUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { thoughtWeaverUserIdHolder };
 
 function resolveKey(): string {
     const uid = thoughtWeaverUserIdHolder.current;
@@ -89,6 +90,35 @@ export function clearLocalCaptures(): void {
     thoughtWeaverStore.set([], () => {
         try { localStorage.removeItem(resolveKey()); } catch { /* sandboxed */ }
     });
+}
+
+/**
+ * Import Supabase rows (plan 067 one-time import) into the local store in a
+ * SINGLE `set()` — not N appends, which would fire N notifications/writes.
+ * Rows whose id is already present are skipped (the caller — `planImport` —
+ * already filters these, but this is the last line of defense against a
+ * duplicate row). Result is re-sorted newest-first (stable for equal
+ * `createdAt`, per `Array.prototype.sort`'s ES2019+ stability guarantee) —
+ * imported rows are not necessarily newer than existing local ones. No-op
+ * (no `set()` call) when every row is already present. Returns the count
+ * actually added.
+ */
+export function importCaptures(rows: Array<Omit<LocalCapture, 'source'>>): number {
+    if (typeof window === 'undefined') return 0;
+    if (rows.length === 0) return 0;
+    const current = thoughtWeaverStore.getSnapshot();
+    const existingIds = new Set(current.map(c => c.id));
+    const toAdd: LocalCapture[] = rows
+        .filter(r => !existingIds.has(r.id))
+        .map(r => ({ ...r, source: 'local' as const }));
+    if (toAdd.length === 0) return 0;
+    const next = [...current, ...toAdd].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    thoughtWeaverStore.set(next, () => {
+        try { localStorage.setItem(resolveKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    });
+    return toAdd.length;
 }
 
 /**

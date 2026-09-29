@@ -13,14 +13,9 @@
  * tracked in Phase3D_Gap_Register as C-2 "Module relocation."
  */
 
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy } from 'react';
 import { Wrench, FileKey2 } from 'lucide-react';
 import type { AdapterColumnSpec, ContainerAdapter } from '../types';
-import {
-    getReviewQueue,
-    isBackgroundEngineEnabled,
-    type RoutingDecision,
-} from '../../../services/emailRouter';
 
 // Lazy-load the legacy modules so the adapter doesn't drag them into
 // the shell's initial bundle.
@@ -73,66 +68,20 @@ const canvas: AdapterColumnSpec = {
     ),
 };
 
-/**
- * Orchestrator column now consumes the C-1 emailRouter human-review queue
- * (src/services/emailRouter.ts). When the background engine feature flag
- * is off, the column renders the original placeholder. When on, it lists
- * routing decisions below the 95% confidence threshold so a human can
- * triage. This is the proof-of-pattern for "C-1 plugs into F-1 without
- * either side knowing about the other."
- */
-function MaintenanceOrchestratorLive() {
-    const [queue, setQueue] = useState<ReadonlyArray<RoutingDecision>>(() => getReviewQueue());
-    useEffect(() => {
-        // Lightweight polling until the router exposes an event stream.
-        const handle = window.setInterval(() => setQueue(getReviewQueue().slice()), 3000);
-        return () => window.clearInterval(handle);
-    }, []);
-    return (
+// ponytail: emailRouter.ts + its review-queue UI deleted at plan 066 §2e
+// (dead code — nothing ever set window.__DWELLIUM_C1_ENABLED__). Honest
+// placeholder only; no fake data.
+const orchestrator: AdapterColumnSpec = {
+    subtitle: 'Maintenance agent — C-1 review queue',
+    render: () => (
         <div className="us-adapter-stub">
             <Wrench size={18} />
             <div className="us-adapter-stub__title">Maintenance Orchestrator</div>
             <div className="us-adapter-stub__body">
-                {queue.length === 0 ? (
-                    <span>No maintenance emails awaiting human review.</span>
-                ) : (
-                    <>
-                        <strong>{queue.length}</strong> email(s) below the 95% confidence gate.
-                        <ul style={{ marginTop: 6, paddingLeft: 18 }}>
-                            {queue.slice(0, 5).map(d => (
-                                <li key={d.emailId}>
-                                    {d.emailId} → <code>{d.targetProjectId}</code>{' '}
-                                    <span style={{ opacity: 0.6 }}>
-                                        ({Math.round(d.confidence * 100)}% · {d.classifierVersion})
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    </>
-                )}
+                Not built yet — maintenance email triage will appear here once
+                the routing engine ships.
             </div>
         </div>
-    );
-}
-
-const orchestrator: AdapterColumnSpec = {
-    subtitle: 'Maintenance agent — C-1 review queue',
-    render: () => (
-        isBackgroundEngineEnabled() ? (
-            <MaintenanceOrchestratorLive />
-        ) : (
-            <div className="us-adapter-stub">
-                <Wrench size={18} />
-                <div className="us-adapter-stub__title">Maintenance Orchestrator</div>
-                <div className="us-adapter-stub__body">
-                    Column 4 surfaces the maintenance agent&apos;s reasoning —
-                    prioritization, vendor dispatch suggestions, and unclassifiable
-                    maintenance emails triaged per C-1 Option C. The routing
-                    engine is implemented in <code>src/services/emailRouter.ts</code>;
-                    enable via <code>window.__DWELLIUM_C1_ENABLED__ = true</code>.
-                </div>
-            </div>
-        )
     ),
 };
 

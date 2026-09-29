@@ -213,13 +213,61 @@ export default function SubscriptionsEditor(): JSX.Element;  // list + add / ren
 
 W1 two coders: (a) `AiSpend.tsx` tabs **Overview / By model / By feature**, an accessible chart (`role="img"` + visually-hidden table), CSV export of entries (client-side Blob); (b) budget: new `aiBudgetStore.ts` (per-user, One Save, `.reset()`), monthly budget input, a pace-vs-budget bar, and a warning line in the widget + Morning Brief when the pace exceeds budget. W2 reviewer. Add a proper subscriptions editor (add / remove / rename) in the widget, replacing `window.prompt` (D4).
 
-### Phase 3 — Server-side and real bills (P2) — **DECISION gate (Ilya)**
+### Phase 3 — Server-side spend, real bills, Claude Code (P2)
 
-1. **Backend usage log**: one helper `recordServerLlmUsage(userId, {provider, model, usage, source})` called from every backend LLM site (start with the three in A3; grep for the rest) → per-user One Save object `llm-usage-server` (read-only for the client). The widget adds a "Server" provider group. Backend work goes in `~/dwellium-backend/worktrees/068-ai-spend`.
-2. **Reconcile with real invoices (optional)**: Anthropic Usage & Cost Admin API and OpenAI org costs API are backend-only and need **admin** keys (`sk-ant-admin…` / OpenAI admin key). Ilya enters them himself in the terminal (never pasted in chat, never read from files). Show "billed (provider) vs estimated (ledger)" per month. Google has no per-key cost API (Cloud Billing export only) — skip.
-3. **Claude Code CLI spend (optional)**: `~/.token-saver/stats-*.json` already has `fresh_input_tokens`, cache read/write and output totals per scope. Surface them as a "CLI (Claude Code)" row priced via `llmPricing.ts`. Desktop/Electron only; the web app can't read `~`.
+**Decisions (Ilya, 2026-09-28):** server-side AI calls COUNT toward your total; reconcile against real provider invoices; include Claude Code usage — shown as **API-equivalent, not spend** (a Max subscription already covers it; no double count). Invoice reconciliation and the unattributed "Shared / system" server bucket are **god-role only**.
 
-Questions for Ilya: (a) do backend calls count toward the user's widget total, or show separately? (b) do you want the admin-key reconciliation at all? (c) include CLI usage?
+**Found while mapping (fix first):** since PR #147 the frontend syncs `llm-usage` as v2 (`{v:2, clearedAt, devices}`); the backend brief (`morningBriefService.readUserObjects`) still expects top-level `days`, so the server-side Morning Brief has silently dropped its "AI usage 7d" line since 2026-09-26.
+
+**Verified provider APIs (2026-09-28):**
+- Anthropic `GET https://api.anthropic.com/v1/organizations/cost_report?starting_at=<RFC3339>&ending_at=<RFC3339>&limit=31` (daily buckets only), headers `x-api-key: <admin key>`, `anthropic-version: 2023-06-01`. `data[].results[].amount` is a **decimal string in CENTS** (`"123.45"` = $1.23); paginate `has_more` / `next_page` → `page`. Admin API is **unavailable for individual (non-organization) accounts** → surface that, don't fail. Sources: platform.claude.com/docs/en/manage-claude/usage-cost-api, …/api/beta/organization/cost_report/retrieve.
+- OpenAI `GET https://api.openai.com/v1/organization/costs?start_time=<unix s>&end_time=<unix s>&bucket_width=1d&limit=31`, `Authorization: Bearer <admin key>`. `data[].results[].amount.value` is **dollars (float)**; paginate `has_more` / `next_page` → `page`. Source: developers.openai.com/cookbook/examples/completions_usage_api.
+- Google: no per-key cost API → "not available".
+
+**Backend contract** (`~/dwellium-backend`, app dir `ai-dashboard369-file-manager/`):
+```ts
+// src/services/aiUsage/usageContext.ts — Node AsyncLocalStorage
+export function runWithUsageUser<T>(userId: string | null, fn: () => T): T;
+export function currentUsageUser(): string | null;          // null = no user (scheduler, poller, indexer)
+// authMiddleware.authenticate wraps next() in runWithUsageUser(req.user.id, next)
+
+// src/services/aiUsage/serverUsageLedger.ts
+export interface ServerUsageInput { provider: 'openai' | 'gemini' | 'local' | 'custom'; model: string;
+  usage?: { inputTokens: number; outputTokens: number; cacheReadTokens?: number };  // measured when the API returned it
+  feature: string;                       // 'ara' | 'brief' | 'automation' | 'inbox' | 'hydra' | 'embeddings' | 'transcription' | ...
+  userId?: string | null }               // explicit override; default currentUsageUser()
+export function recordServerLlmUsage(input: ServerUsageInput): void;   // never throws
+export function fromOpenAiUsage(u: unknown): ServerUsageInput['usage']; // chat {prompt_tokens, completion_tokens, prompt_tokens_details.cached_tokens}; embeddings {prompt_tokens}
+// Storage: One Save object `llm-usage-server_<userId>` (type 'llm-usage-server', ownerId userId) or
+// `llm-usage-server_system` (ownerId 'system') when no user. Payload = the frontend v2 ledger shape
+// { v: 2, clearedAt: 0, devices: { server: { entries: UsageEntry[], days: Record<date, DailyRollup> } } }
+// with entries priced server-side by src/services/aiUsage/llmPricing.ts — a COPY of
+// qualia-shell/src/lib/llmPricing.ts (same PRICES_AS_OF; header says keep in sync). source = feature.
+// Caps as on the client: 1,000 entries, days pruned at 400; one write per call (upsertObject).
+
+// src/routes/aiSpendRoutes.ts, mounted at /api/ai-spend behind authenticate
+GET /api/ai-spend/billing?month=YYYY-MM   requireRole('god') →
+  { month, providers: [{ provider: 'anthropic' | 'openai' | 'gemini', status: 'ok' | 'no-key' | 'unavailable' | 'error',
+                         billedUsd: number | null, message?: string }], fetchedAt }   // cached 15 min per month
+GET /api/ai-spend/system                  requireRole('god') → the `llm-usage-server_system` payload (or empty v2)
+// Keys: env ANTHROPIC_ADMIN_API_KEY, OPENAI_ADMIN_API_KEY (names only in .env.example; Cloud Run via
+// deploy/cloud-run.sh upsert_secret_from_env). Ilya enters them himself (hidden prompt); never logged.
+```
+
+**Frontend contract** (`qualia-shell/`):
+```ts
+// lib/serverSpend.ts
+export function useServerUsage(): StoredLedgerV2 | null;   // read-only: GET /api/objects/llm-usage-server_<uid>; refresh on mount + 5 min
+export function useSystemUsage(isGod: boolean): StoredLedgerV2 | null; // GET /api/ai-spend/system, god only
+export interface BillingResult { month: string; providers: { provider: string; status: 'ok'|'no-key'|'unavailable'|'error'; billedUsd: number | null; message?: string }[]; fetchedAt: string }
+export function useBilling(isGod: boolean, month: string): { data: BillingResult | null; loading: boolean; error: string | null };
+// useLlmUsage() aggregate gains the server devices (applying the local clearedAt), so every total,
+// chart, breakdown, budget and brief line includes server usage; provider rows show "Server (OpenAI)".
+// lib/cliUsage.ts — DEV/desktop only (the ~/.token-saver stats are served by the Vite dev middleware; never in production)
+export function useClaudeCodeUsage(): { tokens: {...}; apiEquivalentUsd: number | null; period: string } | null;
+// components/AiSpend/BillingPanel.tsx (god only): billed vs estimated per provider for the month.
+// components/AiSpend/ClaudeCodeRow.tsx: tokens + "≈ $X at API rates · covered by your plan" — never added to spend.
+```
 
 ### Phase 4 — Advisor (P2)
 

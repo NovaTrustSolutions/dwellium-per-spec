@@ -14,10 +14,10 @@
  * non-OK / a stale row this account can't see) resolves to `null`, same
  * contract as `oneSaveClient`.
  */
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { API_BASE } from '../config';
 import { oneSaveClient } from './oneSaveClient';
-import { getAuthToken } from '../context/UserContext';
+import { getAuthToken, UserContext } from '../context/UserContext';
 import { llmUsageUserIdHolder, captureOwner } from './perUserIdentity';
 import { normalize, setExternalDevices, type StoredLedgerV2 } from './llmUsageStore';
 
@@ -87,6 +87,16 @@ export function _resetServerUsageForTests(): void {
  * components mounting this hook share one underlying fetch + refresh timer.
  */
 export function useServerUsage(): StoredLedgerV2 | null {
+    // Review (plan 068 P3): the shell never remounts on an account switch, so refetch
+    // when the signed-in user changes — otherwise the new user's own server usage is
+    // missing until the next 5-minute refresh. (The owner tag in llmUsageStore already
+    // keeps the previous user's rows out; this brings the new user's in.)
+    const uid = useContext(UserContext)?.user?.id ?? null;
+    const lastUid = useRef<string | null | undefined>(undefined);
+    useEffect(() => {
+        if (lastUid.current !== undefined && lastUid.current !== uid) void fetchServerUsage();
+        lastUid.current = uid;
+    }, [uid]);
     return useSyncExternalStore(subscribeServer, () => serverSnapshot, () => null);
 }
 
@@ -119,6 +129,7 @@ async function getJson<T>(path: string): Promise<T | null> {
 export function useSystemUsage(isGod: boolean): StoredLedgerV2 | null {
     const [snapshot, setSnapshot] = useState<StoredLedgerV2 | null>(null);
     const stillOwnerRef = useRef(captureOwner());
+    const uid = useContext(UserContext)?.user?.id ?? null; // refetch on an account switch (two god accounts)
     useEffect(() => {
         if (!isGod) { setSnapshot(null); return; }
         stillOwnerRef.current = captureOwner();
@@ -130,7 +141,7 @@ export function useSystemUsage(isGod: boolean): StoredLedgerV2 | null {
         })();
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isGod]);
+    }, [isGod, uid]);
     return snapshot;
 }
 

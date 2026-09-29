@@ -5,9 +5,10 @@
  * fetches billing data in that case either — see `useBilling`).
  *
  * "Estimated" reads the SAME merged ledger every other AI-spend view reads
- * (`useLlmUsage()`), which already includes server + system devices (plan
- * 068 phase 3 `setExternalDevices`) — so the estimate a god user sees here
- * is the organization's whole estimated spend, not just their own browser.
+ * (`useLlmUsage()`): YOUR browser usage + YOUR server-side usage + the shared
+ * (unattributed) server bucket. Other accounts' usage is NOT included, while
+ * the provider invoice is org-wide — so with several active accounts the
+ * difference also contains their spend. The caption says so.
  */
 import { useState } from 'react';
 import { useLlmUsage } from '../../lib/llmUsageStore';
@@ -90,7 +91,7 @@ export default function BillingPanel({ isGod }: { isGod: boolean }) {
             {!loading && providers.length > 0 && (
                 <table className="billing__table">
                     <caption className="billing__caption">
-                        Billed amounts come from the provider; estimates from this app's ledger.
+                        Billed amounts come from the provider (whole organization); estimates are your usage plus shared server usage — other accounts aren't included.
                         Providers bill by UTC day; this app's ledger uses your local day, so the first and last hours of a month can differ.
                     </caption>
                     <thead>

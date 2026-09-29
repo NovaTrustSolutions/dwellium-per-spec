@@ -168,3 +168,34 @@ describe('useBilling', () => {
         expect(result.current.data).toBeNull();
     });
 });
+
+describe('account switch refetch (plan 068 phase 3 review)', () => {
+    // The shell keeps components mounted across an account switch; only UserContext changes.
+    async function mountAs(hook: () => unknown) {
+        const { createElement } = await import('react');
+        const { UserContext } = await import('../context/UserContext');
+        let uid = 'user-a';
+        const wrapper = ({ children }: { children: unknown }) =>
+            createElement(UserContext.Provider, { value: { user: { id: uid, role: 'god' } } as never }, children as never);
+        const r = renderHook(hook, { wrapper: wrapper as never });
+        return { ...r, switchTo: (next: string) => { uid = next; llmUsageUserIdHolder.current = next; r.rerender(); } };
+    }
+
+    it("refetches the new user's server usage right away instead of waiting for the 5-minute refresh", async () => {
+        getMock.mockResolvedValue({ payload: serverPayload() });
+        const { switchTo } = await mountAs(() => useServerUsage());
+        await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+        switchTo('user-b');
+        await waitFor(() => expect(getMock).toHaveBeenCalledTimes(2));
+        expect(getMock.mock.calls[1][0]).toBe('llm-usage-server_user-b');
+    });
+
+    it('refetches the shared bucket when switching between two god accounts', async () => {
+        const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ v: 2, clearedAt: 0, devices: {} }), { status: 200 })));
+        vi.stubGlobal('fetch', fetchSpy);
+        const { switchTo } = await mountAs(() => useSystemUsage(true));
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+        switchTo('user-b');
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+    });
+});

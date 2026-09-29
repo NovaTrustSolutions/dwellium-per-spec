@@ -91,6 +91,7 @@ export default function BillingPanel({ isGod }: { isGod: boolean }) {
                 <table className="billing__table">
                     <caption className="billing__caption">
                         Billed amounts come from the provider; estimates from this app's ledger.
+                        Providers bill by UTC day; this app's ledger uses your local day, so the first and last hours of a month can differ.
                     </caption>
                     <thead>
                         <tr>

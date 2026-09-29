@@ -89,6 +89,11 @@ describe('recentActivityStore', () => {
         window.dispatchEvent(new CustomEvent('dwellium:open-widget', { detail: { widgetId: 'notepad', label: 'Notepad' } }));
         expect(readRecentActivity(5).map(e => e.id)).toEqual(['notepad']);
     });
+
+    it('plan 066: the bus records a retired id as its live one', () => {
+        window.dispatchEvent(new CustomEvent('dwellium:open-widget', { detail: { widgetId: 'inbox-zero' } }));
+        expect(readRecentActivity(5).map(e => e.id)).toEqual(['inbox']);
+    });
 });
 
 describe('⌘K Resume group', () => {
@@ -108,6 +113,19 @@ describe('⌘K Resume group', () => {
         const rows = firstSection!.querySelectorAll('.command-palette__result');
         expect(rows).toHaveLength(5);
         expect(rows[0].textContent).toContain('Resume: Scribe — WoodlandLease.md');
+    });
+
+    it("plan 066: history holding both 'inbox' and the retired 'inbox-zero' shows ONE Inbox Zero row, which opens 'inbox'", async () => {
+        recordActivity('widget', 'inbox', 'Inbox Zero');
+        recordActivity('widget', 'inbox-zero', 'Inbox Zero (deprecated)'); // saved before the alias retirement
+        await openPalette();
+        const resume = document.querySelector('.command-palette__section')!;
+        const rows = Array.from(resume.querySelectorAll('.command-palette__result')).map(r => r.textContent ?? '');
+        expect(rows.filter(t => t.includes('Inbox Zero'))).toHaveLength(1);
+        expect(rows.join('|')).not.toContain('deprecated');
+        const input = document.querySelector('.command-palette__input')!;
+        await act(async () => { fireEvent.keyDown(input, { key: 'Enter' }); });
+        expect(openWindow).toHaveBeenCalledWith('inbox', 'Inbox Zero', expect.any(String));
     });
 
     it('no activity → no Resume section', async () => {

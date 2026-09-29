@@ -7,6 +7,7 @@
  *
  * Storage key:  thought-weaver:todo:<userId>
  */
+import { todoUserIdHolder } from '../../lib/perUserIdentity';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
 
@@ -20,7 +21,7 @@ export interface TodoItem {
     completedAt: string | null;
 }
 
-export const todoUserIdHolder: { current: string | null } = { current: null };
+export { todoUserIdHolder }; // set by setPerUserIdentity (plan 067) — tied to the signed-in user
 
 function resolveKey(): string {
     const uid = todoUserIdHolder.current;

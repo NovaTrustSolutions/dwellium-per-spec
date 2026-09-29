@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import ThoughtWeaver from '../components/ThoughtWeaver/ThoughtWeaver';
+import { UserContext } from '../context/UserContext';
+
+// Thoughts belong to a signed-in account (plan 067) — render as a user.
+const asUser = (children: React.ReactNode) => (
+    <UserContext.Provider value={{ user: { id: 'offline-user' } } as unknown as React.ContextType<typeof UserContext>}>{children}</UserContext.Provider>
+);
 
 /**
  * The exact failure the user reported: no personal LLM key set, and the backend
@@ -23,7 +29,7 @@ describe('ThoughtWeaver capture — offline (no LLM, backend unreachable)', () =
     });
 
     it('still sorts the thought into a real bucket and shows it was sorted locally', async () => {
-        render(<ThoughtWeaver />);
+        render(asUser(<ThoughtWeaver />));
 
         const box = await screen.findByPlaceholderText(/Drop a thought/i);
         // userEvent-free: directly set the value and fire input so React state updates.

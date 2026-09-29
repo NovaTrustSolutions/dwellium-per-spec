@@ -17,7 +17,11 @@
  */
 
 import { LlmError } from '../../lib/llmClient';
-import type { LlmRequest, LlmResponse } from '../../lib/llmClient';
+import type { LlmRequest, LlmResponse, LlmUsage } from '../../lib/llmClient';
+import { recordLlmUsage, currentUsageUserId } from '../../lib/llmUsageStore';
+// Plan 068 (A1): reuse llmStream's per-provider SSE usage parsers (same field
+// names/shapes llmClient's non-streaming parsers use) rather than reimplement them.
+import { parseAnthropicStreamData, parseOpenAiStreamData } from '../../lib/llmStream';
 import { DEFAULT_MODELS } from '../../types/integrations';
 import type { IntegrationsBundle, LlmProvider } from '../../types/integrations';
 
@@ -108,25 +112,46 @@ function isDoneLine(line: string): boolean {
     return trimmed.startsWith('data:') && trimmed.slice(5).trim() === '[DONE]';
 }
 
+/** Strip the `data:` SSE prefix, or null for non-data lines / the `[DONE]` sentinel. */
+function sseDataPayload(line: string): string | null {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) return null;
+    const payload = trimmed.slice(5).trim();
+    return payload && payload !== '[DONE]' ? payload : null;
+}
+
+interface PumpResult { text: string; usage: Partial<LlmUsage>; sawUsage: boolean }
+
 /**
  * Read an SSE body line-by-line, feeding each line through the pure extractor
- * and forwarding non-empty deltas to onDelta. Returns the accumulated text.
+ * and forwarding non-empty deltas to onDelta. Returns the accumulated text
+ * plus any provider usage parsed along the way (A1: same partial-update-merge
+ * discipline as llmStream.ts — Anthropic's input arrives separately from its
+ * output; later fields overwrite).
  */
 async function pumpSse(
     body: ReadableStream<Uint8Array>,
     extract: (line: string) => string | null,
     onDelta: (delta: string) => void,
-): Promise<string> {
+    parseUsage: (payload: string) => Partial<LlmUsage> | undefined,
+): Promise<PumpResult> {
     const reader = body.getReader();
     const decoder = new TextDecoder();
     let lineBuffer = '';
     let full = '';
+    let usageAcc: Partial<LlmUsage> = {};
+    let sawUsage = false;
 
     const feed = (line: string) => {
         const delta = extract(line);                    // blank/comment/event/malformed lines → null
         if (delta) {
             full += delta;
             onDelta(delta);
+        }
+        const payload = sseDataPayload(line);
+        if (payload) {
+            const u = parseUsage(payload);
+            if (u && Object.keys(u).length) { usageAcc = { ...usageAcc, ...u }; sawUsage = true; }
         }
     };
 
@@ -145,14 +170,30 @@ async function pumpSse(
         }
         if (finished) {
             await reader.cancel().catch(() => { /* already closed */ });
-            return full;
+            return { text: full, usage: usageAcc, sawUsage };
         }
     }
     if (lineBuffer.trim() && !isDoneLine(lineBuffer)) feed(lineBuffer);
-    return full;
+    return { text: full, usage: usageAcc, sawUsage };
+}
+
+/** Builds the measured LlmUsage (both counts present) or undefined — same shape recordLlmUsage expects. */
+function toMeasuredUsage(usage: Partial<LlmUsage>, sawUsage: boolean): LlmUsage | undefined {
+    if (!sawUsage || typeof usage.inputTokens !== 'number' || typeof usage.outputTokens !== 'number') return undefined;
+    return {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        ...(usage.cacheReadTokens ? { cacheReadTokens: usage.cacheReadTokens } : {}),
+        ...(usage.cacheWriteTokens ? { cacheWriteTokens: usage.cacheWriteTokens } : {}),
+    };
 }
 
 // ── Provider implementations ──────────────────────────────────────────
+
+/** promptChars fallback-estimate input, shared by both provider paths (A1). */
+function promptChars(req: LlmRequest): number {
+    return (req.prompt?.length ?? 0) + (req.systemPrompt?.length ?? 0);
+}
 
 async function streamOpenAiCompat(
     req: LlmRequest,
@@ -162,38 +203,57 @@ async function streamOpenAiCompat(
     model: string,
     onDelta: (delta: string) => void,
 ): Promise<LlmResponse | null> {
-    const body: any = {
-        model,
-        max_tokens: req.maxTokens ?? 1024,
-        temperature: req.temperature ?? 0.3,
-        stream: true,
-        messages: [
-            ...(req.systemPrompt ? [{ role: 'system', content: req.systemPrompt }] : []),
-            { role: 'user', content: req.prompt },
-        ],
-    };
-    if (req.responseFormat === 'json') body.response_format = { type: 'json_object' };
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        throw new LlmError(provider, res.status, errText || `HTTP ${res.status}`);
+    // Plan 068 (A1/C4): capture the ledger owner BEFORE the fetch, same
+    // discipline as callLlm/streamLlm(llmStream.ts).
+    const userId = currentUsageUserId();
+    let billable = false;
+    let text = '';
+    let usage: LlmUsage | undefined;
+    try {
+        const body: any = {
+            model,
+            max_tokens: req.maxTokens ?? 1024,
+            temperature: req.temperature ?? 0.3,
+            stream: true,
+            messages: [
+                ...(req.systemPrompt ? [{ role: 'system', content: req.systemPrompt }] : []),
+                { role: 'user', content: req.prompt },
+            ],
+        };
+        if (req.responseFormat === 'json') body.response_format = { type: 'json_object' };
+        // A1: ask for a final usage chunk — only the real OpenAI endpoint; local/custom
+        // OpenAI-compatible servers may reject the unknown field.
+        if (provider === 'openai') body.stream_options = { include_usage: true };
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+        if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new LlmError(provider, res.status, errText || `HTTP ${res.status}`);
+        }
+        // From here the provider has accepted the request — it bills us either way.
+        billable = true;
+        if (!res.body) {
+            // Some test envs surface no stream body — fall back to a plain JSON read.
+            try {
+                const json = await res.json();
+                text = json?.choices?.[0]?.message?.content ?? '';
+                if (text) {
+                    onDelta(text);
+                    return { text, provider, model };
+                }
+            } catch { /* no usable body */ }
+            return null;
+        }
+        const result = await pumpSse(res.body, extractOpenAiCompatDelta, onDelta, (p) => parseOpenAiStreamData(p).usage);
+        text = result.text;
+        usage = toMeasuredUsage(result.usage, result.sawUsage);
+        return { text, provider, model, usage };
+    } finally {
+        if (billable) {
+            recordLlmUsage({ provider, model, promptChars: promptChars(req), responseChars: text.length, usage, source: req.source, userId });
+        }
     }
-    if (!res.body) {
-        // Some test envs surface no stream body — fall back to a plain JSON read.
-        try {
-            const json = await res.json();
-            const text = json?.choices?.[0]?.message?.content ?? '';
-            if (text) {
-                onDelta(text);
-                return { text, provider, model };
-            }
-        } catch { /* no usable body */ }
-        return null;
-    }
-    const text = await pumpSse(res.body, extractOpenAiCompatDelta, onDelta);
-    return { text, provider, model };
 }
 
 async function streamAnthropic(
@@ -202,39 +262,52 @@ async function streamAnthropic(
     model: string,
     onDelta: (delta: string) => void,
 ): Promise<LlmResponse | null> {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-            model,
-            max_tokens: req.maxTokens ?? 1024,
-            temperature: req.temperature ?? 0.3,
-            stream: true,
-            system: req.systemPrompt,
-            messages: [{ role: 'user', content: req.prompt }],
-        }),
-    });
-    if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        throw new LlmError('anthropic', res.status, errText || `HTTP ${res.status}`);
+    const userId = currentUsageUserId();
+    let billable = false;
+    let text = '';
+    let usage: LlmUsage | undefined;
+    try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true',
+            },
+            body: JSON.stringify({
+                model,
+                max_tokens: req.maxTokens ?? 1024,
+                temperature: req.temperature ?? 0.3,
+                stream: true,
+                system: req.systemPrompt,
+                messages: [{ role: 'user', content: req.prompt }],
+            }),
+        });
+        if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new LlmError('anthropic', res.status, errText || `HTTP ${res.status}`);
+        }
+        billable = true;
+        if (!res.body) {
+            // Some test envs surface no stream body — fall back to a plain JSON read.
+            try {
+                const json = await res.json();
+                text = json?.content?.[0]?.text ?? '';
+                if (text) {
+                    onDelta(text);
+                    return { text, provider: 'anthropic', model };
+                }
+            } catch { /* no usable body */ }
+            return null;
+        }
+        const result = await pumpSse(res.body, extractAnthropicDelta, onDelta, (p) => parseAnthropicStreamData(p).usage);
+        text = result.text;
+        usage = toMeasuredUsage(result.usage, result.sawUsage);
+        return { text, provider: 'anthropic', model, usage };
+    } finally {
+        if (billable) {
+            recordLlmUsage({ provider: 'anthropic', model, promptChars: promptChars(req), responseChars: text.length, usage, source: req.source, userId });
+        }
     }
-    if (!res.body) {
-        // Some test envs surface no stream body — fall back to a plain JSON read.
-        try {
-            const json = await res.json();
-            const text = json?.content?.[0]?.text ?? '';
-            if (text) {
-                onDelta(text);
-                return { text, provider: 'anthropic', model };
-            }
-        } catch { /* no usable body */ }
-        return null;
-    }
-    const text = await pumpSse(res.body, extractAnthropicDelta, onDelta);
-    return { text, provider: 'anthropic', model };
 }

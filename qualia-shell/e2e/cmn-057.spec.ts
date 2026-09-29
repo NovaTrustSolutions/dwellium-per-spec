@@ -178,17 +178,17 @@ test.describe('Cognitive Memory Network (plan 057)', () => {
 
     const widget = page.locator('.cognitive-harness');
     await expect(widget).toBeVisible({ timeout: 15_000 });
-    await expect(widget.getByText('COGNITIVE HARNESS ORCHESTRATION')).toBeVisible();
+    await expect(widget.getByText('COGNITIVE HARNESS')).toBeVisible();
 
     // Pause the 6s auto-cycle so the active subsystem card holds still.
     await widget.locator('.ch-play-btn').click();
 
-    // Default active tab is RAG — a WIRED_IDS subsystem — CONNECTED/DEGRADED.
-    await expect(widget.locator('.ch-panel-status-indicator')).toHaveText(/CONNECTED|DEGRADED/);
+    // Default active tab is RAG — a real engine card — Connected/Engine error.
+    await expect(widget.locator('.ch-panel-status-indicator')).toHaveText(/Connected|Engine error/);
 
-    // Switch to an unwired subsystem — 'Not connected'.
-    await widget.locator('.ch-bar-item', { hasText: 'PROMPT OPTIMIZATION' }).click();
-    await expect(widget.locator('.ch-panel-status-indicator')).toHaveText(/Not connected/);
+    // Switch to the Prompt Optimization tab — real store, may or may not have runs yet.
+    await widget.getByRole('tab', { name: /PROMPT OPTIMIZATION/ }).click();
+    await expect(widget.locator('.ch-panel-status-indicator')).toHaveText(/No activity yet|Live/);
 
     await page.screenshot({ path: `${EVIDENCE}/06-harness.png` });
   });

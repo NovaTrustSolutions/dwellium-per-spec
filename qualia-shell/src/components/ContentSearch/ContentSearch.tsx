@@ -67,6 +67,17 @@ export default function ContentSearch() {
 
     const hits = useMemo(() => searchCorpus(query, docs), [query, docs]);
     const open = (widget: string) => window.dispatchEvent(new CustomEvent('qualia-open-widget', { detail: widget }));
+    // Wiki hits deep-link to the specific page: stash the path for a not-yet-mounted
+    // widget, then dispatch the live event for an already-mounted one (Wiki.tsx listens
+    // for both — same pattern as its own pending-path handling).
+    const openHit = (h: SearchDoc) => {
+        open(h.widget);
+        if (h.type === 'wiki') {
+            const path = h.id.slice('wiki-'.length);
+            (window as unknown as { __dwelliumWikiPendingPath?: string }).__dwelliumWikiPendingPath = path;
+            window.dispatchEvent(new CustomEvent('dwellium:wiki-open-page', { detail: { path } }));
+        }
+    };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
@@ -88,7 +99,7 @@ export default function ContentSearch() {
                     const M = TYPE_META[h.type];
                     const Icon = M.icon;
                     return (
-                        <button key={h.id} onClick={() => open(h.widget)}
+                        <button key={h.id} onClick={() => openHit(h)}
                             style={{ display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 5, background: 'var(--bg-desktop)', border: '1px solid #1c1c1c', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#111'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1c1c1c'; e.currentTarget.style.background = '#0a0a0a'; }}>

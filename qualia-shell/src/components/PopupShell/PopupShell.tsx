@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { AppWindow, Hourglass } from 'lucide-react';
 import { WINDOW_COMPONENTS } from '../Shell/Desktop';
-import { WIDGET_REGISTRY } from '../../registry/widgetRegistry';
+import { WIDGET_REGISTRY, resolveWidgetId } from '../../registry/widgetRegistry';
 import { LayoutProvider } from '../../context/LayoutContext';
 import { HierarchyProvider } from '../../context/HierarchyContext';
 import { WindowProvider } from '../../context/WindowContext';
@@ -12,7 +12,7 @@ import '../../styles/skins.css';
 export function PopupShell({ component }: { component: string }) {
     const Component = WINDOW_COMPONENTS[component] as React.FC | undefined;
     // Registry label is the honest default title (falls back to the raw id).
-    const registryLabel = WIDGET_REGISTRY[component]?.label ?? component;
+    const registryLabel = WIDGET_REGISTRY[resolveWidgetId(component)]?.label ?? component;
     const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: registryLabel, icon: '' });
     const [docking, setDocking] = useState(false);
     const [dockError, setDockError] = useState('');

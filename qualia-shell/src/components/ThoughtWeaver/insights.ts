@@ -79,14 +79,48 @@ export function capturesForWeek(captures: InsightCapture[], weekStart: string): 
 
 // ── Internal: safe JSON parse of an LLM response ──────────────────────
 
+/**
+ * Returns the index of the bracket that balances text[start] (a '{' or '['),
+ * tracking string/escape state so brackets inside string literals don't
+ * throw off the depth count. -1 if the text ends before it balances.
+ */
+function findBalancedEnd(text: string, start: number): number {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = start; i < text.length; i++) {
+        const ch = text[i];
+        if (inString) {
+            if (escaped) escaped = false;
+            else if (ch === '\\') escaped = true;
+            else if (ch === '"') inString = false;
+            continue;
+        }
+        if (ch === '"') { inString = true; continue; }
+        if (ch === '{' || ch === '[') depth++;
+        else if (ch === '}' || ch === ']') {
+            depth--;
+            if (depth === 0) return i;
+        }
+    }
+    return -1;
+}
+
 function parseJsonLoose(text: string): any | null {
     try {
         return JSON.parse(text);
     } catch {
-        // Some providers wrap JSON in prose or fences — extract the first {...} or [...].
-        const m = text.match(/[\[{][\s\S]*[\]}]/);
-        if (!m) return null;
-        try { return JSON.parse(m[0]); } catch { return null; }
+        // Some providers wrap JSON in prose or fences. The old greedy regex
+        // `/[\[{][\s\S]*[\]}]/` spanned from the FIRST bracket to the LAST —
+        // e.g. `{"a":1} and also [2,3]` matched clear across both. Scan for a
+        // balanced slice instead, trying each candidate start in order.
+        for (let start = 0; start < text.length; start++) {
+            if (text[start] !== '{' && text[start] !== '[') continue;
+            const end = findBalancedEnd(text, start);
+            if (end === -1) continue;
+            try { return JSON.parse(text.slice(start, end + 1)); } catch { /* try next start */ }
+        }
+        return null;
     }
 }
 

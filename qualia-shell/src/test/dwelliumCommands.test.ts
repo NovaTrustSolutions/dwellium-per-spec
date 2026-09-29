@@ -54,6 +54,21 @@ describe('parseCommand (talk-to-customize)', () => {
         expect(parseCommand('show me the inbox')?.label).toMatch(/Open inbox/i);
         expect(parseCommand('navigate to files')?.label).toMatch(/Open files/i);
     });
+    it('spoken phrasings for Research Lab all open it — STT capitalisation/period and the "ARA"/"Aura" wake prefix included', () => {
+        const opened: string[] = [];
+        const onOpen = (e: Event) => opened.push((e as CustomEvent).detail?.widgetId);
+        window.addEventListener('dwellium:open-widget', onOpen);
+        try {
+            for (const said of ['open research lab', 'Open research lab.', 'Open the Research Lab', 'ARA open research lab', 'Aura, open research lab', 'launch research lab', 'pull up the research lab widget']) {
+                const cmd = parseCommand(said);
+                expect(cmd, said).not.toBeNull();
+                cmd!.run();
+                expect(opened[opened.length - 1], said).toBe('research-lab');
+            }
+        } finally {
+            window.removeEventListener('dwellium:open-widget', onOpen);
+        }
+    });
     it('parses arrange/tile', () => {
         expect(parseCommand('tile')?.label).toMatch(/Arrange/);
         expect(parseCommand('arrange windows')?.label).toMatch(/Arrange/);

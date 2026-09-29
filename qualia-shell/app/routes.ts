@@ -57,9 +57,9 @@ export default [
     // Netlify builds a static SPA, so its /api/* proxy is emitted as _redirects
     // by scripts/write-netlify-redirects.mjs instead of this loader/action route.
     ...(!isNetlifyStaticBuild ? [route('/api/*', 'routes/apiProxy.tsx')] : []),
-    // P11-13: phone-friendly ThoughtWeaver capture page (Supabase-backed;
-    // standalone — no auth shell; config arrives via query once and persists
-    // in the phone's localStorage).
+    // P11-13 / plan 067: phone-friendly ThoughtWeaver capture page. Standalone
+    // (no shell) but uses the normal Dwellium session; posts to the signed-in
+    // user's inbox (/api/thought-weaver/inbox).
     route('/capture', 'routes/capture.tsx'),
     index('routes/default.tsx'),
     route('*', 'routes/default.tsx', { id: 'splat' }),

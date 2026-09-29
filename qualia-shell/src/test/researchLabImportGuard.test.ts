@@ -51,6 +51,11 @@ const TRUSTED_TRANSIT = new Set([
     // Plan 055 phase 2 — view-state memory primitive (tab/prompt draft only;
     // its own import surface is pinned exactly below).
     resolve(SRC, 'lib/widgetMemory.ts'),
+    // Plan 068 (A2) — Research Lab now meters its own LLM spend into the
+    // shared AI-spend ledger (provider/model/token counts/cost only — never
+    // the user's research prompt text); its own import surface is pinned
+    // exactly below.
+    resolve(SRC, 'lib/llmUsageStore.ts'),
 ]);
 
 const RESEARCH_STORES = [
@@ -154,6 +159,20 @@ describe('Research Lab import firewall (structural isolation)', () => {
         const specs = specifiersOf(resolve(SRC, 'lib/oneSaveStore.ts')).sort();
         // './syncRateLimitStore' (plan 059) is a leaf: no imports of its own, pure state.
         expect(specs).toEqual(['../utils/createLocalStorageStore', './backendStatusStore', './oneSaveClient', './syncRateLimitStore']);
+    });
+
+    it('trusted transit: llmUsageStore.ts import surface is pinned (AI-spend ledger — metering only, never research prompt text)', () => {
+        const specs = specifiersOf(resolve(SRC, 'lib/llmUsageStore.ts')).sort();
+        expect(specs).toEqual([
+            '../types/integrations',
+            '../utils/createLocalStorageStore',
+            './llmClient',
+            './llmPricing',
+            './oneSaveStore',
+            './perUserIdentity',
+            'react',
+            'react',
+        ]);
     });
 
     it('direction guard: nothing outside the research modules imports the research stores or researchLlm', () => {

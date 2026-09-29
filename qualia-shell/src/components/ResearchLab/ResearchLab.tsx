@@ -19,7 +19,7 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronDown, ChevronRight, Copy, ExternalLink, FlaskConical, KeyRound, Play, Trash2, X } from 'lucide-react';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { captureOwner, usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, useWidgetMemory } from '../../lib/widgetMemory';
 import { RESEARCH_PROVIDERS, RESEARCH_PROVIDERS_UPDATED, ResearchProvider } from '../../data/researchProviders';
 import { guardOutbound } from '../../lib/researchLlm/guard';
@@ -166,6 +166,7 @@ export default function ResearchLab() {
 
     const execute = async () => {
         const entries = Object.entries(selected);
+        const stillOwner = captureOwner();
         setNotice(null);
         setRunning(true);
         // Seed a pending placeholder per slot — cards fill in independently as
@@ -181,6 +182,9 @@ export default function ResearchLab() {
                     if (!unmountedRef.current) setResults(prev => prev && prev.map((x, xi) => (xi === i ? r : x)));
                 })));
         controllerRef.current = null;
+        // Account switched while the requests were in flight (156d77c) — never
+        // write A's prompt/responses into B's per-user log or CORS memory.
+        if (!stillOwner()) { if (!unmountedRef.current) setRunning(false); return; }
         if (!unmountedRef.current) {
             setCors(prev => {
                 const now = Date.now();

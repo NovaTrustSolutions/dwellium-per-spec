@@ -6,7 +6,7 @@
  * - On-demand body fetch (security: email body never stored in bulk state)
  */
 
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { INBOX_API, SECURITY_API, API_BASE } from '../../config/api';
 import type { InboxItem, InboxStats, NewsletterSender, AgentSettings, LlmSafetyEvent, LlmSafetyStats, SecurityStatusSnapshot, OperatorMetrics } from './InboxZeroTypes';
 
@@ -159,119 +159,7 @@ export function useSettings(authFetch: AuthFetch, enabled = true) {
     });
 }
 
-// ─── Mutations ─────────────────────────────────────────
-export function useArchiveMutation(authFetch: AuthFetch) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (id: string) => {
-            const res = await authFetch(`${INBOX_API}/${id}/archive`, { method: 'POST' });
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.all });
-        },
-    });
-}
-
-export function useApproveMutation(authFetch: AuthFetch) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ id, projectId, reason }: { id: string; projectId?: string; reason?: string }) => {
-            const res = await authFetch(`${INBOX_API}/${id}/approve`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ projectId, reason }),
-            });
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || `Approve failed: ${res.status}`);
-            }
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.all });
-        },
-    });
-}
-
-export function useDeleteMutation(authFetch: AuthFetch) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (id: string) => {
-            const res = await authFetch(`${INBOX_API}/${id}`, { method: 'DELETE' });
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.all });
-        },
-    });
-}
-
-export function useBulkArchiveMutation(authFetch: AuthFetch) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (ids: string[]) => {
-            const res = await authFetch(`${INBOX_API}/bulk-archive`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids }),
-            });
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.all });
-        },
-    });
-}
-
-export function useBulkSignalMutation(authFetch: AuthFetch) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ ids, signalClass }: { ids: string[]; signalClass: string }) => {
-            const res = await authFetch(`${INBOX_API}/ai-classify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids, signalClass }),
-            });
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.all });
-        },
-    });
-}
-
-export function useBulkRouteMutation(authFetch: AuthFetch) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ ids, projectId }: { ids: string[]; projectId: string }) => {
-            // Route each item to the same project
-            await Promise.all(ids.map(id =>
-                authFetch(`${INBOX_API}/${id}/approve`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ projectId, reason: 'Bulk route from triage' }),
-                })
-            ));
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.all });
-        },
-    });
-}
-
-export function useUnsubscribeMutation(authFetch: AuthFetch) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (sender: string) => {
-            const encoded = encodeURIComponent(sender);
-            const res = await authFetch(`${INBOX_API}/newsletters/${encoded}/unsubscribe`, {
-                method: 'POST',
-            });
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.newsletters() });
-        },
-    });
-}
+// ponytail: unused mutation hooks (useArchiveMutation, useApproveMutation,
+// useDeleteMutation, useBulkArchiveMutation, useBulkSignalMutation,
+// useBulkRouteMutation, useUnsubscribeMutation) deleted at plan 066 §2e —
+// InboxZero.tsx calls authFetch directly for all mutations instead.

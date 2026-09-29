@@ -257,8 +257,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         const response = await fetch(fullUrl, { ...opts, headers });
 
-        // On 401/403, try one silent refresh, then retry.
-        if ((response.status === 401 || response.status === 403) && localStorage.getItem(REFRESH_TOKEN_KEY)) {
+        // On 401, try one silent refresh, then retry. NOT on 403: the backend
+        // returns 401 for every invalid/expired/missing session (authenticate) and
+        // 403 only for an authenticated user who is not allowed (requireRole,
+        // requirePermission, property scope). A refresh cannot fix a denial — it
+        // only burned a refresh-token rotation per forbidden call, and the retry
+        // got the same 403. Hand the 403 straight to the widget to render.
+        // (validateSession below still treats a 403 from /api/auth/me as fatal —
+        // that route's 403 means the account itself was deactivated.)
+        if (response.status === 401 && localStorage.getItem(REFRESH_TOKEN_KEY)) {
             const result = await doRefresh();
             if (result === 'refreshed') {
                 const newToken = localStorage.getItem(TOKEN_KEY);

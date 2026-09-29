@@ -31,7 +31,7 @@ import type { WindowState } from '../data/types';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { sessionRestoreUserIdHolder } from './perUserIdentity';
-import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
+import { WIDGET_REGISTRY, resolveWidgetId } from '../registry/widgetRegistry';
 
 /** Minimal serializable projection of a Classic desktop window. */
 export interface WindowProjection {
@@ -316,6 +316,7 @@ function knownWidget(id: string): boolean {
  */
 export function restoreClassicWindows(snap: SessionSnapshot): WindowState[] {
     const restored = snap.classic
+        .map((p) => ({ ...p, component: resolveWidgetId(p.component) }))
         .filter((p) => knownWidget(p.component))
         .map((p, i) => ({
             id: `win-${Date.now()}-restored-${i}`,
@@ -341,9 +342,11 @@ export function restoreClassicWindows(snap: SessionSnapshot): WindowState[] {
 /** Filter an OS tab slice to registry-known widgets; active falls back to null.
  *  `source` keys the restore-summary slot (idempotent across re-runs). */
 export function restoreOsTabs(slice: OsTabsSlice, source: 'halocron' | 'fluid' = 'halocron'): OsTabsSlice {
-    const tabs = slice.tabs.filter(knownWidget);
+    // Dedupe after resolving: a slice holding both 'inbox' and 'inbox-zero' must restore ONE tab.
+    const tabs = [...new Set(slice.tabs.map(resolveWidgetId))].filter(knownWidget);
     if (tabs.length > 0) noteRestore(source, { windows: 0, tabs: tabs.length, topTitle: null, components: tabs });
-    return { tabs, active: slice.active && tabs.includes(slice.active) ? slice.active : null };
+    const active = slice.active ? resolveWidgetId(slice.active) : null;
+    return { tabs, active: active && tabs.includes(active) ? active : null };
 }
 
 /* ── fresh start (phase 3) ──────────────────────────────────────────────── */

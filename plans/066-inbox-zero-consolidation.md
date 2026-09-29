@@ -33,7 +33,7 @@ Standing rules (from CLAUDE.md, memory and prior plans):
 
 ---
 
-## Phase 0 — Ilya decisions (only Phases 4e, 5 and 7 wait on these)
+## Phase 0 — Ilya decisions (only Phases 4e, 5 and 7 wait on these) ✅
 
 | Gate | Question | Default if unanswered |
 |---|---|---|

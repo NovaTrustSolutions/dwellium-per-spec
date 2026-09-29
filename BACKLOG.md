@@ -62,18 +62,15 @@ Unfinished items surfaced across the Fey-UI, ARA/skills, Hermes, and Terminal·B
 
 ---
 
-## ☐ ThoughtWeaver phone sync via Supabase  — *added 2026-05-30, deferred by Ilya*
+## ✅ ThoughtWeaver phone sync — shipped via One Save, not Supabase (plan 067, 2026-09-25)
 
-**Goal:** Let the user capture thoughts from a phone and have them appear in ThoughtWeaver on the desktop (and vice-versa), without losing the "trusted, never-deleted" guarantee.
+**Original ask (2026-05-30):** capture thoughts from a phone and have them appear on desktop (and vice-versa) without losing the "trusted, never-deleted" guarantee. Supabase (`thought_weaver_captures`) was the originally recommended transport — see plan 028 (now SUPERSEDED, `plans/README.md`).
 
-**Why this route:** the capture store is currently per-browser `localStorage` (`thought-weaver:captures:<userId>`), so a phone can't reach what's on the desktop. Supabase is the recommended path because it's already wired into the app (per-user Supabase config in the integrations bundle) and works without standing up the heavy Dwellium backend.
+**What shipped instead (plan 067 G2 decision):** phone ↔ desktop now goes through the normal per-user One Save inbox — already authenticated, already per-user — instead of a Supabase table keyed by an anon key in the URL. `/capture` uses the signed-in Dwellium session (`installApiAuthFetch`); not signed in → "Sign in to Dwellium on this phone first". Old `?url=&key=&user=` links are stripped and ignored; the legacy `tw-capture-config` localStorage entry (holding the anon key) is removed. Existing Supabase rows are still read once per user (UPSERT into the local store by id, via `twImportedStore`) so nothing already captured is lost — no code writes to Supabase anymore.
 
-**Sketch of the work (when picked up):**
-- Add a `thought_weaver_captures` table in the user's Supabase (cols mirror `LocalCapture`: id, user_id, text, filed_to, confidence, destination_name, created_at). RLS so a user only sees their own rows.
-- Sync layer: on capture, write-through to Supabase when configured; on load, merge Supabase rows with local (local stays the offline-first source of truth so nothing is ever lost if Supabase is down).
-- A mobile-friendly capture route/page (PWA-installable) that writes to the same table — minimal UI: textarea + Capture, reuse `localCategorize` for instant bucketing.
-- Keep user-only-delete + verbatim-text guarantees across the sync.
+**Known follow-ups (not yet done):**
+- **Cross-device last-writer-wins on captures.** One Save's per-object write-through has no merge — two devices editing captures for the same user around the same time can drop one device's write. Cross-cutting (affects every `withSync` store, not just ThoughtWeaver); tracked as an out-of-scope item in plan 067.
+- **Phone inbox is only imported when the widget opens.** There's no push/background sync — a capture made on the phone shows up on desktop the next time ThoughtWeaver is opened there, not immediately.
+- **Generic One Save object-id squatting (other widgets).** Fixed for the ThoughtWeaver families (backend `objectRoutes.ts` refuses writing `thought-weaver*_<uid>` / `tw-todo_<uid>` / `tw-report_<uid>` unless `<uid>` is the caller, whenever AUTH_ENABLED is on). Other object types can still be created at another user's `<type>_<uid>` id — separate task.
 
-**Relevant files:** `qualia-shell/src/components/ThoughtWeaver/thoughtWeaverStore.ts` (store + would gain a sync adapter), `localCategorizer.ts`, `localViews.ts`, the integrations Supabase config (`src/utils/integrationsStore.ts` / `useIntegrations`). Supabase MCP is connected for schema work.
-
-**Acceptance:** a thought added on phone shows on desktop within a refresh; offline still works (local-first); a verified test of the sync/merge logic (not just "builds green").
+**Relevant files:** `qualia-shell/src/components/ThoughtWeaver/thoughtWeaverStore.ts`, `thoughtWeaverSync.ts`, `twImportedStore.ts`, `app/routes/capture.tsx`; backend `thoughtWeaverRoutes.ts`. Full defect list + phase-by-phase fix record: `plans/067-thoughtweaver-hardening.md`.

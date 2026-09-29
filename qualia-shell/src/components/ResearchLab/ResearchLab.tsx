@@ -19,7 +19,7 @@
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ExternalLink, FlaskConical, KeyRound, Play, Trash2 } from 'lucide-react';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { captureOwner, usePerUserIdentity } from '../../lib/perUserIdentity';
 import { flushWidgetMemory, useWidgetMemory } from '../../lib/widgetMemory';
 import { RESEARCH_PROVIDERS, RESEARCH_PROVIDERS_UPDATED, ResearchProvider } from '../../data/researchProviders';
 import { guardOutbound } from '../../lib/researchLlm/guard';
@@ -81,11 +81,15 @@ export default function ResearchLab() {
 
     const execute = async () => {
         const entries = Object.entries(selected);
+        const stillOwner = captureOwner();
         setNotice(null);
         setRunning(true);
         setResults(null);
         const runs = await Promise.all(entries.map(([providerId, model]) =>
             runResearchChat({ providerId, model: model.trim(), apiKey: getResearchKey(providerId), presetId, prompt })));
+        // Account switched while the chat requests were in flight — never log
+        // A's prompt/responses into B's per-user research log.
+        if (!stillOwner()) return;
         setCors(prev => {
             const next = { ...prev };
             for (const r of runs) next[r.providerId] = r.corsBlocked ? 'blocked' : (next[r.providerId] === 'blocked' ? 'blocked' : (r.error && !r.status ? next[r.providerId] ?? 'unknown' : 'ok'));

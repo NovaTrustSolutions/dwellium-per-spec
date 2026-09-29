@@ -3,6 +3,7 @@ import { WindowState, DockItem, LayoutState, SavedLayout } from '../data/types';
 import { useUser } from './UserContext';
 import { defaultDockItems } from '../data/hierarchy';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { resolveWidgetId } from '../registry/widgetRegistry';
 import { withSync, withSyncStatic } from '../lib/oneSaveStore';
 import { logActivity } from '../lib/activityLogStore';
 import { openWidgetPopout } from '../lib/popoutWindow';
@@ -303,7 +304,9 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         return () => clearTimeout(timer);
     }, [windows, dockItems]);
 
-    const openWindow = useCallback((component: string, title: string, icon: string): string | null => {
+    const openWindow = useCallback((rawComponent: string, title: string, icon: string): string | null => {
+        // plan 066: every open resolves a retired id (e.g. 'inbox-zero') to the live one here.
+        const component = resolveWidgetId(rawComponent);
         // Plan 055 phase 3 — feed the ⌘K "Resume" trail (open AND re-focus
         // both count as a touch). Central here so sidebar/⌘K/bus all record.
         recordActivity('widget', component, title);
@@ -565,7 +568,10 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         if (layoutToLoad) {
             // titlebar-rescue clamp: saved layouts from a different viewport
             // size must never restore a window above the desktop top.
-            setWindows((layoutToLoad.layout.windows || []).map(w => ({ ...w, y: Math.max(0, w.y) })));
+            // plan 066 phase 3: named layouts are opened by component id with
+            // no knownWidget gate — resolve retired ids (e.g. 'inbox-zero')
+            // at read time so an old save keeps opening the live widget.
+            setWindows((layoutToLoad.layout.windows || []).map(w => ({ ...w, component: resolveWidgetId(w.component), y: Math.max(0, w.y) })));
             setDockItems(layoutToLoad.layout.dockItems || defaultDockItems);
             window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Layout "${layoutToLoad.name}" loaded` }));
         }
@@ -588,7 +594,10 @@ export function WindowProvider({ children }: { children: ReactNode }) {
             const detail = (ev as CustomEvent).detail || {};
             const { widgetId, label, icon } = detail;
             if (!widgetId) return;
-            try { openWindow(widgetId, label || widgetId, icon || ''); } catch { /* ignore */ }
+            // plan 066 phase 3: this bus carries ids from persisted sources too
+            // (e.g. a workspace app-pane tab) — resolve retired ids at read time.
+            const resolvedId = resolveWidgetId(widgetId);
+            try { openWindow(resolvedId, label || resolvedId, icon || ''); } catch { /* ignore */ }
         };
         window.addEventListener('dwellium:open-widget', handler);
         return () => window.removeEventListener('dwellium:open-widget', handler);

@@ -426,6 +426,34 @@ describe('UserContext', () => {
         expect(localStorage.getItem('dwellium-auth-token')).toBe('jwt-rotated');
     });
 
+    // ── 403 = forbidden, not expired ──────────────────────────────────────────
+    // The backend answers 401 for every invalid/expired session and 403 ONLY for
+    // an authenticated user who lacks the role/permission. A refresh cannot fix a
+    // denial, so a 403 must reach the widget untouched: no refresh call, no token
+    // rotation, no session change. Previously every 403 burned a rotation.
+    it('a widget 403 (forbidden) is returned as-is — no refresh, no rotation, session intact', async () => {
+        const result = await renderAuthed();
+        const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+        const callsBefore = fetchMock.mock.calls.length;
+        fetchMock.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: 'Insufficient permissions' }) });
+
+        let res: Response | undefined;
+        await act(async () => {
+            res = await result.current.authFetch('/api/accounting/summary');
+        });
+
+        expect(res?.status).toBe(403);
+        // Exactly ONE network call: the widget's own. No /api/auth/refresh.
+        const newCalls = fetchMock.mock.calls.slice(callsBefore).map(c => String(c[0]));
+        expect(newCalls).toHaveLength(1);
+        expect(newCalls.some(u => u.includes('/api/auth/refresh'))).toBe(false);
+        // Tokens untouched and the session is healthy.
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
+        expect(localStorage.getItem('dwellium-refresh-token')).toBe('valid-refresh');
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(result.current.sessionExpired).toBe(false);
+    });
+
     // ── Recoverable re-auth (sessionExpired) ──────────────────────────────────
     // A genuinely dead session must NOT bounce to the login screen and lose the
     // user's place. Instead the shell stays mounted (isAuthenticated stays true)

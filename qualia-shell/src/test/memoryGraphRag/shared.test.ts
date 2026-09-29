@@ -136,4 +136,17 @@ describe('getCmn', () => {
         await andyAgain.ready;
         expect(andyAgain.metrics().counts.passages).toBeGreaterThan(0);
     });
+
+    it('a hydrate failure after the rebuild await still bumps the version (plan 069)', async () => {
+        const a = new CognitiveMemoryNetwork('u-hyd');
+        await a.ingest(DOCS, 'test');
+        const proto = Object.getPrototypeOf((a as any).engine);
+        const spy = vi.spyOn(proto, 'rebuild').mockRejectedValueOnce(new Error('boom'));
+        const b = new CognitiveMemoryNetwork('u-hyd');
+        const before = b.getVersion();
+        await b.ready;
+        spy.mockRestore();
+        expect(b.getVersion()).toBeGreaterThan(before);
+        expect(b.metrics().events[0].detail).toMatch(/could not be read/);
+    });
 });

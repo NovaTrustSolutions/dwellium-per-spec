@@ -10,7 +10,7 @@
  */
 import { readSessionSnapshot } from '../../lib/sessionRestoreStore';
 import { readWidgetMemory } from '../../lib/widgetMemory';
-import { WIDGET_REGISTRY } from '../../registry/widgetRegistry';
+import { WIDGET_REGISTRY, resolveWidgetId } from '../../registry/widgetRegistry';
 
 export interface ResumeContext {
     widgetId: string;
@@ -36,10 +36,11 @@ export function deriveResumeContext(): ResumeContext | null {
     let widgetLabel: string | null = null;
     if (snap.classic.length > 0) {
         const top = snap.classic.reduce((a, b) => (b.zIndex > a.zIndex ? b : a));
-        widgetId = top.component;
-        widgetLabel = WIDGET_REGISTRY[top.component]?.label ?? top.title ?? top.component;
+        widgetId = resolveWidgetId(top.component); // plan 066: raw snapshot may hold a retired id
+        widgetLabel = WIDGET_REGISTRY[widgetId]?.label ?? top.title ?? widgetId;
     } else {
-        widgetId = snap.halocron.active ?? snap.fluid.active;
+        const active = snap.halocron.active ?? snap.fluid.active;
+        widgetId = active ? resolveWidgetId(active) : null;
         if (widgetId) widgetLabel = WIDGET_REGISTRY[widgetId]?.label ?? widgetId;
     }
     if (!widgetId || !widgetLabel) return null;

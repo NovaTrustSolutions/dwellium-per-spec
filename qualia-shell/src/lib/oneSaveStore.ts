@@ -58,6 +58,17 @@ export interface SyncOptions<T> {
     serialize?: (value: T) => string;
     /** Write-through debounce; default 800ms. */
     debounceMs?: number;
+    /**
+     * Reconcile hydrate()'s remote payload with the local snapshot instead of
+     * remote unconditionally replacing local. `merge(local, remote)` runs
+     * right after a successful GET; its result is applied via `base.set()`.
+     * When the merged value differs from what the backend sent (JSON
+     * comparison), a write-through is scheduled so local-only data reaches
+     * the backend. Omit for the old behaviour (remote replaces local
+     * outright) — every store not passing `merge` is byte-identical to
+     * before this option existed.
+     */
+    merge?: (local: T, remote: T) => T;
 }
 
 export interface StaticSyncOptions<T> {
@@ -278,6 +289,62 @@ if (ONE_SAVE_ENABLED) {
     });
 }
 
+/* ---------- dirty marker (unsaved-local-write survives a reload) ----------
+ * set() persists to localStorage SYNCHRONOUSLY but the durable write-through
+ * is debounced (800ms) and a failed flush only parks an in-memory replay
+ * closure (`failed`, above) — nothing durable survives a reload. Without this
+ * marker: user writes -> reloads inside the debounce window (or after a
+ * failed flush while the backend IS reachable) -> hydrate() fetches the STALE
+ * remote and applies it, silently discarding the unsaved edit. The marker is
+ * itself in localStorage so it survives the reload that loses the in-memory
+ * `failed` closure. */
+function dirtyMarkerKey(objectId: string): string {
+    return `onesave:dirty:${objectId}`;
+}
+
+function markDirty(objectId: string): void {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+        localStorage.setItem(dirtyMarkerKey(objectId), '1');
+    } catch { /* sandboxed */ }
+}
+
+function clearDirty(objectId: string): void {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+        localStorage.removeItem(dirtyMarkerKey(objectId));
+    } catch { /* sandboxed */ }
+}
+
+/* withSyncStatic stores share ONE physical localStorage slot across every
+ * account on the device, so a dirty marker for user A only means "A's unsaved
+ * edit is in the slot" while A still owns the slot — once B's hydrate fills it,
+ * A's marker must not make B's data win into A's remote (plan 067 review). */
+function slotOwnerKey(objectType: string): string {
+    return `onesave:slot:${objectType}`;
+}
+
+function setSlotOwner(objectType: string, owner: string): void {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+        localStorage.setItem(slotOwnerKey(objectType), owner);
+    } catch { /* sandboxed */ }
+}
+
+function getSlotOwner(objectType: string): string | null {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+        return localStorage.getItem(slotOwnerKey(objectType));
+    } catch { return null; }
+}
+
+function isDirty(objectId: string): boolean {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
+        return localStorage.getItem(dirtyMarkerKey(objectId)) != null;
+    } catch { return false; }
+}
+
 /** Shared machinery for both wrappers. */
 function makeSynced<T>(
     base: LocalStorageStore<T>,
@@ -286,6 +353,8 @@ function makeSynced<T>(
     persistLocal: (value: T) => void,
     debounceMs: number,
     setOwner: (userId: string | null) => void,
+    merge?: (local: T, remote: T) => T,
+    sharedSlot = false,
 ): SyncedStore<T> {
     const objectId = (): string => `${objectType}_${ownerId()}`;
     // Set by the most recent hydrate() this session; lets migrate() skip its
@@ -303,6 +372,8 @@ function makeSynced<T>(
         const scheduledOwnerId = ownerId();
         const scheduledObjectId = objectId();
         pending.add(scheduledObjectId);
+        markDirty(scheduledObjectId);
+        if (sharedSlot) setSlotOwner(objectType, scheduledOwnerId);
         emitSync();
         // Plan 060 phase 1: while the backend's Retry-After window hasn't opened
         // yet, arm the SHARED flush timer for the remaining pause instead of the
@@ -320,11 +391,13 @@ function makeSynced<T>(
             onSaved: () => {
                 pending.delete(scheduledObjectId);
                 failed.delete(scheduledObjectId);
+                clearDirty(scheduledObjectId);
                 lastSavedAt = Date.now();
                 emitSync();
             },
             onFailed: () => {
                 pending.delete(scheduledObjectId);
+                // Marker stays set on failure — see dirty-marker block above.
                 // Replay only while the SAME owner is still active — scheduleWriteThrough
                 // re-captures ownerId() at call time, so without this guard a switched
                 // account would inherit the previous user's payload.
@@ -350,15 +423,50 @@ function makeSynced<T>(
         async hydrate(prefetched?: DwelliumObject<unknown> | null) {
             if (!ONE_SAVE_ENABLED) return;
             const seqAtStart = localWriteSeq;
+            const ownerAtStart = ownerId();
             const remote = (prefetched !== undefined ? prefetched : await oneSaveClient.get<T>(objectId())) as DwelliumObject<T> | null;
             lastHydrateSeen = remote != null;
             // A local edit landed while the GET was in flight (e.g. typing in a
             // just-opened lazy widget): local is newer and is already queued for
             // write-through — applying the stale remote would eat the user's input.
             if (localWriteSeq !== seqAtStart) return;
+            // The account switched while the GET was in flight: the dynamic-key base
+            // store now resolves to the NEW owner's key, so applying (or merging) the
+            // old owner's payload would write it into the new account's storage.
+            if (ownerId() !== ownerAtStart) return;
+            // A local write is still debounced or its flush already failed once
+            // (dirty marker set by scheduleWriteThrough, cleared only on a
+            // successful save) — local wins over whatever remote just answered,
+            // and we re-arm the write-through instead of losing the edit.
+            // Stores with a `merge` skip this: merge already keeps local-only
+            // data and re-arms the write-through below.
+            // ponytail: a write that keeps failing forever keeps this marker
+            // forever too, so this device stays local-wins until a save actually
+            // succeeds — no separate TTL/expiry on the marker.
+            // A shared slot filled by another account since the marker was set
+            // no longer holds this owner's edit — drop the marker, apply remote.
+            if (sharedSlot && isDirty(objectId()) && getSlotOwner(objectType) !== ownerId()) {
+                clearDirty(objectId());
+            }
+            if (!merge && isDirty(objectId())) {
+                scheduleWriteThrough(base.getSnapshot());
+                return;
+            }
             if (remote && remote.deletedAt == null) {
-                const value = remote.payload as T;
-                base.set(value, () => persistLocal(value));
+                const remoteValue = remote.payload as T;
+                if (merge) {
+                    const merged = merge(base.getSnapshot(), remoteValue);
+                    base.set(merged, () => persistLocal(merged));
+                    // Local-only data survived the merge (differs from what the
+                    // backend actually has) — schedule a write-through so it
+                    // reaches the backend instead of only living in this tab.
+                    if (JSON.stringify(merged) !== JSON.stringify(remoteValue)) {
+                        scheduleWriteThrough(merged);
+                    }
+                } else {
+                    base.set(remoteValue, () => persistLocal(remoteValue));
+                }
+                if (sharedSlot) setSlotOwner(objectType, ownerId());
             }
         },
 
@@ -392,7 +500,7 @@ export function withSync<T>(base: LocalStorageStore<T>, opts: SyncOptions<T>): S
     };
     return makeSynced(base, opts.objectType, ownerId, persistLocal, opts.debounceMs ?? 800, (userId) => {
         opts.holder.current = userId;
-    });
+    }, opts.merge);
 }
 
 /** Wrap a static-key store; owner is the logged-in user (set by bootstrap). */
@@ -404,7 +512,7 @@ export function withSyncStatic<T>(base: LocalStorageStore<T>, opts: StaticSyncOp
         try { localStorage.setItem(opts.storageKey, serialize(value)); } catch { /* sandboxed */ }
     });
     // No holder to set — owner is resolved from the shared currentUserId.
-    return makeSynced(base, opts.objectType, ownerId, persistLocal, opts.debounceMs ?? 800, () => { /* shared owner */ });
+    return makeSynced(base, opts.objectType, ownerId, persistLocal, opts.debounceMs ?? 800, () => { /* shared owner */ }, undefined, true);
 }
 
 export const oneSaveSync = {

@@ -21,7 +21,7 @@
  */
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
-import { whiteboardUserIdHolder } from './perUserIdentity';
+import { captureOwner, whiteboardUserIdHolder } from './perUserIdentity';
 
 /** Excalidraw scene JSON (plan 047: `{type:'excalidraw', version:2, ...}`). */
 export interface WhiteboardScene {
@@ -338,13 +338,15 @@ function persistDoc(next: WhiteboardDoc): void {
     });
 }
 
-async function persistScene(boardId: string, scene: WhiteboardScene): Promise<void> {
+async function persistScene(boardId: string, scene: WhiteboardScene, stillOwner: () => boolean): Promise<void> {
     let files = scene.files;
     // Only pay the async prep when some file crosses the downscale threshold
     // or the board total is over cap.
     const total = Object.values(files).reduce<number>((sum, f) => sum + fileSize(f), 0);
     if (total > FILES_CAP_BYTES || Object.values(files).some(isDownscalableImage)) {
         const prepared = await prepareSceneFiles(files);
+        // Account switched mid-prep — drop rather than write A's scene into B.
+        if (!stillOwner()) return;
         files = prepared.files;
         if (prepared.downscaled.length > 0) {
             whiteboardNoticeStore.push(
@@ -371,7 +373,7 @@ async function persistScene(boardId: string, scene: WhiteboardScene): Promise<vo
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingSave: { boardId: string; scene: WhiteboardScene } | null = null;
+let pendingSave: { boardId: string; scene: WhiteboardScene; stillOwner: () => boolean } | null = null;
 
 /**
  * Cheap per-board content fingerprint (plan 060 phase 3): every element's
@@ -399,12 +401,16 @@ const lastPersistedKey = new Map<string, string>();
 /** Debounced persist — trailing edge only (one write per idle period). */
 export function saveSceneDebounced(boardId: string, scene: WhiteboardScene): void {
     if (saveTimer !== null) clearTimeout(saveTimer);
-    pendingSave = { boardId, scene };
+    // Capture the owner NOW (schedule time) — a switch before the debounce
+    // fires (or during the async persist below) must drop this save, never
+    // write it into whichever account is active when the timer runs.
+    pendingSave = { boardId, scene, stillOwner: captureOwner() };
     saveTimer = setTimeout(() => {
         saveTimer = null;
         const p = pendingSave;
         pendingSave = null;
         if (!p) return;
+        if (!p.stillOwner()) return;
         const key = sceneContentKey(p.scene);
         // No key yet this session (fresh mount) → compare against what is
         // already stored, so Excalidraw's init-time onChange never re-PUTs an
@@ -413,7 +419,7 @@ export function saveSceneDebounced(boardId: string, scene: WhiteboardScene): voi
         const known = lastPersistedKey.get(p.boardId) ?? (storedScene ? sceneContentKey(storedScene) : undefined);
         if (known === key) return;
         lastPersistedKey.set(p.boardId, key);
-        void persistScene(p.boardId, p.scene);
+        void persistScene(p.boardId, p.scene, p.stillOwner);
     }, WHITEBOARD_SAVE_DEBOUNCE_MS);
 }
 
@@ -428,7 +434,11 @@ export function flushPendingSave(): void {
     if (saveTimer !== null) { clearTimeout(saveTimer); saveTimer = null; }
     const p = pendingSave;
     pendingSave = null;
-    if (p) void persistScene(p.boardId, p.scene);
+    if (!p) return;
+    // A flush after an account switch must drop the pending scene, not write
+    // it into the newly-active account's namespace.
+    if (!p.stillOwner()) return;
+    void persistScene(p.boardId, p.scene, p.stillOwner);
 }
 
 /* ─────────────────────────── boards + library ──────────────────────────── */

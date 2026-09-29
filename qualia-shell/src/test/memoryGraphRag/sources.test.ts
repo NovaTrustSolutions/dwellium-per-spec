@@ -105,3 +105,19 @@ describe('liveSourceIds', () => {
         expect(liveSourceIds(null).has('synthesis:s-del')).toBe(false);
     });
 });
+
+describe('builders never leave a per-user holder pointed at another account (plan 070 P5 review)', () => {
+    it('reading as another uid returns that user\'s data and restores every holder', () => {
+        synthesisUserIdHolder.current = 'lisa';
+        captureSynthesis({ id: 'lisa-1', query: 'q', result: 'r', layer: 1, parentId: null }, NOW);
+        copawUserIdHolder.current = 'lisa';
+        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', NOW);
+
+        const holders = [synthesisUserIdHolder, copawUserIdHolder, wikiUserIdHolder, foundryUserIdHolder, tagStoreUserIdHolder];
+        holders.forEach((h) => { h.current = 'andy'; }); // the signed-in user
+        const ids = liveSourceIds('lisa');
+        expect(ids.has('synthesis:lisa-1')).toBe(true);
+        expect([...ids].some((id) => id.startsWith('memory:'))).toBe(true);
+        expect(holders.map((h) => h.current)).toEqual(['andy', 'andy', 'andy', 'andy', 'andy']);
+    });
+});

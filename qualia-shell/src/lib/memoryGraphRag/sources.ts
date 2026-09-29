@@ -14,12 +14,27 @@ import { wikiStore, wikiUserIdHolder } from '../../components/Wiki/wikiStore';
 import { copawStore, copawUserIdHolder } from '../../components/Hive/copawStore';
 import type { SourceDocument } from './types';
 
+type Holder = { current: string | null };
+
+/**
+ * Read per-user stores AS `uid` without leaving their holders pointed at it.
+ * The builders used to assign `holder.current = uid` and never restore it; any
+ * caller passing a different uid than the signed-in one (e.g. a background job
+ * that outlived an account switch) would leave the holder — shared with the
+ * store's own writes — on the wrong account (plan 070 P5 review). The read is
+ * synchronous, so no other code can observe the temporary value.
+ */
+function readAs<T>(holders: Holder[], uid: string | null, read: () => T): T {
+    const prev = holders.map((h) => h.current);
+    holders.forEach((h) => { h.current = uid; });
+    try { return read(); } finally { holders.forEach((h, i) => { h.current = prev[i]; }); }
+}
+
 export function tagDocuments(uid: string | null): SourceDocument[] {
-    tagStoreUserIdHolder.current = uid;
-    return getTaggedItems().map((it) => ({
-        sourceId: `tag:${it.id}`, sourceKind: 'tag', title: it.title,
+    return readAs([tagStoreUserIdHolder], uid, () => getTaggedItems().map((it) => ({
+        sourceId: `tag:${it.id}`, sourceKind: 'tag' as const, title: it.title,
         text: `${it.title}. Tags: ${it.tags.join(', ')}. Source: ${it.source}.`,
-    }));
+    })));
 }
 
 export function scribeDocuments(): SourceDocument[] {
@@ -31,9 +46,7 @@ export function scribeDocuments(): SourceDocument[] {
 
 /** Foundry intake items + captured Syntheses (per-user local stores). */
 export function captureDocuments(uid: string | null): SourceDocument[] {
-    foundryUserIdHolder.current = uid;
-    synthesisUserIdHolder.current = uid;
-    return [
+    return readAs([foundryUserIdHolder, synthesisUserIdHolder], uid, () => [
         ...foundryStore.getSnapshot().map((it) => ({
             sourceId: `foundry:${it.id}`, sourceKind: 'capture' as const,
             title: (it.rawContent || '').slice(0, 60) || 'Capture', text: it.rawContent || '',
@@ -42,15 +55,15 @@ export function captureDocuments(uid: string | null): SourceDocument[] {
             sourceId: `synthesis:${s.id}`, sourceKind: 'synthesis' as const,
             title: s.query || 'Synthesis', text: `${s.query}\n\n${s.result}`,
         })),
-    ];
+    ]);
 }
 
 /** Wiki pages (plan 070 P5): one document per page — sourceId `wiki:<path>`, kind 'wiki'.
  *  Text = name + overview + concepts + open questions. */
 export function wikiDocuments(uid: string | null): SourceDocument[] {
-    wikiUserIdHolder.current = uid;
+    const pages = readAs([wikiUserIdHolder], uid, () => Object.values(wikiStore.getSnapshot()));
     const out: SourceDocument[] = [];
-    for (const page of Object.values(wikiStore.getSnapshot())) {
+    for (const page of pages) {
         const parts = [`${page.name}.`];
         if (page.overview) parts.push(page.overview);
         if (page.concepts.length) parts.push(`Concepts: ${page.concepts.join(', ')}.`);
@@ -66,8 +79,7 @@ export function wikiDocuments(uid: string | null): SourceDocument[] {
  *  title = fact source. EXCLUDES facts whose source is 'Synthesis Lab' (the captured synthesis is
  *  already a document; including its facts would duplicate it and defeat second-layer self-exclusion). */
 export function memoryDocuments(uid: string | null): SourceDocument[] {
-    copawUserIdHolder.current = uid;
-    return copawStore.getSnapshot()
+    return readAs([copawUserIdHolder], uid, () => copawStore.getSnapshot())
         .filter((fact) => fact.source !== 'Synthesis Lab')
         .map((fact) => ({
             sourceId: `memory:${fact.id}`, sourceKind: 'memory' as const,

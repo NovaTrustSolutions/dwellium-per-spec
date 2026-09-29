@@ -52,22 +52,16 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
         aliases: ['settings', 'control panel']
     },
     'thought-weaver': {
-        summary: 'AI ideation and synthesis workspace for drafting, strategy, and concept building.',
-        keywords: ['thought', 'weaver', 'ideation', 'brainstorm', 'strategy', 'drafting'],
-        contexts: ['writing', 'strategy planning', 'AI ideation'],
-        aliases: ['brainstorm', 'idea studio']
+        summary: 'Capture inbox that sorts thoughts into People / Projects / Ideas / Tasks, with to-dos, daily/weekly reports, and phone capture.',
+        keywords: ['thought', 'weaver', 'capture', 'note', 'jot', 'todo', 'to-do', 'report', 'brain dump'],
+        contexts: ['capture inbox', 'daily/weekly reports', 'to-do tracking'],
+        aliases: ['capture', 'quick note', 'jot', 'thoughts', 'to-do', 'brain dump']
     },
     'memory-graph-rag': {
         summary: 'Cognitive Memory Network — three-layer Graph-RAG memory (Ontology schema · Fact triplets · Passage evidence) with Personalized-PageRank retrieval, conflict adjudication, and source-grounded answers.',
         keywords: ['memory', 'graph', 'rag', 'graphrag', 'cognitive', 'memory network', 'ontology', 'fact', 'passage', 'pagerank', 'knowledge graph', 'retrieval', 'grounded', 'adjudication', 'self-healing'],
         contexts: ['research and verification', 'knowledge organization', 'memory', 'graph retrieval'],
         aliases: ['cognitive memory network', 'memory graph', 'graph rag', 'graphrag', 'memory core']
-    },
-    'inbox-zero': {
-        summary: 'Email triage and approval flow for sorting signal vs noise and routing work.',
-        keywords: ['inbox', 'email', 'triage', 'routing', 'approval', 'messages'],
-        contexts: ['email operations', 'communications triage', 'task intake'],
-        aliases: ['inbox zero', 'mail triage']
     },
     'transcription': {
         summary: 'Transcription and audio analysis workspace for calls, interviews, and recordings.',
@@ -119,9 +113,11 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
     },
     'inbox': {
         summary: 'Inbox view for incoming items and operational triage.',
-        keywords: ['inbox', 'messages', 'intake', 'incoming', 'queue'],
+        // plan 066 phase 3: keywords/aliases merged in from the retired
+        // 'inbox-zero' profile so search recall does not drop.
+        keywords: ['inbox', 'messages', 'intake', 'incoming', 'queue', 'email', 'triage', 'routing', 'approval'],
         contexts: ['task intake', 'communications inbox', 'triage queue'],
-        aliases: ['inbox queue']
+        aliases: ['inbox queue', 'inbox zero', 'mail triage']
     },
     'file-manager': {
         summary: 'File manager for uploads, documents, indexing, and storage operations.',
@@ -164,7 +160,7 @@ const INTENT_BOOSTS: Array<{ label: string; terms: string[]; components: string[
     {
         label: 'email triage',
         terms: ['email', 'inbox', 'mail', 'triage', 'message', 'routing'],
-        components: ['inbox-zero', 'inbox', 'tasks']
+        components: ['inbox', 'tasks']
     },
     {
         label: 'automation workflow',

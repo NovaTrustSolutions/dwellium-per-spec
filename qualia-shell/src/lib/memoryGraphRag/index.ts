@@ -46,7 +46,7 @@ export class MemoryGraphRagEngine {
     private readonly llm: LlmBundle | null;
     private readonly extractionAgent;
     private readonly conflictResolver;
-    private readonly simThreshold: number;
+    readonly simThreshold: number;
 
     constructor(opts: MemoryGraphRagOptions = {}) {
         this.llm = opts.llm ?? null;

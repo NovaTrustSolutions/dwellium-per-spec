@@ -146,12 +146,15 @@ describe('live online rates (morning brief LLM path)', () => {
         p: { memory: [], audit: [], usageCount: 0, tasks: [task('t1', 'Design a marketing banner', 'todo')] },
     };
 
-    it('buildLiveRatePrompt lists each flagged task and asks for JSON', () => {
+    it('buildLiveRatePrompt lists each flagged task by id/category/role and asks for JSON — never the verbatim title (E6 privacy)', () => {
         const items = liveRateRequestItems(evaluateTasks(designState, 100));
         expect(items).toHaveLength(1);
+        expect(items[0]).not.toHaveProperty('title');
         const prompt = buildLiveRatePrompt(items);
-        expect(prompt).toContain('Design a marketing banner');
+        expect(prompt).not.toContain('Design a marketing banner');
         expect(prompt).toContain('t1');
+        expect(prompt).toContain(items[0].category);
+        expect(prompt).toContain(items[0].role);
         expect(prompt).toMatch(/JSON/i);
     });
 

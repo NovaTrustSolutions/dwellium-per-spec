@@ -63,6 +63,13 @@ beforeEach(() => {
 });
 
 describe('deriveResumeContext', () => {
+    it("plan 066: a restored window or tab under the retired 'inbox-zero' id reads as Inbox Zero", () => {
+        seedSession({ classic: [win({ component: 'inbox-zero', title: 'Inbox Zero (deprecated)', zIndex: 4 })] });
+        expect(deriveResumeContext()).toEqual({ widgetId: 'inbox', widgetLabel: 'Inbox Zero' });
+        seedSession({ halocron: { tabs: ['inbox-zero'], active: 'inbox-zero' } });
+        expect(deriveResumeContext()).toEqual({ widgetId: 'inbox', widgetLabel: 'Inbox Zero' });
+    });
+
     it('is null when nothing is restored (fresh account / default stack)', () => {
         expect(deriveResumeContext()).toBeNull();
         seedSession(); // empty snapshot: no windows, no tabs

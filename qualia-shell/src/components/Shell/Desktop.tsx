@@ -13,7 +13,7 @@ import React, { useState, useRef, useEffect, Suspense, useCallback, useMemo } fr
 import Window from '../Window/Window';
 
 // Widget Registry — single source of truth for all widget components
-import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
+import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY, resolveWidgetId } from '../../registry/widgetRegistry';
 import { defaultStackKey, readDefaultStackFlag, DEFAULT_STACK_DONE, getStartupStack, shouldOpenDefaultStack } from './defaultStack';
 import { clearSessionForFreshStart, readSessionSnapshot } from '../../lib/sessionRestoreStore';
 import { fireWelcomeBackToast } from '../../lib/welcomeBack';
@@ -1034,7 +1034,10 @@ export default function Desktop() {
             const wasMax = (id: string) => windows.find(w => w.id === id)?.maximized ?? false;
 
             const openedIds: string[] = [];
-            for (const component of wids) {
+            // plan 066 phase 3: a Space can carry a retired widget id — resolve
+            // once so the existing-window match and openWindow both agree.
+            for (const rawComponent of wids) {
+                const component = resolveWidgetId(rawComponent);
                 const existing = windows.find(w => w.component === component);
                 if (existing) {
                     if (existing.minimized) restoreWindow(existing.id);
@@ -1122,7 +1125,8 @@ export default function Desktop() {
 
         const onPlace = (ev: Event) => {
             const d = (ev as CustomEvent).detail || {};
-            const component: string = d.widgetId;
+            // plan 066 phase 3: resolve a retired widget id once, up front.
+            const component: string = d.widgetId ? resolveWidgetId(d.widgetId) : d.widgetId;
             const regionId: string = d.regionId;
             const layout = d.layout as RegionLayout;
             if (!component || !regionId || !layout) return;

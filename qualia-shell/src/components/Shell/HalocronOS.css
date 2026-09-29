@@ -588,7 +588,7 @@ button.hos-glance__card:hover { border-color: color-mix(in srgb, var(--accent) 5
 }
 
 .hos-memory-sidebar .ch-item-sub {
-    font-size: 7px;
+    font-size: 10px;
 }
 
 .hos-memory-sidebar .ch-visual-space {
@@ -603,7 +603,7 @@ button.hos-glance__card:hover { border-color: color-mix(in srgb, var(--accent) 5
 }
 
 .hos-memory-sidebar .ch-details-panel {
-    background: rgba(15, 11, 8, 0.45);
+    background: var(--bg-surface, rgba(15, 11, 8, 0.45));
     border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
     max-height: 420px;
 }

@@ -1,7 +1,7 @@
 /**
  * installApiAuthFetch — make every bare `fetch('/api/…')` carry the session.
  *
- * Why: dozens of widgets (InboxWidget, TaskMenu, FileManager, DocViewer,
+ * Why: dozens of widgets (InboxZero, TaskMenu, FileManager, DocViewer,
  * CommandPalette, Notepad, …) call `fetch('/api/inbox')` etc. with no
  * Authorization header. The backend now requires a session on those routes
  * (2026-08-15: /api/files, /api/inbox, /api/tasks, /api/dwellium/tenant/admin

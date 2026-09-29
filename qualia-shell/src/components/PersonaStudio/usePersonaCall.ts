@@ -572,6 +572,10 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
             systemPrompt,
             maxTokens: 300,
             temperature: 0.5 + cfg.expressivity * 0.3,
+            // Plan 068 (A1): AI Spend "by feature" — covers both the streaming
+            // path (personaStream.ts records it) and the non-streaming fallback
+            // below (callLlm records it); never both for the same turn.
+            source: 'persona',
         };
 
         setThinking(true);

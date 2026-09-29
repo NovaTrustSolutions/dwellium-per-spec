@@ -9,6 +9,7 @@ vi.mock('../../lib/llmClient', () => ({ callLlm: (...a: unknown[]) => callLlm(..
 
 import { getCmn, resetCmnForTests } from '../../lib/memoryGraphRag/shared';
 import { recallContext, recallPassages, formatRecall, withRecall, RECALL_HEADING } from '../../lib/memoryGraphRag/recall';
+import { captureSynthesis, synthesisStore, synthesisUserIdHolder } from '../../components/Synthesis/synthesisStore';
 import type { SourceDocument } from '../../lib/memoryGraphRag';
 
 const DOCS: SourceDocument[] = [
@@ -16,7 +17,27 @@ const DOCS: SourceDocument[] = [
     { sourceId: 'note:2', sourceKind: 'upload', title: 'Lease', text: 'The Maple Street lease renews in March. The tenant pays the owner monthly.' },
 ];
 
-beforeEach(() => { localStorage.clear(); resetCmnForTests(); callLlm.mockReset(); });
+/**
+ * Docs for the liveness-filter tests: a deleted synthesis, a live one, and an
+ * upload (never filtered). `gone`'s text over-emphasizes the query terms so it
+ * out-ranks `upload` on a 2-wide fetch — that's deliberate: it's what makes the
+ * over-fetch-then-trim behavior load-bearing (without it, a plain `limit`-wide
+ * fetch would happen to already exclude `gone` and the mutation would go
+ * undetected).
+ */
+const LIVENESS_DOCS: SourceDocument[] = [
+    { sourceId: 'synthesis:gone', sourceKind: 'synthesis', title: 'Gone', text: 'Deleted Maple Street boiler service plan. Maple Street boiler service plan. Maple Street boiler service plan.' },
+    { sourceId: 'synthesis:here', sourceKind: 'synthesis', title: 'Here', text: 'Live synthesis about the Maple Street boiler.' },
+    { sourceId: 'note:upload', sourceKind: 'upload', title: 'Upload', text: 'Uploaded note about the boiler.' },
+];
+
+beforeEach(() => {
+    localStorage.clear();
+    resetCmnForTests();
+    synthesisStore.reset();
+    synthesisUserIdHolder.current = null;
+    callLlm.mockReset();
+});
 
 describe('recallContext', () => {
     it('returns an empty string when the network is empty', async () => {
@@ -79,6 +100,56 @@ describe('recallPassages', () => {
         // so both DOCS passages can come back — the `limit` truncation must still apply.
         const hits = await recallPassages('andy', 'Maple Street', { limit: 1, excludeSourceIds: ['note:none'] });
         expect(hits.length).toBeLessThanOrEqual(1);
+    });
+});
+
+describe('liveness filtering (plan 070 P5): deleted sources never resurface', () => {
+    async function seedLiveness(uid: string) {
+        synthesisUserIdHolder.current = uid;
+        captureSynthesis({ id: 'here', query: 'Maple Street boiler', result: 'Live synthesis about the Maple Street boiler.', layer: 1, parentId: null });
+        await getCmn(uid).ingest(LIVENESS_DOCS, 'test');
+    }
+
+    it('recallPassages omits the deleted synthesis, keeps the live one and the upload', async () => {
+        await seedLiveness('andy');
+        const hits = await recallPassages('andy', 'Maple Street boiler service plan', { limit: 10 });
+        const ids = hits.map((h) => h.sourceId);
+        expect(ids).not.toContain('synthesis:gone');
+        expect(ids).toContain('synthesis:here');
+        expect(ids).toContain('note:upload');
+    });
+
+    it('recallContext omits the deleted synthesis, keeps the live one and the upload', async () => {
+        await seedLiveness('andy');
+        const block = await recallContext('andy', 'Maple Street boiler service plan', { limit: 10, maxChars: 10_000 });
+        expect(block).not.toContain('Deleted Maple Street');
+        expect(block).toContain('Live synthesis');
+        expect(block).toContain('Uploaded note');
+    });
+
+    it('honours limit after filtering out a deleted source, even when it out-ranked a live one (over-fetch works)', async () => {
+        // `gone` out-ranks `upload` on a bare 2-wide fetch (see LIVENESS_DOCS comment), so
+        // a `limit: 2` ask can only surface `upload` if the engine over-fetches past `gone`.
+        await seedLiveness('andy');
+        const hits = await recallPassages('andy', 'Maple Street boiler service plan', { limit: 2 });
+        const ids = hits.map((h) => h.sourceId);
+        expect(hits.length).toBeLessThanOrEqual(2);
+        expect(ids).toContain('note:upload');
+    });
+
+    it('fails closed: if liveSourceIds throws, liveness-kind passages are hidden but uploads are kept', async () => {
+        const sources = await import('../../lib/memoryGraphRag/sources');
+        const spy = vi.spyOn(sources, 'liveSourceIds').mockImplementation(() => { throw new Error('boom'); });
+        try {
+            await seedLiveness('andy');
+            const hits = await recallPassages('andy', 'Maple Street boiler service plan', { limit: 10 });
+            const ids = hits.map((h) => h.sourceId);
+            expect(ids).not.toContain('synthesis:gone');
+            expect(ids).not.toContain('synthesis:here'); // fail closed: liveness kinds hidden entirely
+            expect(ids).toContain('note:upload');
+        } finally {
+            spy.mockRestore();
+        }
     });
 });
 

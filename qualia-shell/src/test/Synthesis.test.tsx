@@ -357,6 +357,27 @@ describe('Synthesis Lab — retrieval, citations, cancel (plan 070 phase 2)', ()
         expect(snap[0].sources).toEqual([{ sourceId: 'tag:1', sourceKind: 'tag', title: 'Keep Me' }]);
     });
 
+    it('(a2) preview shows friendly kind labels for wiki/memory sources; a wiki citation opens the wiki widget — MUTATION-CHECK', async () => {
+        recallPassagesMock.mockResolvedValue([
+            passage({ passageId: 'pw', sourceId: 'wiki:notes/x', sourceKind: 'wiki', title: 'Wiki Page' }),
+            passage({ passageId: 'pm', sourceId: 'memory:1', sourceKind: 'memory', title: 'A Fact' }),
+        ]);
+        callLlmMock.mockResolvedValue({ text: 'See [1] for the wiki page.' });
+        render(<Synthesis />);
+        await typeQueryAndWaitForPreview('what do the sources say?');
+        await screen.findByText('Sources (2)');
+        expect(screen.getByText(/Wiki Page.*wiki page/)).toBeInTheDocument();
+        expect(screen.getByText(/A Fact.*memory/)).toBeInTheDocument();
+
+        clickSynthesize();
+        await screen.findByRole('button', { name: /Open source 1: Wiki Page/ });
+
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        fireEvent.click(screen.getByRole('button', { name: /Open source 1: Wiki Page/ }));
+        expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'qualia-open-widget', detail: 'wiki' }));
+        dispatchSpy.mockRestore();
+    });
+
     it('(b) no matching sources shows the general-knowledge note and sends the raw question as the prompt', async () => {
         recallPassagesMock.mockResolvedValue([]);
         render(<Synthesis />);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildGroundedPrompt, sourceWidget, DEFAULT_SOURCE_CHARS } from '../components/Synthesis/synthesisContext';
+import { buildGroundedPrompt, sourceWidget, sourceKindLabel, DEFAULT_SOURCE_CHARS } from '../components/Synthesis/synthesisContext';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 import type { RecalledPassage } from '../lib/memoryGraphRag/recall';
 
@@ -84,12 +84,38 @@ describe('buildGroundedPrompt', () => {
     });
 });
 
+describe('sourceKindLabel', () => {
+    it('maps known kinds to friendly labels', () => {
+        expect(sourceKindLabel('tag')).toBe('tag');
+        expect(sourceKindLabel('scribe')).toBe('Scribe file');
+        expect(sourceKindLabel('capture')).toBe('Foundry');
+        expect(sourceKindLabel('synthesis')).toBe('captured synthesis');
+        expect(sourceKindLabel('wiki')).toBe('wiki page');
+        expect(sourceKindLabel('memory')).toBe('memory');
+    });
+
+    it('falls back to the raw kind for unknown values (MUTATION-CHECK)', () => {
+        expect(sourceKindLabel('workspace')).toBe('workspace');
+        expect(sourceKindLabel('nonsense')).toBe('nonsense');
+    });
+});
+
+describe('buildGroundedPrompt source labels', () => {
+    it('prints the friendly label, not the raw kind, after each source title', () => {
+        const { prompt } = buildGroundedPrompt('Q', [passage({ sourceKind: 'wiki', title: 'W', text: 'body' })]);
+        expect(prompt).toContain('[1] W (wiki page)');
+        expect(prompt).not.toContain('(wiki)\n');
+    });
+});
+
 describe('sourceWidget', () => {
     it('maps known kinds to widgets that exist in WIDGET_REGISTRY', () => {
         const cases: [string, string][] = [
             ['synthesis', 'synthesis'],
             ['scribe', 'scribe'],
             ['capture', 'foundry'],
+            ['wiki', 'wiki'],
+            ['memory', 'hive'],
         ];
         for (const [kind, widget] of cases) {
             expect(sourceWidget(kind)).toBe(widget);

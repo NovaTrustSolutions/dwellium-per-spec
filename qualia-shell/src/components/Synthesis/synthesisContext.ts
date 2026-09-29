@@ -17,11 +17,25 @@ function neutraliseFences(s: string): string {
     return s.replace(/<<<\s*sources/gi, '«SOURCES»»»').replace(/sources\s*>>>/gi, 'SOURCES»»»');
 }
 
+const SOURCE_KIND_LABELS: Partial<Record<SourceKind, string>> = {
+    tag: 'tag',
+    scribe: 'Scribe file',
+    capture: 'Foundry',
+    synthesis: 'captured synthesis',
+    wiki: 'wiki page',
+    memory: 'memory',
+};
+
+/** Friendly, human-facing name for a source kind (falls back to the raw kind). CONTRACT (P0). */
+export function sourceKindLabel(kind: string): string {
+    return SOURCE_KIND_LABELS[kind as SourceKind] ?? kind;
+}
+
 function formatSource(rp: RecalledPassage, index: number): string {
     // Titles are collapsed like text: a newline in a title could forge an extra `[n]` source line.
     const title = neutraliseFences(rp.title?.replace(/\s+/g, ' ').trim() || '(untitled)');
     const text = neutraliseFences(rp.text.replace(/\s+/g, ' ').trim());
-    return `[${index + 1}] ${title} (${rp.sourceKind})\n${text}`;
+    return `[${index + 1}] ${title} (${sourceKindLabel(rp.sourceKind)})\n${text}`;
 }
 
 /**
@@ -68,6 +82,8 @@ const SOURCE_WIDGET_MAP: Partial<Record<SourceKind, string>> = {
     scribe: 'scribe',
     capture: 'foundry',
     tag: 'tag-file',
+    wiki: 'wiki',
+    memory: 'hive',
 };
 
 /** Widget id that opens a source of this kind (for `[n]` clicks), or null when none fits. CONTRACT (P0). */

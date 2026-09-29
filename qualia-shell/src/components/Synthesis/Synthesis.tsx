@@ -32,7 +32,7 @@ import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { recallPassages, type RecalledPassage } from '../../lib/memoryGraphRag/recall';
-import { buildGroundedPrompt, sourceWidget } from './synthesisContext';
+import { buildGroundedPrompt, sourceWidget, sourceKindLabel } from './synthesisContext';
 import { renderAnswerHtml } from './synthesisRender';
 import {
     synthesisStore, captureSynthesis, removeSynthesis, clearSyntheses, MAX_SYNTHESES,
@@ -340,7 +340,7 @@ export default function Synthesis() {
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={onQueryKeyDown}
-                            placeholder="Ask a question — matching saved notes, tags and captures are used as sources…"
+                            placeholder="Ask a question — your notes, tags, captures, wiki pages and memory are used as sources…"
                             aria-label="Question to synthesize"
                             rows={3}
                         />
@@ -358,7 +358,7 @@ export default function Synthesis() {
                                             checked={checked[rp.passageId] !== false}
                                             onChange={(e) => setChecked((c) => ({ ...c, [rp.passageId]: e.target.checked }))}
                                         />
-                                        {(rp.title.trim() || '(untitled)')} · {rp.sourceKind}
+                                        {(rp.title.trim() || '(untitled)')} · {sourceKindLabel(rp.sourceKind)}
                                     </label>
                                 ))}
                             </details>

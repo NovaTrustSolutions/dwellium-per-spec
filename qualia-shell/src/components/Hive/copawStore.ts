@@ -26,6 +26,7 @@ import { withSync } from '../../lib/oneSaveStore';
 import { copawUserIdHolder } from '../../lib/perUserIdentity';
 import { isSensitiveFact, ZERO_WIDTH } from '../../lib/sensitiveText';
 
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
 export { copawUserIdHolder, isSensitiveFact };
 
 export interface MemoryFact {

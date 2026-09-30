@@ -28,8 +28,9 @@ import { collectMoveTargets, type MoveTarget } from '../FileExplorer/moveTargets
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { activeThreadStore, activeThreadUserIdHolder } from '../Workspace/activeThreadStore';
 import { fetchSourceExcerpts, buildCompilePrompt, WIKI_SYSTEM_PROMPT } from './wikiSources';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import {
-    wikiStore, wikiUserIdHolder, getWikiPage, setWikiPage, isWikiPageStale, attachWikiCrossTabSync,
+    wikiStore, getWikiPage, setWikiPage, isWikiPageStale, attachWikiCrossTabSync,
     parseWikiResponse, outlinePage, type WikiMap, type WikiPage,
 } from './wikiStore';
 import './Wiki.css';
@@ -63,7 +64,7 @@ export default function Wiki() {
     const ai = useAIAvailability();
     const userCtx = useContext(UserContext);
     const uid = userCtx?.user?.id ?? null;
-    wikiUserIdHolder.current = uid;
+    usePerUserIdentity();
     activeThreadUserIdHolder.current = uid;
 
     const wikiMap: WikiMap = useSyncExternalStore(wikiStore.subscribe, wikiStore.getSnapshot, wikiStore.getServerSnapshot);
@@ -146,7 +147,10 @@ export default function Wiki() {
         const tp = activeThread?.path ?? null;
         const initial = tp && nodes.some((n) => n.path === tp) ? tp : nodes[0]?.path ?? null;
         lastAppliedThreadRef.current = tp;
-        if (initial) selectPath(initial);
+        // Functional update, not selectPath(initial): this effect runs just AFTER the
+        // tree paints, so a click on a node can land first — `prev ?? initial` keeps
+        // the user's pick instead of snapping back to the first node.
+        if (initial) setSelectedPath((prev) => prev ?? initial);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodes, selectedPath]);
 

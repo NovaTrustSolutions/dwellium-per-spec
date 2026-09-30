@@ -486,6 +486,21 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Fix:** root `.gitattributes` → `Docs/code.md merge=union` (git's built-in union driver keeps both sides' lines). `git check-attr merge Docs/code.md` → `union`. Proven in a throwaway repo: the same two-branch append conflicts without the rule and merges cleanly with it (0 markers).
 - **Prevention / caveats:** keep entries append-only — union keeps both copies if two branches edit the SAME existing line, so fix an old entry in its own small PR. A union merge doesn't insert a blank line between the two new entries; tidy if needed. Local `git merge` honours the attribute; whether GitHub's PR mergeability check does is NOT verified yet — confirm on the next collision.
 
+## 2026-09-26 — Wiki deep-link test flaked under the full suite
+
+- **Error:** `Wiki.test.tsx` "selects the page named by dwellium:wiki-open-page" failed ~1 in 8 under parallel load (passed alone).
+- **Root cause:** not a lost event (the listener attaches on the first commit, before the awaited button appears): `window.dispatchEvent` runs outside React's event system, so the resulting state update was only scheduled, and under CPU load the flush outlasted `waitFor`'s 1 s default.
+- **Fix:** dispatch inside `await act(async () => …)` and assert directly. 20/20 runs green under load; breaking the listener still fails the test.
+- **Prevention:** wrap non-React `dispatchEvent` calls that should update a component in `act`, rather than widening timeouts.
+- **Second Wiki flake, a real product race:** "moves focus to the page heading when the user picks a node" failed under load with **Acme** selected after a click on **Beta**. The initial-selection effect (`Wiki.tsx`, runs after the tree paints) called `selectPath(nodes[0])` from a stale "nothing selected" view, so a click landing between paint and that effect was overwritten. Fix: `setSelectedPath((prev) => prev ?? initial)`. Under two concurrent full-suite loads: 1/20 failures before, 0/20 after (RTL's `act` flushes the effect before any click, so no deterministic test). Rule: an "initial default" effect must use a functional update that never replaces a value the user set.
+
+## 2026-09-26 — Five more per-user holders were set only by their widget (copaw memory leaked across accounts)
+
+- **Error:** after an account switch, `unifiedMemory.recall()` / `memoryCounts()` — reached by the `skill-memory-recall` agent skill and the "recall memory" command with no widget open — read the PREVIOUS account's CoPaw memory until Hive or Synthesis rendered.
+- **Root cause:** `dumpUserIdHolder`, `synthesisUserIdHolder`, `wikiUserIdHolder`, `foundryUserIdHolder`, `copawUserIdHolder` lived in their store modules and were written only during their widgets' render (DumpMode, Synthesis, Wiki, Foundry, Hive, ContentSearch) — the pre-plan-067 pattern.
+- **Fix:** the five holders are defined in `perUserIdentity.ts` and in `ALL_HOLDERS` (re-exported from the stores so importers are unchanged); the widgets call `usePerUserIdentity()` before their first store read. Test: `holderIsolation.test.ts` — a non-widget `unifiedMemory` read after `setPerUserIdentity('user-b')` returns B's empty data (mutation: dropping copaw from ALL_HOLDERS fails it).
+- **Prevention:** a holder that any non-widget code reads belongs in `ALL_HOLDERS`. **Not done yet:** `grep -rn "UserIdHolder: { current" src/components src/lib` still lists 24 widget-render-only holders (Workspace, TaskBoard, OpenJarvis, Honcho/Hermes, Scribe layout/theme/ingestion/idocs, tags, tab groups, agent teams, …); each needs the same non-widget-reader check before it is moved.
+
 ## 2026-09-25 — Plan 069 phase 1: Search widget missed multi-word matches, blank snippets, false copy
 
 - **Error:** the Search widget (`content-search`) found nothing for "security deposit" when the words were apart; snippets came back as just "…" for text containing `İ`; it showed "50 results" when 200 matched; rows stayed near-black after hover in light themes; windows opened from it were titled with the raw widget id; its copy claimed semantic/file-content search and "notes" that it never searched; a failed file-tree fetch was silent.
@@ -543,6 +558,13 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Root cause:** nothing recorded per-agent runs; Synthesis / Builder Agents / Hydra / Stella / Honcho calls carried no `source`; the copaw payload was a bare array with no tombstones.
 - **Fix (branch `feat/071-hive-p3p4`):** `lib/agentActivityStore.ts` records ok / error / snippet at `callLlm` and `llmStream` (and Stella's backend `/chat`) for every call with a `source`; snippet AND error text pass `isSensitiveFact` (provider 401 bodies echo the key); owner captured from the activity holder before the await. Hive cards show last run, an error badge, the preview and 7-day calls/cost from `bySource`; unknown-price calls are disclosed, not shown as $0. CoPaw stores v2 `{facts, deleted, clearedAt}` with a One Save `merge` (union; deletes and clears win; newest 500), readers keep `MemoryFact[]` via a memoized facade; id-less legacy facts get a deterministic id. Holder moved into `perUserIdentity`. Tests: `agentActivityStore.test.ts`, `copawSync.test.ts`, `Hive.test.tsx` — mutation-checked.
 - **Prevention / known limit:** a tab still running pre-071 code writes a bare array and overwrites the server's tombstones; a device that never saw a delete could then show that fact again. Needs a server-side minimum client version to close fully. Filter every stored preview of model output — including error strings — with `isSensitiveFact`.
+
+## 2026-09-25 — Notepad showed two invented notes whenever the notes service failed
+
+- **Error:** when `/api/files/notes` could not be reached, Notepad listed "Meeting Notes — Q1 Review" and "ARA Personality Spec" as if they were the user's notes; a 500 / `success:false` response left an empty list with no explanation.
+- **Root cause:** `fetchNotes` caught every failure with a hard-coded two-note array (and never checked `res.ok`); combined with the wrong `/notes` path (fixed in plan 069, PR #150), every local session showed them.
+- **Fix:** `fetchNotes` sets `notesUnavailable` on a network error, a non-2xx, `success:false` or a non-array body, and clears it on success; the sidebar shows "Notes unavailable — couldn't reach the notes service." with a Retry button. `notepadScribeDrag.test.tsx` now gets its note from a stubbed `/api/files/notes` instead of the demo fallback. Test: `notepadNotesUnavailable.test.tsx` (demo-fallback mutation fails 2 of 3).
+- **Prevention:** a failed fetch renders an honest unavailable state, never plausible sample rows (see the 2026-09-05/06 `MOCK_*` entries); grep a widget's `catch` blocks for `set…([{` literals.
 
 ## 2026-09-29 — AI Spend (plan 068 phase 3): server spend, invoices, Claude Code (frontend + backend)
 

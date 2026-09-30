@@ -4,15 +4,15 @@
  * memory) + file names, ranked, with snippets and click-to-open. Backend-free:
  * this widget itself never calls a search endpoint.
  */
-import { useState, useEffect, useMemo, useRef, useContext, useSyncExternalStore, useId, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, useSyncExternalStore, useId, type KeyboardEvent, type ReactNode } from 'react';
 import { Search, FileText, Brain, Layers, Inbox, BookOpen, Cpu, StickyNote, Mic } from 'lucide-react';
-import { UserContext } from '../../context/UserContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { fetchTree } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
-import { dumpStore, dumpUserIdHolder, type DumpEntry } from '../Scribe/dumpStore';
-import { synthesisStore, synthesisUserIdHolder, type Synthesis } from '../Synthesis/synthesisStore';
-import { wikiStore, wikiUserIdHolder, type WikiMap } from '../Wiki/wikiStore';
-import { foundryStore, foundryUserIdHolder, type FoundryItem } from '../Foundry/foundryStore';
+import { dumpStore, type DumpEntry } from '../Scribe/dumpStore';
+import { synthesisStore, type Synthesis } from '../Synthesis/synthesisStore';
+import { wikiStore, type WikiMap } from '../Wiki/wikiStore';
+import { foundryStore, type FoundryItem } from '../Foundry/foundryStore';
 import { copawStore, type MemoryFact } from '../Hive/copawStore';
 import { readTranscriptLog, type TranscriptLogEntry } from '../../lib/transcriptSearch';
 import { fetchFileNames, searchRemote } from './remoteSearch';
@@ -49,10 +49,7 @@ function Highlighted({ text, query }: { text: string; query: string }): ReactNod
 }
 
 export default function ContentSearch() {
-    const userCtx = useContext(UserContext);
-    const uid = userCtx?.user?.id ?? null;
-    dumpUserIdHolder.current = uid; synthesisUserIdHolder.current = uid; wikiUserIdHolder.current = uid;
-    foundryUserIdHolder.current = uid; // copaw holder: set by usePerUserIdentity (plan 071)
+    usePerUserIdentity();
 
     const dumps: DumpEntry[] = useSyncExternalStore(dumpStore.subscribe, dumpStore.getSnapshot, dumpStore.getServerSnapshot);
     const syntheses: Synthesis[] = useSyncExternalStore(synthesisStore.subscribe, synthesisStore.getSnapshot, synthesisStore.getServerSnapshot);

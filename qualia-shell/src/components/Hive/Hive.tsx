@@ -9,6 +9,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { Brain, Bot, Cpu, MessageSquare, Network, Layers, Sparkles, Play, Trash2, Eye, X } from 'lucide-react';
 import { useWindows } from '../../context/WindowContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
 import { copawStore, clearMemory, deleteFact, isSensitiveFact, type MemoryFact } from './copawStore';
@@ -106,6 +107,7 @@ export default function Hive() {
     const { integrations } = useIntegrations();
     const provider = integrations.llm.active || 'none';
     const llmReady = hasActiveLlm(integrations.llm);
+    usePerUserIdentity();
     const memory: MemoryFact[] = useSyncExternalStore(copawStore.subscribe, copawStore.getSnapshot, copawStore.getServerSnapshot);
     const activityMap = useAgentActivity();
     const usageLedger = useLlmUsage();

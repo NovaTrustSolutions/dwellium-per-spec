@@ -657,3 +657,8 @@ export function useLlmUsage(): UsageLedger {
     const extVersion = useSyncExternalStore(subscribeExternal, () => externalVersion, () => 0);
     return useMemo(() => aggregateCached(stored), [stored, extVersion]);
 }
+
+/** Non-hook read of the current aggregate ledger (background runners, non-React code). */
+export function currentUsageLedger(): UsageLedger {
+    return aggregateCached(llmUsageStore.getSnapshot());
+}

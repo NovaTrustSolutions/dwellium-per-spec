@@ -34,14 +34,35 @@ export interface GoalNote {
     text: string;
 }
 
+export interface GoalAnswer {
+    ts: number;
+    text: string;
+}
+
 export interface Goal {
     id: string;
     title: string;
     status: 'active' | 'done' | 'paused';
     plan?: GoalPlan;
     notes: GoalNote[];
+    /** Answers given to the planner's clarifying questions (refine history), oldest first. */
+    answers?: GoalAnswer[];
     createdAt: number;
     updatedAt: number;
+    /**
+     * Tombstone (plan 075 D5): set when the goal is deleted. The entry stays in
+     * the synced array — status 'done', empty title — so a merge with a stale
+     * device never resurrects it; every reader skips it (UI via liveGoals, the
+     * rest because it is 'done').
+     */
+    deletedAt?: number;
+}
+
+export interface UpdatePlanOptions {
+    /** Carry `done` forward onto actions whose normalized text is unchanged. */
+    keepDone?: boolean;
+    /** Refine answer to append to `answers`. */
+    answer?: string;
 }
 
 export { goalsUserIdHolder };
@@ -93,7 +114,8 @@ export function createGoal(title: string, plan?: GoalPlan): Goal {
     return goal;
 }
 
-export function updateGoalPlan(id: string, plan: GoalPlan): void {
+// P0 contract stub (plan 075): options accepted, implemented in phase 2 W1.
+export function updateGoalPlan(id: string, plan: GoalPlan, _opts?: UpdatePlanOptions): void {
     persist(goalsStore.getSnapshot().map(g => (g.id === id ? { ...g, plan, updatedAt: Date.now() } : g)));
 }
 
@@ -150,6 +172,19 @@ export function findGoalCandidates(fragment: string): Goal[] {
     if (!f) return [];
     const goals = goalsStore.getSnapshot().filter(g => g.title.toLowerCase().includes(f));
     return [...goals.filter(g => g.status !== 'done'), ...goals.filter(g => g.status === 'done')];
+}
+
+/** Goals the user can see: tombstones removed. */
+export function liveGoals(goals: Goal[]): Goal[] {
+    return goals.filter(g => !g.deletedAt);
+}
+
+/**
+ * One Save merge (plan 075 D5): union by id, newer updatedAt wins, tombstones
+ * kept. P0 contract stub — returns remote (today's behaviour) until W1.
+ */
+export function mergeGoals(_local: Goal[], remote: Goal[]): Goal[] {
+    return remote;
 }
 
 /** Progress 0..1 across both action lists (no plan → 0). */

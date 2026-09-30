@@ -174,6 +174,7 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Fix:** `classifyBackendFailure(status)` → `missing-route` (404) / `unauthorized` (401, 403) / `rate-limited` (429) / `unavailable` (5xx) / `network`; the card renders `failureNote(reason)` and a Retry button for everything except a missing route. Tests: `src/test/googleAccounts.test.ts` (each status → reason + wording; only the 404 note mentions the patch).
 - **The part of the doc that was NOT implemented — §6, reading mail from every connected account:** implemented on backend `feat/gmail-multi-account-fetch` → `backend/ship` (28b47ed): `getGoogleAuthForAccount()` builds an OAuth2 client per linked account (same refresh/`needs_reauth` handling as the picked-account path), `fetchUnreadBatchAllAccounts()` reads every enabled account that granted Gmail and tags each message `sourceAccount` (the field InboxZero already renders), one failing mailbox is skipped with a redacted log line instead of hiding the rest, and the fetcher loop, `/api/gmail/fetch`, the automation engine and task routes all use it. With no linked account the legacy single-account path runs unchanged. Test: `tests/gmailMultiAccountFetch.test.ts`.
 - **Prevention:** a UI note that names a fix must be tied to the one status that proves it (404 for a missing route); other statuses get their own wording and a retry. Grep every caller when changing a fetch path (`fetchUnreadBatch` had four).
+
 ## 2026-09-10 — Cockpit: clicking an already-open widget left its tab in the background
 
 - **Error:** in the Cockpit, clicking a widget that is already open (sidebar row, ⌘K result) does nothing visible; the tab stays where it was.
@@ -501,6 +502,7 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Error 4 (harness):** recommendation rows made old CSS visible for the first time (badge, cost line, action buttons in `--text-secondary`) → 16 new latte contrast failures. The old advisor never flagged anything, so those rules had never rendered. **Fix:** readable secondary/primary mix; latte count now 31 vs main's 32.
 - **Prevention:** when a change makes dormant UI render (empty → populated), re-run the contrast diff — dormant CSS was never checked.
 - **Error 5 (harness screenshot, orchestrator):** "Call the electrician" read "AI automation … AI $0.03" — the phase's own `\bcall\b → scheduling` rule made a phone call look AI-doable, and every row offered "Delegate to Hermes" even when the cheapest option was a person. **Fix:** a `phone` category (not AI-capable, VA rate) and Delegate only when `aiCostUsd != null`. Read the rendered advice as a user would; a green table test can still encode a false claim.
+
 ## 2026-09-27 — disclosureTiers labs test: one page-wide `getAllByRole(…, { name })` was 78 % of its runtime
 
 - **Error:** `disclosureTiers.test.tsx > every labs-tier widget is absent from the groups even when un-hidden; gallery offers Open` took 1.2–3.6 s under full-suite load (10 saved runs; 3,614 ms worst) against the 5 s budget — a timeout candidate named in the Leasing sweep entry above. Alone it took ~654 ms.

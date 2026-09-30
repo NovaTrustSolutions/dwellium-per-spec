@@ -1,4 +1,9 @@
 /**
+ * STALE COPY (plan 076, 2026-09-30) — kept only because older docs link here. The real route is
+ * the backend repo's src/routes/fileExplorerRoutes.ts on backend/ship (409s, soft delete, trash,
+ * upload/bytes). Do not copy code from this file.
+ */
+/**
  * File Explorer Routes — 3-tier filesystem walker for the new FileExplorer widget.
  *
  * Disk layout (per Ilya 2026-05-28 design lock):

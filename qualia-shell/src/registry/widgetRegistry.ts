@@ -527,8 +527,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     // Cycle 11 FileManager merge (per Ilya design lock #2): the legacy FileManager
     // widget is aliased to FileExplorer so old dock items / saved layouts referencing
     // 'file-manager' open the new unified widget. Both registry entries point at the
-    // same component; the FileManager.tsx source remains in the tree for now (will be
-    // removed in a follow-up once we're sure no other code imports it).
+    // same component. The old FileManager source was removed in plan 076 P4 (no importers).
     'file-manager': {
         id: 'file-manager',
         label: 'File Manager',

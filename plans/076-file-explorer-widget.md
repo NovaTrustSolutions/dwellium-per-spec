@@ -188,3 +188,67 @@ which refuses dot-segments by design).
   file → open preview, a folder → expand/collapse; Enter on a selected file → open; context menu
   "Open" for files; rename stays on F2/menu. Close the preview when its file leaves the tree on
   refresh; clear preview + close trash on account switch; refresh after restore.
+
+## 7. Phase 4 contract (written 2026-09-30, before W1)
+
+Branches: frontend `feat/076-file-explorer-p4` (stacked on p3), backend `fix/076-p4-upload` (stacked on
+`fix/076-p3-trash`). Harness `~/dwellium-harness/076-file-explorer` now points `@after` at the p4 worktree.
+
+### Backend (`fileExplorerRoutes.ts`)
+- `POST /upload` multipart (multer memoryStorage): text field `dest` ('' = root, shared validator
+  when non-empty), file field `files` (max 20 files, each ≤ 25 MiB). Decode `originalname` from latin1 to
+  utf8; use its basename only. Per file: validate `dest/name` with the shared validator, write with
+  flag `'wx'` (never overwrite). → 200 `{ success: true, results: [{ name, path, status: 'ok' |
+  'exists' | 'invalid' | 'error', error? }] }`. Multer `LIMIT_FILE_SIZE` → 413 `TOO_LARGE`,
+  `LIMIT_FILE_COUNT`/`LIMIT_UNEXPECTED_FILE` → 400. Missing dest folder → created (like touch).
+- `GET /bytes?path=` → streams the raw file (regular files only, same validator + symlink confinement,
+  404/400 as `/read`). Headers: `X-Content-Type-Options: nosniff`,
+  `Content-Security-Policy: default-src 'none'; sandbox`, `Content-Type` from a small extension map
+  (png/jpg/jpeg/gif/webp/pdf/txt/md/json/csv, else `application/octet-stream`). `Content-Disposition:
+  inline` ONLY for png/jpg/jpeg/gif/webp; everything else (incl. svg/html) `attachment` with
+  `filename*=UTF-8''<encoded name>`. `?download=1` forces attachment.
+
+### Frontend API + events (P0, committed with this section)
+- `uploadFiles(files, dest)` (FormData, no JSON content-type), `fetchBytes(path): Promise<Blob>`,
+  `downloadFile(path)` (authed fetch → object URL → `<a download>`; `<a href>` alone can't send the
+  Bearer token).
+- `FILE_TREE_CHANGED = 'dwellium:file-tree-changed'` window event, dispatched by the API module after
+  every successful mkdir / touch / rename / move / deleteEntry / restoreFromTrash / uploadFiles.
+  ponytail: File Explorer refreshes after its own mutations AND on the event (one extra fetch; the
+  sequence guard keeps it correct).
+- Dead code: `components/FileManager/` removed; `Docs/backend-file-explorer-routes.ts` marked stale.
+
+### Frontend W1 modules (new files, one owner each)
+- `FileDialogs.tsx`: `useFileDialogs()` → `{ confirm({title, message, confirmLabel, danger?,
+  requireText?}): Promise<boolean>, prompt({title, message?, defaultValue, confirmLabel}):
+  Promise<string|null>, notify(message, tone?: 'info'|'error'), host: ReactNode }`. Host renders inside
+  the widget (absolute overlay over a `position: relative` root). `role="dialog" aria-modal`,
+  labelled/described; focus goes to the input or primary button, Tab cycles inside, Esc cancels, Enter
+  confirms, focus returns to the opener. `requireText`: confirm stays disabled until typed exactly.
+  notify: `role="status"` (error: `role="alert"`), auto-hides after 4 s. Theme tokens only; danger/muted
+  text via `color-mix(in srgb, var(--danger|--text-tertiary) 60%, var(--text-primary))`.
+- `treeNav.ts`: pure `navKey(rows, currentPath, key)` over the VISIBLE rows `{ path, isFolder,
+  expanded, parent }[]` → `{ focus?: string; toggle?: string; open?: string } | null` for ArrowUp/Down,
+  ArrowRight (closed folder → toggle; open folder → first child), ArrowLeft (open folder → toggle;
+  else → parent), Home/End (first/last), Enter (file → open; folder → toggle). WAI-ARIA tree pattern.
+- `treeFilter.ts` + `Breadcrumbs.tsx`: `filterTree(entries, query)` → `{ entries, expand: Set<string> }`
+  (case-insensitive name substring; keeps ancestors of matches, forces them open; '' → unchanged).
+  `Breadcrumbs({ path, onNavigate })`: `root › A › B › file`, each crumb a button except the last,
+  `nav aria-label="Location"`.
+- Consumers (Workspace store, Wiki, ContentSearch, KnowledgeGraph): listen for `FILE_TREE_CHANGED` and
+  refetch their tree (debounced ~300 ms, cleaned up on unmount).
+- `FilePreview.tsx`: image files (png/jpg/jpeg/gif/webp) render as `<img>` from `fetchBytes`; relative
+  `<img src>` inside markdown (resolved against the file's folder) is loaded via `fetchBytes` and swapped
+  to an object URL; absolute http(s) images untouched; object URLs revoked on change/unmount.
+
+### Frontend W2 integrator (FileExplorer.tsx, FileExplorerCell.tsx, TrashPanel.tsx, MoveToModal.tsx, dropUpload.ts)
+All alert/confirm/prompt → `useFileDialogs` (Empty trash uses `requireText: 'EMPTY'`); roving-tabindex
+arrow navigation via `navKey`; toolbar filter box (`filterTree`); Breadcrumbs for the selected entry;
+toolbar Upload button (hidden `<input type=file multiple>`) and Finder drops → `uploadFiles` (binary
+OK; per-file results summarised); context menu Download for files; drag-out drops `text/uri-list`
+(it could never authenticate); ⌘V screenshot → `uploadFiles` into the target folder + an `.md` linking
+the image by a RELATIVE path (previewed via the FilePreview image loader).
+
+### W3 theme + targets (same files, after W2)
+Every hard-coded dark literal in the File Explorer → theme tokens (axe color-contrast 0 across the
+whole widget in cosmos + latte); icon buttons ≥ 32 px hit area.

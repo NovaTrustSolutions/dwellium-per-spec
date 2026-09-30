@@ -1,4 +1,18 @@
-/* MissionControl — P12-5 goals with agent-drafted plans */
+/* MissionControl — P12-5 goals with agent-drafted plans
+ *
+ * Plan 075 P3 class contract (CSS and MissionControl.tsx are built apart — keep names exact):
+ *   .mc__title-row .mc__title-edit (input) .mc__icon-btn (small icon-only button, ≥24px target)
+ *   .mc__meta (row under the title: target date + due badge + answered count)
+ *   .mc__target (label wrapping <input type="date">)
+ *   .mc__due .mc__due--soon .mc__due--overdue (badge)
+ *   .mc__action-text (span) .mc__action-edit (input) .mc__action-tools (row of icon buttons)
+ *   .mc__add-action (form: input + button)
+ *   .mc__result (panel under an agent action) .mc__result-body (pre-wrap text)
+ *   .mc__result-actions (buttons row) .mc__result--error
+ *   .mc__running (inline status text)
+ *   .mc__answer (form) .mc__answer textarea .mc__answer-status
+ *   .mc__notes-toggle (button) .mc__sr-only
+ */
 
 .mc { display: flex; flex-direction: column; gap: 14px; padding: 14px; height: 100%; overflow-y: auto; color: var(--text-secondary); font-size: 13px; }
 

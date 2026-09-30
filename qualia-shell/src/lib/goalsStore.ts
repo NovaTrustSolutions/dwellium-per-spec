@@ -13,10 +13,20 @@ import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { goalsUserIdHolder, usePerUserIdentity } from './perUserIdentity';
 
+export interface GoalActionResult {
+    ts: number;
+    /** What the agent produced when the action was run in the card (plan 075 P3). */
+    text: string;
+}
+
 export interface GoalAction {
     text: string;
     done: boolean;
+    /** Latest in-card run output for this action (agent side), if any. */
+    result?: GoalActionResult;
 }
+
+export type GoalSide = 'agentActions' | 'userActions';
 
 export interface GoalPlan {
     /** The agent's brief — how it understands the goal + approach. */
@@ -47,6 +57,8 @@ export interface Goal {
     notes: GoalNote[];
     /** Answers given to the planner's clarifying questions (refine history), oldest first. */
     answers?: GoalAnswer[];
+    /** Optional target date, local calendar day `YYYY-MM-DD` (plan 075 P3). */
+    targetDate?: string;
     createdAt: number;
     updatedAt: number;
     /**
@@ -265,6 +277,30 @@ export function deleteGoal(id: string): void {
     }));
 }
 
+/* ─── Plan 075 P3 editing mutators — P0 contract stubs, implemented in W1 ─── */
+
+/** Rename (trimmed, 1..160 chars); empty → no-op. */
+export function renameGoal(_id: string, _title: string): void { /* P0 stub */ }
+
+/** Set or clear (null) the target date; only `YYYY-MM-DD` accepted. */
+export function setGoalTargetDate(_id: string, _date: string | null): void { /* P0 stub */ }
+
+/** Append an action (trimmed, ≤200 chars) to a side; creates an empty plan when missing. */
+export function addGoalAction(_id: string, _side: GoalSide, _text: string): void { /* P0 stub */ }
+
+/** Replace an action's text (trimmed, ≤200 chars; empty → no-op); clears its stale result. */
+export function editGoalAction(_id: string, _side: GoalSide, _index: number, _text: string): void { /* P0 stub */ }
+
+/** Remove the action at `index`. */
+export function removeGoalAction(_id: string, _side: GoalSide, _index: number): void { /* P0 stub */ }
+
+/**
+ * Store (or clear with null) the run result on the action whose text equals
+ * `actionText` — located by text, not index, so an edit during the run can't
+ * attach it to the wrong row. Returns false when no such action exists.
+ */
+export function setGoalActionResult(_id: string, _side: GoalSide, _actionText: string, _text: string | null): boolean { return false; }
+
 /**
  * Find a goal by fuzzy title match (ARA "refine goal X" tier).
  * Order: exact match (preferring a non-done goal over a done one with the
@@ -358,5 +394,5 @@ export function useGoals() {
         goalsStore.getServerSnapshot,
     );
     const goals = useMemo(() => liveGoals(snapshot), [snapshot]);
-    return { goals, createGoal, updateGoalPlan, setGoalStatus, toggleGoalAction, addGoalNote, deleteGoal };
+    return { goals, createGoal, updateGoalPlan, setGoalStatus, toggleGoalAction, addGoalNote, deleteGoal, renameGoal, setGoalTargetDate, addGoalAction, editGoalAction, removeGoalAction, setGoalActionResult };
 }

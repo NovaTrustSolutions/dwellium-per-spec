@@ -1,7 +1,7 @@
 /** Plan 076 P3 W2 — FileExplorer wiring of FilePreview + TrashPanel + open gestures. */
 import { StrictMode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import FileExplorer from '../components/FileExplorer/FileExplorer';
 import { fileExplorerStore } from '../components/FileExplorer/fileExplorerStore';
 import { UserContext } from '../context/UserContext';
@@ -173,7 +173,7 @@ describe('FileExplorer P3 integration', () => {
     it('review: closing the preview returns focus to the row that opened it', async () => {
         await setup();
         fireEvent.click(screen.getByText('a.txt'));
-        const rowEl = screen.getByText('a.txt').closest('[role="treeitem"]') as HTMLElement;
+        const rowEl = screen.getByRole('treeitem', { name: /a\.txt/ });
         rowEl.focus();
         fireEvent.keyDown(rowEl, { key: 'Enter' });
         await screen.findByText('hello world');
@@ -181,14 +181,18 @@ describe('FileExplorer P3 integration', () => {
         await waitFor(() => expect(document.activeElement).toBe(rowEl));
     });
 
-    it('review: restore-as suggestion for a dotted FOLDER name keeps the whole name', async () => {
+    it('review: restore-as suggestion for a dotted FOLDER name keeps the whole name (in-widget prompt)', async () => {
         m.listTrash.mockResolvedValue([{ id: 'i1', path: 'docs/v1.2', name: 'v1.2', isDir: true, deletedAt: null }]);
         m.restoreFromTrash.mockRejectedValueOnce(new api.ApiError('x', 409, 'DEST_EXISTS'));
-        const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+        const prompt = vi.spyOn(window, 'prompt');
         await setup();
         fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
         fireEvent.click(await screen.findByLabelText('Restore v1.2'));
-        await waitFor(() => expect(prompt).toHaveBeenCalledWith('"docs/v1.2" already exists. Restore as:', 'docs/v1.2 (restored)'));
+        const dialog = await screen.findByRole('dialog', { name: 'Restore as' });
+        expect(dialog).toHaveAccessibleDescription('"docs/v1.2" already exists. Restore as:');
+        expect((within(dialog).getByRole('textbox') as HTMLInputElement).value).toBe('docs/v1.2 (restored)');
+        expect(prompt).not.toHaveBeenCalled();
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
         prompt.mockRestore();
     });
 });

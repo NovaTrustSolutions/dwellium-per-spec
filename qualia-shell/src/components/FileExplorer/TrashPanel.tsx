@@ -1,12 +1,14 @@
 /**
  * TrashPanel — lists trashed entries with Restore / Delete forever / Empty trash.
- * Native confirm/prompt/alert are kept on purpose (replaced in Phase 4).
+ * Plan 076 P4: confirmations, the restore-as name and errors go through the widget's in-app
+ * dialogs (`dialogs`, from useFileDialogs) instead of window.confirm/prompt/alert.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { File, Folder, Trash2, X } from 'lucide-react';
 import {
     listTrash, restoreFromTrash, deleteFromTrash, emptyTrash, isConflict, type TrashItem,
 } from './fileExplorerApi';
+import type { FileDialogApi } from './FileExplorerCell';
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -34,13 +36,18 @@ const btn = (danger = false): React.CSSProperties => ({
     cursor: 'pointer', fontFamily: 'inherit',
 });
 
-export function TrashPanel({ onClose, onRestored }: { onClose: () => void; onRestored: (path: string) => void }) {
+interface TrashPanelProps { onClose: () => void; onRestored: (path: string) => void; dialogs: FileDialogApi }
+
+export function TrashPanel({ onClose, onRestored, dialogs }: TrashPanelProps) {
     const [items, setItems] = useState<TrashItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const busyRef = useRef(false);
     const seq = useRef(0);
+    // A dialog can outlive this panel (account switch closes it); never act on an answer given after that.
+    const alive = useRef(true);
+    useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
     const load = useCallback(async () => {
         const mine = ++seq.current;
@@ -70,22 +77,32 @@ export function TrashPanel({ onClose, onRestored }: { onClose: () => void; onRes
             onRestored(r.path);
             await load();
         } catch (e) {
-            if (!isConflict(e)) { alert(errMsg(e)); return; }
-            if (retried) { alert(`"${as}" already exists too. Nothing was restored.`); return; }
-            const name = window.prompt(`"${it.path}" already exists. Restore as:`, restoredName(it.path, it.isDir));
-            if (name && name.trim()) await tryRestore(it, name.trim(), true);
+            if (!isConflict(e)) { dialogs.notify(errMsg(e), 'error'); return; }
+            if (retried) { dialogs.notify(`"${as}" already exists too. Nothing was restored.`, 'error'); return; }
+            const name = await dialogs.prompt({
+                title: 'Restore as', message: `"${it.path}" already exists. Restore as:`,
+                defaultValue: restoredName(it.path, it.isDir), confirmLabel: 'Restore',
+            });
+            if (alive.current && name) await tryRestore(it, name, true);
         }
     };
 
     const onDelete = (it: TrashItem) => run(async () => {
-        if (!window.confirm(`Permanently delete "${it.name}"? This cannot be undone.`)) return;
-        try { await deleteFromTrash(it.id); await load(); } catch (e) { alert(errMsg(e)); }
+        const ok = await dialogs.confirm({
+            title: 'Delete forever', message: `Permanently delete "${it.name}"? This cannot be undone.`,
+            confirmLabel: 'Delete forever', danger: true,
+        });
+        if (!ok || !alive.current) return;
+        try { await deleteFromTrash(it.id); await load(); } catch (e) { dialogs.notify(errMsg(e), 'error'); }
     });
 
     const onEmpty = () => run(async () => {
-        const answer = window.prompt(`Type EMPTY to permanently delete ${items.length} item(s). This cannot be undone.`);
-        if (answer === null || answer.trim() !== 'EMPTY') return;
-        try { await emptyTrash(); await load(); } catch (e) { alert(errMsg(e)); }
+        const ok = await dialogs.confirm({
+            title: 'Empty trash', message: `Permanently delete ${items.length} item(s). This cannot be undone.`,
+            confirmLabel: 'Empty trash', danger: true, requireText: 'EMPTY',
+        });
+        if (!ok || !alive.current) return;
+        try { await emptyTrash(); await load(); } catch (e) { dialogs.notify(errMsg(e), 'error'); }
     });
 
     const row = (it: TrashItem) => {

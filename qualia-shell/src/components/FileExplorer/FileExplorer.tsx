@@ -5,46 +5,70 @@
  *   Per-user state via fileExplorerStore (sister to scribeLayoutStore).
  * Cycle 3+ (shipped): tree fetched via fileExplorerApi.fetchTree() (/api/files/tree).
  * Cycle 4: inline rename + create file/folder.
- * Cycle 5: drag-from (sets application/x-dwellium-path + text/uri-list).
+ * Cycle 5: drag-from (sets application/x-dwellium-path; text/uri-list dropped in P4).
  * Cycle 6: drag-into (move/copy between folders).
  * Cycle 7: cross-widget DnD wiring with Scribe.
  * Cycle 8: screenshot-paste via Cmd+V.
  * Cycle 9-10: hierarchy lock + dual-mode polish.
  * Cycle 11: multi-select.
  * Cycle 12: closure + acceptance walk.
+ * Plan 076 P4: in-widget dialogs (useFileDialogs — no native alert/confirm/prompt), roving-tabindex
+ *   arrow-key navigation, toolbar filter, breadcrumbs, multipart upload (button + Finder drops +
+ *   pasted screenshots with a relative image link), and a debounced refetch on FILE_TREE_CHANGED.
  *
  * See Scripts/autorun/FILE_EXPLORER_PORTING_PLAN.md for full breakdown.
  */
-import { useEffect, useState, useCallback, useRef, useContext } from 'react';
-import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot, Folder, FileText, Trash2 } from 'lucide-react';
-import { FileExplorerCell, resetVisiblePaths, type FileEntry } from './FileExplorerCell';
+import { useEffect, useState, useCallback, useRef, useContext, useMemo } from 'react';
+import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot, Folder, FileText, Trash2, Upload } from 'lucide-react';
+import { FileExplorerCell, ExplorerContext, resetVisiblePaths, type FileEntry, type ExplorerContextValue, type FileDialogApi } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
 import { fileExplorerStore, saveFileExplorer } from './fileExplorerStore';
-import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
+import { fetchTree, mkdir, touch, move as apiMove, uploadFiles, FILE_TREE_CHANGED } from './fileExplorerApi';
 import { getWorkspaceRoot } from './workspaceRoot';
 import { MoveToModal } from './MoveToModal';
 import { FilePreview } from './FilePreview';
 import { TrashPanel } from './TrashPanel';
-import { destFor, childNames, batchSummary } from './moveTargets';
-import { uploadDroppedFiles } from './dropUpload';
-import { API_BASE } from '../../config';
-import { getAuthHeaders, UserContext } from '../../context/UserContext';
+import { Breadcrumbs } from './Breadcrumbs';
+import { useFileDialogs } from './FileDialogs';
+import { visibleRows, navKey } from './treeNav';
+import { filterTree } from './treeFilter';
+import { destFor, childNames, batchSummary, parentOf } from './moveTargets';
+import { uploadAndSummarize } from './dropUpload';
+import { UserContext } from '../../context/UserContext';
 
-// Cycle 8: upload a pasted/dropped image to /api/scribe/images (reused per Ilya design lock #4)
-// Returns the server-side URL of the uploaded image, or null on failure.
-async function uploadImageBlob(blob: Blob, filename: string): Promise<string | null> {
-    const fd = new FormData();
-    fd.append('image', new File([blob], filename, { type: blob.type }));
-    try {
-        const res = await fetch(`${API_BASE}/api/scribe/images`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: fd,
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) return null;
-        return data.url ?? null;
-    } catch { return null; }
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const TREE_REFRESH_DEBOUNCE_MS = 300;
+
+function findEntry(list: FileEntry[], path: string): FileEntry | null {
+    for (const e of list) {
+        if (e.path === path) return e;
+        const hit = e.children ? findEntry(e.children, path) : null;
+        if (hit) return hit;
+    }
+    return null;
+}
+
+/** Folder an upload or paste lands in: the selected folder, the selected file's folder, else root. */
+function destFolderFor(entries: FileEntry[], selectedPath: string | null): string {
+    const sel = selectedPath ? findEntry(entries, selectedPath) : null;
+    if (!sel) return '';
+    return sel.tier !== 'file' ? sel.path : parentOf(sel.path);
+}
+
+/**
+ * Cycle 8 / P4: upload one pasted image into `folder`, then write a small .md next to it that links the
+ * image by its RELATIVE file name (FilePreview resolves that against the .md's folder). Throws on failure.
+ */
+async function pasteScreenshot(blob: Blob, folder: string): Promise<void> {
+    const ext = (blob.type.split('/')[1] ?? 'png').replace('+xml', '');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const imgName = `screenshot-${stamp}.${ext}`;
+    const [r] = await uploadFiles([new File([blob], imgName, { type: blob.type })], folder);
+    if (!r || r.status !== 'ok') throw new Error(r?.status === 'exists' ? `${imgName} already exists` : (r?.error || 'the image did not upload'));
+    const stored = (r.path ?? '').split('/').pop() || imgName;
+    const mdName = `screenshot-${stamp}.md`;
+    const content = `# Screenshot · ${new Date().toLocaleString()}\n\n![screenshot](${stored})\n\n_Pasted via Cmd+V into ${folder || '(root)'}._\n`;
+    await touch(folder ? `${folder}/${mdName}` : mdName, content);
 }
 
 interface NewEntryState {
@@ -72,7 +96,7 @@ function sortFlat(entries: FileEntry[], sort: 'modified-desc' | 'name-asc' | 'si
 }
 
 export default function FileExplorer() {
-    const { locked, viewMode, selectedPath, flatSort, setLocked, setViewMode, setFlatSort } = useFileExplorer();
+    const { locked, viewMode, selectedPath, expanded, flatSort, setLocked, setViewMode, setFlatSort, setSelectedPath, toggleFolder } = useFileExplorer();
     // Workspace root path (spec §2.4) — read userId via context directly so a
     // missing provider (tests) degrades gracefully instead of throwing.
     const userCtx = useContext(UserContext);
@@ -82,10 +106,21 @@ export default function FileExplorer() {
     // account never reports on another account's screen after a re-auth switch.
     const userIdRef = useRef(userId);
     userIdRef.current = userId;
+    // In-widget dialogs (replace window.alert/confirm/prompt). `host` is rendered inside the relative root.
+    const fileDialogs = useFileDialogs();
+    const dlg: FileDialogApi = useMemo(
+        () => ({ confirm: fileDialogs.confirm, prompt: fileDialogs.prompt, notify: fileDialogs.notify }),
+        [fileDialogs.confirm, fileDialogs.prompt, fileDialogs.notify],
+    );
     const [entries, setEntries] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [toast, setToast] = useState<string | null>(null);
+    const [filter, setFilter] = useState('');
+    // Roving tabindex: the row last focused (or the selected one) is the widget's single tab stop.
+    const [focusPath, setFocusPath] = useState<string | null>(null);
+    const [focusReq, setFocusReq] = useState<string | null>(null);
+    const treeRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [newEntry, setNewEntry] = useState<NewEntryState | null>(null);
     const [newName, setNewName] = useState('');
@@ -140,7 +175,7 @@ export default function FileExplorer() {
         const owner = userIdRef.current;
         // The backend's rename() replaces an existing destination — refuse instead of overwriting.
         if (childNames(entries, destPath).includes(src.name)) {
-            alert(`"${src.name}" already exists in ${destPath || 'root'}. Rename one of them first.`);
+            dlg.notify(`"${src.name}" already exists in ${destPath || 'root'}. Rename one of them first.`, 'error');
             return;
         }
         try {
@@ -148,15 +183,14 @@ export default function FileExplorer() {
             setMoveTarget(null);
             await refresh();
             if (userIdRef.current !== owner) return;
-            setToast(`Moved "${src.name}" to ${destPath || 'root'}`);
-            setTimeout(() => setToast(null), 3000);
-        } catch (err: any) {
+            dlg.notify(`Moved "${src.name}" to ${destPath || 'root'}`);
+        } catch (err) {
             if (userIdRef.current !== owner) return;
-            alert(`Move failed: ${err?.message ?? err}`);
+            dlg.notify(`Move failed: ${errText(err)}`, 'error');
             setMoveTarget(null);
             await refresh(); // D6: the tree may be stale — that's why the move failed
         }
-    }, [moveTarget, refresh, entries]);
+    }, [moveTarget, refresh, entries, dlg]);
 
     // Move focus into the preview so Esc (handled by FilePreview's region) works at once,
     // and hand it back to the row that opened it on close.
@@ -183,9 +217,8 @@ export default function FileExplorer() {
         if (userIdRef.current !== owner) return;
         await refresh();
         if (userIdRef.current !== owner) return;
-        setToast(`Restored "${path}"`);
-        setTimeout(() => setToast(null), 3000);
-    }, [refresh]);
+        dlg.notify(`Restored "${path}"`);
+    }, [refresh, dlg]);
 
     useEffect(() => {
         if (newEntry) newInputRef.current?.focus();
@@ -203,57 +236,46 @@ export default function FileExplorer() {
         return () => window.removeEventListener('keydown', onKey);
     }, [viewMode, setViewMode]);
 
-    // Cycle 8: Cmd+V screenshot-paste. Image bytes upload to /api/scribe/images
-    // (reused per Ilya design lock #4); a small .md reference file is created
-    // in the currently-selected folder (or at root if nothing selected).
+    // Cycle 8 / P4: Cmd+V screenshot-paste. The image uploads (multipart) into the selected folder (or the
+    // selected file's folder, or root) and a small .md beside it links it by a relative name.
     const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
         if (locked) return;
-        const items = Array.from(e.clipboardData?.items ?? []);
-        const imageItems = items.filter((it) => it.type.startsWith('image/'));
+        const imageItems = Array.from(e.clipboardData?.items ?? []).filter((it) => it.type.startsWith('image/'));
         if (imageItems.length === 0) return;
         e.preventDefault();
 
-        // Resolve target folder: selected folder if it's tier != 'file', else parent of selected file, else root
-        const allFiles = flattenTree(entries);
-        const allEntries = (function collect(list: FileEntry[], acc: FileEntry[] = []): FileEntry[] {
-            list.forEach((x) => { acc.push(x); x.children && collect(x.children, acc); });
-            return acc;
-        })(entries);
-        const sel = selectedPath ? allEntries.find((x) => x.path === selectedPath) : null;
-        let targetFolder = '';
-        if (sel) {
-            if (sel.tier !== 'file') targetFolder = sel.path;
-            else if (sel.path.includes('/')) targetFolder = sel.path.slice(0, sel.path.lastIndexOf('/'));
-        }
-        // unused but kept for symmetry with flat view counts
-        void allFiles;
-
+        const targetFolder = destFolderFor(entries, selectedPath);
         const owner = userIdRef.current;
         let pastedCount = 0;
+        const failed: string[] = [];
         for (const item of imageItems) {
             const blob = item.getAsFile();
             if (!blob) continue;
-            const ext = (blob.type.split('/')[1] ?? 'png').replace('+xml', '');
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const imgName = `screenshot-${timestamp}.${ext}`;
-            const url = await uploadImageBlob(blob, imgName);
-            if (!url) continue;
-            const mdName = `screenshot-${timestamp}.md`;
-            const mdRel = targetFolder ? `${targetFolder}/${mdName}` : mdName;
-            const fullUrl = `${API_BASE}${url}`;
-            const content = `# Screenshot · ${new Date().toLocaleString()}\n\n![${imgName}](${fullUrl})\n\n_Pasted via Cmd+V into ${targetFolder || '(root)'}._\n`;
-            try {
-                await touch(mdRel, content);
-                pastedCount++;
-            } catch { /* skip individual failures */ }
+            try { await pasteScreenshot(blob, targetFolder); pastedCount++; } catch (err) { failed.push(errText(err)); }
         }
+        if (userIdRef.current !== owner) return;
+        if (failed.length > 0) dlg.notify(`Could not paste ${failed.length} screenshot${failed.length === 1 ? '' : 's'}: ${failed.join('; ')}`, 'error');
         if (pastedCount > 0) {
             await refresh();
             if (userIdRef.current !== owner) return;
-            setToast(`${pastedCount} screenshot${pastedCount === 1 ? '' : 's'} pasted to ${targetFolder || 'root'}`);
-            setTimeout(() => setToast(null), 3000);
+            dlg.notify(`${pastedCount} screenshot${pastedCount === 1 ? '' : 's'} pasted to ${targetFolder || 'root'}`);
         }
-    }, [entries, locked, refresh, selectedPath]);
+    }, [entries, locked, refresh, selectedPath, dlg]);
+
+    // Upload button + Finder drops at the root: one summary line; refetch only if something was stored.
+    const runUpload = useCallback(async (files: File[], dest: string) => {
+        const owner = userIdRef.current;
+        const out = await uploadAndSummarize(files, dest);
+        if (userIdRef.current !== owner) return;
+        dlg.notify(out.message, out.tone);
+        if (out.ok > 0) await refresh();
+    }, [dlg, refresh]);
+
+    const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files ?? []);
+        e.target.value = ''; // so picking the same file again still fires change
+        if (files.length > 0) void runUpload(files, destFolderFor(entries, selectedPath));
+    };
 
     const requestNewEntry = useCallback((parentPath: string, type: 'file' | 'folder') => {
         if (locked) return;
@@ -283,11 +305,11 @@ export default function FileExplorer() {
             }
             cancelNewEntry();
             await refresh();
-        } catch (err: any) {
-            alert(`Create failed: ${err?.message ?? err}`);
+        } catch (err) {
+            dlg.notify(`Create failed: ${errText(err)}`, 'error');
             cancelNewEntry();
         }
-    }, [newEntry, newName, cancelNewEntry, refresh]);
+    }, [newEntry, newName, cancelNewEntry, refresh, dlg]);
 
     // D1: reload the tree whenever the signed-in account changes (a session-expired
     // re-auth modal can keep this widget mounted while a DIFFERENT account signs in —
@@ -300,10 +322,76 @@ export default function FileExplorer() {
         setNewEntry(null);
         setPreviewPath(null);
         setShowTrash(false);
+        setFilter('');
+        setFocusPath(null);
+        setFocusReq(null);
         void refresh();
     }, [userId, refresh]);
 
-    const displayedEntries = viewMode === 'flat' ? sortFlat(flattenTree(entries), flatSort) : entries;
+    // P4: other widgets (Workspace, Wiki, other windows) and our own mutations announce tree changes.
+    // Debounced so a burst of mutations is one refetch; refresh()'s sequence guard still orders the results.
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const onChanged = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => void refresh(), TREE_REFRESH_DEBOUNCE_MS);
+        };
+        window.addEventListener(FILE_TREE_CHANGED, onChanged);
+        return () => { window.removeEventListener(FILE_TREE_CHANGED, onChanged); clearTimeout(timer); };
+    }, [refresh]);
+
+    // Filter (toolbar box): folders holding a match are forced open for display only — never written
+    // into the user's saved expanded map, so clearing the filter restores exactly what they had open.
+    const shown = useMemo(() => {
+        const f = filterTree(viewMode === 'flat' ? flattenTree(entries) : entries, filter);
+        return {
+            list: viewMode === 'flat' ? sortFlat(f.entries, flatSort) : f.entries,
+            force: viewMode === 'tree' && f.expand.size > 0 ? f.expand : null,
+        };
+    }, [entries, filter, viewMode, flatSort]);
+    const displayedEntries = shown.list;
+    const forceExpand = shown.force;
+    const filtering = filter.trim() !== '';
+    const effExpanded = useMemo(
+        () => (forceExpand ? { ...expanded, ...Object.fromEntries([...forceExpand].map((p) => [p, true])) } : expanded),
+        [expanded, forceExpand],
+    );
+    const rows = useMemo(() => visibleRows(displayedEntries, effExpanded), [displayedEntries, effExpanded]);
+    const inRows = (p: string | null): p is string => p !== null && rows.some((r) => r.path === p);
+    const tabPath = inRows(focusPath) ? focusPath : inRows(selectedPath) ? selectedPath : (rows[0]?.path ?? null);
+
+    const requestFocus = useCallback((path: string) => setFocusReq(path), []);
+    // Move DOM focus to a requested row once it is rendered (it may need its ancestors expanded first).
+    useEffect(() => {
+        if (focusReq === null) return;
+        const el = Array.from(treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? [])
+            .find((n) => n.dataset.path === focusReq);
+        if (el) { el.focus(); el.scrollIntoView?.({ block: 'nearest' }); setFocusReq(null); }
+        else if (!rows.some((r) => r.path === focusReq)) setFocusReq(null);
+    }, [focusReq, rows]);
+
+    // Arrow/Home/End/Enter on a row (treeNav.navKey). Selection follows focus.
+    const onNavKey = (path: string, key: string): boolean => {
+        const r = navKey(rows, path, key);
+        if (!r) return false;
+        if (r.focus) { setSelectedPath(r.focus); requestFocus(r.focus); }
+        else if (r.toggle) { if (!forceExpand?.has(r.toggle)) toggleFolder(r.toggle); }
+        else if (r.open) openPreview(r.open);
+        return true;
+    };
+
+    // Breadcrumb click: select that folder, open its ancestors, bring its row into view. '' = root.
+    const onCrumb = (path: string) => {
+        if (!path) { setSelectedPath(null); return; }
+        const parts = path.split('/');
+        const open = Object.fromEntries(parts.slice(0, -1).map((_, i) => [parts.slice(0, i + 1).join('/'), true]));
+        saveFileExplorer({ expanded: { ...expanded, ...open }, selectedPath: path, selectedPaths: [path] });
+        requestFocus(path);
+    };
+
+    const explorerCtx: ExplorerContextValue = {
+        dialogs: dlg, getOwner: () => userIdRef.current, tabPath, forceExpand, onNavKey, onRowFocus: setFocusPath,
+    };
     const fileCount = flattenTree(entries).length;
     // Cycle 11: reset the visible-paths accumulator each render so Shift+range-click can resolve.
     resetVisiblePaths();
@@ -324,6 +412,8 @@ export default function FileExplorer() {
         if (locked) return;
         e.preventDefault();
         setRootDragOver(false);
+        const owner = userIdRef.current;
+        const say = (msg: string) => { if (userIdRef.current === owner) dlg.notify(msg, 'error'); };
 
         // Cycle 11: multi-path drop to root
         const pathsRaw = e.dataTransfer.getData('application/x-dwellium-paths');
@@ -343,16 +433,16 @@ export default function FileExplorer() {
                     try {
                         await apiMove(p.path, p.name, copy);
                         moved++;
-                    } catch (moveErr: any) {
-                        failed.push(`"${p.name}": ${moveErr?.message ?? moveErr}`);
+                    } catch (moveErr) {
+                        failed.push(`"${p.name}": ${errText(moveErr)}`);
                     }
                 }
                 const summary = batchSummary('Moved', moved, eligible.length, failed);
-                if (summary) alert(summary);
+                if (summary) say(summary);
                 if (moved > 0 || failed.length > 0) await refresh();
                 return;
-            } catch (err: any) {
-                alert(`Multi-move to root failed: ${err?.message ?? err}`);
+            } catch (err) {
+                say(`Multi-move to root failed: ${errText(err)}`);
                 return;
             }
         }
@@ -363,20 +453,18 @@ export default function FileExplorer() {
                 const payload = JSON.parse(pathRaw) as { name: string; path: string };
                 if (!payload.path || !payload.path.includes('/')) return; // already at root
                 if (childNames(entries, '').includes(payload.name)) {
-                    alert(`"${payload.name}" already exists at root. Rename one of them first.`);
+                    say(`"${payload.name}" already exists at root. Rename one of them first.`);
                     return;
                 }
                 await apiMove(payload.path, payload.name, e.altKey);
                 await refresh();
-            } catch (err: any) {
-                alert(`Move to root failed: ${err?.message ?? err}`);
+            } catch (err) {
+                say(`Move to root failed: ${errText(err)}`);
             }
             return;
         }
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const summary = await uploadDroppedFiles(Array.from(e.dataTransfer.files), '', childNames(entries, ''));
-            if (summary) alert(summary);
-            await refresh();
+            await runUpload(Array.from(e.dataTransfer.files), '');
         }
     };
 
@@ -406,8 +494,23 @@ export default function FileExplorer() {
                 <span style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
                     textTransform: 'uppercase', color: '#808080',
-                    flex: 1,
                 }}>Files</span>
+
+                {/* Filter: name substring; Esc clears. Matches keep their ancestors, forced open for display only. */}
+                <input
+                    type="search"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape' && filter) { e.preventDefault(); e.stopPropagation(); setFilter(''); } }}
+                    placeholder="Filter…"
+                    aria-label="Filter files"
+                    style={{
+                        flex: 1, minWidth: 60, height: 24, boxSizing: 'border-box', margin: '0 4px',
+                        background: 'var(--bg-surface)', color: 'var(--text-primary)',
+                        border: '1px solid var(--border-default)', borderRadius: 4,
+                        padding: '0 6px', fontSize: 11, fontFamily: 'inherit', outline: 'none',
+                    }}
+                />
 
                 {/* + New File (at root) */}
                 <button
@@ -432,6 +535,29 @@ export default function FileExplorer() {
                 >
                     <FolderPlus size={14} strokeWidth={1.75} />
                 </button>
+
+                {/* Upload: native file picker -> multipart /upload into the selected folder (or root) */}
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload files"
+                    aria-label="Upload files"
+                    disabled={locked}
+                    style={iconBtn(false, locked)}
+                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = '#D6FE51'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? '#333' : '#666'; }}
+                >
+                    <Upload size={14} strokeWidth={1.75} />
+                </button>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    data-testid="file-upload-input"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    onChange={onPickFiles}
+                    style={{ display: 'none' }}
+                />
 
                 {/* Refresh button — reloads from /api/file-explorer/tree */}
                 <button
@@ -548,9 +674,15 @@ export default function FileExplorer() {
 
             <div ref={bodyRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             {showTrash ? (
-                <TrashPanel onClose={() => setShowTrash(false)} onRestored={(p) => void handleRestored(p, userId)} />
+                <TrashPanel onClose={() => setShowTrash(false)} onRestored={(p) => void handleRestored(p, userId)} dialogs={dlg} />
             ) : (<>
+            {selectedPath && (
+                <div style={{ flexShrink: 0, padding: '0 6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <Breadcrumbs path={selectedPath} onNavigate={onCrumb} />
+                </div>
+            )}
             <div
+                ref={treeRef}
                 onDragOver={handleRootDragOver}
                 onDragLeave={handleRootDragLeave}
                 onDrop={(e) => void handleRootDrop(e)}
@@ -561,9 +693,11 @@ export default function FileExplorer() {
                     boxShadow: rootDragOver ? 'inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)' : 'none',
                     transition: 'background 80ms, box-shadow 80ms',
                     cursor: locked ? 'not-allowed' : 'default',
+                    outline: 'none',
                 }}
                 role="tree"
                 aria-label="File explorer"
+                tabIndex={-1}
             >
                 {/* Inline new-entry form — outside the list branches so it also shows for an empty tree and for nested parents */}
                 {newEntry && (
@@ -618,6 +752,10 @@ export default function FileExplorer() {
                         padding: '24px 16px', textAlign: 'center',
                         color: 'var(--text-tertiary)', fontSize: 11,
                     }}>Loading…</div>
+                ) : displayedEntries.length === 0 && filtering ? (
+                    <div role="status" style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11 }}>
+                        No files match “{filter.trim()}”
+                    </div>
                 ) : displayedEntries.length === 0 ? (
                     <div style={{
                         padding: '24px 16px', textAlign: 'center',
@@ -631,7 +769,7 @@ export default function FileExplorer() {
                         </div>
                     </div>
                 ) : (
-                    <>
+                    <ExplorerContext.Provider value={explorerCtx}>
                         {displayedEntries.map((entry) => (
                             <FileExplorerCell
                                 key={entry.path}
@@ -643,7 +781,7 @@ export default function FileExplorer() {
                                 showFullPath={viewMode === 'flat'}
                             />
                         ))}
-                    </>
+                    </ExplorerContext.Provider>
                 )}
             </div>
             {previewPath && <FilePreview path={previewPath} onClose={closePreview} />}
@@ -661,18 +799,6 @@ export default function FileExplorer() {
             )}
 
             {/* Status footer */}
-            {/* Paste toast (Cycle 8) */}
-            {toast && (
-                <div style={{
-                    position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-                    padding: '6px 14px', background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--accent) 50%, transparent)', color: 'var(--accent)',
-                    fontSize: 11, borderRadius: 6, zIndex: 50,
-                    pointerEvents: 'none',
-                    animation: 'feToastFade 3s ease-out forwards',
-                }}>{toast}</div>
-            )}
-
             <div style={{
                 padding: '4px 10px', flexShrink: 0,
                 background: 'var(--bg-desktop)', borderTop: '1px solid #222',
@@ -682,7 +808,9 @@ export default function FileExplorer() {
                 <span>{viewMode === 'tree' ? 'Tree view' : 'Flat view'}</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{locked ? <><Lock size={12} aria-hidden /> Locked · </> : ''}{fileCount} file{fileCount === 1 ? '' : 's'}</span>
             </div>
-            <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } } @keyframes feToastFade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }`}</style>
+            <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }`}</style>
+            {/* In-widget confirm / prompt / notify overlay (position: relative root above) */}
+            {fileDialogs.host}
         </div>
     );
 }

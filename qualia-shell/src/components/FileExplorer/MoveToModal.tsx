@@ -3,7 +3,7 @@
  * (spec §4.3, Move-to-Thread). Lists folder-like destinations (domain / project
  * / thread / folder) plus Root, with a filter box. Picking one moves the entry.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Globe, FolderTree, MessageSquare, Folder, CornerDownRight, X } from 'lucide-react';
 import type { FileEntry } from './FileExplorerCell';
 import { collectMoveTargets, parentOf, type MoveTarget } from './moveTargets';
@@ -22,6 +22,8 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
     onClose: () => void;
 }) {
     const [filter, setFilter] = useState('');
+    const filterRef = useRef<HTMLInputElement>(null);
+    useEffect(() => { filterRef.current?.focus(); }, []);
     const targets = useMemo(() => collectMoveTargets(entries, entry.path), [entries, entry.path]);
     const currentParent = parentOf(entry.path);
     const q = filter.trim().toLowerCase();
@@ -52,11 +54,17 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
 
     return (
         <div
+            role="presentation"
             onMouseDown={onClose}
             style={{ position: 'absolute', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
         >
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Esc closes the picker; mousedown must not reach the backdrop */}
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Move ${entry.name}`}
                 onMouseDown={(e) => e.stopPropagation()}
+                onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); } }}
                 style={{ width: 360, maxWidth: '100%', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', border: '1px solid #333', borderRadius: 10, boxShadow: '0 16px 48px rgba(0,0,0,0.7)', overflow: 'hidden' }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid #222' }}>
@@ -67,7 +75,7 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
                     <button onClick={onClose} title="Cancel" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
                 </div>
                 <input
-                    autoFocus
+                    ref={filterRef}
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     placeholder="Filter destinations…"

@@ -64,7 +64,7 @@ function Dialog({ req, onDone }: { req: Req; onDone: (v: boolean | string | null
                 data-danger={danger ? 'true' : 'false'} onKeyDown={onKeyDown}
                 style={{ width: 'min(360px, 90%)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)', color: 'var(--text-primary)', fontSize: 12 }}>
                 <div id={titleId} style={{ fontSize: 14, fontWeight: 600, color: danger ? DANGER_TEXT : 'var(--text-primary)' }}>{opts.title}</div>
-                <div id={descId} style={{ color: MUTED_TEXT, lineHeight: 1.4 }}>{opts.message}</div>
+                <div id={descId} style={{ color: MUTED_TEXT, lineHeight: 1.4, whiteSpace: 'pre-line' }}>{opts.message}</div>
                 {need !== undefined && <div style={{ color: DANGER_TEXT }}>Type <strong>{need}</strong> to confirm</div>}
                 {(isPrompt || need !== undefined) && (
                     <input ref={input} value={text} onChange={(e) => setText(e.target.value)}
@@ -85,7 +85,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
     const err = toast.tone === 'error';
     return (
         <div role={err ? 'alert' : 'status'} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', minHeight: 32, boxSizing: 'border-box', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', fontSize: 12, color: err ? DANGER_TEXT : 'var(--text-primary)' }}>
-            <span style={{ flex: 1 }}>{toast.message}</span>
+            <span style={{ flex: 1, whiteSpace: 'pre-line' }}>{toast.message}</span>
             <button type="button" aria-label="Dismiss" onClick={() => onDismiss(toast.id)} style={{ minHeight: 32, minWidth: 32, background: 'transparent', border: 'none', color: MUTED_TEXT, cursor: 'pointer', fontSize: 14 }}>×</button>
         </div>
     );

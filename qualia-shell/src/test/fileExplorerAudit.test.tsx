@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { refusalFor, MAX_UPLOAD_BYTES } from '../components/FileExplorer/dropUpload';
 import { childNames } from '../components/FileExplorer/moveTargets';
 import { fileExplorerStore } from '../components/FileExplorer/fileExplorerStore';
 import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
@@ -15,20 +14,13 @@ const tree: FileEntry[] = [
 ];
 
 const fetchTree = vi.fn();
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: () => fetchTree(), mkdir: vi.fn(), touch: vi.fn(), move: vi.fn(), rename: vi.fn(), deleteEntry: vi.fn(),
 }));
 
 describe('File Explorer audit fixes', () => {
     beforeEach(() => { fileExplorerStore.reset(); localStorage.clear(); fetchTree.mockReset(); });
-
-    it('refuses drops that would be corrupted, rejected or silently dropped', () => {
-        const binaryDecode = '%PDF' + String.fromCharCode(0xfffd) + String.fromCharCode(0);
-        expect(refusalFor({ name: 'a.md', size: 10 }, 'hello', [])).toBeNull();
-        expect(refusalFor({ name: 'a.md', size: 10 }, 'hello', ['a.md'])).toMatch(/already exists/);
-        expect(refusalFor({ name: 'big.txt', size: MAX_UPLOAD_BYTES + 1 }, null, [])).toMatch(/too large/);
-        expect(refusalFor({ name: 'p.pdf', size: 10 }, binaryDecode, [])).toMatch(/not a text file/);
-    });
 
     it('lists the names inside a folder at any depth', () => {
         expect(childNames(tree, '')).toEqual(['Home', 'todo.md']);

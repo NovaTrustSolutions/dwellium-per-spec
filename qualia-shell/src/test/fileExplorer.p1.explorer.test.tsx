@@ -12,7 +12,8 @@ import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
 
 const fetchTree = vi.fn();
 const apiMove = vi.fn();
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: (...args: unknown[]) => fetchTree(...args),
     mkdir: vi.fn(),
     touch: vi.fn(),
@@ -125,8 +126,9 @@ describe('FileExplorer P1 — account switch, stale responses, multi-drop summar
 
         fireEvent.drop(screen.getByRole('tree'), { dataTransfer, altKey: false });
 
-        await waitFor(() => expect(alertSpy).toHaveBeenCalled());
-        const message = alertSpy.mock.calls[0][0] as string;
+        // P4: the summary is an in-widget error toast, never a native alert.
+        const message = (await screen.findByRole('alert')).textContent ?? '';
+        expect(alertSpy).not.toHaveBeenCalled();
         expect(message).toMatch(/exists\.md/);
         expect(message).toMatch(/already exists at root/);
         expect(message).toMatch(/fails\.md/);

@@ -2,7 +2,7 @@
  * P12-5 Mission Control (gap item 7): goals with agent-drafted plans —
  * brief + agent-vs-you actions + clarifying questions.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
     goalsStore,
     goalsUserIdHolder,
@@ -13,12 +13,23 @@ import {
     addGoalNote,
     deleteGoal,
     findGoalByTitle,
+    findGoalCandidates,
     goalProgress,
     resetGoals,
 } from '../lib/goalsStore';
 import { heuristicPlan, generateGoalPlan, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN, formatPlanForChat } from '../lib/goalPlanner';
 
 const NO_LLM = { active: null } as never;
+
+// D6 'failed' path: mock llmClient so generateGoalPlan takes the catch/invalid-reply branch.
+let llmActive = false;
+let callLlmImpl: () => Promise<{ text: string }> = async () => { throw new Error('network'); };
+vi.mock('../lib/llmClient', () => ({
+    hasActiveLlm: () => llmActive,
+    callLlm: (...args: unknown[]) => callLlmImpl(...(args as [])),
+    LlmError: class LlmError extends Error {},
+}));
+const SOME_LLM = { active: 'anthropic' } as never;
 
 beforeEach(() => {
     goalsUserIdHolder.current = 'test-user';
@@ -55,6 +66,28 @@ describe('goal lifecycle', () => {
         expect(findGoalByTitle('rent roll')?.title).toBe('Grow the rent roll');
         expect(findGoalByTitle('nonexistent')).toBeNull();
     });
+
+    it('findGoalByTitle: two active goals sharing a substring → null, candidates length 2', () => {
+        createGoal('Refine reports');
+        createGoal('Research renters');
+        expect(findGoalByTitle('re')).toBeNull();
+        expect(findGoalCandidates('re')).toHaveLength(2);
+    });
+
+    it('findGoalByTitle: a done goal and an active goal with the same title → returns the active one', () => {
+        const done = createGoal('Grow the rent roll');
+        setGoalStatus(done.id, 'done');
+        const active = createGoal('Grow the rent roll');
+        const found = findGoalByTitle('grow the rent roll');
+        expect(found?.id).toBe(active.id);
+        expect(found?.status).toBe('active');
+    });
+
+    it('findGoalByTitle: substring matches only a done goal (no active match) → still resolves', () => {
+        const done = createGoal('Archived listing sweep');
+        setGoalStatus(done.id, 'done');
+        expect(findGoalByTitle('archived listing')?.id).toBe(done.id);
+    });
 });
 
 describe('ARA intake patterns', () => {
@@ -66,6 +99,22 @@ describe('ARA intake patterns', () => {
         expect(m?.[2]).toContain('500 subs');
         expect('open strata'.match(NEW_GOAL_PATTERN)).toBeNull();
     });
+
+    it('REFINE_GOAL_PATTERN: bare hyphen is never a separator; only `:` or spaced em/en dash', () => {
+        const a = 'refine goal re-lease units: 12 doors'.match(REFINE_GOAL_PATTERN);
+        expect(a?.[1]).toBe('re-lease units');
+        expect(a?.[2]).toBe('12 doors');
+
+        const b = 'refine goal Q3 2026 - revenue: yes'.match(REFINE_GOAL_PATTERN);
+        expect(b?.[1]).toBe('Q3 2026 - revenue');
+        expect(b?.[2]).toBe('yes');
+
+        expect('refine goal grow my channel'.match(REFINE_GOAL_PATTERN)).toBeNull();
+
+        const c = 'refine goal grow my channel — 500 subs'.match(REFINE_GOAL_PATTERN);
+        expect(c?.[1]).toBe('grow my channel');
+        expect(c?.[2]).toBe('500 subs');
+    });
 });
 
 describe('planner', () => {
@@ -74,6 +123,29 @@ describe('planner', () => {
         expect(plan.agentActions.length).toBeGreaterThan(0);
         expect(plan.userActions.length).toBeGreaterThan(0);
         expect(plan.brief).toContain('No LLM key');
+    });
+
+    it('heuristicPlan("failed") does not say no key is configured', () => {
+        const plan = heuristicPlan('Test goal', 'failed');
+        expect(plan.brief).toContain('AI planner call failed');
+        expect(plan.brief).not.toContain('No LLM key');
+        expect(plan.brief).toContain('refine goal');
+    });
+
+    it('generateGoalPlan: LLM call throws → "failed" heuristic (not "no-llm")', async () => {
+        llmActive = true;
+        callLlmImpl = async () => { throw new Error('rate limited'); };
+        const plan = await generateGoalPlan('Test goal', SOME_LLM);
+        expect(plan.brief).toContain('AI planner call failed');
+        llmActive = false;
+    });
+
+    it('generateGoalPlan: unparsable LLM reply → "failed" heuristic', async () => {
+        llmActive = true;
+        callLlmImpl = async () => ({ text: 'not json at all' });
+        const plan = await generateGoalPlan('Test goal', SOME_LLM);
+        expect(plan.brief).toContain('AI planner call failed');
+        llmActive = false;
     });
 
     it('formatPlanForChat renders brief, both lists, and questions', () => {

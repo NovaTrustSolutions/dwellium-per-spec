@@ -119,14 +119,37 @@ export function deleteGoal(id: string): void {
     persist(goalsStore.getSnapshot().filter(g => g.id !== id));
 }
 
-/** Find a goal by fuzzy title match (ARA "refine goal X" tier). */
+/**
+ * Find a goal by fuzzy title match (ARA "refine goal X" tier).
+ * Order: exact match (preferring a non-done goal over a done one with the
+ * same title) → else a substring match among non-done goals, but ONLY when
+ * exactly one non-done goal matches → else a substring match among ALL
+ * goals, but ONLY when exactly one matches overall → else null (ambiguous
+ * or not found; see findGoalCandidates for the ambiguous-reply tier).
+ */
 export function findGoalByTitle(fragment: string): Goal | null {
     const f = fragment.trim().toLowerCase();
     if (!f) return null;
     const goals = goalsStore.getSnapshot();
-    return goals.find(g => g.title.toLowerCase() === f)
-        ?? goals.find(g => g.title.toLowerCase().includes(f))
-        ?? null;
+    const exact = goals.filter(g => g.title.toLowerCase() === f);
+    if (exact.length > 0) {
+        return exact.find(g => g.status !== 'done') ?? exact[0];
+    }
+    const activeSubstr = goals.filter(g => g.status !== 'done' && g.title.toLowerCase().includes(f));
+    if (activeSubstr.length === 1) return activeSubstr[0];
+    if (activeSubstr.length === 0) {
+        const allSubstr = goals.filter(g => g.title.toLowerCase().includes(f));
+        if (allSubstr.length === 1) return allSubstr[0];
+    }
+    return null;
+}
+
+/** All substring-title matches for `fragment` (non-done goals first) — used to list candidates when findGoalByTitle can't disambiguate. */
+export function findGoalCandidates(fragment: string): Goal[] {
+    const f = fragment.trim().toLowerCase();
+    if (!f) return [];
+    const goals = goalsStore.getSnapshot().filter(g => g.title.toLowerCase().includes(f));
+    return [...goals.filter(g => g.status !== 'done'), ...goals.filter(g => g.status === 'done')];
 }
 
 /** Progress 0..1 across both action lists (no plan → 0). */

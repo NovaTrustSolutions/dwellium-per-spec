@@ -36,10 +36,13 @@ function sanitizePlan(parsed: unknown): GoalPlan | null {
     };
 }
 
-/** Template plan when no LLM is configured — honest, still useful. */
-export function heuristicPlan(title: string): GoalPlan {
+/** Template plan when no LLM is configured, or when the LLM call itself failed — honest, still useful. */
+export function heuristicPlan(title: string, reason: 'no-llm' | 'failed' = 'no-llm'): GoalPlan {
+    const brief = reason === 'failed'
+        ? `Goal: ${title}. The AI planner call failed (network issue, rate limit, or an unparsable reply), so this is a starter template — try "refine goal" again later for an agent-drafted plan.`
+        : `Goal: ${title}. No LLM key is configured, so this is a starter template — add a key in Control Panel → API Keys and use "refine goal" for an agent-drafted plan.`;
     return {
-        brief: `Goal: ${title}. No LLM key is configured, so this is a starter template — add a key in Control Panel → API Keys and use "refine goal" for an agent-drafted plan.`,
+        brief,
         agentActions: [
             { text: `Research approaches and best practices for: ${title}`, done: false },
             { text: 'Draft a first-pass plan document with milestones', done: false },
@@ -75,15 +78,17 @@ export async function generateGoalPlan(
         }, llm);
         const match = res?.text?.match(/\{[\s\S]*\}/);
         const plan = match ? sanitizePlan(JSON.parse(match[0])) : null;
-        return plan ?? heuristicPlan(title);
+        return plan ?? heuristicPlan(title, 'failed');
     } catch {
-        return heuristicPlan(title);
+        return heuristicPlan(title, 'failed');
     }
 }
 
 /** ARA tier patterns. */
 export const NEW_GOAL_PATTERN = /^(?:new|add|create|set)\s+goal[:,]?\s+(.+)$/i;
-export const REFINE_GOAL_PATTERN = /^refine\s+goal\s+(.+?)\s*[:—-]\s*(.+)$/i;
+// D1: separator is `:` or a SPACED em/en dash (" — " / " – ") only — a bare
+// hyphen (e.g. inside "re-lease" or "Q3 2026 - revenue") is never a separator.
+export const REFINE_GOAL_PATTERN = /^refine\s+goal\s+(.+?)\s*(?::|\s[—–]\s)\s*(.+)$/i;
 
 /** Render a plan as a chat-friendly markdown block. */
 export function formatPlanForChat(title: string, plan: GoalPlan): string {

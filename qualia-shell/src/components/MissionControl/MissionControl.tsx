@@ -4,7 +4,7 @@
  * ARA), YOUR actions (the video's "my role"), open clarifying questions,
  * progress, and notes. Create here or by telling ARA "new goal …".
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Target, Play, Trash2, Plus } from 'lucide-react';
 import { useGoals, goalProgress, type Goal } from '../../lib/goalsStore';
 import { generateGoalPlan } from '../../lib/goalPlanner';
@@ -17,7 +17,24 @@ function GoalCard({ goal }: { goal: Goal }) {
     const { setGoalStatus, toggleGoalAction, addGoalNote, deleteGoal } = useGoals();
     const [note, setNote] = useState('');
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const disarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const progress = goalProgress(goal);
+
+    const clearDisarmTimer = () => {
+        if (disarmTimer.current) { clearTimeout(disarmTimer.current); disarmTimer.current = null; }
+    };
+    // D10: a "Sure?" confirm state that never disarms is a footgun — arm it with
+    // a 4s auto-disarm (and disarm on blur), clearing the timer on re-arm/unmount.
+    const armDelete = () => {
+        setConfirmDelete(true);
+        clearDisarmTimer();
+        disarmTimer.current = setTimeout(() => setConfirmDelete(false), 4000);
+    };
+    const disarmDelete = () => {
+        clearDisarmTimer();
+        setConfirmDelete(false);
+    };
+    useEffect(() => clearDisarmTimer, []);
 
     const runWithAra = (action: string) => {
         requestAraPrompt(`For my goal "${goal.title}": ${action}`);
@@ -35,14 +52,22 @@ function GoalCard({ goal }: { goal: Goal }) {
                 </select>
                 <button
                     className="mc__del"
-                    onClick={() => { if (confirmDelete) deleteGoal(goal.id); else setConfirmDelete(true); }}
+                    onClick={() => { if (confirmDelete) deleteGoal(goal.id); else armDelete(); }}
+                    onBlur={disarmDelete}
                     aria-label={`Delete goal ${goal.title}`}
                 >
                     <Trash2 size={13} aria-hidden /> {confirmDelete ? 'Sure?' : ''}
                 </button>
             </header>
 
-            <div className="mc__progress" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <div
+                className="mc__progress"
+                role="progressbar"
+                aria-valuenow={Math.round(progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Progress for ${goal.title}`}
+            >
                 <div className="mc__progress-fill" style={{ width: `${progress * 100}%` }} />
             </div>
 
@@ -123,8 +148,9 @@ export default function MissionControl() {
             const plan = await generateGoalPlan(t, integrations.llm);
             if (!stillOwner()) return;
             updateGoalPlan(goal.id, plan); // …plan fills in when ready
-            setTitle('');
         } finally {
+            setTitle(''); // D9: clear on every exit path, not just the happy one — an
+            // account switch mid-await must not leave user A's text in user B's input.
             setBusy(false);
         }
     };

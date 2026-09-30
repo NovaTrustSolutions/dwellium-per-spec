@@ -118,6 +118,19 @@ describe('runHermesGraphNightly', () => {
         expect(deps.recordRun).not.toHaveBeenCalled();
     });
 
+    it('account switch during the status check: no rebuild request is sent at all', async () => {
+        let owner = true;
+        const fetchStatus = vi.fn(async () => {
+            owner = false; // the session flips to another account while /status is in flight
+            return { built: false, building: false, builtAt: null, lastError: null, nodes: 0 };
+        });
+        const rebuild = vi.fn(async () => ({ ok: true, status: 200 }));
+        const deps = baseDeps({ fetchStatus, rebuild, captureOwnerFn: () => () => owner });
+        await runHermesGraphNightly(deps);
+        expect(rebuild).not.toHaveBeenCalled();
+        expect(deps.recordRun).not.toHaveBeenCalled();
+    });
+
     it('StrictMode double-mount: only one rebuild fires', async () => {
         const storage = makeStorage();
         const fetchStatus = vi.fn(async () => ({ built: false, building: false, builtAt: null, lastError: null, nodes: 3 }));

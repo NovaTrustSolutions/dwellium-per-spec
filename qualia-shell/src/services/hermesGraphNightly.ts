@@ -9,7 +9,7 @@
  * rebuild itself needs no LLM key — graphify does the raw work — so this runs
  * for every signed-in user regardless of LLM configuration.
  */
-import { useContext, useEffect, useRef } from 'react';
+import { useContext, useEffect } from 'react';
 import { UserContext, getAuthHeaders } from '../context/UserContext';
 import { API_BASE } from '../config';
 import { captureOwner } from '../lib/perUserIdentity';
@@ -103,8 +103,10 @@ export async function runHermesGraphNightly(deps: RunNightlyDeps): Promise<void>
     if (prior && prior.day === today && (prior.claimed || prior.attempts >= MAX_ATTEMPTS_PER_DAY)) return;
 
     const attempts = (prior && prior.day === today ? prior.attempts : 0) + 1;
-    // Claim BEFORE any network call — a concurrent call (2nd tab, StrictMode
-    // double-mount) sees `claimed: true` at the read above and returns early.
+    // Claim BEFORE any network call so a StrictMode double-mount / second run in this
+    // tab returns early at the read above. Two real tabs can still race past it (the
+    // read-then-write isn't atomic across processes) — the backend's 409 on a running
+    // build is what actually prevents a double rebuild.
     writeClaim(storage, deps.uid, { day: today, attempts, claimed: true });
 
     const fetchStatus = deps.fetchStatus ?? kgFetchStatus;
@@ -114,12 +116,17 @@ export async function runHermesGraphNightly(deps: RunNightlyDeps): Promise<void>
     const stillOwner = (deps.captureOwnerFn ?? captureOwner)();
     const personaId = deps.personaId ?? NIGHTLY_PERSONA_ID;
 
+    // Requests carry the CURRENT session's auth, so re-check ownership before each one —
+    // after an account switch this tick must not act (or claim) for the new user.
+    if (!stillOwner()) return;
     const status = await fetchStatus();
+    if (!stillOwner()) return;
     if (!status) { writeClaim(storage, deps.uid, { day: today, attempts, claimed: false }); return; } // couldn't reach it — retry next tick
     if (status.building) return; // someone else is building — day is spoken for
     if (status.builtAt && dayKey(new Date(status.builtAt)) === today) return; // already rebuilt today (e.g. manually)
 
     const startedAt = now();
+    if (!stillOwner()) return;
     const res = await rebuild();
     if (!stillOwner()) return; // account switched mid-request — never record cross-account
 
@@ -151,19 +158,19 @@ export async function runHermesGraphNightly(deps: RunNightlyDeps): Promise<void>
 export function useHermesGraphNightly(): void {
     const userCtx = useContext(UserContext);
     const uid = userCtx?.user?.id ?? null;
-    const runningRef = useRef(false);
 
     useEffect(() => {
         if (!uid) return;
         let cancelled = false;
+        let running = false; // per effect run: a tick for a previous uid never blocks this one
 
         const tick = async () => {
-            if (cancelled || runningRef.current) return;
-            runningRef.current = true;
+            if (cancelled || running) return;
+            running = true;
             try {
                 await runHermesGraphNightly({ uid });
             } finally {
-                runningRef.current = false;
+                running = false;
             }
         };
 

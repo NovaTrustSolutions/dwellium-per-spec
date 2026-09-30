@@ -23,7 +23,7 @@ gated on `DWELLIUM_SNAPSHOT_DIR`, currently inert).
 - One Save object files are written with plain `writeFileSync` (whole-file); fine on gcsfuse today, and
   they move to local disk + snapshot with the DB (they are in the snapshot's `onesave` root).
 
-## Phase 1 — code: one env for "durable files stay on the mount" (backend, small)
+## Phase 1 — code: one env for "durable files stay on the mount" — DONE 2026-09-19 (backend `51507ee`/`ae8f4a8`, merged in NovaTrustSolutions/Dwellium#4; exercised by Phases 2–4)
 
 Today every consumer derives its path from `DWELLIUM_DATA_DIR`. After the move, that dir is ephemeral,
 so anything that is user data and NOT snapshotted needs its own durable root.

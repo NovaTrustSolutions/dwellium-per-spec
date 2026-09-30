@@ -8,6 +8,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import AiSpend from '../components/AiSpend/AiSpend';
+// UserContext is real (createContext) so tests can wrap AiSpend in a
+// <UserContext.Provider value={...}> to control isGod, rather than mocking
+// React itself.
+import { UserContext } from '../context/UserContext';
 
 vi.mock('../components/AiSpend/CostAdvisorPanel', () => ({
     default: () => <div data-testid="cost-advisor-stub" />,
@@ -26,6 +30,24 @@ vi.mock('../components/AiSpend/SubscriptionsEditor', () => ({
     default: () => <div data-testid="subscriptions-editor-stub" />,
 }));
 
+// Plan 068 Phase 3: BillingPanel / ClaudeCodeRow are covered by their own
+// test files; stub them here so this stays a pure layout + wiring test.
+vi.mock('../components/AiSpend/BillingPanel', () => ({
+    default: ({ isGod }: { isGod: boolean }) => (isGod ? <div data-testid="billing-panel-stub" /> : null),
+}));
+vi.mock('../components/AiSpend/ClaudeCodeRow', () => ({
+    default: () => <div data-testid="claude-code-row-stub" />,
+}));
+
+let mockSystemUsage: unknown = null;
+const useServerUsageMock = vi.fn();
+vi.mock('../lib/serverSpend', () => ({
+    useServerUsage: (...args: unknown[]) => useServerUsageMock(...args),
+    useSystemUsage: (isGod: boolean) => (isGod ? mockSystemUsage : null),
+}));
+
+const setExternalDevicesMock = vi.fn();
+
 let mockSubscriptions: { id: string; name: string; vendor: string; monthly: number }[] = [];
 
 vi.mock('../lib/subscriptionsStore', () => ({
@@ -42,6 +64,7 @@ type DailyRollup = {
     byProvider: Record<string, { calls: number; estCost: number }>;
     unpriced?: number;
     measuredCalls?: number;
+    bySource?: Record<string, { calls: number; estCost: number }>;
 };
 
 function makeDay(i: number, overrides: Partial<DailyRollup> = {}): DailyRollup {
@@ -73,13 +96,23 @@ vi.mock('../lib/llmUsageStore', () => ({
     lastNDays: () => mockDays,
     planAdvice: () => 'Pace ≈ $1.00/mo (est.) — test advice line.',
     clearLlmUsage: (...args: unknown[]) => clearLlmUsageMock(...args),
+    setExternalDevices: (...args: unknown[]) => setExternalDevicesMock(...args),
 }));
+
+function renderAsGod() {
+    return render(
+        <UserContext.Provider value={{ user: { role: 'god' } } as never}>
+            <AiSpend />
+        </UserContext.Provider>,
+    );
+}
 
 afterEach(() => {
     vi.useRealTimers();
     mockDays = makeDays();
     mockEntries = [];
     mockSubscriptions = [];
+    mockSystemUsage = null;
     clearLlmUsageMock = vi.fn();
     vi.clearAllMocks();
 });
@@ -137,7 +170,48 @@ describe('AiSpend — honest empty state', () => {
     it('does not claim every call lands here automatically', () => {
         render(<AiSpend />);
         expect(screen.queryByText(/lands here automatically/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/Not tracked yet: server-side calls, voice \(TTS\/STT\), avatar\./)).toBeInTheDocument();
+        expect(screen.getByText(/Not tracked yet: voice\/avatar in the browser\. Server audio calls are counted but unpriced\./)).toBeInTheDocument();
+    });
+});
+
+describe('AiSpend — Phase 3 server usage + Claude Code', () => {
+    it('mounts useServerUsage on every render, regardless of role', () => {
+        render(<AiSpend />);
+        expect(useServerUsageMock).toHaveBeenCalled();
+    });
+
+    it('renders BillingPanel only for a god user', () => {
+        render(<AiSpend />);
+        expect(screen.queryByTestId('billing-panel-stub')).not.toBeInTheDocument();
+
+        renderAsGod();
+        expect(screen.getByTestId('billing-panel-stub')).toBeInTheDocument();
+    });
+
+    it('merges system usage into the aggregate ledger only for a god user', () => {
+        mockSystemUsage = { v: 2, clearedAt: 0, devices: {} };
+        render(<AiSpend />);
+        expect(setExternalDevicesMock).toHaveBeenCalledWith('system', null);
+
+        setExternalDevicesMock.mockClear();
+        renderAsGod();
+        expect(setExternalDevicesMock).toHaveBeenCalledWith('system', mockSystemUsage);
+    });
+
+    it('always renders the Claude Code row', () => {
+        render(<AiSpend />);
+        expect(screen.getByTestId('claude-code-row-stub')).toBeInTheDocument();
+    });
+
+    it('shows a server-calls-this-week note computed from bySource keys, and hides it when there are none', () => {
+        mockDays = makeDays({ bySource: { 'server:ara': { calls: 3, estCost: 0.1 }, 'system:brief': { calls: 2, estCost: 0.05 }, ara: { calls: 5, estCost: 0.2 } } });
+        const { unmount } = render(<AiSpend />);
+        expect(screen.getByText('Includes server-side calls (5 this week)')).toBeInTheDocument();
+        unmount();
+
+        mockDays = makeDays();
+        render(<AiSpend />);
+        expect(screen.queryByText(/Includes server-side calls/)).not.toBeInTheDocument();
     });
 });
 

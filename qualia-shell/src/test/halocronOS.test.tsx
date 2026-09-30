@@ -79,6 +79,13 @@ vi.mock('../lib/subscriptionsStore', () => ({
     prorateMonthly: (monthly: number, days: number) => (monthly * days) / 30,
 }));
 
+// Plan 068 Phase 3: HalocronOS's Home spend card calls useServerUsage() so
+// server-side usage is merged into the aggregate ledger before totals are
+// read — this test only needs the call to be a no-op.
+vi.mock('../lib/serverSpend', () => ({
+    useServerUsage: () => null,
+}));
+
 vi.mock('../hooks/useIntegrations', () => ({
     useIntegrations: () => ({ integrations: { llm: {} } }),
 }));

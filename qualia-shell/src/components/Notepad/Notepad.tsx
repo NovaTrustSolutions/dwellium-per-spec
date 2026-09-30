@@ -6,6 +6,7 @@ import { TagInput } from '../Tags/TagInput';
 import './Notepad.css';
 import { API_BASE } from '../../config';
 import { WIDGET_ACTION_EVENT, consumePendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
+import { takePendingDeepLink } from '../../lib/pendingDeepLink';
 
 // ============================================
 // TYPES
@@ -58,6 +59,7 @@ export function noteDragData(note: Pick<Note, 'id' | 'title' | 'content'>): { wi
 export default function Notepad() {
     const { hierarchy } = useHierarchy();
     const [notes, setNotes] = useState<Note[]>([]);
+    const [notesUnavailable, setNotesUnavailable] = useState(false);
     const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
@@ -92,7 +94,7 @@ export default function Notepad() {
         // Fetch files & tasks from backend
         try {
             const [filesRes, tasksRes] = await Promise.allSettled([
-                fetch(`${API_BASE}?q=${encodeURIComponent(query)}`),
+                fetch(`${API_FILES}?q=${encodeURIComponent(query)}`),
                 fetch(`${API_BASE}/api/tasks?q=${encodeURIComponent(query)}`)
             ]);
             if (filesRes.status === 'fulfilled') {
@@ -134,16 +136,20 @@ export default function Notepad() {
     useEffect(() => { fetchNotes(); }, []);
 
     const fetchNotes = async () => {
+        // Never invent notes (no demo fallback): a failure shows an honest
+        // "Notes unavailable" state with Retry; a success clears it.
         try {
             const q = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : '';
-            const res = await fetch(`${API_BASE}/notes${q}`);
-            const json = await res.json();
-            if (json.success) setNotes(json.data);
+            const res = await fetch(`${API_FILES}/notes${q}`);
+            const json = await res.json().catch(() => null);
+            if (res.ok && json?.success && Array.isArray(json.data)) {
+                setNotes(json.data);
+                setNotesUnavailable(false);
+            } else {
+                setNotesUnavailable(true);
+            }
         } catch {
-            setNotes([
-                { id: 'demo-1', title: 'Meeting Notes — Q1 Review', content: '# Q1 Review\n\nDiscussed revenue targets and operational efficiency.\n\n- **Revenue**: On track at 94%\n- **Costs**: Under budget by 8%\n- **Action**: @Review MSA Contract by Friday', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
-                { id: 'demo-2', title: 'ARA Personality Spec', content: '## Mode System\n\n8 operational lenses for ARA, each with distinct voice and logic.\n\n1. Clinical Analyst\n2. Lead Counsel\n3. Chief of Staff\n4. Diplomat\n5. Devil\'s Advocate\n6. Strategic Architect\n7. Creative Partner\n8. Confidant', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
-            ]);
+            setNotesUnavailable(true);
         }
     };
 
@@ -151,7 +157,7 @@ export default function Notepad() {
     const autoSave = useCallback(async (noteId: string, noteTitle: string, noteContent: string) => {
         setIsSaving(true);
         try {
-            await fetch(`${API_BASE}/notes`, {
+            await fetch(`${API_FILES}/notes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: noteId, title: noteTitle, content: noteContent })
@@ -248,7 +254,7 @@ export default function Notepad() {
     const openNoteFromPalette = useCallback(async (detail: { noteId?: string; title?: string }) => {
         if (detail.noteId) {
             try {
-                const res = await fetch(`${API_BASE}/notes/${detail.noteId}`);
+                const res = await fetch(`${API_FILES}/notes/${encodeURIComponent(detail.noteId)}`);
                 const json = await res.json();
                 if (json?.success && json.data) {
                     const note = json.data as Note;
@@ -270,11 +276,15 @@ export default function Notepad() {
         }
     }, [selectNote]);
 
-    // Command Palette deep-link: open a selected note
+    // Command Palette / Search deep-link: open a selected note. A link fired
+    // before this chunk mounted waits in the pending slot (plan 069).
     useEffect(() => {
+        const pendingId = takePendingDeepLink('notepad');
+        if (pendingId) void openNoteFromPalette({ noteId: pendingId });
         const onOpenNote = (event: Event) => {
             const detail = (event as CustomEvent<{ noteId?: string; title?: string }>).detail;
             if (!detail?.noteId && !detail?.title) return;
+            takePendingDeepLink('notepad');
             void openNoteFromPalette(detail);
         };
 
@@ -352,6 +362,12 @@ export default function Notepad() {
                 </div>
                 <input className="np-sidebar__search" type="text" placeholder="Search notes..."
                     value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                {notesUnavailable && (
+                    <div className="np-sidebar__status" role="status">
+                        Notes unavailable — couldn't reach the notes service.
+                        <button type="button" className="np-sidebar__retry" onClick={() => void fetchNotes()}>Retry</button>
+                    </div>
+                )}
                 <div className="np-sidebar__list">
                     {notes.map(note => (
                         <div key={note.id}

@@ -38,6 +38,7 @@ const CognitiveHarness = lazy(() => import('../CognitiveHarness/CognitiveHarness
 const AdvisoryBoardDiagram = lazy(() => import('../AdvisoryBoard/AdvisoryBoardDiagram'));
 import { advisoryLensBus } from '../../lib/busChannels';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
+import { useServerUsage } from '../../lib/serverSpend';
 import { useSubscriptions, monthlyTotal, prorateMonthly } from '../../lib/subscriptionsStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
@@ -334,6 +335,9 @@ export default function HalocronOS() {
     usePerUserIdentity();
     const greetingName = accountGreetingName(userCtx?.user);
     const { integrations } = useIntegrations();
+    // Plan 068 Phase 3: pull server-side usage into the aggregate ledger so
+    // the Home spend total includes it without opening the AI Spend widget.
+    useServerUsage();
     const usage = useLlmUsage();
     const subs = useSubscriptions();
     const days = lastNDays(RANGE_DAYS[range], usage);
@@ -656,7 +660,7 @@ export default function HalocronOS() {
                                         ['two-brains', 'Two Brains', 'A shared second brain — notes, tasks, and reactions you and the team build together.'],
                                         ['connections', 'Connections & Memory', 'The web of links between people, projects, and notes across your memory.'],
                                         ['wiki', 'Wiki', 'Your structured knowledge base — linked wiki pages the agents can cite.'],
-                                        ['holocron-library', 'Holocron Library', 'A library of saved holocrons — long-form knowledge artifacts and references.'],
+                                        ['holocron-library', 'Holocron Library', 'Animated gallery of the eight holocrons — click one to read its lore.'],
                                         ['notebooklm-context', 'NotebookLM', 'Bridge to NotebookLM — ground answers in your notebooks and source documents.'],
                                         ['synthesis', 'Synthesis Lab', 'Synthesizes captured notes and research into structured insights and summaries.'],
                                     ] as [string, string, string][]).map(([wid, wlabel, wdesc]) => (

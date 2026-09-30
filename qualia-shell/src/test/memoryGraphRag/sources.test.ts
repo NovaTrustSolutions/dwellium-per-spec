@@ -61,7 +61,7 @@ describe('wikiDocuments', () => {
 
 describe('memoryDocuments', () => {
     it('builds one document per fact, title = fact source', () => {
-        captureFacts('Hermes', 'The vendor must submit a certificate of insurance before any work begins.', NOW);
+        captureFacts('Hermes', 'The vendor must submit a certificate of insurance before any work begins.', copawUserIdHolder.current, NOW);
         const docs = memoryDocuments(null);
         expect(docs).toHaveLength(1);
         expect(docs[0].sourceKind).toBe('memory');
@@ -71,8 +71,8 @@ describe('memoryDocuments', () => {
     });
 
     it('excludes facts captured from Synthesis Lab', () => {
-        captureFacts('Synthesis Lab', 'The maintenance backlog grew twelve percent last quarter across the portfolio.', NOW);
-        captureFacts('Hermes', 'A second, unrelated declarative fact worth keeping around for tests.', NOW);
+        captureFacts('Synthesis Lab', 'The maintenance backlog grew twelve percent last quarter across the portfolio.', copawUserIdHolder.current, NOW);
+        captureFacts('Hermes', 'A second, unrelated declarative fact worth keeping around for tests.', copawUserIdHolder.current, NOW);
         const docs = memoryDocuments(null);
         expect(docs).toHaveLength(1);
         expect(docs[0].title).toBe('Hermes');
@@ -84,7 +84,7 @@ describe('liveSourceIds', () => {
         const foundryItem = captureItem({ sourceType: 'note', rawContent: 'A captured note.' } as never, NOW)!;
         captureSynthesis({ id: 's1', query: 'q', result: 'r', layer: 0, parentId: null }, NOW);
         setWikiPage(page({ path: 'Acme/Live', name: 'Live' }));
-        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', NOW);
+        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', copawUserIdHolder.current, NOW);
 
         // An open Scribe file must NOT count as live: closing it isn't deleting it.
         useScribeStore.setState({ openFiles: [{ filepath: '/notes/open.md', content: 'Open file text.' }] } as never);
@@ -111,7 +111,7 @@ describe('builders never leave a per-user holder pointed at another account (pla
         synthesisUserIdHolder.current = 'lisa';
         captureSynthesis({ id: 'lisa-1', query: 'q', result: 'r', layer: 1, parentId: null }, NOW);
         copawUserIdHolder.current = 'lisa';
-        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', NOW);
+        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', copawUserIdHolder.current, NOW);
 
         const holders = [synthesisUserIdHolder, copawUserIdHolder, wikiUserIdHolder, foundryUserIdHolder, tagStoreUserIdHolder];
         holders.forEach((h) => { h.current = 'andy'; }); // the signed-in user

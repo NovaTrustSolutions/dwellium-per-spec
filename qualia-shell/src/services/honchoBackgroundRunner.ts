@@ -31,11 +31,20 @@ import { hermesLearningUserIdHolder } from '../components/HonchoHermesPanel/herm
 import { upsertBrief, todaysBrief } from '../lib/morningBriefStore';
 import { goalsStore, goalProgress } from '../lib/goalsStore';
 import { artifactStore } from '../lib/artifactStore';
-import { lastNDays, planAdvice } from '../lib/llmUsageStore';
+import { lastNDays, planAdvice, currentUsageLedger } from '../lib/llmUsageStore';
 import { budgetBriefLine } from '../lib/aiBudgetStore';
 import { personaWorkStore, personaWorkUserIdHolder } from '../lib/agents/personaWorkStore';
+import { todoStore } from '../components/ThoughtWeaver/todoStore';
 import { getCostKpi } from '../lib/costKpiStore';
-import { evaluateTasks, liveRateRequestItems, buildLiveRatePrompt, parseLiveRates, LIVE_RATE_SYSTEM } from '../lib/costAdvisor';
+import {
+    advisorCandidates,
+    evaluateTasks,
+    liveRateRequestItems,
+    buildLiveRatePrompt,
+    parseLiveRates,
+    LIVE_RATE_SYSTEM,
+    measuredHermesTaskCost,
+} from '../lib/costAdvisor';
 
 const CHECK_EVERY_MS = 10 * 60 * 1000;   // re-evaluate every 10 min while logged in
 const MIN_GAP_MS = 6 * 60 * 60 * 1000;   // at most one auto-reflection per 6 h
@@ -94,7 +103,7 @@ export function useHonchoBackgroundRunner(): void {
             const dataLines: string[] = [];
             const goals = goalsStore.getSnapshot().filter(g => g.status !== 'done');
             if (goals.length > 0) {
-                const top = goals.slice(0, 3).map(g => `${g.title} ${goalProgress(g)}%`).join(' · ');
+                const top = goals.slice(0, 3).map(g => `${g.title} ${Math.round(goalProgress(g) * 100)}%`).join(' · ');
                 dataLines.push(`Goals: ${top}`);
             }
             const week = lastNDays(7);
@@ -109,7 +118,9 @@ export function useHonchoBackgroundRunner(): void {
             // outsourcing rate per flagged task with a CURRENT estimate.
             const kpi = getCostKpi();
             const workState = personaWorkStore.getSnapshot();
-            let costRecs = evaluateTasks(workState, kpi, { max: 2 });
+            const measured = measuredHermesTaskCost(currentUsageLedger(), workState);
+            const candidates = advisorCandidates(todoStore.getSnapshot());
+            let costRecs = evaluateTasks(candidates, kpi, { max: 2, aiCostOverrideUsd: measured?.perTaskUsd });
             if (costRecs.length > 0 && hasActiveLlm(llm)) {
                 try {
                     const rateItems = liveRateRequestItems(costRecs);
@@ -119,7 +130,7 @@ export function useHonchoBackgroundRunner(): void {
                     );
                     const rateOverrides = parseLiveRates(rateRes?.text, new Set(rateItems.map(i => i.taskId)));
                     if (Object.keys(rateOverrides).length > 0) {
-                        costRecs = evaluateTasks(workState, kpi, { max: 2, rateOverrides });
+                        costRecs = evaluateTasks(candidates, kpi, { max: 2, rateOverrides, aiCostOverrideUsd: measured?.perTaskUsd });
                     }
                 } catch { /* fall back to benchmark rates */ }
             }

@@ -38,7 +38,7 @@ import {
     synthesisStore, captureSynthesis, removeSynthesis, clearSyntheses, MAX_SYNTHESES,
     newSynthesisId, buildSecondLayerPrompt, type Synthesis as SynthesisEntry, type SynthesisSource,
 } from './synthesisStore';
-import { captureFacts } from '../Hive/copawStore';
+import { captureFacts, copawUserIdHolder } from '../Hive/copawStore';
 import './Synthesis.css';
 
 const MIN_QUERY_CHARS = 3;
@@ -234,7 +234,7 @@ export default function Synthesis() {
         if (!answer || busy || captured) return;
         const res = captureSynthesis({ id: answer.id, query: answer.query, result: answer.result, layer: answer.layer, parentId: answer.parentId, followUp: answer.followUp, sources: answer.sources });
         if (res.ok) {
-            captureFacts('Synthesis Lab', answer.result); // CoPaw §8.5 — only on Capture, never on a bare Synthesize
+            captureFacts('Synthesis Lab', answer.result, copawUserIdHolder.current); // CoPaw §8.5 — only on Capture, never on a bare Synthesize
         } else if (res.reason === 'full') {
             setErr(`You have ${MAX_SYNTHESES} captured syntheses — delete some to capture more.`);
         } else if (res.reason === 'quota') {

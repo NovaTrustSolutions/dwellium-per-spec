@@ -352,6 +352,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     prompt: fewShot ? `${fewShot}\n\nTask: ${t}` : `Task: ${t}`,
                     maxTokens: 1024,
                     temperature: 0.4,
+                    source: 'honcho',
                 }, integrations.llm).catch(() => null);
                 return res?.text ?? null;
             },

@@ -25,8 +25,9 @@
 .cadv__kpi-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary, #808080); }
 
 .cadv__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.cadv__title { display: flex; align-items: center; gap: 7px; font-weight: 700; color: var(--text-primary); }
+.cadv__title { display: flex; align-items: center; gap: 7px; font-weight: 700; color: var(--text-primary); margin: 0; font-size: 13px; }
 .cadv__title svg { color: var(--accent, #D6FE51); }
+.cadv__title:focus-visible { outline: 2px solid var(--accent, #D6FE51); outline-offset: 2px; border-radius: 4px; }
 .cadv__total {
     font-size: 11px; font-weight: 600;
     color: var(--accent, #D6FE51);
@@ -52,9 +53,45 @@
     display: inline-flex; align-items: center; gap: 4px;
     padding: 2px 7px; border-radius: 999px;
     border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
-    color: var(--text-secondary); text-transform: capitalize;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)); text-transform: capitalize;
 }
 .cadv__badge svg { color: var(--accent, #D6FE51); }
-.cadv__cost { color: var(--text-tertiary, #808080); }
+.cadv__cost { color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)); }
+.cadv__source { color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)); }
+
+.cadv__actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.cadv__action {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 9px; border-radius: 7px; font-size: 11px; font-weight: 600;
+    border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+    background: rgba(255, 255, 255, 0.03);
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    cursor: pointer;
+}
+.cadv__action:hover { background: rgba(255, 255, 255, 0.06); }
+.cadv__action:focus-visible { outline: 2px solid var(--accent, #D6FE51); outline-offset: 2px; }
+.cadv__action--primary {
+    color: var(--accent, #D6FE51);
+    border-color: color-mix(in srgb, var(--accent, #D6FE51) 40%, transparent);
+}
+.cadv__no-llm { font-size: 10px; color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)); }
+
+.cadv__subhead {
+    margin: 4px 0 0;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+.cadv__item--delegated, .cadv__item--hidden {
+    flex-direction: row; align-items: center; justify-content: space-between; gap: 10px;
+}
+.cadv__delegated-meta { flex-shrink: 0; font-size: 11px; color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)); }
+
+.cadv__hidden summary {
+    cursor: pointer; font-size: 12px; font-weight: 600;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    padding: 4px 0;
+}
+.cadv__hidden summary:focus-visible { outline: 2px solid var(--accent, #D6FE51); outline-offset: 2px; }
+.cadv__hidden .cadv__list { margin-top: 8px; }
 
 .cadv__foot { font-size: 10px; color: var(--text-tertiary, #808080); line-height: 1.5; }

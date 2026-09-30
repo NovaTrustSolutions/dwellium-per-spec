@@ -371,10 +371,101 @@ function sumDay(a: DailyRollup, b: DailyRollup): DailyRollup {
     };
 }
 
-function aggregate(stored: StoredLedgerV2): UsageLedger {
+/*
+ * External devices (plan 068 phase 3): the server-side ledger
+ * (`llm-usage-server_<uid>`) and, god-only, the unattributed "system"
+ * bucket. These are supplied read-only by `serverSpend.ts` via
+ * `setExternalDevices` — they are NEVER written back to localStorage or One
+ * Save (this store owns no sync relationship with them; the server owns
+ * its own). They fold into `aggregate()` exactly like another device's
+ * sub-ledger, so every existing consumer (AiSpend, HalocronOS,
+ * dailySynthesis, honcho, budget, breakdown) sees server-side spend as part
+ * of the total with no changes on their part.
+ *
+ * Labelling (smallest-approach choice, per plan 068 phase 3 contract):
+ * provider keys are left untouched (still plain `LlmProvider` — server
+ * spend counts toward the same per-provider totals as browser spend), but
+ * each external entry's `source` — and each day's `bySource` keys — get a
+ * `"server:"` / `"system:"` prefix, so a future "by feature" breakdown view
+ * can label server-origin rows distinctly without any other consumer (which
+ * only reads `days`/`entries`, never assumes a `source` format) needing to
+ * change.
+ */
+type ExternalDeviceKey = 'server' | 'system';
+// Each external ledger remembers WHOSE it is: after an account switch the other
+// user's server rows must never merge into this user's totals, even before the
+// next refetch. clearedAt is applied at aggregate time (below), so a Clear hides
+// server rows immediately rather than at the next 5-minute refresh.
+const externalDevices: Record<ExternalDeviceKey, { owner: string | null; dev: DeviceLedger } | null> = { server: null, system: null };
+let externalVersion = 0;
+const externalListeners = new Set<() => void>();
+
+function flattenStored(stored: StoredLedgerV2): DeviceLedger {
     const entries: UsageEntry[] = [];
     const days: Record<string, DailyRollup> = {};
     for (const dev of Object.values(stored.devices)) {
+        entries.push(...dev.entries);
+        for (const [date, roll] of Object.entries(dev.days)) {
+            days[date] = days[date] ? sumDay(days[date], roll) : roll;
+        }
+    }
+    return { entries, days };
+}
+
+function prefixSource(source: string | undefined, prefix: ExternalDeviceKey): string {
+    return `${prefix}:${source ?? 'other'}`;
+}
+
+function relabelExternal(dev: DeviceLedger, prefix: ExternalDeviceKey): DeviceLedger {
+    const entries = dev.entries.map(e => ({ ...e, source: prefixSource(e.source, prefix) }));
+    const days: Record<string, DailyRollup> = {};
+    for (const [date, roll] of Object.entries(dev.days)) {
+        const bySource: Record<string, { calls: number; estCost: number }> = {};
+        for (const [src, stat] of Object.entries(roll.bySource ?? {})) {
+            bySource[prefixSource(src === 'other' ? undefined : src, prefix)] = stat;
+        }
+        days[date] = { ...roll, bySource };
+    }
+    return { entries, days };
+}
+
+/**
+ * Supplies (or clears, with `null`) one external, read-only device ledger.
+ * Never persisted here — the caller (`serverSpend.ts`) owns fetching it.
+ * Applies THIS device's `clearedAt` tombstone to the external ledger too, so
+ * a local "Clear" also hides server/system entries recorded before it.
+ */
+export function setExternalDevices(key: ExternalDeviceKey, stored: StoredLedgerV2 | null): void {
+    if (!stored) {
+        externalDevices[key] = null;
+    } else {
+        externalDevices[key] = { owner: llmUsageUserIdHolder.current, dev: relabelExternal(flattenStored(normalize(stored)), key) };
+    }
+    externalVersion++;
+    for (const l of externalListeners) l();
+}
+
+function subscribeExternal(cb: () => void): () => void {
+    externalListeners.add(cb);
+    return () => externalListeners.delete(cb);
+}
+
+/** Test-only: drops both external devices without touching the local ledger. */
+export function _resetExternalDevicesForTests(): void {
+    externalDevices.server = null;
+    externalDevices.system = null;
+    externalVersion++;
+}
+
+function aggregate(stored: StoredLedgerV2): UsageLedger {
+    const entries: UsageEntry[] = [];
+    const days: Record<string, DailyRollup> = {};
+    const deviceLedgers: DeviceLedger[] = [...Object.values(stored.devices)];
+    const owner = llmUsageUserIdHolder.current;
+    for (const ext of [externalDevices.server, externalDevices.system]) {
+        if (ext && ext.owner === owner) deviceLedgers.push(applyClearedAt(ext.dev, stored.clearedAt ?? 0));
+    }
+    for (const dev of deviceLedgers) {
         entries.push(...dev.entries);
         for (const [date, roll] of Object.entries(dev.days)) {
             days[date] = days[date] ? sumDay(days[date], roll) : roll;
@@ -387,12 +478,19 @@ function aggregate(stored: StoredLedgerV2): UsageLedger {
 // Single-slot identity cache shared by useLlmUsage() and the non-hook
 // lastNDays()/planAdvice() default path, so both see the SAME UsageLedger
 // object reference for the same stored snapshot (referential stability).
+// Keyed on BOTH the stored snapshot and externalVersion, so a server/system
+// ledger arriving after mount invalidates it too.
 let aggCacheStored: StoredLedgerV2 | null = null;
+let aggCacheVersion = -1;
+let aggCacheOwner: string | null | undefined;
 let aggCacheResult: UsageLedger | null = null;
 function aggregateCached(stored: StoredLedgerV2): UsageLedger {
-    if (aggCacheStored === stored && aggCacheResult) return aggCacheResult;
+    const owner = llmUsageUserIdHolder.current;
+    if (aggCacheStored === stored && aggCacheVersion === externalVersion && aggCacheOwner === owner && aggCacheResult) return aggCacheResult;
     aggCacheResult = aggregate(stored);
     aggCacheStored = stored;
+    aggCacheVersion = externalVersion;
+    aggCacheOwner = owner;
     return aggCacheResult;
 }
 
@@ -554,5 +652,13 @@ export function resetLlmUsage(): void {
 
 export function useLlmUsage(): UsageLedger {
     const stored = useSyncExternalStore(llmUsageStore.subscribe, llmUsageStore.getSnapshot, llmUsageStore.getServerSnapshot);
-    return useMemo(() => aggregateCached(stored), [stored]);
+    // externalVersion has no meaningful server snapshot (SSR never has server/
+    // system data yet) — 0 on both client-pre-hydration and server is fine.
+    const extVersion = useSyncExternalStore(subscribeExternal, () => externalVersion, () => 0);
+    return useMemo(() => aggregateCached(stored), [stored, extVersion]);
+}
+
+/** Non-hook read of the current aggregate ledger (background runners, non-React code). */
+export function currentUsageLedger(): UsageLedger {
+    return aggregateCached(llmUsageStore.getSnapshot());
 }

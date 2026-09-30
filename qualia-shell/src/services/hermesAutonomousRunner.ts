@@ -105,11 +105,22 @@ export async function runNextHermesTask(deps: RunNextHermesTaskDeps): Promise<Au
         systemPrompt: withRecall(composedPrompt, memory),
     };
 
+    // Plan 068 phase 4: runPersona's decompose/run/verify/merge steps all call
+    // deps.invoke() as their single LLM chokepoint (see orchestrator.ts) — tagging
+    // it here, once, tags every LLM call this autonomous run makes with
+    // 'hermes' so it reaches recordLlmUsage, without touching orchestrator.ts
+    // (shared with the interactive, non-Hermes Agent Lab callers) or the
+    // request object's own construction.
+    const hermesTaggedDeps: OrchestratorDeps = {
+        ...deps.orchestratorDeps,
+        invoke: req => deps.orchestratorDeps.invoke({ ...req, source: req.source ?? 'hermes' }),
+    };
+
     try {
         const output: PersonaOutput = await run({
             goal: claim.task.title,
             persona: augmented,
-            deps: deps.orchestratorDeps,
+            deps: hermesTaggedDeps,
         });
         const result = output.verified.trim();
         const ok = !!output.output.trim() && !output.output.startsWith('(no response');

@@ -31,6 +31,7 @@ export interface Synthesis {
 
 export interface SynthesisSource { sourceId: string; sourceKind: string; title: string; }
 
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
 export { synthesisUserIdHolder };
 
 /** Oldest captures are dropped past this (copaw caps at 500 facts; a synthesis is a full answer). */

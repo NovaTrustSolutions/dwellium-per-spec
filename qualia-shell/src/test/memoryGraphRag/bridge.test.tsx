@@ -68,7 +68,7 @@ describe('useCognitiveMemoryBridge', () => {
         await waitFor(() => expect(getCmn('andy').metrics().documents).toBe(1), { timeout: 5000 });
 
         copawUserIdHolder.current = 'andy';
-        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', new Date());
+        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', copawUserIdHolder.current, new Date());
         await waitFor(() => expect(getCmn('andy').metrics().documents).toBe(2), { timeout: 5000 });
         expect(callLlm).not.toHaveBeenCalled();
     });

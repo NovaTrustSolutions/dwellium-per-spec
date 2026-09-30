@@ -4,8 +4,8 @@
  * breaks the corresponding piece of production logic when read against the
  * comment above it — mutation-check discipline per the plan.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
 import {
     llmUsageStore,
     llmUsageUserIdHolder,
@@ -23,6 +23,8 @@ import {
     isRawV1Shape,
     droppedUserSwitchCount,
     _resetDeviceIdForTests,
+    setExternalDevices,
+    _resetExternalDevicesForTests,
     type StoredLedgerV2,
     type DeviceLedger,
     type UsageEntry,
@@ -49,6 +51,7 @@ beforeEach(() => {
     resetLlmUsage();
     llmUsageStore.reset();
     setDevice('device-a');
+    _resetExternalDevicesForTests();
 });
 
 describe('recordLlmUsage — estimate path', () => {
@@ -358,5 +361,123 @@ describe('read helpers', () => {
         rerender();
         expect(result.current).not.toBe(first);
         expect(result.current.entries).toHaveLength(2);
+    });
+});
+
+/** Plan 068 phase 3 — server/system devices supplied read-only via setExternalDevices(). */
+describe('setExternalDevices', () => {
+    function serverLedger(date: string, source: string, provider: 'openai' | 'anthropic', calls: number, estCost: number): StoredLedgerV2 {
+        const entry: UsageEntry = { ts: new Date(`${date}T12:00:00`).getTime(), provider, model: 'gpt-4o-mini', estIn: 100, estOut: 100, estCost, measured: true, source };
+        return {
+            v: 2,
+            clearedAt: 0,
+            devices: {
+                server: {
+                    entries: Array.from({ length: calls }, () => entry),
+                    days: { [date]: { date, calls, estIn: 100 * calls, estOut: 100 * calls, estCost: estCost * calls, byProvider: { [provider]: { calls, estCost: estCost * calls } }, bySource: { [source]: { calls, estCost: estCost * calls } } } },
+                },
+            },
+        };
+    }
+
+    it('folds into useLlmUsage() totals and days alongside the local ledger', () => {
+        recordLlmUsage({ provider: 'anthropic', model: 'claude-haiku-4-5', promptChars: 40, responseChars: 40, userId: 'test-user' });
+        const today = todayRollup();
+        setExternalDevices('server', serverLedger(today.date, 'brief', 'openai', 2, 0.05));
+
+        const ledger = llmUsageStore.getSnapshot(); // stored snapshot is unchanged (external, never persisted)
+        expect(ledger.devices.server).toBeUndefined();
+
+        const merged = lastNDays(1)[0];
+        expect(merged.calls).toBe(3); // 1 local + 2 server
+        expect(merged.byProvider.openai?.calls).toBe(2);
+        expect(merged.byProvider.anthropic?.calls).toBe(1);
+    });
+
+    it('labels external entries/bySource with a "server:" prefix but leaves provider untouched (smallest-approach labelling)', () => {
+        const today = todayRollup();
+        setExternalDevices('server', serverLedger(today.date, 'brief', 'openai', 1, 0.1));
+        const merged = lastNDays(1)[0];
+        expect(merged.bySource?.['server:brief']).toBeTruthy();
+        expect(merged.bySource?.brief).toBeUndefined();
+        expect(merged.byProvider.openai?.calls).toBe(1); // provider key is NOT prefixed
+    });
+
+    it('applies the LOCAL clearedAt tombstone to external entries too (a local Clear also hides server history before it)', () => {
+        const today = todayRollup();
+        const t0 = Date.now();
+        recordLlmUsage({ provider: 'anthropic', model: 'claude-haiku-4-5', promptChars: 40, responseChars: 40, userId: 'test-user' });
+        vi.setSystemTime(t0 + 10); // strictly after the recorded entry's ts (same-ms race guard, per Conventions)
+        clearLlmUsage(); // sets clearedAt = now, wipes the local entry too
+        vi.useRealTimers();
+        const clearedAt = llmUsageStore.getSnapshot().clearedAt;
+        expect(clearedAt).toBeGreaterThan(0);
+        expect(lastNDays(1)[0].calls).toBe(0); // the local entry itself did not resurrect
+
+        // A server entry recorded BEFORE the clear must not resurrect.
+        const stale = serverLedger(today.date, 'brief', 'openai', 1, 0.1);
+        stale.devices.server.entries[0].ts = clearedAt - 10_000;
+        setExternalDevices('server', stale);
+        expect(lastNDays(1)[0].calls).toBe(0);
+
+        // One recorded AFTER the clear must survive.
+        const fresh = serverLedger(today.date, 'brief', 'openai', 1, 0.1);
+        fresh.devices.server.entries[0].ts = clearedAt + 10_000;
+        setExternalDevices('server', fresh);
+        expect(lastNDays(1)[0].calls).toBe(1);
+    });
+
+    it('setExternalDevices(key, null) clears that device back out and invalidates the aggregate cache', () => {
+        const today = todayRollup();
+        setExternalDevices('server', serverLedger(today.date, 'brief', 'openai', 1, 0.1));
+        expect(lastNDays(1)[0].calls).toBe(1);
+        setExternalDevices('server', null);
+        expect(lastNDays(1)[0].calls).toBe(0);
+    });
+
+    it('server and system devices are independent — clearing one leaves the other', () => {
+        const today = todayRollup();
+        setExternalDevices('server', serverLedger(today.date, 'brief', 'openai', 1, 0.1));
+        setExternalDevices('system', serverLedger(today.date, 'automation', 'anthropic', 1, 0.2));
+        expect(lastNDays(1)[0].calls).toBe(2);
+        setExternalDevices('server', null);
+        expect(lastNDays(1)[0].calls).toBe(1);
+        expect(lastNDays(1)[0].byProvider.anthropic?.calls).toBe(1);
+    });
+
+    it('useLlmUsage() re-renders when an external device arrives after mount', () => {
+        const today = todayRollup();
+        const { result } = renderHook(() => useLlmUsage());
+        expect(result.current.entries).toHaveLength(0);
+        act(() => { setExternalDevices('server', serverLedger(today.date, 'brief', 'openai', 1, 0.1)); });
+        expect(result.current.entries).toHaveLength(1);
+    });
+});
+
+describe('external (server) devices — owner + clear applied at read time (plan 068 phase 3 review)', () => {
+    const serverLedger = (ts: number): StoredLedgerV2 => ({
+        v: 2, clearedAt: 0,
+        devices: { server: { entries: [{ ts, provider: 'openai', model: 'gpt-4o-mini', estIn: 1000, estOut: 1000, estCost: 0.5, measured: true, source: 'ara' }],
+            days: { [calendarDaysBack(ts, 1)[0]]: { date: calendarDaysBack(ts, 1)[0], calls: 1, estIn: 1000, estOut: 1000, estCost: 0.5, byProvider: { openai: { calls: 1, estCost: 0.5 } } } } } },
+    });
+    afterEach(() => { _resetExternalDevicesForTests(); vi.useRealTimers(); });
+
+    it("another user's server usage never merges into this user's totals after an account switch", () => {
+        llmUsageUserIdHolder.current = 'user-a';
+        setExternalDevices('server', serverLedger(Date.now()));
+        expect(todayRollup().calls).toBe(1);
+        llmUsageUserIdHolder.current = 'user-b';   // switched; no refetch yet
+        llmUsageStore.reset();
+        expect(todayRollup().calls).toBe(0);
+    });
+
+    it('Clear hides server rows immediately, without waiting for the next server refresh', () => {
+        const t0 = Date.now();
+        vi.setSystemTime(t0);
+        setExternalDevices('server', serverLedger(t0 - 1000));
+        expect(todayRollup().calls).toBe(1);
+        vi.setSystemTime(t0 + 10);
+        clearLlmUsage();
+        expect(todayRollup().calls).toBe(0);
     });
 });

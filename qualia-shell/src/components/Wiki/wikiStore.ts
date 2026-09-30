@@ -10,6 +10,7 @@
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { wikiUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface WikiPage {
     path: string;
@@ -26,7 +27,8 @@ export interface WikiPage {
 
 export type WikiMap = Record<string, WikiPage>;
 
-export const wikiUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { wikiUserIdHolder };
 
 export function resolveWikiKey(): string {
     const uid = wikiUserIdHolder.current;

@@ -9,7 +9,33 @@
  */
 import { callLlm, hasActiveLlm } from './llmClient';
 import type { IntegrationsBundle } from '../types/integrations';
-import type { GoalPlan } from './goalsStore';
+import type { GoalPlan, GoalAnswer } from './goalsStore';
+
+const ANSWERS_PROMPT_CAP = 3000;
+
+/**
+ * Build the "ANSWERS" block for the planner from the full refine history
+ * (oldest first) plus the latest answer, numbered. Caps total length,
+ * dropping the OLDEST entries first so the newest answer always survives.
+ */
+export function answersForPrompt(prior: GoalAnswer[] | undefined, latest: string): string {
+    const lines = [...(prior ?? []).map(a => a.text), latest];
+    let numbered = lines.map((t, i) => `${i + 1}. ${t}`);
+    let text = numbered.join('\n');
+    while (text.length > ANSWERS_PROMPT_CAP && numbered.length > 1) {
+        numbered = numbered.slice(1);
+        text = numbered.join('\n');
+    }
+    return text.length > ANSWERS_PROMPT_CAP ? text.slice(text.length - ANSWERS_PROMPT_CAP) : text;
+}
+
+/** Cut `title` to at most `max` chars at the last word boundary (whole title if it already fits). */
+function truncateAtWordBoundary(title: string, max: number): string {
+    if (title.length <= max) return title;
+    const slice = title.slice(0, max);
+    const lastSpace = slice.lastIndexOf(' ');
+    return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice).trimEnd();
+}
 
 const SYSTEM = `You are Mission Control for Dwellium, a property-management workspace with AI agents (research teams, web search, document drafting, knowledge graph, transcription).
 Given a user GOAL (and optionally their ANSWERS to earlier questions), respond with ONLY JSON:
@@ -36,10 +62,13 @@ function sanitizePlan(parsed: unknown): GoalPlan | null {
     };
 }
 
-/** Template plan when no LLM is configured — honest, still useful. */
-export function heuristicPlan(title: string): GoalPlan {
+/** Template plan when no LLM is configured, or when the LLM call itself failed — honest, still useful. */
+export function heuristicPlan(title: string, reason: 'no-llm' | 'failed' = 'no-llm'): GoalPlan {
+    const brief = reason === 'failed'
+        ? `Goal: ${title}. The AI planner call failed (network issue, rate limit, or an unparsable reply), so this is a starter template — try "refine goal" again later for an agent-drafted plan.`
+        : `Goal: ${title}. No LLM key is configured, so this is a starter template — add a key in Control Panel → API Keys and use "refine goal" for an agent-drafted plan.`;
     return {
-        brief: `Goal: ${title}. No LLM key is configured, so this is a starter template — add a key in Control Panel → API Keys and use "refine goal" for an agent-drafted plan.`,
+        brief,
         agentActions: [
             { text: `Research approaches and best practices for: ${title}`, done: false },
             { text: 'Draft a first-pass plan document with milestones', done: false },
@@ -72,23 +101,26 @@ export async function generateGoalPlan(
             responseFormat: 'json',
             maxTokens: 900,
             temperature: 0.4,
+            source: 'goals',
         }, llm);
         const match = res?.text?.match(/\{[\s\S]*\}/);
         const plan = match ? sanitizePlan(JSON.parse(match[0])) : null;
-        return plan ?? heuristicPlan(title);
+        return plan ?? heuristicPlan(title, 'failed');
     } catch {
-        return heuristicPlan(title);
+        return heuristicPlan(title, 'failed');
     }
 }
 
 /** ARA tier patterns. */
 export const NEW_GOAL_PATTERN = /^(?:new|add|create|set)\s+goal[:,]?\s+(.+)$/i;
-export const REFINE_GOAL_PATTERN = /^refine\s+goal\s+(.+?)\s*[:—-]\s*(.+)$/i;
+// D1: separator is `:` or a SPACED em/en dash (" — " / " – ") only — a bare
+// hyphen (e.g. inside "re-lease" or "Q3 2026 - revenue") is never a separator.
+export const REFINE_GOAL_PATTERN = /^refine\s+goal\s+(.+?)\s*(?::|\s[—–]\s)\s*(.+)$/is;
 
 /** Render a plan as a chat-friendly markdown block. */
 export function formatPlanForChat(title: string, plan: GoalPlan): string {
     const qa = plan.clarifyingQuestions.length
-        ? `\n\n**To sharpen this plan, tell me:**\n${plan.clarifyingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n\n_Reply with_ \`refine goal ${title.slice(0, 40)}: <your answers>\``
+        ? `\n\n**To sharpen this plan, tell me:**\n${plan.clarifyingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n\n_Reply with_ \`refine goal ${truncateAtWordBoundary(title, 40)}: <your answers>\``
         : '';
     return `**Goal created: ${title}**\n\n${plan.brief}\n\n**I'll handle:**\n${plan.agentActions.map(a => `- ${a.text}`).join('\n')}\n\n**Your role:**\n${plan.userActions.map(a => `- ${a.text}`).join('\n')}${qa}\n\n_Track it in Mission Control._`;
 }

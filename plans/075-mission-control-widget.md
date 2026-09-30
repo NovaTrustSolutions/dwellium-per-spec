@@ -1,6 +1,6 @@
 # 075 — Mission Control widget: audit + improvement plan
 
-Status: DRAFT (read-only audit 2026-09-30; nothing implemented). Base: `origin/main` @ `4360f3a`
+Status: IMPLEMENTED 2026-09-30 on branch `feat/075-mission-control` (phases 1–3, unpushed). Audit was read-only. Base: `origin/main` @ `4360f3a`
 (local `main` @ `0f9af7e` is behind — it lacks the `captureOwner` guards; build from origin/main).
 Swarm: ruflo `swarm-1790742375116-vcs151` (hierarchical). ruflo only *registered* the agents
 (`mc-map-ui`, `mc-map-store`, `mc-map-agent`, `mc-refute`); the work ran as Claude Code subagents:

@@ -57,9 +57,12 @@ describe('noteDragData payload', () => {
 
 describe('Notepad item drag wiring', () => {
     it('sets both MIMEs on dragStart and leaves the note list unchanged (copy semantics)', async () => {
-        vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+        // The notes service returns one note (Notepad no longer seeds demo notes when offline).
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            success: true,
+            data: [{ id: 'n-q1', title: 'Meeting Notes — Q1 Review', content: '# Q1 Review\n\nbody', created_at: '', updated_at: '' }],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
         render(<Notepad />);
-        // Offline fetch → demo notes seed the list.
         const item = await screen.findByText('Meeting Notes — Q1 Review');
         const row = item.closest('.np-note-item') as HTMLElement;
         expect(row.getAttribute('draggable')).toBe('true');

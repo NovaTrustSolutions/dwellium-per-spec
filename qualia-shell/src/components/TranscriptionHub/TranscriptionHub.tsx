@@ -25,6 +25,7 @@ import { scanSegmentsViaLlm, buildNotebookLmQuery } from './legalShieldClient';
 import { buildMatchedStatutes, dedupMatchedStatutes, formatSimilarity } from './statuteMatch';
 import type { LegalScanResult as LegalScanResultLlm } from './legalShieldClient';
 import { getAuthToken } from '../../context/UserContext';
+import { peekPendingDeepLink, takePendingDeepLink } from '../../lib/pendingDeepLink';
 
 // Open the user's NotebookLM (preferring their Calendar Google email) with a
 // pre-filled query. Mirrors NotebookLMContext.openNotebookLM but inline here so
@@ -1303,11 +1304,16 @@ export default function TranscriptionHub() {
     // Speaker-Library 2026-06-12: ⌘K deep-link — open a saved transcription
     // by id (the palette's transcript search results land here).
     useEffect(() => {
+        // A link fired before this chunk mounted (Search, plan 069) waits in the
+        // pending slot until its log entry is loaded.
+        const pendingId = peekPendingDeepLink('transcription');
+        const pendingEntry = pendingId ? savedTranscriptions.find(log => log.id === pendingId) : undefined;
+        if (pendingEntry) { takePendingDeepLink('transcription'); loadTranscription(pendingEntry); }
         const handler = (ev: Event) => {
             const id = (ev as CustomEvent<{ logId?: string }>).detail?.logId;
             if (!id) return;
             const entry = savedTranscriptions.find(log => log.id === id);
-            if (entry) loadTranscription(entry);
+            if (entry) { takePendingDeepLink('transcription'); loadTranscription(entry); }
         };
         window.addEventListener('dwellium:open-transcription-log', handler);
         return () => window.removeEventListener('dwellium:open-transcription-log', handler);

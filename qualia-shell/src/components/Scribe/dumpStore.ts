@@ -26,6 +26,7 @@
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { dumpUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface DumpEntry {
     /** Stable id (uuid when available, timestamp fallback). */
@@ -40,8 +41,8 @@ export interface DumpEntry {
     content: string;
 }
 
-/** Holder updated by the DumpMode render path BEFORE useSyncExternalStore reads. */
-export const dumpUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { dumpUserIdHolder };
 
 export function resolveDumpKey(): string {
     const uid = dumpUserIdHolder.current;

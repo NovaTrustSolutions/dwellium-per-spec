@@ -28,9 +28,10 @@ import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingA
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
+import { refineGoal } from '../../lib/goalRunner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
-import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStore';
+import { createGoal, findGoalByTitle, findGoalCandidates } from '../../lib/goalsStore';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
@@ -1686,12 +1687,23 @@ export default function ARAConsole() {
                 } else if (refineGoalMatch) {
                     const goal = findGoalByTitle(refineGoalMatch[1]);
                     if (!goal) {
-                        setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: `I couldn't find a goal matching "${refineGoalMatch[1]}" — check Mission Control for the exact title.` })]);
+                        const candidates = findGoalCandidates(refineGoalMatch[1]);
+                        const reply = candidates.length > 1
+                            ? `Several goals match "${refineGoalMatch[1]}": ${candidates.slice(0, 5).map(c => `"${c.title}"`).join(', ')} — reply with \`refine goal <exact title>: <answers>\`.`
+                            : `I couldn't find a goal matching "${refineGoalMatch[1]}" — check Mission Control for the exact title.`;
+                        setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: reply })]);
                     } else {
-                        const plan = await generateGoalPlan(goal.title, integrations.llm, refineGoalMatch[2]);
-                        if (!stillOwnerGoal()) return;
-                        updateGoalPlan(goal.id, plan);
-                        setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatPlanForChat(goal.title, plan) })]);
+                        const answer = refineGoalMatch[2].trim();
+                        const result = await refineGoal(goal.id, answer, integrations.llm);
+                        if (result.ok) {
+                            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatPlanForChat(goal.title, result.plan) })]);
+                        } else if (result.reason === 'owner-changed') {
+                            // Account switched mid-refine — drop silently, same as the new-goal branch.
+                        } else if (result.reason === 'not-found') {
+                            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: `I couldn't find a goal matching "${refineGoalMatch[1]}" — check Mission Control for the exact title.` })]);
+                        } else {
+                            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: `Couldn't refine "${goal.title}" — the answer was empty.` })]);
+                        }
                     }
                 }
             } finally {

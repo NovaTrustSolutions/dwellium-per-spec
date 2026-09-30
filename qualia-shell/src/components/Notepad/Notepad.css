@@ -488,3 +488,25 @@
     font-size: 14px;
     font-weight: 600;
 }
+/* Honest failure state (replaces the old demo-notes fallback). */
+.np-sidebar__status {
+    margin: 0 12px 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+}
+
+.np-sidebar__retry {
+    display: block;
+    margin-top: 6px;
+    padding: 2px 10px;
+    font: inherit;
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    cursor: pointer;
+}

@@ -193,12 +193,12 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 520,
         category: 'ai',
     },
-    // Agent management (spec §8.1/8.2/8.3/8.5) — The Hive console
+    // Agent launcher + CoPaw memory console
     'hive': {
         id: 'hive',
         label: 'The Hive',
-        description: 'Control room for every AI agent: status, last action, manual trigger, cost by provider.',
-        tip: { tryThis: 'Trigger one agent manually and watch its last action update.', related: ['agent-lab', 'ai-spend'] },
+        description: 'Launch any built-in AI agent, see which are open, and browse or prune CoPaw memory.',
+        tip: { tryThis: 'Run an agent, then check the CoPaw memory rail for what it captured.', related: ['agent-lab', 'ai-spend'] },
         tier: 'labs',
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/Hive/Hive')),
@@ -222,7 +222,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'content-search': {
         id: 'content-search',
         label: 'Search',
-        description: 'Full-text search across notes, syntheses, wiki pages, intake items and file names.',
+        description: 'Search dumps, syntheses, wiki, Foundry, memory, transcripts, notes, file names and file contents.',
         tip: { tryThis: 'Search a word you know is in a note.', related: ['wiki', 'notepad'] },
         tier: 'labs',
         icon: 'search-check',

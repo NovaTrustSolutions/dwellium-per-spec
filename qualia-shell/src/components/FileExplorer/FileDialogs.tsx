@@ -4,6 +4,8 @@
  */
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 
+import { MUTED_TEXT, DANGER_TEXT, DANGER_FILL, ON_DANGER, HIT } from './fileExplorerTheme';
+
 export interface ConfirmOptions { title: string; message: string; confirmLabel: string; danger?: boolean; requireText?: string }
 export interface PromptOptions { title: string; message?: string; defaultValue: string; confirmLabel: string }
 export type NotifyTone = 'info' | 'error';
@@ -13,17 +15,15 @@ type Req =
     | { id: number; kind: 'prompt'; opts: PromptOptions; opener: Element | null; resolve: (v: string | null) => void };
 interface Toast { id: number; message: string; tone: NotifyTone }
 
-const DANGER_TEXT = 'color-mix(in srgb, var(--danger) 60%, var(--text-primary))';
-const MUTED_TEXT = 'color-mix(in srgb, var(--text-tertiary) 60%, var(--text-primary))';
 const FOCUSABLE = 'button:not(:disabled), input:not(:disabled)';
 const TOAST_MS = 4000;
 
 const btn = (primary: boolean, danger: boolean, disabled: boolean): CSSProperties => ({
-    minHeight: 32, padding: '0 14px', borderRadius: 'var(--radius-md)', fontFamily: 'inherit', fontSize: 12,
+    minHeight: HIT, minWidth: HIT, padding: '0 14px', borderRadius: 'var(--radius-md)', fontFamily: 'inherit', fontSize: 12,
     cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
     border: primary ? 'none' : '1px solid var(--border-default)',
-    background: primary ? (danger ? 'var(--danger)' : 'var(--accent)') : 'transparent',
-    color: primary ? (danger ? 'var(--text-primary)' : 'var(--accent-text)') : 'var(--text-primary)',
+    background: primary ? (danger ? DANGER_FILL : 'var(--accent)') : 'transparent',
+    color: primary ? (danger ? ON_DANGER : 'var(--text-inverse)') : 'var(--text-primary)',
 });
 
 function Dialog({ req, onDone }: { req: Req; onDone: (v: boolean | string | null) => void }) {
@@ -69,7 +69,7 @@ function Dialog({ req, onDone }: { req: Req; onDone: (v: boolean | string | null
                 {(isPrompt || need !== undefined) && (
                     <input ref={input} value={text} onChange={(e) => setText(e.target.value)}
                         aria-label={need !== undefined ? `Type ${need} to confirm` : opts.title}
-                        style={{ minHeight: 32, padding: '0 8px', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 12 }} />
+                        style={{ minHeight: HIT, padding: '0 8px', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 12 }} />
                 )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                     <button type="button" onClick={cancel} style={btn(false, false, false)}>Cancel</button>
@@ -86,7 +86,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
     return (
         <div role={err ? 'alert' : 'status'} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', minHeight: 32, boxSizing: 'border-box', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', fontSize: 12, color: err ? DANGER_TEXT : 'var(--text-primary)' }}>
             <span style={{ flex: 1, whiteSpace: 'pre-line' }}>{toast.message}</span>
-            <button type="button" aria-label="Dismiss" onClick={() => onDismiss(toast.id)} style={{ minHeight: 32, minWidth: 32, background: 'transparent', border: 'none', color: MUTED_TEXT, cursor: 'pointer', fontSize: 14 }}>×</button>
+            <button type="button" aria-label="Dismiss" onClick={() => onDismiss(toast.id)} style={{ minHeight: HIT, minWidth: HIT, background: 'transparent', border: 'none', color: MUTED_TEXT, cursor: 'pointer', fontSize: 14 }}>×</button>
         </div>
     );
 }

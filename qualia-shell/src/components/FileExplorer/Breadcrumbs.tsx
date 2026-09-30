@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { MUTED_TEXT, HIT } from './fileExplorerTheme';
 
 interface Props {
     path: string;
@@ -10,7 +11,9 @@ interface Crumb { label: string; path: string }
 const MAX_SEGMENTS = 4;
 
 const base = {
-    minHeight: 32,
+    minHeight: HIT,
+    minWidth: HIT,
+    justifyContent: 'center',
     display: 'inline-flex',
     alignItems: 'center',
     padding: '0 6px',
@@ -32,16 +35,16 @@ export function Breadcrumbs({ path, onNavigate }: Props) {
     const shown: (Crumb | null)[] = collapsed ? [crumbs[0], crumbs[1], null, ...crumbs.slice(-2)] : crumbs;
     const last = crumbs[crumbs.length - 1];
     return (
-        <nav aria-label="Location" title={path || 'root'} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', color: 'var(--text-secondary)' }}>
+        <nav aria-label="Location" title={path || 'root'} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', color: MUTED_TEXT }}>
             {shown.map((c, i) => (
                 <Fragment key={c ? `c:${c.path}` : 'gap'}>
-                    {i > 0 && <span aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>›</span>}
+                    {i > 0 && <span aria-hidden="true" style={{ color: MUTED_TEXT }}>›</span>}
                     {c === null ? (
-                        <span title={path} style={{ ...base, color: 'var(--text-tertiary)' }}>…</span>
+                        <span title={path} style={{ ...base, color: MUTED_TEXT }}>…</span>
                     ) : c === last ? (
                         <span aria-current="page" style={{ ...base, color: 'var(--text-primary)' }}>{c.label}</span>
                     ) : (
-                        <button type="button" onClick={() => onNavigate(c.path)} style={{ ...base, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>{c.label}</button>
+                        <button type="button" onClick={() => onNavigate(c.path)} style={{ ...base, background: 'transparent', border: 'none', cursor: 'pointer', color: MUTED_TEXT }}>{c.label}</button>
                     )}
                 </Fragment>
             ))}

@@ -30,6 +30,7 @@ import { FilePreview } from './FilePreview';
 import { TrashPanel } from './TrashPanel';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useFileDialogs } from './FileDialogs';
+import { MUTED_TEXT, DANGER_TEXT, WARN_TEXT, ACCENT_TEXT, HIT } from './fileExplorerTheme';
 import { visibleRows, navKey } from './treeNav';
 import { filterTree } from './treeFilter';
 import { destFor, childNames, batchSummary, parentOf } from './moveTargets';
@@ -476,24 +477,24 @@ export default function FileExplorer() {
                 position: 'relative',
                 display: 'flex', flexDirection: 'column',
                 height: '100%', width: '100%',
-                background: 'var(--bg-desktop)', color: 'var(--text-secondary)',
+                background: 'var(--bg-desktop)', color: MUTED_TEXT,
                 fontFamily: 'inherit', fontSize: 12,
                 overflow: 'hidden',
                 outline: 'none',
                 // Cycle 9: visible lock state — subtle warm-amber inner border when locked
-                boxShadow: locked ? 'inset 0 0 0 1px rgba(255, 140, 0, 0.35)' : 'none',
+                boxShadow: locked ? 'inset 0 0 0 1px color-mix(in srgb, var(--warning) 45%, transparent)' : 'none',
                 transition: 'box-shadow 150ms',
             }}
         >
             {/* Toolbar */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 4,
-                padding: '6px 10px', height: 36, flexShrink: 0,
-                background: 'var(--bg-desktop)', borderBottom: '1px solid #222',
+                padding: '6px 10px', height: 44, flexShrink: 0,
+                background: 'var(--bg-desktop)', borderBottom: '1px solid var(--border-subtle)',
             }}>
                 <span style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
-                    textTransform: 'uppercase', color: '#808080',
+                    textTransform: 'uppercase', color: MUTED_TEXT,
                 }}>Files</span>
 
                 {/* Filter: name substring; Esc clears. Matches keep their ancestors, forced open for display only. */}
@@ -518,8 +519,8 @@ export default function FileExplorer() {
                     title="New file at root"
                     disabled={locked}
                     style={iconBtn(false, locked)}
-                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = '#D6FE51'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? '#333' : '#666'; }}
+                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = ACCENT_TEXT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? MUTED_TEXT : MUTED_TEXT; }}
                 >
                     <FilePlus size={14} strokeWidth={1.75} />
                 </button>
@@ -530,8 +531,8 @@ export default function FileExplorer() {
                     title="New domain (folder at root)"
                     disabled={locked}
                     style={iconBtn(false, locked)}
-                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = '#D6FE51'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? '#333' : '#666'; }}
+                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = ACCENT_TEXT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? MUTED_TEXT : MUTED_TEXT; }}
                 >
                     <FolderPlus size={14} strokeWidth={1.75} />
                 </button>
@@ -543,8 +544,8 @@ export default function FileExplorer() {
                     aria-label="Upload files"
                     disabled={locked}
                     style={iconBtn(false, locked)}
-                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = '#D6FE51'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? '#333' : '#666'; }}
+                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = ACCENT_TEXT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? MUTED_TEXT : MUTED_TEXT; }}
                 >
                     <Upload size={14} strokeWidth={1.75} />
                 </button>
@@ -565,8 +566,8 @@ export default function FileExplorer() {
                     title="Refresh tree"
                     disabled={loading}
                     style={iconBtn(false)}
-                    onMouseEnter={(e) => { if (!loading) e.currentTarget.style.color = '#D6FE51'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; }}
+                    onMouseEnter={(e) => { if (!loading) e.currentTarget.style.color = ACCENT_TEXT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = MUTED_TEXT; }}
                 >
                     <RefreshCw size={14} strokeWidth={1.75} style={{
                         animation: loading ? 'spin 0.9s linear infinite' : undefined,
@@ -580,8 +581,8 @@ export default function FileExplorer() {
                         onChange={(e) => setFlatSort(e.target.value as 'modified-desc' | 'name-asc' | 'size-desc')}
                         title="Sort flat view"
                         style={{
-                            background: 'var(--bg-desktop)', color: 'var(--text-secondary)',
-                            border: '1px solid #222', borderRadius: 4,
+                            background: 'var(--bg-desktop)', color: MUTED_TEXT,
+                            border: '1px solid var(--border-subtle)', borderRadius: 4,
                             padding: '2px 4px', fontSize: 10,
                             fontFamily: 'inherit', cursor: 'pointer',
                             outline: 'none',
@@ -598,8 +599,8 @@ export default function FileExplorer() {
                     onClick={() => setViewMode(viewMode === 'tree' ? 'flat' : 'tree')}
                     title={(viewMode === 'tree' ? 'Switch to flat view' : 'Switch to tree view') + ' (⌘/)'}
                     style={iconBtn(viewMode === 'flat')}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = viewMode === 'flat' ? '#D6FE51' : '#666'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT_TEXT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = viewMode === 'flat' ? ACCENT_TEXT : MUTED_TEXT; }}
                 >
                     {viewMode === 'tree' ? <ListTree size={14} strokeWidth={1.75} /> : <List size={14} strokeWidth={1.75} />}
                 </button>
@@ -611,8 +612,8 @@ export default function FileExplorer() {
                     aria-label="Trash"
                     aria-pressed={showTrash}
                     style={iconBtn(showTrash)}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = showTrash ? '#D6FE51' : '#666'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT_TEXT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = showTrash ? ACCENT_TEXT : MUTED_TEXT; }}
                 >
                     <Trash2 size={14} strokeWidth={1.75} />
                 </button>
@@ -622,8 +623,8 @@ export default function FileExplorer() {
                     onClick={() => setLocked(!locked)}
                     title={locked ? 'Unlock hierarchy (allow drag/rename/move)' : 'Lock hierarchy (prevent accidental restructuring)'}
                     style={iconBtn(locked)}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = locked ? '#ff4d6d' : '#D6FE51'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? '#ff4d6d' : '#666'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = locked ? DANGER_TEXT : ACCENT_TEXT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? DANGER_TEXT : MUTED_TEXT; }}
                 >
                     {locked ? <Lock size={14} strokeWidth={1.75} /> : <Unlock size={14} strokeWidth={1.75} />}
                 </button>
@@ -635,8 +636,8 @@ export default function FileExplorer() {
                 style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '3px 10px', flexShrink: 0,
-                    background: '#070707', borderBottom: '1px solid #1a1a1a',
-                    fontSize: 10, color: 'var(--text-tertiary)',
+                    background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)',
+                    fontSize: 10, color: MUTED_TEXT,
                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                 }}
             >
@@ -652,9 +653,9 @@ export default function FileExplorer() {
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '4px 12px', flexShrink: 0,
-                    background: 'rgba(255, 140, 0, 0.08)',
-                    borderBottom: '1px solid rgba(255, 140, 0, 0.2)',
-                    fontSize: 10, color: '#ffa84d',
+                    background: 'color-mix(in srgb, var(--warning) 10%, transparent)',
+                    borderBottom: '1px solid color-mix(in srgb, var(--warning) 25%, transparent)',
+                    fontSize: 10, color: WARN_TEXT,
                     letterSpacing: '0.02em',
                 }}>
                     <Lock size={11} strokeWidth={2} />
@@ -662,10 +663,10 @@ export default function FileExplorer() {
                     <button
                         onClick={() => setLocked(false)}
                         style={{
-                            padding: '2px 8px', fontSize: 10,
+                            padding: '0 10px', minHeight: HIT, fontSize: 10,
                             background: 'transparent',
-                            border: '1px solid rgba(255,140,0,0.5)',
-                            color: '#ffa84d', borderRadius: 3,
+                            border: '1px solid color-mix(in srgb, var(--warning) 55%, transparent)',
+                            color: WARN_TEXT, borderRadius: 3,
                             cursor: 'pointer', fontFamily: 'inherit',
                         }}
                     >Unlock</button>
@@ -731,17 +732,17 @@ export default function FileExplorer() {
                 )}
                 {error ? (
                     <div style={{
-                        padding: '16px', color: '#ff4d6d', fontSize: 11, lineHeight: 1.6,
-                        background: 'rgba(255,77,109,0.05)', margin: 8, borderRadius: 4,
-                        border: '1px solid rgba(255,77,109,0.2)',
+                        padding: '16px', color: DANGER_TEXT, fontSize: 11, lineHeight: 1.6,
+                        background: 'color-mix(in srgb, var(--danger) 8%, transparent)', margin: 8, borderRadius: 4,
+                        border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
                     }}>
                         <strong>Failed to load file tree</strong>
-                        <div style={{ marginTop: 4, color: '#bbb' }}>{error}</div>
+                        <div style={{ marginTop: 4, color: 'var(--text-primary)' }}>{error}</div>
                         <button
                             onClick={() => void refresh()}
                             style={{
-                                marginTop: 8, padding: '4px 10px', fontSize: 11,
-                                background: 'transparent', color: 'var(--accent)',
+                                marginTop: 8, padding: '0 12px', minHeight: HIT, fontSize: 11,
+                                background: 'transparent', color: ACCENT_TEXT,
                                 border: '1px solid var(--accent)', borderRadius: 4,
                                 cursor: 'pointer',
                             }}
@@ -750,22 +751,22 @@ export default function FileExplorer() {
                 ) : loading && displayedEntries.length === 0 ? (
                     <div style={{
                         padding: '24px 16px', textAlign: 'center',
-                        color: 'var(--text-tertiary)', fontSize: 11,
+                        color: MUTED_TEXT, fontSize: 11,
                     }}>Loading…</div>
                 ) : displayedEntries.length === 0 && filtering ? (
-                    <div role="status" style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11 }}>
+                    <div role="status" style={{ padding: '24px 16px', textAlign: 'center', color: MUTED_TEXT, fontSize: 11 }}>
                         No files match “{filter.trim()}”
                     </div>
                 ) : displayedEntries.length === 0 ? (
                     <div style={{
                         padding: '24px 16px', textAlign: 'center',
-                        color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.6,
+                        color: MUTED_TEXT, fontSize: 11, lineHeight: 1.6,
                     }}>
                         <div style={{ marginBottom: 8, opacity: 0.4 }}><Folder size={22} aria-hidden /></div>
-                        <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No files yet</div>
+                        <div style={{ color: MUTED_TEXT, marginBottom: 4 }}>No files yet</div>
                         <div style={{ fontSize: 10 }}>
                             Drop a file from Finder here, or create a domain folder
-                            in <code style={{ color: 'var(--text-secondary)' }}>~/.dwellium/files/&lt;userId&gt;/</code>
+                            in <code style={{ color: MUTED_TEXT }}>~/.dwellium/files/&lt;userId&gt;/</code>
                         </div>
                     </div>
                 ) : (
@@ -801,8 +802,8 @@ export default function FileExplorer() {
             {/* Status footer */}
             <div style={{
                 padding: '4px 10px', flexShrink: 0,
-                background: 'var(--bg-desktop)', borderTop: '1px solid #222',
-                fontSize: 10, color: 'var(--text-tertiary)',
+                background: 'var(--bg-desktop)', borderTop: '1px solid var(--border-subtle)',
+                fontSize: 10, color: MUTED_TEXT,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
                 <span>{viewMode === 'tree' ? 'Tree view' : 'Flat view'}</span>
@@ -818,11 +819,11 @@ export default function FileExplorer() {
 function iconBtn(active: boolean, disabled = false): React.CSSProperties {
     return {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: 24, height: 24, padding: 0,
+        width: HIT, height: HIT, minWidth: HIT, minHeight: HIT, padding: 0,
         background: active ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
-        border: '1px solid ' + (active ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : '#222'),
+        border: '1px solid ' + (active ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'var(--border-subtle)'),
         borderRadius: 4,
-        color: disabled ? '#333' : (active ? '#D6FE51' : '#666'),
+        color: disabled ? MUTED_TEXT : (active ? ACCENT_TEXT : MUTED_TEXT),
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
         transition: 'background 100ms, color 100ms, border-color 100ms',

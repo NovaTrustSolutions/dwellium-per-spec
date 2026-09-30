@@ -17,6 +17,7 @@ import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, Globe, FolderT
 import { rename as apiRename, deleteEntry as apiDelete, move as apiMove, downloadFile } from './fileExplorerApi';
 import { uploadAndSummarize } from './dropUpload';
 import { deleteTargets, batchSummary } from './moveTargets';
+import { MUTED_TEXT, DANGER_TEXT, ACCENT_TEXT, HIT } from './fileExplorerTheme';
 import type { ConfirmOptions, PromptOptions, NotifyTone } from './FileDialogs';
 
 /**
@@ -395,7 +396,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                 // Build a ghost drag-image showing the count
                 const ghost = document.createElement('div');
                 ghost.textContent = `${dragPaths.length} items`;
-                ghost.style.cssText = 'position:absolute;top:-1000px;padding:4px 10px;background:#1a1a1a;color:#D6FE51;border:1px solid var(--accent);border-radius:4px;font:600 11px Inter,sans-serif;';
+                ghost.style.cssText = 'position:absolute;top:-1000px;padding:4px 10px;background:var(--bg-surface-elevated);color:var(--accent-text);border:1px solid var(--accent);border-radius:4px;font:600 11px Inter,sans-serif;';
                 document.body.appendChild(ghost);
                 e.dataTransfer.setDragImage(ghost, -10, -10);
                 requestAnimationFrame(() => { if (document.body.contains(ghost)) document.body.removeChild(ghost); });
@@ -447,11 +448,11 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                     padding: '4px 8px',
                     paddingLeft: 8 + depth * 14,
                     fontSize: 12,
-                    color: isSelected ? '#D6FE51' : '#ccc',
+                    color: isSelected ? ACCENT_TEXT : 'var(--text-primary)',
                     background: dragOver
                         ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
                         : isSelected ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
-                    boxShadow: dragOver ? 'inset 0 0 0 1px #D6FE51' : 'none',
+                    boxShadow: dragOver ? 'inset 0 0 0 1px var(--accent)' : 'none',
                     // Cycle 9: lock-aware cursor — pointer for navigation (selection/expand still allowed),
                     // not-allowed when hovering a draggable file/folder under lock since rearrangement is blocked.
                     cursor: 'pointer',
@@ -462,7 +463,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                     transition: 'background 80ms, box-shadow 80ms',
                 }}
                 onMouseEnter={(e) => {
-                    if (!isSelected && !dragOver) e.currentTarget.style.background = '#1a1a1a';
+                    if (!isSelected && !dragOver) e.currentTarget.style.background = 'var(--bg-surface-hover)';
                 }}
                 onMouseLeave={(e) => {
                     if (!isSelected && !dragOver) e.currentTarget.style.background = 'transparent';
@@ -503,7 +504,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                             }}>{entry.name}</span>
                             {showFullPath && entry.path !== entry.name && (
                                 <span style={{
-                                    fontSize: 9, color: 'var(--text-tertiary)',
+                                    fontSize: 9, color: MUTED_TEXT,
                                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                     marginTop: 1,
                                 }}>{entry.path.slice(0, entry.path.length - entry.name.length - 1)}</span>
@@ -511,7 +512,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                         </div>
                         {entry.tier !== 'file' && entry.tier !== 'folder' && (
                             <span style={{
-                                fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase',
+                                fontSize: 9, color: MUTED_TEXT, textTransform: 'uppercase',
                                 letterSpacing: '0.06em', flexShrink: 0,
                             }}>{entry.tier}</span>
                         )}
@@ -530,9 +531,9 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                     onKeyDown={onMenuKeyDown}
                     style={{
                         position: 'fixed', top: ctx.y, left: ctx.x, zIndex: 1000,
-                        background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6,
+                        background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)', borderRadius: 6,
                         padding: 4, minWidth: 180, fontSize: 12,
-                        boxShadow: '0 12px 32px rgba(0,0,0,0.65)',
+                        boxShadow: 'var(--shadow-xl)',
                     }}
                 >
                     {/* Only Delete acts on a multi-selection; every other item collapses it to this row. */}
@@ -579,21 +580,21 @@ function CtxItem({ label, shortcut, onClick, disabled, danger }: {
             onBlur={() => setHovered(false)}
             style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                padding: '6px 12px', borderRadius: 4, border: 'none', font: 'inherit', textAlign: 'left',
-                color: disabled ? '#444' : (danger ? '#ff4d6d' : '#e5e5e5'),
-                background: hovered ? '#2a2a2a' : 'transparent',
+                padding: '0 12px', minHeight: HIT, borderRadius: 4, border: 'none', font: 'inherit', textAlign: 'left',
+                color: disabled ? MUTED_TEXT : (danger ? DANGER_TEXT : 'var(--text-primary)'),
+                background: hovered ? 'var(--bg-surface-hover)' : 'transparent',
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 userSelect: 'none',
             }}
         >
             <span>{label}</span>
             {shortcut && (
-                <span style={{ fontSize: 10, color: '#666' }}>{shortcut}</span>
+                <span style={{ fontSize: 10, color: MUTED_TEXT }}>{shortcut}</span>
             )}
         </button>
     );
 }
 
 function CtxDivider() {
-    return <div style={{ height: 1, margin: '4px 8px', background: '#2a2a2a' }} />;
+    return <div style={{ height: 1, margin: '4px 8px', background: 'var(--border-default)' }} />;
 }

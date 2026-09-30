@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { readFile, fetchBytes, ApiError } from './fileExplorerApi';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
+import { MUTED_TEXT, HIT } from './fileExplorerTheme';
 
 type State =
     | { kind: 'loading' }
@@ -112,7 +113,7 @@ export function FilePreview({ path, onClose }: { path: string; onClose: () => vo
         return () => { live = false; urls.forEach((u) => URL.revokeObjectURL(u)); };
     }, [html, path]);
 
-    const muted = { padding: 12, fontSize: 12, color: 'var(--text-secondary)' } as const;
+    const muted = { padding: 12, fontSize: 12, color: MUTED_TEXT } as const;
     let body;
     if (state.kind === 'loading') body = <div style={muted}>Loading…</div>;
     else if (state.kind === 'error') body = <div role="alert" style={muted}>{state.message}</div>;
@@ -134,7 +135,7 @@ export function FilePreview({ path, onClose }: { path: string; onClose: () => vo
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
                 <span title={path} style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                <button aria-label="Close preview" onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex' }}>
+                <button aria-label="Close preview" onClick={onClose} style={{ background: 'transparent', border: 'none', color: MUTED_TEXT, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: HIT, minHeight: HIT }}>
                     <X size={14} />
                 </button>
             </div>

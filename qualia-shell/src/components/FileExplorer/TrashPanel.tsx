@@ -9,6 +9,7 @@ import {
     listTrash, restoreFromTrash, deleteFromTrash, emptyTrash, isConflict, type TrashItem,
 } from './fileExplorerApi';
 import type { FileDialogApi } from './FileExplorerCell';
+import { MUTED_TEXT, DANGER_TEXT, HIT } from './fileExplorerTheme';
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -25,14 +26,12 @@ function restoredName(path: string, isDir: boolean): string {
     return `${dir ? `${dir}/` : ''}${stem} (restored)${ext}`;
 }
 
-// Latte: raw --danger (3.5:1) and --text-tertiary (4.3:1) fail on light surfaces; mixing toward
-// --text-primary keeps the hue and passes in every theme (house pattern, Docs/code.md).
-const DANGER_TEXT = 'color-mix(in srgb, var(--danger) 60%, var(--text-primary))';
-const MUTED_TEXT = 'color-mix(in srgb, var(--text-tertiary) 60%, var(--text-primary))';
+// Latte: raw --danger (3.5:1) and --text-tertiary (4.3:1) fail on light surfaces; see
+// fileExplorerTheme.ts (mix toward --text-primary; house pattern, Docs/code.md).
 
 const btn = (danger = false): React.CSSProperties => ({
     background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6,
-    color: danger ? DANGER_TEXT : 'var(--text-primary)', fontSize: 11, padding: '3px 8px',
+    color: danger ? DANGER_TEXT : 'var(--text-primary)', fontSize: 11, padding: '0 10px', minHeight: HIT, minWidth: HIT,
     cursor: 'pointer', fontFamily: 'inherit',
 });
 
@@ -125,11 +124,11 @@ export function TrashPanel({ onClose, onRestored, dialogs }: TrashPanelProps) {
     return (
         <div role="region" aria-label="Trash" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-surface)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
-                <Trash2 size={14} style={{ color: 'var(--text-secondary)' }} />
+                <Trash2 size={14} style={{ color: MUTED_TEXT }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Trash</span>
                 <span style={{ fontSize: 11, color: MUTED_TEXT, flex: 1 }}>{items.length} item{items.length === 1 ? '' : 's'}</span>
                 <button style={btn(true)} disabled={busy || items.length === 0} onClick={onEmpty}>Empty trash</button>
-                <button style={{ ...btn(), padding: 3 }} aria-label="Close trash" onClick={onClose}><X size={14} /></button>
+                <button style={{ ...btn(), padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Close trash" onClick={onClose}><X size={14} /></button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
                 {loading ? <div style={{ padding: 12, fontSize: 12, color: MUTED_TEXT }}>Loading…</div>

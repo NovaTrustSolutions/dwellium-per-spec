@@ -7,6 +7,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Globe, FolderTree, MessageSquare, Folder, CornerDownRight, X } from 'lucide-react';
 import type { FileEntry } from './FileExplorerCell';
 import { collectMoveTargets, parentOf, type MoveTarget } from './moveTargets';
+import { MUTED_TEXT, ACCENT_TEXT, SCRIM, HIT } from './fileExplorerTheme';
 
 const TIER_ICON: Record<string, typeof Globe> = {
     domain: Globe,
@@ -37,18 +38,18 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
             title={isCurrent ? 'Already here' : `Move into ${label}`}
             style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
-                padding: '7px 10px', paddingLeft: 10 + depth * 14,
+                padding: '0 10px', minHeight: HIT, paddingLeft: 10 + depth * 14,
                 background: 'transparent', border: 'none', borderRadius: 6,
-                color: isCurrent ? '#555' : '#ddd', cursor: isCurrent ? 'not-allowed' : 'pointer',
+                color: isCurrent ? MUTED_TEXT : 'var(--text-primary)', cursor: isCurrent ? 'not-allowed' : 'pointer',
                 fontSize: 12, fontFamily: 'inherit',
             }}
-            onMouseEnter={(e) => { if (!isCurrent) e.currentTarget.style.background = '#222'; }}
+            onMouseEnter={(e) => { if (!isCurrent) e.currentTarget.style.background = 'var(--bg-surface-hover)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >
-            <Icon size={14} strokeWidth={1.75} style={{ color: isCurrent ? '#444' : '#D6FE51', flexShrink: 0 }} />
+            <Icon size={14} strokeWidth={1.75} style={{ color: isCurrent ? MUTED_TEXT : ACCENT_TEXT, flexShrink: 0 }} />
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-            {sub && <span style={{ fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sub}</span>}
-            {isCurrent && <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>current</span>}
+            {sub && <span style={{ fontSize: 9, color: MUTED_TEXT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sub}</span>}
+            {isCurrent && <span style={{ fontSize: 9, color: MUTED_TEXT }}>current</span>}
         </button>
     );
 
@@ -56,7 +57,7 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
         <div
             role="presentation"
             onMouseDown={onClose}
-            style={{ position: 'absolute', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+            style={{ position: 'absolute', inset: 0, zIndex: 200, background: SCRIM, backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
         >
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Esc closes the picker; mousedown must not reach the backdrop */}
             <div
@@ -65,31 +66,31 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
                 aria-label={`Move ${entry.name}`}
                 onMouseDown={(e) => e.stopPropagation()}
                 onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); } }}
-                style={{ width: 360, maxWidth: '100%', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', border: '1px solid #333', borderRadius: 10, boxShadow: '0 16px 48px rgba(0,0,0,0.7)', overflow: 'hidden' }}
+                style={{ width: 360, maxWidth: '100%', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 10, boxShadow: 'var(--shadow-xl)', overflow: 'hidden' }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid #222' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
                     <CornerDownRight size={14} style={{ color: 'var(--accent)' }} />
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         Move "{entry.name}" to…
                     </span>
-                    <button onClick={onClose} title="Cancel" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
+                    <button onClick={onClose} title="Cancel" style={{ background: 'none', border: 'none', color: MUTED_TEXT, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: HIT, minHeight: HIT }}><X size={16} /></button>
                 </div>
                 <input
                     ref={filterRef}
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     placeholder="Filter destinations…"
-                    style={{ margin: 10, padding: '7px 10px', background: 'var(--bg-desktop)', border: '1px solid #333', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ margin: 10, padding: '7px 10px', background: 'var(--bg-desktop)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                 />
                 <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px 8px' }}>
                     {/* Root is always a valid destination (unless already at root). */}
                     {(!q || 'root'.includes(q)) && row('Root', '', '', Folder, 0, currentParent === '')}
                     {shown.map((t: MoveTarget) => row(t.name, t.tier, t.path, TIER_ICON[t.tier] ?? Folder, t.depth, t.path === currentParent))}
                     {shown.length === 0 && (!q ? false : true) && (
-                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11 }}>No matching destinations.</div>
+                        <div style={{ padding: '16px', textAlign: 'center', color: MUTED_TEXT, fontSize: 11 }}>No matching destinations.</div>
                     )}
                     {targets.length === 0 && (
-                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11 }}>
+                        <div style={{ padding: '16px', textAlign: 'center', color: MUTED_TEXT, fontSize: 11 }}>
                             No folders or threads yet — create a domain/project/thread to move into.
                         </div>
                     )}

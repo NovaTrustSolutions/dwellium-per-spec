@@ -1,0 +1,54 @@
+/* ClaudeCodeRow — plan 068 Phase 3. Plain text, no colour-only meaning. */
+
+.cc-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.cc-row__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.cc-row__title {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.cc-row__hint {
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+.cc-row__tokens {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.cc-row__price {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.cc-row__note {
+    margin: 0;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+.cc-row__period {
+    margin: 0;
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}

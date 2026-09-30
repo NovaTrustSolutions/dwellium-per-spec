@@ -1,0 +1,38 @@
+/* BillingPanel — plan 068 Phase 3 (F1), god-only. Theme lessons from phase 1
+   (Docs/code.md): no --bg-surface-elevated (opaque, wrong in latte) —
+   translucent rgba tints instead; muted text = color-mix(in srgb,
+   var(--text-secondary) 50%, var(--text-primary)), never --text-secondary
+   alone (4.31:1 in latte). */
+
+.billing { display: flex; flex-direction: column; gap: 10px; }
+
+.billing__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.billing__head h3 {
+    margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
+}
+
+.billing__month {
+    padding: 4px 8px; border-radius: 7px; font-size: 12px;
+    border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+    background: rgba(255, 255, 255, 0.03); color: var(--text-primary); font: inherit;
+}
+
+.billing__status { margin: 0; font-size: 12px; color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff)); }
+.billing__status--error { color: color-mix(in srgb, var(--danger, #ef4444) 60%, var(--text-primary, #fff)); }
+
+.billing__table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.billing__table th, .billing__table td {
+    padding: 4px 6px; text-align: left;
+    border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+}
+.billing__table thead th {
+    font-weight: 600; color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
+}
+.billing__table tbody th, .billing__table tbody td { color: var(--text-primary); }
+.billing__table th:not(:first-child), .billing__table td:not(:first-child) { text-align: right; }
+
+.billing__caption {
+    caption-side: top; text-align: left; margin-bottom: 4px; font-size: 10px;
+    color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff));
+}

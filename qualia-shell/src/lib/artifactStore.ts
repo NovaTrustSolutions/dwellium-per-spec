@@ -17,7 +17,7 @@ import { withSync } from './oneSaveStore';
 import { UserContext } from '../context/UserContext';
 
 export type ArtifactType = 'markdown' | 'html' | 'image' | 'code' | 'data' | 'text';
-export type ArtifactSource = 'ara' | 'team-run' | 'skill' | 'stella' | 'manual' | 'scribe';
+export type ArtifactSource = 'ara' | 'team-run' | 'skill' | 'stella' | 'manual' | 'scribe' | 'mission-control';
 
 export interface Artifact {
     id: string;

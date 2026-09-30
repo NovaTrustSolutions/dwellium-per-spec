@@ -97,11 +97,31 @@ function toFiniteNumber(v: unknown, fallback: number): number {
     return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
 }
 
+/** `YYYY-MM-DD` AND a real calendar date (rejects e.g. 2026-02-31). */
+function isValidDateStr(s: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const [y, m, d] = s.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
+
+function sanitizeActionResult(r: unknown): GoalActionResult | undefined {
+    if (!r || typeof r !== 'object') return undefined;
+    const ts = (r as Record<string, unknown>).ts;
+    const text = (r as Record<string, unknown>).text;
+    if (typeof ts !== 'number' || !Number.isFinite(ts)) return undefined;
+    if (typeof text !== 'string') return undefined;
+    return { ts, text };
+}
+
 function sanitizeAction(a: unknown): GoalAction | null {
     if (!a || typeof a !== 'object') return null;
     const text = (a as Record<string, unknown>).text;
     if (typeof text !== 'string') return null;
-    return { text, done: !!(a as Record<string, unknown>).done };
+    const action: GoalAction = { text, done: !!(a as Record<string, unknown>).done };
+    const result = sanitizeActionResult((a as Record<string, unknown>).result);
+    if (result) action.result = result;
+    return action;
 }
 
 function sanitizeActionList(v: unknown): GoalAction[] {
@@ -154,6 +174,7 @@ export function sanitizeGoal(raw: unknown): Goal | null {
     if (plan) goal.plan = plan;
     if (Array.isArray(g.answers)) goal.answers = sanitizeTimedNoteList(g.answers);
     if (typeof g.deletedAt === 'number' && Number.isFinite(g.deletedAt)) goal.deletedAt = g.deletedAt;
+    if (typeof g.targetDate === 'string' && isValidDateStr(g.targetDate)) goal.targetDate = g.targetDate;
     return goal;
 }
 
@@ -224,11 +245,18 @@ export function updateGoalPlan(id: string, plan: GoalPlan, opts?: UpdatePlanOpti
 
         let nextPlan = plan;
         if (opts?.keepDone && g.plan) {
+            // Carries `done` AND `result` forward onto new-plan actions whose normalized
+            // text matches a prior action on the same side — a refine must not lose
+            // checked-off state or run outputs for actions that didn't actually change.
             const carryDone = (side: 'agentActions' | 'userActions'): GoalAction[] => {
-                const priorDone = new Set(
-                    g.plan![side].filter(a => a.done).map(a => normalizeActionText(a.text)),
-                );
-                return plan[side].map(a => (a.done ? a : { ...a, done: priorDone.has(normalizeActionText(a.text)) }));
+                const priorByNorm = new Map<string, GoalAction>();
+                for (const a of g.plan![side]) priorByNorm.set(normalizeActionText(a.text), a);
+                return plan[side].map(a => {
+                    const prior = priorByNorm.get(normalizeActionText(a.text));
+                    const next: GoalAction = { ...a, done: a.done || !!prior?.done };
+                    if (prior?.result && !next.result) next.result = prior.result;
+                    return next;
+                });
             };
             nextPlan = { ...plan, agentActions: carryDone('agentActions'), userActions: carryDone('userActions') };
         }
@@ -277,29 +305,96 @@ export function deleteGoal(id: string): void {
     }));
 }
 
-/* ─── Plan 075 P3 editing mutators — P0 contract stubs, implemented in W1 ─── */
+/* ─── Plan 075 P3 editing mutators ─── */
+
+const MAX_ACTION_LEN = 200;
+const MAX_RESULT_LEN = 4000;
 
 /** Rename (trimmed, 1..160 chars); empty → no-op. */
-export function renameGoal(_id: string, _title: string): void { /* P0 stub */ }
+export function renameGoal(id: string, title: string): void {
+    const t = title.trim().slice(0, 160);
+    if (!t) return;
+    persist(goalsStore.getSnapshot().map(g => (g.id === id && !isTombstone(g)
+        ? { ...g, title: t, updatedAt: Date.now() }
+        : g)));
+}
 
 /** Set or clear (null) the target date; only `YYYY-MM-DD` accepted. */
-export function setGoalTargetDate(_id: string, _date: string | null): void { /* P0 stub */ }
+export function setGoalTargetDate(id: string, date: string | null): void {
+    if (date !== null && !isValidDateStr(date)) return;
+    persist(goalsStore.getSnapshot().map(g => {
+        if (g.id !== id || isTombstone(g)) return g;
+        const next: Goal = { ...g, updatedAt: Date.now() };
+        if (date === null) delete next.targetDate;
+        else next.targetDate = date;
+        return next;
+    }));
+}
 
 /** Append an action (trimmed, ≤200 chars) to a side; creates an empty plan when missing. */
-export function addGoalAction(_id: string, _side: GoalSide, _text: string): void { /* P0 stub */ }
+export function addGoalAction(id: string, side: GoalSide, text: string): void {
+    const t = text.trim().slice(0, MAX_ACTION_LEN);
+    if (!t) return;
+    persist(goalsStore.getSnapshot().map(g => {
+        if (g.id !== id || isTombstone(g)) return g;
+        const plan = g.plan ?? { brief: '', agentActions: [], userActions: [], clarifyingQuestions: [] };
+        const actions = [...plan[side], { text: t, done: false }];
+        return { ...g, plan: { ...plan, [side]: actions }, updatedAt: Date.now() };
+    }));
+}
 
 /** Replace an action's text (trimmed, ≤200 chars; empty → no-op); clears its stale result. */
-export function editGoalAction(_id: string, _side: GoalSide, _index: number, _text: string): void { /* P0 stub */ }
+export function editGoalAction(id: string, side: GoalSide, index: number, text: string): void {
+    const t = text.trim().slice(0, MAX_ACTION_LEN);
+    if (!t) return;
+    persist(goalsStore.getSnapshot().map(g => {
+        if (g.id !== id || !g.plan || isTombstone(g)) return g;
+        const list = g.plan[side];
+        if (index < 0 || index >= list.length) return g;
+        if (list[index].text === t) return g;
+        const actions = list.map((a, i) => (i === index ? { text: t, done: a.done } : a));
+        return { ...g, plan: { ...g.plan, [side]: actions }, updatedAt: Date.now() };
+    }));
+}
 
 /** Remove the action at `index`. */
-export function removeGoalAction(_id: string, _side: GoalSide, _index: number): void { /* P0 stub */ }
+export function removeGoalAction(id: string, side: GoalSide, index: number): void {
+    persist(goalsStore.getSnapshot().map(g => {
+        if (g.id !== id || !g.plan || isTombstone(g)) return g;
+        const list = g.plan[side];
+        if (index < 0 || index >= list.length) return g;
+        const actions = list.filter((_, i) => i !== index);
+        return { ...g, plan: { ...g.plan, [side]: actions }, updatedAt: Date.now() };
+    }));
+}
 
 /**
  * Store (or clear with null) the run result on the action whose text equals
  * `actionText` — located by text, not index, so an edit during the run can't
  * attach it to the wrong row. Returns false when no such action exists.
  */
-export function setGoalActionResult(_id: string, _side: GoalSide, _actionText: string, _text: string | null): boolean { return false; }
+export function setGoalActionResult(id: string, side: GoalSide, actionText: string, text: string | null): boolean {
+    let found = false;
+    const now = Date.now();
+    const t = text === null ? null : text.slice(0, MAX_RESULT_LEN);
+    persist(goalsStore.getSnapshot().map(g => {
+        if (g.id !== id || !g.plan || isTombstone(g)) return g;
+        const list = g.plan[side];
+        const idx = list.findIndex(a => a.text === actionText);
+        if (idx === -1) return g;
+        found = true;
+        const actions = list.map((a, i) => {
+            if (i !== idx) return a;
+            if (t === null) {
+                const { result: _result, ...rest } = a;
+                return rest;
+            }
+            return { ...a, result: { ts: now, text: t } };
+        });
+        return { ...g, plan: { ...g.plan, [side]: actions }, updatedAt: now };
+    }));
+    return found;
+}
 
 /**
  * Find a goal by fuzzy title match (ARA "refine goal X" tier).

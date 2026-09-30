@@ -101,6 +101,7 @@ export async function generateGoalPlan(
             responseFormat: 'json',
             maxTokens: 900,
             temperature: 0.4,
+            source: 'goals',
         }, llm);
         const match = res?.text?.match(/\{[\s\S]*\}/);
         const plan = match ? sanitizePlan(JSON.parse(match[0])) : null;

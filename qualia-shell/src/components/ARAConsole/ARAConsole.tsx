@@ -27,10 +27,11 @@ const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
-import { generateGoalPlan, formatPlanForChat, answersForPrompt, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
+import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
+import { refineGoal } from '../../lib/goalRunner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
-import { createGoal, updateGoalPlan, findGoalByTitle, findGoalCandidates } from '../../lib/goalsStore';
+import { createGoal, findGoalByTitle, findGoalCandidates } from '../../lib/goalsStore';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
@@ -1693,10 +1694,16 @@ export default function ARAConsole() {
                         setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: reply })]);
                     } else {
                         const answer = refineGoalMatch[2].trim();
-                        const plan = await generateGoalPlan(goal.title, integrations.llm, answersForPrompt(goal.answers, answer));
-                        if (!stillOwnerGoal()) return;
-                        updateGoalPlan(goal.id, plan, { keepDone: true, answer });
-                        setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatPlanForChat(goal.title, plan) })]);
+                        const result = await refineGoal(goal.id, answer, integrations.llm);
+                        if (result.ok) {
+                            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatPlanForChat(goal.title, result.plan) })]);
+                        } else if (result.reason === 'owner-changed') {
+                            // Account switched mid-refine — drop silently, same as the new-goal branch.
+                        } else if (result.reason === 'not-found') {
+                            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: `I couldn't find a goal matching "${refineGoalMatch[1]}" — check Mission Control for the exact title.` })]);
+                        } else {
+                            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: `Couldn't refine "${goal.title}" — the answer was empty.` })]);
+                        }
                     }
                 }
             } finally {

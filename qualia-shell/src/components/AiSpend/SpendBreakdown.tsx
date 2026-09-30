@@ -31,6 +31,7 @@ const SOURCE_LABELS: Record<string, string> = {
     civil: 'Civil agent',
     idocs: 'iDocs',
     'llm-router': 'Router',
+    goals: 'Mission Control',
     other: 'Other',
 };
 

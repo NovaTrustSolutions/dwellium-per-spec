@@ -51,6 +51,22 @@ describe('knowledge-graph skill run (injected fetch)', () => {
     });
 });
 
+describe('knowledge-graph is autonomous-safe (read-only query, no LLM, no writes)', () => {
+    it('runSkillForInput matches it for a non-user ("model") origin', async () => {
+        const fetchFn = (async () => ({
+            json: async () => ({ success: true, data: { answer: 'NODE Roof Estimate' } }),
+        })) as unknown as typeof fetch;
+        const r = await runSkillForInput('ask the graph about roofs', { llm: NO_LLM, fetchFn }, AGENT_SKILLS, 'model');
+        expect(r?.skill.id).toBe('skill-knowledge-graph');
+        expect(r?.ok).toBe(true);
+    });
+
+    it('a dangerous skill (code runner) still refuses a "model"-origin input', async () => {
+        const r = await runSkillForInput('run js: 1+1', { llm: NO_LLM }, AGENT_SKILLS, 'model');
+        expect(r).toBeNull();
+    });
+});
+
 describe('3-surface invariant + registry', () => {
     it('AGENT_SKILLS entry has a STELLA_TOOL_CATALOG mirror', () => {
         expect(AGENT_SKILLS.some(s => s.id === 'skill-knowledge-graph')).toBe(true);

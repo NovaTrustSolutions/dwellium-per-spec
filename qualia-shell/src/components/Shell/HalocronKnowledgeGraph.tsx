@@ -138,16 +138,6 @@ export async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProj
     return { project, gdata };
 }
 
-const IMPORTANT_FILES = [
-    { name: 'widgetRegistry.ts', score: 92 },
-    { name: 'WindowContext.tsx', score: 78 },
-    { name: 'UserContext.tsx', score: 71 },
-    { name: 'ThemeContext.tsx', score: 64 },
-    { name: 'HalocronOS.tsx', score: 58 },
-    { name: 'llmClient.ts', score: 52 },
-    { name: 'oneSaveClient.ts', score: 47 },
-];
-
 function RepoGraph() {
     const kgState = useHalocronKnowledgeGraphState();
     const [selected, setSelected] = useState<KgNode | null>(null);
@@ -189,6 +179,8 @@ function RepoGraph() {
     const queryRef = useRef('');
     const matchSetRef = useRef<Set<number>>(new Set());
     const activeMatchRef = useRef(-1);
+    const [activeMatch, setActiveMatch] = useState(-1);
+    const [exportError, setExportError] = useState<string | null>(null);
     const [showList, setShowList] = useState(false);
     const nodeListId = `kg-nodelist${useId().replace(/:/g, "")}`; // unique per mounted instance (OS tab + desktop window)
 
@@ -243,6 +235,10 @@ function RepoGraph() {
     // (Re)build the render graph — ONLY when the project or its graph data
     // actually changes (B3), never on an unrelated resize (B2) or store write.
     const rebuild = useCallback(() => {
+        // Lay out at the real size when it's known; otherwise the first layout used the
+        // 800×520 placeholder and the debounced resize then stretched it 150 ms later.
+        const r = wrapRef.current?.getBoundingClientRect();
+        if (r && r.width > 0 && r.height > 0) sizeRef.current = { w: Math.max(320, r.width), h: Math.max(280, r.height) };
         const { w, h } = sizeRef.current;
         const { nodes, links } = buildGraph(projectRef.current, w, h, gdata, KG_AGENTS, seedFor(project.id));
         nodesRef.current = nodes;
@@ -251,7 +247,7 @@ function RepoGraph() {
         setSelected(null);
         // A new node array invalidates match indices from the previous graph.
         setQuery(''); queryRef.current = ''; matchSetRef.current = new Set(); setMatches([]);
-        activeMatchRef.current = -1;
+        activeMatchRef.current = -1; setActiveMatch(-1);
         setNodesVersion((v) => v + 1);
         drawRef.current(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -435,7 +431,7 @@ function RepoGraph() {
         const m = matchNodes(nodesRef.current, q);
         matchSetRef.current = new Set(m);
         setMatches(m);
-        activeMatchRef.current = -1;
+        activeMatchRef.current = -1; setActiveMatch(-1);
         drawRef.current(false);
     }, []);
 
@@ -446,6 +442,7 @@ function RepoGraph() {
         if (!matches.length) return;
         const dir = e.shiftKey ? -1 : 1;
         activeMatchRef.current = ((activeMatchRef.current + dir) % matches.length + matches.length) % matches.length;
+        setActiveMatch(activeMatchRef.current);
         selectAndCentre(matches[activeMatchRef.current]);
     };
 
@@ -599,12 +596,16 @@ function RepoGraph() {
     useEffect(() => { setChat([]); }, [activeId]);
 
     const seedPrompt = useCallback((): string => {
-        const top = (gdata?.importantFiles ?? []).map((f) => `${f.name} (${f.score} importers)`).join(', ');
+        // GitHub tabs are structure-only (size-ranked, folder-hub links) — never call that "imports".
+        const gh = gdata?.source === 'github-tree' || project.id.startsWith('gh-');
+        const top = (gdata?.importantFiles ?? []).map((f) => gh ? f.name : `${f.name} (${f.score} importers)`).join(', ');
         const sample = (gdata?.nodes ?? []).slice(0, 40).map((n) => n.label).join(', ');
         return [
             `You are answering questions about the software project "${project.name}" (${project.blurb}).`,
-            gdata ? `Real structure from its code graph: ${gdata.files} files, ${gdata.edges} import edges, ${gdata.clusters} top-level modules.` : '',
-            top ? `The most-depended-on files (the heart of the project): ${top}.` : '',
+            gdata ? (gh
+                ? `Its file structure (folders and file sizes only — no import information): ${gdata.files} files in ${gdata.clusters} top-level folders.`
+                : `Real structure from its code graph: ${gdata.files} files, ${gdata.edges} import edges, ${gdata.clusters} top-level modules.`) : '',
+            top ? (gh ? `Its largest files: ${top}.` : `The most-depended-on files (the heart of the project): ${top}.`) : '',
             sample ? `A sample of files: ${sample}.` : '',
             `Answer concretely about THIS project's architecture using that structure. If unsure, say so.`,
         ].filter(Boolean).join('\n');
@@ -667,7 +668,7 @@ function RepoGraph() {
     const selectedIndex = selected ? nodesRef.current.indexOf(selected) : -1;
     const selectedNeighbourIndices = selectedIndex >= 0 ? neighbours(linksRef.current, selectedIndex) : [];
     const selectedDegree = selectedNeighbourIndices.length;
-    const rankedFiles = gdata?.importantFiles ?? IMPORTANT_FILES;
+    const rankedFiles = gdata?.importantFiles ?? [];
     const canvasLabel = loadState !== 'loaded'
         ? `${project.name} code map — ${loadState === 'error' ? "couldn't load this project's graph" : 'loading'}; a placeholder layout is drawn.`
         : `${project.name} code map: ${shownCount.toLocaleString()} of `
@@ -711,7 +712,10 @@ function RepoGraph() {
         setTimeout(() => URL.revokeObjectURL(url), 0);
     };
     const exportPng = () => {
-        canvasRef.current?.toBlob((blob) => { if (blob) downloadBlob(blob, `${project.id}-map.png`); });
+        canvasRef.current?.toBlob((blob) => {
+            if (blob) { setExportError(null); downloadBlob(blob, `${project.id}-map.png`); }
+            else setExportError("Couldn't create the image — try again.");
+        });
     };
     const exportJson = () => {
         if (!gdata) return;
@@ -724,17 +728,17 @@ function RepoGraph() {
             {/* ── top: project tabs ── */}
             <div className="kg-tabs">
                 {projects.map((p) => (
-                    <div key={p.id} role="button" tabIndex={0} aria-pressed={p.id === activeId}
-                        className={`kg-tab ${p.id === activeId ? 'on' : ''}`}
-                        onClick={() => setKgActiveProject(p.id)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKgActiveProject(p.id); } }}>
+                    <div key={p.id} className={`kg-tab ${p.id === activeId ? 'on' : ''}`}>
+                        <button type="button" className="kg-tab__main" aria-pressed={p.id === activeId}
+                            onClick={() => setKgActiveProject(p.id)}>
+                            <div className="kg-tab__top"><span className="kg-tab__name">{p.name}</span><span className="kg-tab__lang">{p.lang}</span></div>
+                            <div className="kg-tab__blurb">{p.blurb}</div>
+                            <div className="kg-tab__meta">{p.files.toLocaleString()} files · {p.clusters} clusters</div>
+                        </button>
                         {!defaultTabIds.has(p.id) && (
                             <button type="button" className="kg-tab__remove" aria-label={`Remove ${p.name}`}
-                                onClick={(e) => { e.stopPropagation(); removeKgProject(p.id); }}>×</button>
+                                onClick={() => removeKgProject(p.id)}>×</button>
                         )}
-                        <div className="kg-tab__top"><span className="kg-tab__name">{p.name}</span><span className="kg-tab__lang">{p.lang}</span></div>
-                        <div className="kg-tab__blurb">{p.blurb}</div>
-                        <div className="kg-tab__meta">{p.files.toLocaleString()} files · {p.clusters} clusters</div>
                     </div>
                 ))}
                 {addOpen ? (
@@ -800,7 +804,9 @@ function RepoGraph() {
                             placeholder="Search files… (Enter to jump, Esc to clear)"
                         />
                         <span className="kg-search__status" aria-live="polite">
-                            {query ? (matches.length ? `${matches.length} match${matches.length === 1 ? '' : 'es'}` : 'No matches') : ''}
+                            {query ? (matches.length
+                                ? (activeMatch >= 0 && activeMatch < matches.length ? `Match ${activeMatch + 1} of ${matches.length}` : `${matches.length} match${matches.length === 1 ? '' : 'es'}`)
+                                : 'No matches') : ''}
                         </span>
                     </div>
                     <div
@@ -831,10 +837,11 @@ function RepoGraph() {
                     <section className="kg-card">
                         <div className="kg-card__cap"><Sparkles size={12} aria-hidden /> MOST IMPORTANT FILES</div>
                         <p className="kg-card__note">The files everything else relies on — ranked by {isGithub ? 'size' : 'how many other files import them'}.</p>
-                        {(gdata?.importantFiles ?? IMPORTANT_FILES).map((f, i) => (
+                        {!gdata && <p className="kg-card__note">{loadState === 'error' ? "Couldn't load this project's graph." : 'Loading…'}</p>}
+                        {(gdata?.importantFiles ?? []).map((f, i) => (
                             <div key={f.name + i} className="kg-imp">
                                 <span className="kg-imp__n">{i + 1}. {f.name}</span>
-                                <span className="kg-imp__bar"><span style={{ width: `${('pct' in f ? f.pct : f.score)}%` }} /></span>
+                                <span className="kg-imp__bar"><span style={{ width: `${f.pct}%` }} /></span>
                             </div>
                         ))}
                     </section>
@@ -907,6 +914,7 @@ function RepoGraph() {
                             <button type="button" disabled={!gdata} onClick={exportPng}>Export PNG</button>
                             <button type="button" disabled={!gdata} onClick={exportJson}>Export JSON</button>
                         </div>
+                        {exportError && <p className="kg-card__note" role="alert">{exportError}</p>}
                     </section>
                 </aside>
             </div>

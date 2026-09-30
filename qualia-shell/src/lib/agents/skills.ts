@@ -102,7 +102,9 @@ export function isTrustedSkillOrigin(origin: SkillOrigin | undefined): boolean {
 //   - skill-code-runner   → executes arbitrary JS via `new Function`
 //   - skill-compose-widget → mutates a widget via the widget-action bus
 //   - skill-memory-remember → WRITES to persistent memory
-//   - skill-image-gen / skill-knowledge-graph → paid/side-effecting calls
+//   - skill-image-gen → paid/side-effecting calls
+// (skill-knowledge-graph is a read-only query — no LLM, no writes — so it is
+// on the allowlist below, same as web-search/weather/calculator/memory-recall.)
 // An injected payload in an LLM/web/tool/file string therefore can do at most
 // a read-only fetch, never a side-effecting action.
 //
@@ -115,6 +117,7 @@ export const SAFE_AUTONOMOUS_SKILL_IDS: ReadonlySet<string> = new Set([
     'skill-weather',
     'skill-calculator',
     'skill-memory-recall',
+    'skill-knowledge-graph',
 ]);
 
 /** True if `skill` may run for a non-'user' (autonomous) origin. */
@@ -495,8 +498,6 @@ const memoryRememberSkill: AgentSkill = {
     },
 };
 
-// ── Catalog + helpers ─────────────────────────────────────────────────
-
 // ── Compose into widget (P11-7 widget-action bus) ─────────────────────
 // "draft a letter in it" / "write a thank-you note in notepad" — the LLM
 // drafts, the widget-action bus places the text INSIDE the target widget.
@@ -544,9 +545,10 @@ const knowledgeGraphSkill: AgentSkill = {
     id: 'skill-knowledge-graph',
     name: 'Knowledge Graph',
     icon: 'network',
-    description: 'Query the knowledge graph built from your memories, captures, notes, and tasks ("ask the graph about X").',
+    description: 'Search the user\'s own knowledge graph (memories, captures, notes, tasks) for how things connect; returns matching nodes and links.',
     derivedFrom: 'graphify (github.com/safishamsi/graphify)',
     requires: 'none',
+    safeForAutonomous: true, // read-only query (POST /api/knowledge-graph/query, BFS) — no LLM, no writes → safe for agent runs
     triggers: [
         /^(?:ask|query|search)\s+(?:the\s+)?(?:knowledge\s+)?graph\s+(?:about\s+|for\s+)?(.+)$/i,
         /^(?:knowledge\s+)?graph\s*[:,]\s*(.+)$/i,
@@ -575,6 +577,8 @@ const knowledgeGraphSkill: AgentSkill = {
     },
 };
 
+// ── Catalog + helpers ─────────────────────────────────────────────────
+
 export const AGENT_SKILLS: ReadonlyArray<AgentSkill> = [
     calculatorSkill,
     webSearchSkill,
@@ -594,7 +598,7 @@ export const AGENT_SKILLS: ReadonlyArray<AgentSkill> = [
  * widget-action bus, memory writes), so for HUMAN-composer input
  * (`origin === 'user'`) any skill may match. For an autonomous origin
  * (model/tool/web/file) ONLY allowlisted read-only skills
- * (`SAFE_AUTONOMOUS_SKILL_IDS` — web-search/weather/calculator/memory-recall)
+ * (`SAFE_AUTONOMOUS_SKILL_IDS` — web-search/weather/calculator/memory-recall/knowledge-graph)
  * may match; a dangerous trigger (e.g. the code runner) is SKIPPED, so an
  * injected payload in an LLM/web/file response can never claim it. `origin`
  * defaults to `'user'` so existing human-driven call sites (and the pure

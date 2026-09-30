@@ -13,7 +13,7 @@
  * PURE-AT-THE-SEAMS like hermesRunner: LLM, skills, and clock are injectable;
  * unit-testable with no network.
  */
-import { AGENT_SKILLS, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
+import { AGENT_SKILLS, isSafeForAutonomous, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
 import { extractJson } from '../../lib/agents/orchestrator';
 import { callLlm, type LlmRequest } from '../../lib/llmClient';
 import type { IntegrationsBundle } from '../../types/integrations';
@@ -40,6 +40,15 @@ export interface ReactLoopDeps {
 
 /** Browser-skill names — the registry half the backend can't see. */
 export const BROWSER_SKILL_TOOLS: ReadonlyArray<string> = AGENT_SKILLS.map(s => s.name);
+
+/**
+ * Skills a Hermes ReAct loop (autonomous, non-'user' origin) may offer and
+ * run. SECURITY INVARIANT (skills.ts ~:98): the code runner, compose-widget,
+ * memory-remember and image-gen must NEVER be reachable from a model-driven
+ * tool loop — only `isSafeForAutonomous` skills are. Both the tool list shown
+ * to the model AND the name→skill dispatch map are built from this subset.
+ */
+const AUTONOMOUS_SAFE_SKILLS: ReadonlyArray<AgentSkill> = AGENT_SKILLS.filter(isSafeForAutonomous);
 
 /** ONE catalog: backend tool names + browser skills, deduped (P11-6). */
 export function mergedToolNames(backendToolNames: ReadonlyArray<string>): string[] {
@@ -127,17 +136,17 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
  */
 export function buildReactLoopFn(llm: IntegrationsBundle['llm']) {
     const ctx: SkillContext = { llm };
-    const byName = new Map<string, AgentSkill>(AGENT_SKILLS.map(s => [s.name.toLowerCase(), s]));
+    const byName = new Map<string, AgentSkill>(AUTONOMOUS_SAFE_SKILLS.map(s => [s.name.toLowerCase(), s]));
     return async (task: string, fewShot: string): Promise<ReactLoopResult | null> => {
         const result = await runReactLoop(task, fewShot, {
             invoke: async (req) => (await callLlm(req, llm))?.text ?? null,
             runSkill: async (name, input) => {
                 const skill = byName.get(name.toLowerCase());
-                if (!skill) return null;
+                if (!skill) return { ok: false, text: 'Tool not available.' };
                 const r = await skill.run(input, ctx);
                 return { ok: r.ok, text: r.text };
             },
-            skills: AGENT_SKILLS.map(s => ({ name: s.name, description: s.description })),
+            skills: AUTONOMOUS_SAFE_SKILLS.map(s => ({ name: s.name, description: s.description })),
         });
         return result.ok ? result : null;
     };

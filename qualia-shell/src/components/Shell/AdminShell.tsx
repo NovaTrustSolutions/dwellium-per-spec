@@ -23,6 +23,7 @@ import { useEffect } from 'react';
 import { useHonchoBackgroundRunner } from '../../services/honchoBackgroundRunner';
 import { useMorningBriefSync } from '../../hooks/useMorningBriefSync';
 import { useHermesAutonomousRunner } from '../../services/hermesAutonomousRunner';
+import { useHermesGraphNightly } from '../../services/hermesGraphNightly';
 import { useCognitiveMemoryBridge } from '../../services/cognitiveMemoryBridge';
 import { useApplyUiEdits } from '../../lib/uiEditStore';
 import { LayoutProvider } from '../../context/LayoutContext';
@@ -55,6 +56,8 @@ function ShellLayout() {
     // Hermes personas claim durable queued tasks while the signed-in shell is
     // open, even when the Honcho/Hermes window itself is closed.
     useHermesAutonomousRunner();
+    // Nightly (2AM+, once/calendar-day) knowledge-graph rebuild via Hermes.
+    useHermesGraphNightly();
 
     // Plan 057: everything saved locally (Tag File, Scribe, captures, syntheses)
     // flows into the shared Cognitive Memory Network, offline extractor only.

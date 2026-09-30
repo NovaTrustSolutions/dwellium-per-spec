@@ -153,10 +153,16 @@
 
 /* Always present in the markup (empty when nothing selected) so it stays an
    aria-live region; :empty collapses it visually without display:none. */
+/* Sticky lore is capped at 35% of the widget height (scrolls inside if the
+   text is longer), and while it shows, the widget reserves the same strip
+   with scroll-padding so a Tab-focused card is scrolled above it (WCAG 2.4.11). */
+.holocron-lib:has(.holocron-lib__lore:not(:empty)) { scroll-padding-bottom: calc(35% + 12px); }
 .holocron-lib__lore {
     position: sticky;
     bottom: 0;
     z-index: 1;
+    max-height: 35%;
+    overflow-y: auto;
     margin-top: 26px;
     padding: 18px 22px;
     border-left: 2px solid var(--accent, #e01e2b);

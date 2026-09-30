@@ -19,9 +19,19 @@ async function call<T>(path: string, opts: RequestInit = {}): Promise<T> {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) {
-        throw new Error(data.error || `HTTP ${res.status}`);
+        throw new ApiError(data.error || `HTTP ${res.status}`, res.status, data.code);
     }
     return data as T;
+}
+
+/** An /api/file-explorer failure; `code` is the backend's machine code (DEST_EXISTS, HIDDEN_PATH, TOO_LARGE, BINARY). */
+export class ApiError extends Error {
+    constructor(message: string, readonly status: number, readonly code?: string) { super(message); }
+}
+
+/** True when the backend refused because the destination is taken (409). */
+export function isConflict(err: unknown): boolean {
+    return err instanceof ApiError && err.status === 409;
 }
 
 export async function fetchTree(): Promise<FileEntry[]> {
@@ -57,4 +67,34 @@ export async function move(fromPath: string, toPath: string, copy = false): Prom
 export async function deleteEntry(path: string): Promise<{ trashedTo?: string }> {
     const data = await call<{ trashedTo?: string }>('/entry', { method: 'DELETE', body: JSON.stringify({ path }) });
     return { trashedTo: data.trashedTo };
+}
+
+/** One soft-deleted entry in the user's hidden .trash (plan 076 P3). */
+export interface TrashItem {
+    id: string;
+    path: string;
+    name: string;
+    isDir: boolean;
+    deletedAt: string | null;
+    size?: number;
+}
+
+export async function listTrash(): Promise<TrashItem[]> {
+    const data = await call<{ data: TrashItem[] }>('/trash');
+    return Array.isArray(data.data) ? data.data : [];
+}
+
+/** Put a trashed entry back at its original path, or at `as`. 409 (isConflict) if that path is taken. */
+export async function restoreFromTrash(id: string, as?: string): Promise<{ path: string }> {
+    return call<{ path: string }>('/trash/restore', { method: 'POST', body: JSON.stringify(as ? { id, as } : { id }) });
+}
+
+/** Permanently delete one trashed entry (user-initiated only). */
+export async function deleteFromTrash(id: string): Promise<void> {
+    await call(`/trash/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+/** Permanently delete everything in the trash (user-initiated only; the UI asks for a typed confirm). */
+export async function emptyTrash(): Promise<{ removed: number }> {
+    return call<{ removed: number }>('/trash', { method: 'DELETE', body: JSON.stringify({ confirm: 'EMPTY' }) });
 }

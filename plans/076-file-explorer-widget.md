@@ -140,3 +140,51 @@ reviewer with required probes (account switch mid-refresh, racing moves, dot-pat
 drop) → standalone harness (scratchpad Vite + fake API, latte screenshot) → commit. No push, merge or
 deploy without Ilya's explicit say-so. Change the delete copy in production only after the
 soft-delete backend is confirmed deployed (verify on the live API, not the branch).
+
+## 6. Phase 3 contract (written 2026-09-30, before W1)
+
+Branches: frontend `feat/076-file-explorer-p3` (stacked on p1), backend `fix/076-p3-trash` (stacked on
+`fix/076-file-explorer-safety`). Worktrees `.claude/worktrees/076-fe-p3`, `~/dwellium-backend/worktrees/076-p3-trash`.
+
+### Backend (`src/routes/fileExplorerRoutes.ts`)
+Trash layout (unchanged since PR #6): `<userRoot>/.trash/<id>/<original path>`, one `<id>` per delete,
+`id` = `YYYY-MM-DDTHH-MM-SS-mmmZ-xxxxxx` (ISO with `:`/`.` → `-`, plus 6 hex). Valid id regex:
+`/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[0-9a-f]{6}$/` → otherwise 400 `invalid trash id`.
+Trash routes build paths from the regex-checked id only (never from the shared request-path validator,
+which refuses dot-segments by design).
+
+- `GET /trash` → `{ success, data: TrashItem[] }`, newest first.
+  `TrashItem = { id, path, name, isDir, deletedAt: string | null, size?: number }`.
+  `path` = the deepest single-child DIRECTORY chain under `.trash/<id>` (no manifest exists; for a folder
+  that held exactly one subfolder, restoring the longer chain gives the identical disk result —
+  `ponytail:` note). Empty id dirs and non-matching names are skipped. `deletedAt` parsed from the id.
+- `POST /trash/restore { id, as? }` → target = `as ?? item.path` (`as` goes through the shared validator).
+  Exclusive like `/move` (reuse `destinationStatus` + `performMove`): taken → 409 `DEST_EXISTS`. Missing
+  parents are created. Then remove `.trash/<id>` only if no files remain in it. → `{ success, path }`.
+  404 if the id dir is missing.
+- `DELETE /trash/:id` → permanently removes `.trash/<id>` → `{ success }`; 404 if missing.
+- `DELETE /trash` with body `{ confirm: 'EMPTY' }` → removes every valid id dir → `{ success, removed }`;
+  any other body → 400. (Permanent deletes happen only from a user click; the UI adds a typed confirm.)
+- All `authenticate`; 500s sanitized as in P2.
+
+### Frontend API (`fileExplorerApi.ts`, P0 — committed with this section)
+`TrashItem`; `listTrash()`, `restoreFromTrash(id, as?)`, `deleteFromTrash(id)`, `emptyTrash()` (sends
+`confirm: 'EMPTY'`). Errors thrown by `call()` now carry `status` and `code` (`ApiError`); helper
+`isConflict(err)` = status 409.
+
+### Frontend components
+- `FilePreview.tsx` (new): `{ path: string; onClose(): void }`. Fetches `readFile(path)`; header with
+  name + close (Esc closes); loading / error (413 → "Too large to preview (limit 2 MB)", 415 → "Binary
+  file — preview isn't available yet", else the message); `.md`/`.markdown` → `renderSafeMarkdown`,
+  anything else → `<pre>` with wrapping. Stale responses dropped when `path` changes (sequence ref).
+  `role="region"` `aria-label="Preview of <name>"`. Theme tokens only (no dark literals).
+- `TrashPanel.tsx` (new): `{ onClose(): void; onRestored(path: string): void }`. Lists items (name,
+  original folder, deleted time), per-row Restore and Delete forever (confirm "Permanently delete
+  "<name>"? This cannot be undone."), Empty trash (window.prompt: type EMPTY). Restore 409 →
+  `window.prompt('"<path>" already exists. Restore as:', '<name> (restored)')` → restore with `as`.
+  Empty / loading / error states. Theme tokens only.
+- Integration (W2, `FileExplorer.tsx` + `FileExplorerCell.tsx`): toolbar Trash button toggles the Trash
+  panel in place of the tree; `previewPath` state shows `FilePreview` below the tree. Double-click a
+  file → open preview, a folder → expand/collapse; Enter on a selected file → open; context menu
+  "Open" for files; rename stays on F2/menu. Close the preview when its file leaves the tree on
+  refresh; clear preview + close trash on account switch; refresh after restore.

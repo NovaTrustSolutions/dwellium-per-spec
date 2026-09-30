@@ -117,4 +117,29 @@ describe('SpendBreakdown', () => {
         render(<SpendBreakdown ledger={buildLedger()} />);
         expect(screen.getByText('last 1,000 calls')).toBeInTheDocument();
     });
+
+    it('labels server:<feature> as "Server · <Label>" and system:<feature> as "Shared · <Label>" (plan 068 Phase 3)', () => {
+        const date = dateNDaysAgo(1);
+        const ledger: UsageLedger = {
+            entries: [...dayEntries(date, 'claude-sonnet-5', 'server:ara'), ...dayEntries(date, 'gpt-4.1-mini', 'system:automation')],
+            days: {
+                [date]: {
+                    date,
+                    calls: 4,
+                    estIn: 400,
+                    estOut: 200,
+                    estCost: 0.02,
+                    byProvider: { anthropic: { calls: 4, estCost: 0.02 } },
+                    unpriced: 2,
+                    measuredCalls: 2,
+                    byModel: { 'claude-sonnet-5': { calls: 2, estCost: 0.01 }, 'gpt-4.1-mini': { calls: 2, estCost: 0.01 } },
+                    bySource: { 'server:ara': { calls: 2, estCost: 0.01 }, 'system:automation': { calls: 2, estCost: 0.01 } },
+                },
+            },
+        };
+        render(<SpendBreakdown ledger={ledger} />);
+        fireEvent.click(screen.getByRole('tab', { name: 'By feature' }));
+        expect(screen.getByText('Server · ARA')).toBeInTheDocument();
+        expect(screen.getByText('Shared · Automations')).toBeInTheDocument();
+    });
 });

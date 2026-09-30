@@ -35,6 +35,24 @@ class MockResizeObserver {
     disconnect = vi.fn();
 }
 
+// Plan 072 phase 2 (B4): the canvas now draws a static frame SYNCHRONOUSLY
+// (rebuild/resize/zoom/pan/selection), not just inside a queued rAF callback
+// — so unlike before, the mocked 2D context's methods actually get called
+// during these tests. `{}` (no methods) is no longer enough; give it every
+// method the draw path touches.
+function makeFakeCanvasContext(): CanvasRenderingContext2D {
+    const gradient = { addColorStop: vi.fn() };
+    return {
+        clearRect: vi.fn(), save: vi.fn(), restore: vi.fn(), translate: vi.fn(), scale: vi.fn(),
+        beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), fill: vi.fn(),
+        arc: vi.fn(), createRadialGradient: vi.fn(() => gradient),
+        set globalAlpha(_v: number) {}, get globalAlpha() { return 1; },
+        set strokeStyle(_v: unknown) {}, get strokeStyle() { return ''; },
+        set fillStyle(_v: unknown) {}, get fillStyle() { return ''; },
+        set lineWidth(_v: number) {}, get lineWidth() { return 1; },
+    } as unknown as CanvasRenderingContext2D;
+}
+
 const makePointerEvent = (
     type: string,
     init: MouseEventInit & { pointerId?: number } = {},
@@ -77,7 +95,7 @@ describe('HalocronKnowledgeGraph', () => {
         vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
         vi.stubGlobal('cancelAnimationFrame', vi.fn());
         vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: false })));
-        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({} as CanvasRenderingContext2D);
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(makeFakeCanvasContext());
     });
 
     afterEach(() => {

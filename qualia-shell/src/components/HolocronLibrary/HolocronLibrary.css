@@ -1,19 +1,36 @@
-/* Holocron Library — Halocron archival gallery (2026-06-12).
+/* Holocron Library — Halocron archival gallery (2026-06-12, revised 2026-09-30).
    Theme-token driven so it adapts to any theme, but it sings under
    theme-halocron (bronze line-art + crimson ignite). All motion pauses under
-   .animations-off. */
+   .animations-off (global rule, src/styles/animations.css §18) and
+   prefers-reduced-motion. Card plate is intentionally dark in every theme
+   (opaque #0d0a08 base) so the bronze/crimson ink tokens below always meet
+   WCAG AA against it — see the contrast table in the PR/handback notes. */
 
 .holocron-lib {
     width: 100%;
     height: 100%;
     overflow-y: auto;
     box-sizing: border-box;
-    padding: 24px clamp(20px, 4vw, 56px) 40px;
+    /* cqw here would resolve against this element's OWN ancestor container,
+       not itself — use fixed/% padding, not cqw, for this element's padding. */
+    padding: 24px 5% 40px;
     color: var(--text-primary, #ece0c4);
     background:
         radial-gradient(ellipse at 22% 8%, rgba(224, 30, 43, 0.08) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 92%, rgba(201, 164, 76, 0.06) 0%, transparent 55%),
         var(--bg-desktop, #0a0706);
+    /* Ancestor container for the grid's own @container rules below. */
+    container-type: inline-size;
+
+    /* Local ink tokens for everything inside .holocron-card — the plate is
+       always dark by design, so these are picked for contrast against the
+       plate's composited base, not against the surrounding theme. */
+    --hl-ink: var(--holocron-ink, #ece0c4);
+    --hl-ink-muted: var(--holocron-ink-muted, #c2ab7a);
+    --hl-bronze: var(--bronze, #c9a44c);
+    --hl-jedi: var(--holocron-jedi, #c9b86a);
+    --hl-lost: var(--holocron-lost, #c2ab7a);
+    --hl-ember: var(--ember, #ff5a3c);
 }
 
 .holocron-lib__head { text-align: center; margin-bottom: 28px; }
@@ -21,8 +38,8 @@
     display: inline-flex; align-items: center; gap: 10px;
     color: var(--accent-text, #e7c879);
 }
-.holocron-lib__title h1 {
-    margin: 0; font-size: clamp(20px, 2.4vw, 30px); font-weight: 600;
+.holocron-lib__title h2 {
+    margin: 0; font-size: clamp(20px, 4cqw, 30px); font-weight: 600;
     letter-spacing: 0.14em; text-transform: uppercase;
     font-family: var(--font-display, 'Georgia', serif);
 }
@@ -33,31 +50,38 @@
 
 .holocron-lib__grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: clamp(14px, 2vw, 30px);
+    grid-template-columns: 1fr;
+    gap: clamp(14px, 3cqw, 30px);
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
-@container (max-width: 880px) { .holocron-lib__grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 880px) { .holocron-lib__grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 520px) { .holocron-lib__grid { grid-template-columns: 1fr; } }
+@container (min-width: 400px) { .holocron-lib__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (min-width: 760px) { .holocron-lib__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.holocron-lib__cell { display: flex; }
 
 .holocron-card {
     position: relative;
     display: flex; flex-direction: column; align-items: center;
     gap: 14px;
+    width: 100%;
+    font: inherit;
     padding: 26px 14px 18px;
     border: 1px solid var(--border-subtle, rgba(201, 164, 76, 0.18));
     border-radius: 14px;
     background:
         radial-gradient(ellipse at center 36%, rgba(201, 164, 76, 0.05) 0%, transparent 62%),
-        linear-gradient(180deg, rgba(20, 16, 11, 0.6), rgba(10, 7, 6, 0.9));
-    color: var(--bronze, #c9a44c);
+        linear-gradient(180deg, rgba(20, 16, 11, 0.6), rgba(10, 7, 6, 0.9)),
+        #0d0a08;
+    color: var(--hl-bronze);
     cursor: pointer;
     overflow: hidden;
     transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 .holocron-card:hover {
     transform: translateY(-4px);
-    border-color: color-mix(in srgb, var(--bronze, #c9a44c) 50%, transparent);
+    border-color: color-mix(in srgb, var(--hl-bronze) 50%, transparent);
     box-shadow: 0 18px 44px -20px rgba(224, 30, 43, 0.5);
 }
 .holocron-card:focus-visible {
@@ -80,8 +104,8 @@
 
 .holocron-card__art {
     position: relative;
-    width: clamp(96px, 12vw, 150px);
-    height: clamp(96px, 12vw, 150px);
+    width: clamp(72px, 18cqw, 150px);
+    height: clamp(72px, 18cqw, 150px);
     display: grid; place-items: center;
     filter: drop-shadow(0 0 6px rgba(201, 164, 76, 0.35));
     animation: holocron-spin 26s linear infinite;
@@ -97,25 +121,25 @@
 .holocron-card__cap { text-align: center; line-height: 1.5; }
 .holocron-card__fig {
     display: block; font-size: 11px; letter-spacing: 0.12em;
-    color: var(--text-secondary, #9a8757); font-style: italic;
+    color: var(--hl-ink-muted); font-style: italic;
 }
 .holocron-card__name {
     display: block; font-size: 15px; font-style: italic;
-    color: var(--text-primary, #ece0c4);
+    color: var(--hl-ink);
     font-family: var(--font-display, 'Georgia', serif);
 }
 .holocron-card__faction {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--text-secondary, #9a8757);
+    color: var(--hl-ink-muted);
 }
-.holocron-card.faction-jedi { color: #c9b86a; }
-.holocron-card.faction-lost { color: #9a8757; }
+.holocron-card.faction-jedi { color: var(--hl-jedi); }
+.holocron-card.faction-lost { color: var(--hl-lost); }
 
 /* IGNITE state: crimson burn-up, faster spin, hard glow */
 .holocron-card.is-ignited {
     border-color: var(--accent, #e01e2b);
-    color: var(--ember, #ff5a3c);
+    color: var(--hl-ember);
     box-shadow: 0 0 0 1px rgba(224, 30, 43, 0.4), 0 22px 60px -18px rgba(224, 30, 43, 0.75);
 }
 .holocron-card.is-ignited .holocron-card__aura {
@@ -127,13 +151,28 @@
     filter: drop-shadow(0 0 12px rgba(255, 90, 60, 0.8));
 }
 
+/* Always present in the markup (empty when nothing selected) so it stays an
+   aria-live region; :empty collapses it visually without display:none. */
 .holocron-lib__lore {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
     margin-top: 26px;
     padding: 18px 22px;
     border-left: 2px solid var(--accent, #e01e2b);
     border-radius: 8px;
-    background: linear-gradient(90deg, rgba(224, 30, 43, 0.08), transparent);
+    /* Opaque so sticky lore never lets grid cards show through. */
+    background:
+        linear-gradient(90deg, rgba(224, 30, 43, 0.08), transparent),
+        var(--bg-desktop, #0a0706);
     animation: holocron-lore-in 0.4s ease;
+}
+.holocron-lib__lore:empty {
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: none;
+    animation: none;
 }
 @keyframes holocron-lore-in {
     from { opacity: 0; transform: translateY(8px); }
@@ -149,9 +188,11 @@
 }
 .holocron-lib__lore p { margin: 6px 0 0; color: var(--text-primary, #ece0c4); line-height: 1.6; }
 
-/* Honor reduced-motion: app toggle + OS preference */
-body.animations-off .holocron-card__art,
-body.animations-off .holocron-card__aura { animation: none; }
+/* Honor OS reduced-motion preference (app-toggle .animations-off is covered
+   globally by src/styles/animations.css §18). */
 @media (prefers-reduced-motion: reduce) {
     .holocron-card__art, .holocron-card__aura { animation: none; }
+    .holocron-card { transition: none; }
+    .holocron-card:hover { transform: none; }
+    .holocron-lib__lore { animation: none; }
 }

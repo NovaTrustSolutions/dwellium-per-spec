@@ -19,6 +19,7 @@ import { useIngestion } from '../components/Scribe/ingestion/useIngestion';
 import { callLlm } from '../lib/llmClient';
 import { appendDump, dumpStore } from '../components/Scribe/dumpStore';
 import DumpMode from '../components/Scribe/DumpMode';
+import { UserContext } from '../context/UserContext';
 
 vi.mock('../components/Scribe/pdfToMarkdown', async (orig) => ({
     ...(await orig<typeof import('../components/Scribe/pdfToMarkdown')>()),
@@ -312,19 +313,25 @@ describe('owner-race guard — folder ingestion convert', () => {
 });
 
 describe('owner-race guard — Brain Dump report', () => {
+    /** DumpMode inside the provider the shell gives it — its usePerUserIdentity() re-syncs every holder from UserContext. */
+    const asUser = (id: string | null) =>
+        createElement(UserContext.Provider, { value: (id ? { user: { id } } : null) as any }, createElement(DumpMode));
+
     async function generate() {
         appendDump('first thought');
-        render(createElement(DumpMode));
+        const view = render(asUser('user-a'));
         fireEvent.click(screen.getByRole('button', { name: 'Report' }));
         fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
         await tick();
+        return view;
     }
 
     it('switch mid-LLM call → the report is not opened in B\'s Scribe; busy clears; says why', async () => {
         const d = deferred<{ text: string }>();
         vi.mocked(callLlm).mockReturnValue(d.promise as never);
-        await generate();
-        switchAccount();
+        const { rerender } = await generate();
+        signIn(null); rerender(asUser(null));          // logout render …
+        signIn('user-b'); rerender(asUser('user-b'));  // … then login-as-B render, mid-await
         await act(async () => { d.resolve({ text: '# A report' }); await tick(); });
         expect(useScribeStore.getState().openFiles).toEqual([]);
         expect(screen.getByRole('button', { name: 'Generate' })).not.toBeDisabled();

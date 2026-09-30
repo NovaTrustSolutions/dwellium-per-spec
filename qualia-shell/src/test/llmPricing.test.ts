@@ -114,3 +114,11 @@ describe('perCallFeeUsd', () => {
         expect(perCallFeeUsd('image', 'dall-e-3')).toBeNull();
     });
 });
+
+describe('embeddings prices (plan 068 phase 3 — backend uses them heavily)', () => {
+    it('text-embedding-3-small/large and ada-002 are priced per 1M input tokens, output free', () => {
+        expect(priceFor('text-embedding-3-small', 'openai')).toEqual({ inPerM: 0.02, outPerM: 0 });
+        expect(priceFor('text-embedding-3-large', 'openai')).toEqual({ inPerM: 0.13, outPerM: 0 });
+        expect(priceFor('text-embedding-ada-002', 'openai')).toEqual({ inPerM: 0.1, outPerM: 0 });
+    });
+});

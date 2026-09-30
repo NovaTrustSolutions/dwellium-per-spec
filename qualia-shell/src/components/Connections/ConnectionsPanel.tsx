@@ -23,7 +23,7 @@ import { memoryStore } from '../HonchoHermesPanel/honchoMemoryStore';
 import { dreamStore } from '../StellaAgent/honchoDreamStore';
 import { hermesLearningStore } from '../HonchoHermesPanel/hermesLearningStore';
 import { thoughtWeaverStore } from '../ThoughtWeaver/thoughtWeaverStore';
-import { goalsStore } from '../../lib/goalsStore';
+import { goalsStore, liveGoals } from '../../lib/goalsStore';
 import { artifactStore } from '../../lib/artifactStore';
 import { tagStore } from '../../lib/tagStore';
 import { morningBriefStore } from '../../lib/morningBriefStore';
@@ -40,7 +40,7 @@ export function buildMemoryRows(): Array<{ name: string; count: number; widget: 
         { name: 'Dreams', count: safe(() => dreamStore.getSnapshot().length), widget: 'honcho' },
         { name: 'Agent exchanges (Hermes learning)', count: safe(() => hermesLearningStore.getSnapshot().length), widget: 'ara-console' },
         { name: 'ThoughtWeaver captures', count: safe(() => thoughtWeaverStore.getSnapshot().length), widget: 'thought-weaver' },
-        { name: 'Goals (Mission Control)', count: safe(() => goalsStore.getSnapshot().length), widget: 'mission-control' },
+        { name: 'Goals (Mission Control)', count: safe(() => liveGoals(goalsStore.getSnapshot()).length), widget: 'mission-control' },
         { name: 'Artifacts', count: safe(() => artifactStore.getSnapshot().length), widget: 'artifact-gallery' },
         { name: 'Tags', count: safe(() => tagStore.getSnapshot().length), widget: 'task-board' },
         { name: 'Morning briefs', count: safe(() => morningBriefStore.getSnapshot().length), widget: 'ara-console' },

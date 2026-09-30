@@ -10,7 +10,7 @@
  * canonical store). This is the seam the Conductor (ARA) reads/writes through.
  */
 import { memoryStore, addLocalMemory, memoryUserIdHolder, type LocalMemory } from '../components/HonchoHermesPanel/honchoMemoryStore';
-import { copawStore } from '../components/Hive/copawStore';
+import { copawStore, isSensitiveFact } from '../components/Hive/copawStore';
 import { thoughtWeaverStore } from '../components/ThoughtWeaver/thoughtWeaverStore';
 
 export type MemorySource = 'honcho' | 'copaw' | 'thought-weaver';
@@ -43,7 +43,9 @@ export function recall(query: string, limit = 12): MemoryHit[] {
         hits.push({ id, text, source, createdAt: createdAt ?? '', score });
     };
     try { for (const m of memoryStore.getSnapshot()) add(m.id, m.content, 'honcho', m.createdAt); } catch { /* ignore */ }
-    try { for (const f of copawStore.getSnapshot()) add(f.id, f.text, f.source || 'copaw', f.createdAt); } catch { /* ignore */ }
+    // Read-side filter: already-stored secret/PII-shaped facts never reach prompts.
+    // Does not mutate or delete the stored fact (user data rule) — filters at read time only.
+    try { for (const f of copawStore.getSnapshot()) { if (!isSensitiveFact(f.text)) add(f.id, f.text, f.source || 'copaw', f.createdAt); } } catch { /* ignore */ }
     try { for (const c of thoughtWeaverStore.getSnapshot()) add(c.id, c.text, 'thought-weaver', c.createdAt); } catch { /* ignore */ }
     return hits.sort((a, b) => b.score - a.score || b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
 }

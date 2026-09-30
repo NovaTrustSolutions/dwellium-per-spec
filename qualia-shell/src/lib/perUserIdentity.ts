@@ -102,6 +102,9 @@ export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 058 — per-user Universal Shell nav persistence (universalShellStore). */
 export const universalShellUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 068 phase 2 — per-user monthly AI budget (aiBudgetStore). */
+export const aiBudgetUserIdHolder: UserIdHolder = makeHolder();
+
 /** Plan 067 — ThoughtWeaver captures / imported ids / to-dos / reports. Were
  *  set only when the widget rendered, so readers outside it (unifiedMemory,
  *  dailySynthesis, ConnectionsPanel) could read the PREVIOUS account's
@@ -110,6 +113,19 @@ export const thoughtWeaverUserIdHolder: UserIdHolder = makeHolder();
 export const twImportedUserIdHolder: UserIdHolder = makeHolder();
 export const todoUserIdHolder: UserIdHolder = makeHolder();
 export const reportUserIdHolder: UserIdHolder = makeHolder();
+
+/** Plan 067 (2026-09-25) — five more per-widget-render-only holders. Were set
+ *  only when their widget rendered, so readers outside it (unifiedMemory's
+ *  `recall`/`memoryCounts`, reached from the `skill-memory-recall` agent skill
+ *  and `dwelliumCommands.recallMemory`) could read the PREVIOUS account's
+ *  copaw memory after a switch until the widget was opened. */
+export const dumpUserIdHolder: UserIdHolder = makeHolder();
+export const synthesisUserIdHolder: UserIdHolder = makeHolder();
+export const wikiUserIdHolder: UserIdHolder = makeHolder();
+export const foundryUserIdHolder: UserIdHolder = makeHolder();
+export const copawUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 071 phase 3 — per-user last run / status per agent (agentActivityStore). */
+export const agentActivityUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -144,10 +160,17 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     gridLockUserIdHolder,
     stellaPrefsUserIdHolder,
     universalShellUserIdHolder,
+    aiBudgetUserIdHolder,
     thoughtWeaverUserIdHolder,
     twImportedUserIdHolder,
     todoUserIdHolder,
     reportUserIdHolder,
+    dumpUserIdHolder,
+    synthesisUserIdHolder,
+    wikiUserIdHolder,
+    foundryUserIdHolder,
+    copawUserIdHolder,
+    agentActivityUserIdHolder,
 ];
 
 /**

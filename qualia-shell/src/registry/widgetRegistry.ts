@@ -193,12 +193,12 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 520,
         category: 'ai',
     },
-    // Agent management (spec §8.1/8.2/8.3/8.5) — The Hive console
+    // Agent launcher + CoPaw memory console
     'hive': {
         id: 'hive',
         label: 'The Hive',
-        description: 'Control room for every AI agent: status, last action, manual trigger, cost by provider.',
-        tip: { tryThis: 'Trigger one agent manually and watch its last action update.', related: ['agent-lab', 'ai-spend'] },
+        description: 'Launch built-in AI agents, see last run, errors and 7-day cost, and prune CoPaw memory.',
+        tip: { tryThis: 'Run an agent, then check the CoPaw memory rail for what it captured.', related: ['agent-lab', 'ai-spend'] },
         tier: 'labs',
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/Hive/Hive')),
@@ -222,7 +222,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'content-search': {
         id: 'content-search',
         label: 'Search',
-        description: 'Full-text search across notes, syntheses, wiki pages, intake items and file names.',
+        description: 'Search dumps, syntheses, wiki, Foundry, memory, transcripts, notes, file names and file contents.',
         tip: { tryThis: 'Search a word you know is in a note.', related: ['wiki', 'notepad'] },
         tier: 'labs',
         icon: 'search-check',
@@ -757,7 +757,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         category: 'tools',
         tier: 'labs', // plan 046 D4: theme toy, no backend
     },
-    // Research Lab — sandboxed playground over the 31 free LLM providers from
+    // Research Lab — sandboxed playground over the 22 free LLM providers from
     // github.com/NovaTrustSolutions/awesome-freellm-apis. Hidden-door labs
     // widget (⌘K + "labs:" only — labs widgets get NO Tools-hub row and NO
     // dock entry). Structurally firewalled from all property/customer data:
@@ -765,7 +765,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'research-lab': {
         id: 'research-lab',
         label: 'Research Lab',
-        description: 'Try 31 free LLM APIs side-by-side in a sandbox that never touches property data.',
+        description: 'Try 22 free LLM APIs side-by-side in a sandbox that never touches property data.',
         tip: { tryThis: 'Add a Groq key (free, no card), then run one prompt on two providers side-by-side.', related: ['tools-hub', 'api-keys'] },
         tier: 'labs',
         icon: 'flask-conical',

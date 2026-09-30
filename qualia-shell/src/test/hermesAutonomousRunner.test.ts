@@ -192,4 +192,58 @@ describe('runNextHermesTask', () => {
         const promptWithEmptyRecall = runPersonaFn.mock.calls[0][0].persona.systemPrompt;
         expect(promptWithEmptyRecall).toBe(promptWithoutDep);
     });
+
+    it('plan 068 phase 4: tags every LLM call made during the run with source "hermes"', async () => {
+        const invoke = vi.fn(async () => 'unused');
+        // runPersonaFn plays the role of orchestrator.ts's runPersona: it calls
+        // deps.invoke (the real code path decompose/run/verify/merge all use)
+        // without ever setting `source` itself.
+        const runPersonaFn = vi.fn(async ({ persona, deps }: any) => {
+            await deps.invoke({ personaId: persona.id, prompt: 'do the thing' });
+            return {
+                personaId: persona.id,
+                personaName: persona.name,
+                tasks: [],
+                output: 'ok',
+                verified: 'ok',
+                supported: true,
+            };
+        });
+
+        await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({
+                personaId: labyrinth.id,
+                task: { id: 'task-6', title: 'Tag me', status: 'running', assignedBy: 'user', createdAt: 1 },
+            }),
+            orchestratorDeps: { invoke },
+            wikiContext: () => '',
+            personaMemory: () => '',
+            runPersonaFn: runPersonaFn as any,
+        });
+
+        expect(invoke).toHaveBeenCalledWith(expect.objectContaining({ source: 'hermes' }));
+    });
+
+    it('plan 068 phase 4: does not stomp a source the request already set', async () => {
+        const invoke = vi.fn(async () => 'unused');
+        const runPersonaFn = vi.fn(async ({ persona, deps }: any) => {
+            await deps.invoke({ personaId: persona.id, prompt: 'do the thing', source: 'explicit' });
+            return { personaId: persona.id, personaName: persona.name, tasks: [], output: 'ok', verified: 'ok', supported: true };
+        });
+
+        await runNextHermesTask({
+            personas: [labyrinth],
+            claim: () => ({
+                personaId: labyrinth.id,
+                task: { id: 'task-7', title: 'Keep my source', status: 'running', assignedBy: 'user', createdAt: 1 },
+            }),
+            orchestratorDeps: { invoke },
+            wikiContext: () => '',
+            personaMemory: () => '',
+            runPersonaFn: runPersonaFn as any,
+        });
+
+        expect(invoke).toHaveBeenCalledWith(expect.objectContaining({ source: 'explicit' }));
+    });
 });

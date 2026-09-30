@@ -29,7 +29,7 @@ import BuilderAgents from '../components/BuilderAgents/BuilderAgents';
 import Synthesis from '../components/Synthesis/Synthesis';
 import StellaAgent from '../components/StellaAgent/StellaAgent';
 import AvatarDossier from '../components/AgentLab/AvatarDossier';
-import { copawStore } from '../components/Hive/copawStore';
+import { copawStore, normalize as normalizeCopaw } from '../components/Hive/copawStore';
 import { dreamStore } from '../components/StellaAgent/honchoDreamStore';
 import { personaConfigStore, usePersonaConfig } from '../components/PersonaStudio/personaConfigStore';
 
@@ -94,7 +94,7 @@ describe('owner-race guard — BuilderAgents run → captureFacts', () => {
         const { d } = start();
         await act(async () => { d.resolve({ text: LLM_TEXT }); });
         await waitFor(() => expect(screen.getByText(LLM_TEXT)).toBeInTheDocument());
-        expect(JSON.parse(localStorage.getItem(COPAW_A) ?? '[]')).toHaveLength(2);
+        expect(normalizeCopaw(JSON.parse(localStorage.getItem(COPAW_A) ?? '[]')).facts).toHaveLength(2); // v2 shape since plan 071
     });
 });
 
@@ -125,7 +125,7 @@ describe('owner-race guard — Synthesis runSynthesis → captureFacts', () => {
         const { d } = start();
         await act(async () => { d.resolve({ text: LLM_TEXT }); });
         await waitFor(() => expect(screen.getByText(LLM_TEXT)).toBeInTheDocument());
-        expect(JSON.parse(localStorage.getItem(COPAW_A) ?? '[]')).toHaveLength(2);
+        expect(normalizeCopaw(JSON.parse(localStorage.getItem(COPAW_A) ?? '[]')).facts).toHaveLength(2); // v2 shape since plan 071
     });
 });
 

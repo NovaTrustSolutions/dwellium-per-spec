@@ -54,7 +54,7 @@ export default function HydraSplit() {
             const t0 = performance.now();
             try {
                 // Pin the bundle to THIS provider so callLlm routes here.
-                const res = await callLlm({ prompt: q, systemPrompt: 'You are a concise, helpful assistant.' }, { ...llm, active: h.provider });
+                const res = await callLlm({ prompt: q, systemPrompt: 'You are a concise, helpful assistant.', source: 'hydra' }, { ...llm, active: h.provider });
                 const ms = Math.round(performance.now() - t0);
                 setPanes((p) => ({ ...p, [h.provider]: { status: res ? 'done' : 'error', content: res?.text ?? '(no response — provider returned nothing)', ms } }));
             } catch (e) {

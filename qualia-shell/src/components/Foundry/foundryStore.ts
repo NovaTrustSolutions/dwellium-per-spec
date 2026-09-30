@@ -11,6 +11,7 @@
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
+import { foundryUserIdHolder } from '../../lib/perUserIdentity';
 
 export type FoundryStatus = 'captured' | 'triaged' | 'admitted' | 'rejected';
 export type FoundrySourceType = 'paste' | 'url';
@@ -36,7 +37,8 @@ export interface TriageResult {
     assessment: string | null;
 }
 
-export const foundryUserIdHolder: { current: string | null } = { current: null };
+/** Set for every shell render by setPerUserIdentity (plan 067) — tied to the signed-in user. */
+export { foundryUserIdHolder };
 
 export function resolveFoundryKey(): string {
     const uid = foundryUserIdHolder.current;

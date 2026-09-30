@@ -19,9 +19,9 @@ import { goalsStore, goalProgress } from './goalsStore';
 import { thoughtWeaverStore } from '../components/ThoughtWeaver/thoughtWeaverStore';
 import { artifactStore } from './artifactStore';
 import { lastNDays, planAdvice } from './llmUsageStore';
-import { personaWorkStore } from './agents/personaWorkStore';
+import { todoStore } from '../components/ThoughtWeaver/todoStore';
 import { getCostKpi } from './costKpiStore';
-import { costAdvisoryLines } from './costAdvisor';
+import { advisorCandidates, costAdvisoryLines } from './costAdvisor';
 
 export interface DreamCorpus {
     /** Markdown-ish prompt body, sections in a stable order. */
@@ -81,7 +81,7 @@ export function buildDreamCorpus(): DreamCorpus {
     }
 
     const kpi = getCostKpi();
-    const costLines = costAdvisoryLines(personaWorkStore.getSnapshot(), kpi, 3);
+    const costLines = costAdvisoryLines(advisorCandidates(todoStore.getSnapshot()), kpi, 3);
     counts.costFlags = costLines.length;
     if (costLines.length > 0) {
         parts.push(`## Cost optimization (your time at $${kpi}/hr)\n${costLines.map(l => `- ${l}`).join('\n')}`);

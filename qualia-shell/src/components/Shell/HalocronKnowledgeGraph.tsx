@@ -17,7 +17,7 @@
  * them, so one user's chat/selection/viewer never leaks to the next, and a
  * reply that lands after the switch has nowhere to render into.
  */
-import { useContext, useEffect, useMemo, useRef, useState, useCallback, type KeyboardEvent } from 'react';
+import { useContext, useEffect, useId, useMemo, useRef, useState, useCallback, type KeyboardEvent } from 'react';
 import { MessageSquare, Sparkles } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
@@ -37,7 +37,7 @@ import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import { captureOwner } from '../../lib/perUserIdentity';
 import AgentEta from '../common/AgentEta';
 import { KG_AGENTS, type KgAgent } from './HalocronKnowledgeGraph.agents';
-import { buildGraph, neighbours, pickNearest, rescale, seedFor, type KgNode } from './kgCanvas';
+import { buildGraph, centreOn, matchNodes, neighbours, pickNearest, rescale, seedFor, toExportJson, type KgNode } from './kgCanvas';
 import './HalocronKnowledgeGraph.css';
 
 // KG_AGENTS + KgAgent are now hoisted to the data-only
@@ -181,6 +181,17 @@ function RepoGraph() {
     const drawRef = useRef<(drift: boolean) => void>(() => {});
     const ensureLoopRef = useRef<() => void>(() => {});
 
+    // Search (C2): matches recomputed on every keystroke and on rebuild; drawn
+    // via matchSetRef (dims non-matches) and cycled via activeMatchRef (Enter).
+    const [query, setQuery] = useState('');
+    const [matches, setMatches] = useState<number[]>([]);
+    const [nodesVersion, setNodesVersion] = useState(0);
+    const queryRef = useRef('');
+    const matchSetRef = useRef<Set<number>>(new Set());
+    const activeMatchRef = useRef(-1);
+    const [showList, setShowList] = useState(false);
+    const nodeListId = `kg-nodelist${useId().replace(/:/g, "")}`; // unique per mounted instance (OS tab + desktop window)
+
     const projects = useMemo(() => {
         const defaultIds = new Set(DEFAULT_KG_PROJECTS.map((p) => p.id));
         const extras = kgState.extras.filter((p) => !defaultIds.has(p.id));
@@ -238,6 +249,10 @@ function RepoGraph() {
         linksRef.current = links;
         viewRef.current = { zoom: 1, ox: 0, oy: 0 };   // reset zoom/pan on (re)build
         setSelected(null);
+        // A new node array invalidates match indices from the previous graph.
+        setQuery(''); queryRef.current = ''; matchSetRef.current = new Set(); setMatches([]);
+        activeMatchRef.current = -1;
+        setNodesVersion((v) => v + 1);
         drawRef.current(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [project.id, gdata]);
@@ -322,13 +337,16 @@ function RepoGraph() {
             }
             ctx.stroke();
             ctx.globalAlpha = 1;
-            for (const n of nodes) {
+            const searching = !!queryRef.current;
+            for (let i = 0; i < nodes.length; i++) {
+                const n = nodes[i];
                 if (drift) {
                     // drift around home
                     n.x += Math.sin(t + n.hx * 0.01) * 0.12;
                     n.y += Math.cos(t + n.hy * 0.01) * 0.12;
                 }
                 const isSel = selectedRef.current === n;
+                const dimmed = searching && !n.god && !matchSetRef.current.has(i);
                 const color = n.god ? n.god.color : palette.clusters[((n.cluster % 8) + 8) % 8];
                 if (n.god) {
                     // glowing god node
@@ -338,9 +356,11 @@ function RepoGraph() {
                     ctx.beginPath(); ctx.arc(n.x, n.y, n.r * 2.6, 0, Math.PI * 2); ctx.fill();
                     ctx.globalAlpha = 1;
                 }
+                ctx.globalAlpha = dimmed ? 0.15 : 1;
                 ctx.fillStyle = color;
                 ctx.beginPath(); ctx.arc(n.x, n.y, isSel ? n.r * 1.8 : n.r, 0, Math.PI * 2); ctx.fill();
                 if (isSel) { ctx.strokeStyle = palette.sel; ctx.lineWidth = 1.4; ctx.stroke(); }
+                ctx.globalAlpha = 1;
             }
             ctx.restore();
         };
@@ -396,6 +416,38 @@ function RepoGraph() {
     const selectByIndex = useCallback((idx: number) => {
         setSelected(idx >= 0 ? nodesRef.current[idx] ?? null : null);
     }, []);
+
+    // Select + centre the view on it (keeping zoom) + repaint — used by the
+    // search "Enter to cycle" flow and by the accessible node list (C1/C2),
+    // which both need the node to be visibly brought into view.
+    const selectAndCentre = useCallback((idx: number) => {
+        const node = nodesRef.current[idx];
+        if (!node) return;
+        selectByIndex(idx);
+        const { w, h } = sizeRef.current;
+        viewRef.current = centreOn(viewRef.current, node, w, h);
+        drawRef.current(false);
+    }, [selectByIndex]);
+
+    const runSearch = useCallback((q: string) => {
+        setQuery(q);
+        queryRef.current = q;
+        const m = matchNodes(nodesRef.current, q);
+        matchSetRef.current = new Set(m);
+        setMatches(m);
+        activeMatchRef.current = -1;
+        drawRef.current(false);
+    }, []);
+
+    const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Escape') { e.preventDefault(); runSearch(''); return; }
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (!matches.length) return;
+        const dir = e.shiftKey ? -1 : 1;
+        activeMatchRef.current = ((activeMatchRef.current + dir) % matches.length + matches.length) % matches.length;
+        selectAndCentre(matches[activeMatchRef.current]);
+    };
 
     const onCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (suppressNextClickRef.current) {
@@ -615,9 +667,57 @@ function RepoGraph() {
     const selectedIndex = selected ? nodesRef.current.indexOf(selected) : -1;
     const selectedNeighbourIndices = selectedIndex >= 0 ? neighbours(linksRef.current, selectedIndex) : [];
     const selectedDegree = selectedNeighbourIndices.length;
+    const rankedFiles = gdata?.importantFiles ?? IMPORTANT_FILES;
+    const canvasLabel = loadState !== 'loaded'
+        ? `${project.name} code map — ${loadState === 'error' ? "couldn't load this project's graph" : 'loading'}; a placeholder layout is drawn.`
+        : `${project.name} code map: ${shownCount.toLocaleString()} of `
+        + `${(totalFiles ?? shownCount).toLocaleString()} files, ${(gdata?.edges ?? 0).toLocaleString()} links, `
+        + `${gdata?.clusters ?? project.clusters} clusters. ${isGithub ? 'Largest' : 'Most imported'}: `
+        + `${rankedFiles.slice(0, 3).map((f) => f.name).join(', ')}. Use the node list for keyboard access.`;
     const selectedNeighbours = selectedNeighbourIndices.slice(0, 8)
         .map((i) => ({ i, node: nodesRef.current[i] }))
         .filter((n): n is { i: number; node: KgNode } => !!n.node);
+
+    // Accessible node list (C1): file nodes only, sorted by importance desc,
+    // filtered by the active search, capped at 200 rows. `nodesVersion` is the
+    // reactive trigger — `nodesRef`/`linksRef` are plain refs rebuild() mutates.
+    const NODE_LIST_CAP = 200;
+    const listAll = useMemo(() => {
+        const active = query ? matchSetRef.current : null;
+        return nodesRef.current
+            .map((n, i) => ({ i, n }))
+            .filter(({ i, n }) => !n.god && (!active || active.has(i)))
+            .sort((a, b) => b.n.importance - a.n.importance);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [nodesVersion, query, matches]);
+    const listShown = listAll.slice(0, NODE_LIST_CAP);
+    const moveRowFocus = (e: React.KeyboardEvent<HTMLButtonElement>, dir: 1 | -1) => {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        const row = e.currentTarget;
+        const siblings = Array.from(row.parentElement?.querySelectorAll('button') ?? []);
+        siblings[siblings.indexOf(row) + dir]?.focus();
+    };
+
+    const downloadBlob = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // Revoke AFTER the click has been dispatched — revoking synchronously
+        // can cancel the download in some browsers.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
+    const exportPng = () => {
+        canvasRef.current?.toBlob((blob) => { if (blob) downloadBlob(blob, `${project.id}-map.png`); });
+    };
+    const exportJson = () => {
+        if (!gdata) return;
+        const json = toExportJson(project, gdata, linksRef.current);
+        downloadBlob(new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' }), `${project.id}-map.json`);
+    };
 
     return (
         <div className="kg">
@@ -693,13 +793,26 @@ function RepoGraph() {
                             <button type="button" aria-pressed={paused} onClick={() => setPaused((p) => !p)}>{paused ? 'Play' : 'Pause'}</button>
                         </div>
                     </div>
+                    <div className="kg-search">
+                        <input
+                            type="search" className="kg-search__input" aria-label="Search files in this map"
+                            value={query} onChange={(e) => runSearch(e.target.value)} onKeyDown={onSearchKeyDown}
+                            placeholder="Search files… (Enter to jump, Esc to clear)"
+                        />
+                        <span className="kg-search__status" aria-live="polite">
+                            {query ? (matches.length ? `${matches.length} match${matches.length === 1 ? '' : 'es'}` : 'No matches') : ''}
+                        </span>
+                    </div>
                     <div
                         className={`kg-canvaswrap ${focused ? 'is-focused' : ''} ${panning ? 'is-panning' : ''}`}
                         ref={wrapRef}
                         onMouseEnter={() => { hoverRef.current = true; }}
                         onMouseLeave={() => { hoverRef.current = false; }}
                     >
-                        <canvas ref={canvasRef} className="kg-canvas" onClick={onCanvasClick} />
+                        <canvas
+                            ref={canvasRef} className="kg-canvas" onClick={onCanvasClick}
+                            role="img" aria-label={canvasLabel}
+                        />
                         <div className="kg-legend">size = importance · glow = agent · colour = cluster · scroll to zoom</div>
                     </div>
                 </div>
@@ -761,6 +874,40 @@ function RepoGraph() {
                             <p className="kg-card__note">Click a node (or a god node) to inspect it.</p>
                         )}
                     </section>
+
+                    <section className="kg-card">
+                        <button
+                            type="button" className="kg-card__toggle"
+                            aria-expanded={showList} aria-controls={nodeListId}
+                            onClick={() => setShowList((v) => !v)}
+                        >
+                            {showList ? 'Hide node list' : 'Show node list'}
+                        </button>
+                        {showList && (
+                            <div id={nodeListId} className="kg-nodelist" role="group" aria-label="Files, most important first">
+                                <p className="kg-card__note">Showing {listShown.length.toLocaleString()} of {listAll.length.toLocaleString()}</p>
+                                {listShown.map(({ i, n }) => (
+                                    <button
+                                        key={i} type="button" className="kg-nodelist__row"
+                                        aria-current={selected === n ? 'true' : undefined}
+                                        onClick={() => selectAndCentre(i)}
+                                        onKeyDown={(e) => moveRowFocus(e, e.key === 'ArrowDown' ? 1 : -1)}
+                                    >
+                                        <span className="kg-nodelist__name">{n.label}</span>
+                                        <span className="kg-nodelist__meta">cluster {n.cluster + 1} · deg {neighbours(linksRef.current, i).length}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <section className="kg-card">
+                        <div className="kg-card__cap">EXPORT</div>
+                        <div className="kg-export">
+                            <button type="button" disabled={!gdata} onClick={exportPng}>Export PNG</button>
+                            <button type="button" disabled={!gdata} onClick={exportJson}>Export JSON</button>
+                        </div>
+                    </section>
                 </aside>
             </div>
 
@@ -770,7 +917,7 @@ function RepoGraph() {
                     <span className="kg-card__cap"><MessageSquare size={12} aria-hidden /> ASK THE MAP</span>
                     <div className="kg-chat__agent">
                         <span>Agent</span>
-                        <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>
+                        <select aria-label="Agent" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
                             {KG_AGENTS.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.god}</option>)}
                         </select>
                     </div>
@@ -809,6 +956,7 @@ export default function HalocronKnowledgeGraph() {
     // Raw context read (not useUser()) per test-resilience convention.
     const uid = useContext(UserContext)?.user?.id ?? '_anonymous';
     const kgState = useHalocronKnowledgeGraphState();
+    const idBase = `kg${useId().replace(/:/g, '')}`; // unique per mounted instance
     const tabs = [{ view: 'knowledge', label: 'My knowledge' }, { view: 'repos', label: 'Code repos' }] as const;
     // WAI-ARIA tabs: roving tabindex; Left/Right/Home/End move and select.
     const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -819,15 +967,15 @@ export default function HalocronKnowledgeGraph() {
         if (next < 0) return;
         e.preventDefault();
         setKgView(tabs[next].view);
-        document.getElementById(`kg-tab-${tabs[next].view}`)?.focus();
+        document.getElementById(`${idBase}-tab-${tabs[next].view}`)?.focus();
     };
     return (
         <div className="kg-shell">
             <div className="kg-viewtabs" role="tablist" aria-label="Knowledge graph view">
                 {tabs.map((t) => (
                     <button
-                        key={t.view} id={`kg-tab-${t.view}`} type="button" role="tab"
-                        aria-selected={kgState.view === t.view} aria-controls={`kg-panel-${t.view}`}
+                        key={t.view} id={`${idBase}-tab-${t.view}`} type="button" role="tab"
+                        aria-selected={kgState.view === t.view} aria-controls={`${idBase}-panel-${t.view}`}
                         tabIndex={kgState.view === t.view ? 0 : -1}
                         className={`kg-viewtab ${kgState.view === t.view ? 'on' : ''}`}
                         onClick={() => setKgView(t.view)} onKeyDown={onTabKey}
@@ -836,7 +984,7 @@ export default function HalocronKnowledgeGraph() {
                     </button>
                 ))}
             </div>
-            <div className="kg-panel" role="tabpanel" id={`kg-panel-${kgState.view}`} aria-labelledby={`kg-tab-${kgState.view}`}>
+            <div className="kg-panel" role="tabpanel" id={`${idBase}-panel-${kgState.view}`} aria-labelledby={`${idBase}-tab-${kgState.view}`}>
                 {kgState.view === 'knowledge' ? <GraphifyView key={uid} /> : <RepoGraph key={uid} />}
             </div>
         </div>

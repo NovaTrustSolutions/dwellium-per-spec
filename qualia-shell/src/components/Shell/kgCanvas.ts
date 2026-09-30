@@ -164,3 +164,60 @@ export function rescale(nodes: KgNode[], fromW: number, fromH: number, toW: numb
         n.x *= sx; n.y *= sy; n.hx *= sx; n.hy *= sy;
     }
 }
+
+// ── Phase 3 (C1-C3): search, keyboard node list, export — plan 072. ──
+
+/** Indices of file nodes (god/agent nodes excluded) whose label case-insensitively
+ * contains `query`, in stable (ascending index) order. Empty query -> []. */
+export function matchNodes(nodes: readonly Pick<KgNode, 'label' | 'god'>[], query: string): number[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const out: number[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (n.god) continue;
+        if (n.label.toLowerCase().includes(q)) out.push(i);
+    }
+    return out;
+}
+
+/** New view (same zoom) that puts `node` at the centre of a `w`x`h` canvas —
+ * inverts the `ctx.translate(ox,oy); ctx.scale(zoom,zoom)` transform draw() uses. */
+export function centreOn(
+    view: { zoom: number; ox: number; oy: number },
+    node: { x: number; y: number },
+    w: number,
+    h: number,
+): { zoom: number; ox: number; oy: number } {
+    return { zoom: view.zoom, ox: w / 2 - node.x * view.zoom, oy: h / 2 - node.y * view.zoom };
+}
+
+export interface KgExportJson {
+    project: { id: string; name: string };
+    source: KgGraphData['source'];
+    builtAt: string;
+    nodes: { label: string; cluster: number; importance: number; degree: number }[];
+    links: [number, number][];
+}
+
+/** Pure JSON export shape for "Export JSON" — degree is derived from the CURRENT
+ * rendered `links` (not the stored `deg` field), no positions, no god nodes
+ * (gdata.nodes never contains them — those are only added by buildGraph). */
+export function toExportJson(
+    project: Pick<KgProject, 'id' | 'name'>,
+    gdata: KgGraphData,
+    links: readonly [number, number][],
+): KgExportJson {
+    return {
+        project: { id: project.id, name: project.name },
+        source: gdata.source,
+        builtAt: gdata.builtAt,
+        nodes: gdata.nodes.map((n, i) => ({
+            label: n.label,
+            cluster: n.cluster,
+            importance: n.importance,
+            degree: neighbours(links, i).length,
+        })),
+        links: links.map(([a, b]) => [a, b] as [number, number]),
+    };
+}

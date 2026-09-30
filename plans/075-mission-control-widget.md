@@ -86,3 +86,41 @@ coder B `goalsStore.ts` (deserialize/merge/caps/keepDone); coder C `dailySynthes
 reviewer with ≥3 real probes (hyphen titles, stale-tab hydrate, malformed remote, account switch).
 Orchestrator: mutation-check each pinning test, full `npm test` + `tsc` gate on the final commit, harness
 screenshots. No push/merge without Ilya's explicit say-so.
+
+## 5. Phase 3 UI contract (accessible names — harness and integrator share this)
+
+
+T = goal title, A = action text. Names are exact (aria-label or visible label).
+
+Card header
+- Rename button: `Rename goal T` → shows input `Goal title` (Enter saves, Escape cancels, blur saves).
+- Status select `Status of T`; delete `Delete goal T`; progressbar `Progress for T` (unchanged).
+
+Meta row (.mc__meta)
+- `<input type="date">` aria-label `Target date for T`; when set, button `Clear target date for T`.
+- Due badge text: `Due today` | `Due in N day(s)` (.mc__due--soon when ≤7 days) | `Overdue by N day(s)` (.mc__due--overdue). Computed from LOCAL calendar days.
+- When answers exist: `Answered N×`.
+
+Actions (both sides)
+- Checkbox labelled by A (unchanged).
+- Edit button `Edit action: A` → input `Action text` (Enter saves, Escape cancels). Remove button `Remove action: A`.
+- Add form per side: input `Add agent action to T` / `Add your action to T` + button `Add`.
+
+Agent-side run
+- Button `Run with agent: A`. While running: text `Running…` inside role=status; the button is disabled.
+- Result: role=region `Result for A` containing the text, and buttons `Mark done: A`, `Open in ARA: A`, `Dismiss result: A`.
+- Mark done checks the action (does not dismiss the result). Dismiss clears the stored result.
+- Failure: role=alert inside the action row: no LLM → `Add an AI key in Control Panel → API Keys to run agent actions.`; failed → `The agent run failed — try again.`
+- On success also: a note `▶ A — result saved` and an artifact (source 'mission-control', title `T: A` ≤60 chars).
+- Open in ARA keeps today's behaviour (requestAraPrompt + open ara-console) and includes the result text when present.
+
+Clarifying questions
+- Textarea `Answers for T`; button `Refine plan` (disabled while empty or refining).
+- role=status text: `Refining…` → `Plan refined.` | `Add an AI key …` (no-llm path returns heuristic, so treat as refined) | `Refine failed — try again.`
+- Always shown (revised after the live harness: hiding it once questions were answered unmounted it before "Plan refined." rendered and blocked further refines).
+
+Notes
+- When >3 notes: button `Show all N notes` / `Show fewer notes` with aria-expanded.
+
+Owner safety
+- Every async path (run, refine, create) captures the owner before the await and drops the write if it changed; per-card busy/result state must not leak across an account switch (key the card by goal id; clear pending UI state on unmount).

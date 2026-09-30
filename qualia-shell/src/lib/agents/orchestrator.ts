@@ -25,6 +25,8 @@ export interface LlmReq {
     maxTokens?: number;
     temperature?: number;
     responseFormat?: 'text' | 'json';
+    /** Plan 068 phase 4: which feature made the call ('hermes' for the autonomous runner) — forwarded to callLlm/recordLlmUsage as-is. */
+    source?: string;
 }
 
 export interface RecordInput {

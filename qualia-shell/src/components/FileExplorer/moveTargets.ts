@@ -46,3 +46,25 @@ export function childNames(entries: FileEntry[], folderPath: string): string[] {
     }
     return [];
 }
+
+/**
+ * Plan 076 P1 — what a Delete on `clicked` acts on. The whole selection when the
+ * clicked row is part of a multi-selection, else just the clicked row. Paths
+ * inside an also-selected folder are dropped: trashing the folder takes them
+ * with it, and trashing them first would split one delete across two trash stamps.
+ */
+export function deleteTargets(clicked: string, selectedPaths: string[]): string[] {
+    const paths = selectedPaths.length > 1 && selectedPaths.includes(clicked) ? selectedPaths : [clicked];
+    const unique = Array.from(new Set(paths));
+    return unique.filter((p) => !unique.some((q) => q !== p && p.startsWith(q + '/')));
+}
+
+/**
+ * Plan 076 P1 — one user-facing line for a batch where some items failed or were
+ * skipped. Null when everything worked (say nothing). `failed` entries are
+ * already formatted, e.g. `"a.md": already exists there`.
+ */
+export function batchSummary(verb: string, done: number, total: number, failed: string[]): string | null {
+    if (failed.length === 0) return null;
+    return `${verb} ${done} of ${total}. Not ${verb.toLowerCase()}:\n${failed.join('\n')}`;
+}

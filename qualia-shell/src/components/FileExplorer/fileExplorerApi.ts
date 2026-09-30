@@ -1,6 +1,7 @@
 /**
  * Backend API client for the FileExplorer widget.
- * All endpoints are under /api/file-explorer (see Docs/backend-file-explorer-routes.ts).
+ * All endpoints are under /api/file-explorer. Source of truth is the backend repo's
+ * src/routes/fileExplorerRoutes.ts on backend/ship (the Docs/ copy is stale).
  * Each call carries the user's session token via getAuthHeaders().
  */
 import { API_BASE } from '../../config';
@@ -52,6 +53,8 @@ export async function move(fromPath: string, toPath: string, copy = false): Prom
     await call('/move', { method: 'POST', body: JSON.stringify({ fromPath, toPath, copy }) });
 }
 
-export async function deleteEntry(path: string): Promise<void> {
-    await call('/entry', { method: 'DELETE', body: JSON.stringify({ path }) });
+/** Soft delete: the backend moves the entry into the user's hidden .trash (backend PR #6). */
+export async function deleteEntry(path: string): Promise<{ trashedTo?: string }> {
+    const data = await call<{ trashedTo?: string }>('/entry', { method: 'DELETE', body: JSON.stringify({ path }) });
+    return { trashedTo: data.trashedTo };
 }

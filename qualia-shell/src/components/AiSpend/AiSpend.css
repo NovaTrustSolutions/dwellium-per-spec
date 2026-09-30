@@ -39,6 +39,8 @@
 
 .spend__coverage-note { margin: 0; font-size: 11px; color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff)); }
 
+.spend__server-note { margin: 4px 0 0; font-size: 11px; color: color-mix(in srgb, var(--text-secondary, #a0a0a0) 50%, var(--text-primary, #fff)); }
+
 .spend__sr-only {
     position: absolute; width: 1px; height: 1px;
     padding: 0; margin: -1px; overflow: hidden;

@@ -41,6 +41,32 @@ export const copawStore = withSync(
     { objectType: 'copaw', holder: copawUserIdHolder, resolveKey: resolveCopawKey },
 );
 
+// ponytail: regex denylist for secret/PII detection; swap for an LLM/aidefence classifier if false negatives show up
+const ZERO_WIDTH = /[​-‍⁠﻿]/g;
+const SECRET_OR_PII: RegExp[] = [
+    // A credential label followed (within a clause) by is/was/:/= and a value that looks like a secret:
+    // has a digit or symbol, or is 16+ chars. "The secret to low vacancy is fast turnover." stays a fact.
+    /\b(password|passwd|pwd|pw|passcode|passphrase|pin|api[ _-]?key|secret|token|private key)\b[^.!?\n]{0,40}?(?:\bis\b|\bwas\b|:|=)\s*["'`*]*(?=[^\s"'`*]*[\d!@#$%^&_]|[^\s"'`*]{16,})[^\s"'`*]{4,}/i,
+    /\bsk[-_][A-Za-z0-9_-]{16,}/,              // OpenAI / Stripe-style secret keys (sk-…, sk_live_…)
+    /\b[rs]k[-_](live|test|proj)[-_]/,
+    /\bAKIA[0-9A-Z]{16}\b/,
+    /-----BEGIN [A-Z ]*PRIVATE KEY/,
+    /\beyJ[\w-]{8,}\.[\w-]{8,}\./,             // JWT
+    /\bgh[pousr]_[A-Za-z0-9]{20,}\b/,
+    /\bxox[abpr]-/,
+    /\b\d{3}([ .-])\d{2}\1\d{4}\b/,           // SSN with separators (a bare 9-digit parcel id stays)
+    /\b(ssn|social security)\b/i,
+    /\b(?:\d[ -]?){13,19}\b/,                  // card-like digit run
+    /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/,             // email
+    /(?:\+?1[ .-]?)?\(?\b\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b/, // US phone (separators required)
+];
+
+/** True if `text` looks like it contains a secret or PII (see SECRET_OR_PII). */
+export function isSensitiveFact(text: string): boolean {
+    const t = text.replace(ZERO_WIDTH, '');
+    return SECRET_OR_PII.some((re) => re.test(t));
+}
+
 /**
  * Heuristic fact extractor — pure + testable. Pulls declarative, self-contained
  * sentences (not questions/fragments) from a response, deduped, capped. This is
@@ -49,18 +75,40 @@ export const copawStore = withSync(
  */
 export function extractFacts(text: string, max = 5): string[] {
     if (!text) return [];
-    const sentences = text
-        .replace(/\s+/g, ' ')
-        .split(/(?<=[.!?])\s+/)
-        .map((s) => s.trim())
-        // strip leading markdown bullets / numbering
-        .map((s) => s.replace(/^[-*\d.)\s]+/, '').trim());
+    // Strip fenced code blocks first (an unterminated fence drops the rest: it is code).
+    const withoutCodeBlocks = text.replace(ZERO_WIDTH, '').replace(/```[\s\S]*?(```|$)/g, '\n');
+    // Re-join soft-wrapped prose into paragraphs; list items, blank lines and
+    // skipped blocks (tables, headings, rules) end a paragraph. Splitting per
+    // raw line let "The password\nis X" slip past the secret filter.
+    const paragraphs: string[] = [];
+    let cur = '';
+    const flush = () => { if (cur.trim()) paragraphs.push(cur); cur = ''; };
+    for (const rawLine of withoutCodeBlocks.split('\n')) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('|') || /^#{1,6}\s/.test(line) || /^(-{3,}|\*{3,}|_{3,})$/.test(line)) { flush(); continue; }
+        const item = line.replace(/^(?:[-*+>]\s*|\d+[.)]\s+)+/, ''); // bullet / "1." numbering / blockquote — not "30 days"
+        if (item !== line) flush();
+        cur = cur ? `${cur} ${item}` : item;
+    }
+    flush();
+    const sentences: string[] = [];
+    for (const p of paragraphs) {
+        const cleaned = p
+            .replace(/`([^`]*)`/g, '$1')                     // inline code → its text (secret filter still applies)
+            .replace(/\s+/g, ' ')
+            .trim();
+        for (const s of cleaned.split(/(?<=[.!?])\s+/)) {
+            const t = s.trim();
+            if (t) sentences.push(t);
+        }
+    }
     const out: string[] = [];
     const seen = new Set<string>();
     for (const s of sentences) {
         if (s.length < 25 || s.length > 240) continue;   // not a fragment, not a wall
         if (s.endsWith('?')) continue;                    // skip questions
         if (/^(here|okay|ok|sure|let me|i'?ll|i will)\b/i.test(s)) continue; // skip filler openers
+        if (isSensitiveFact(s)) continue;                  // skip secrets/PII
         const key = s.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
@@ -75,9 +123,16 @@ function newId(): string {
     return `fact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Extract + persist facts from one agent response. Returns the new facts. */
-export function captureFacts(source: string, response: string, now: Date = new Date()): MemoryFact[] {
+/**
+ * Extract + persist facts from one agent response. Returns the new facts.
+ * `userId` is REQUIRED and must be captured BEFORE the caller's LLM `await`
+ * (same contract as recordLlmUsage): if the account switched while the call
+ * was in flight, the capture is dropped rather than written under the new
+ * account's key.
+ */
+export function captureFacts(source: string, response: string, userId: string | null, now: Date = new Date()): MemoryFact[] {
     if (typeof window === 'undefined') return [];
+    if (userId !== copawUserIdHolder.current) return [];
     const facts = extractFacts(response).map((text) => ({ id: newId(), text, source, createdAt: now.toISOString() }));
     if (facts.length === 0) return [];
     const current = copawStore.getSnapshot();
@@ -90,6 +145,15 @@ export function captureFacts(source: string, response: string, now: Date = new D
         try { localStorage.setItem(resolveCopawKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
     });
     return fresh;
+}
+
+/** Remove one fact (user-initiated, from the Hive memory rail). */
+export function deleteFact(id: string): void {
+    if (typeof window === 'undefined') return;
+    const next = copawStore.getSnapshot().filter((f) => f.id !== id);
+    copawStore.set(next, () => {
+        try { localStorage.setItem(resolveCopawKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    });
 }
 
 export function clearMemory(): void {

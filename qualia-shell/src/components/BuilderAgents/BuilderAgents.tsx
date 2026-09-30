@@ -38,12 +38,13 @@ export default function BuilderAgents() {
         if (!canRun(mode, values) || busy) return;
         if (!hasActiveLlm(integrations.llm)) { setErr('No LLM configured — add a key above.'); return; }
         setBusy(true); setErr(''); setOutput(''); setCopied(false);
+        const uid = copawUserIdHolder.current; // before the await — see captureFacts
         try {
             const { systemPrompt, prompt } = composePrompt(mode, values);
             const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text' }, integrations.llm);
             if (res && res.text.trim()) {
                 setOutput(res.text.trim());
-                captureFacts(def.label, res.text.trim()); // CoPaw §8.5
+                captureFacts(def.label, res.text.trim(), uid); // CoPaw §8.5
             }
             else setErr('The agent returned no output.');
         } catch (e: any) {

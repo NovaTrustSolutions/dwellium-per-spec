@@ -70,6 +70,10 @@ const OPENAI_PRICES: Record<string, ModelPrice> = {
     'gpt-5-nano': { inPerM: 0.05, outPerM: 0.4, cacheReadPerM: 0.005 },
     'gpt-4-turbo': { inPerM: 10, outPerM: 30 },
     'gpt-3.5-turbo': { inPerM: 0.5, outPerM: 1.5 },
+    // Embeddings: input only (developers.openai.com/api/docs/pricing, fetched 2026-09-28).
+    'text-embedding-3-small': { inPerM: 0.02, outPerM: 0 },
+    'text-embedding-3-large': { inPerM: 0.13, outPerM: 0 },
+    'text-embedding-ada-002': { inPerM: 0.1, outPerM: 0 },
 };
 
 // Source: ai.google.dev/gemini-api/docs/pricing. gemini-1.5-* is no longer

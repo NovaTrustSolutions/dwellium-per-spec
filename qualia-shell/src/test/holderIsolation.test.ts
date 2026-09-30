@@ -150,7 +150,7 @@ describe('perUserIdentity — decoupled holders (#185 loop guard)', () => {
     // WindowContext on every render) keeps them correct with no widget open.
     it('a non-widget reader (unifiedMemory) never sees the previous account\'s copaw data after a switch', () => {
         setPerUserIdentity('user-a');
-        captureFacts('test-agent', 'This is a durable memory fact that belongs only to user A.');
+        captureFacts('test-agent', 'This is a durable memory fact that belongs only to user A.', 'user-a');
         expect(memoryCounts().copaw).toBe(1);
         expect(recall('memory fact').some((h) => h.source === 'test-agent')).toBe(true);
 

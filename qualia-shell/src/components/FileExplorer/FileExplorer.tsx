@@ -16,13 +16,15 @@
  * See Scripts/autorun/FILE_EXPLORER_PORTING_PLAN.md for full breakdown.
  */
 import { useEffect, useState, useCallback, useRef, useContext } from 'react';
-import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot, Folder, FileText } from 'lucide-react';
+import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot, Folder, FileText, Trash2 } from 'lucide-react';
 import { FileExplorerCell, resetVisiblePaths, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
 import { fileExplorerStore, saveFileExplorer } from './fileExplorerStore';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
 import { getWorkspaceRoot } from './workspaceRoot';
 import { MoveToModal } from './MoveToModal';
+import { FilePreview } from './FilePreview';
+import { TrashPanel } from './TrashPanel';
 import { destFor, childNames, batchSummary } from './moveTargets';
 import { uploadDroppedFiles } from './dropUpload';
 import { API_BASE } from '../../config';
@@ -92,6 +94,11 @@ export default function FileExplorer() {
     // "Move to…" picker target (spec §4.3). Null when the modal is closed.
     const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
 
+    // P3: file preview pane (below the tree) and the Trash panel (replaces the tree).
+    const [previewPath, setPreviewPath] = useState<string | null>(null);
+    const [showTrash, setShowTrash] = useState(false);
+    const bodyRef = useRef<HTMLDivElement>(null);
+
     // D6: request-sequence guard — an in-flight fetchTree from a prior refresh() call
     // (e.g. one started for a different account, or an older overlapping refresh) may
     // resolve after a newer one starts. Only the call that bumped the sequence last
@@ -105,10 +112,12 @@ export default function FileExplorer() {
             const list = await fetchTree();
             if (mySeq !== requestSeqRef.current) return; // superseded — drop
             setEntries(list);
-            // The selection is persisted, so it can name paths that are gone (deleted
-            // elsewhere, another device). Drop them so Delete never acts on a ghost.
             const live = new Set<string>();
             (function collect(l: FileEntry[]) { l.forEach((x) => { live.add(x.path); if (x.children) collect(x.children); }); })(list);
+            // Close the preview when its file left the tree (deleted / moved / renamed).
+            setPreviewPath((p) => (p && live.has(p) ? p : null));
+            // The selection is persisted, so it can name paths that are gone (deleted
+            // elsewhere, another device). Drop them so Delete never acts on a ghost.
             const sel = fileExplorerStore.getSnapshot();
             const keep = sel.selectedPaths.filter((p) => live.has(p));
             const anchor = sel.selectedPath && live.has(sel.selectedPath) ? sel.selectedPath : null;
@@ -148,6 +157,20 @@ export default function FileExplorer() {
             await refresh(); // D6: the tree may be stale — that's why the move failed
         }
     }, [moveTarget, refresh, entries]);
+
+    // Move focus into the preview so Esc (handled by FilePreview's region) works at once.
+    useEffect(() => {
+        if (previewPath) bodyRef.current?.querySelector<HTMLElement>('[aria-label="Close preview"]')?.focus();
+    }, [previewPath]);
+
+    // Trash restore: the item is back in the tree — reload and tell the user (owner-checked).
+    const handleRestored = useCallback(async (path: string) => {
+        const owner = userIdRef.current;
+        await refresh();
+        if (userIdRef.current !== owner) return;
+        setToast(`Restored "${path}"`);
+        setTimeout(() => setToast(null), 3000);
+    }, [refresh]);
 
     useEffect(() => {
         if (newEntry) newInputRef.current?.focus();
@@ -260,6 +283,8 @@ export default function FileExplorer() {
         setEntries([]);
         setMoveTarget(null);
         setNewEntry(null);
+        setPreviewPath(null);
+        setShowTrash(false);
         void refresh();
     }, [userId, refresh]);
 
@@ -438,6 +463,19 @@ export default function FileExplorer() {
                     {viewMode === 'tree' ? <ListTree size={14} strokeWidth={1.75} /> : <List size={14} strokeWidth={1.75} />}
                 </button>
 
+                {/* Trash panel toggle */}
+                <button
+                    onClick={() => setShowTrash((v) => !v)}
+                    title="Trash"
+                    aria-label="Trash"
+                    aria-pressed={showTrash}
+                    style={iconBtn(showTrash)}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = showTrash ? '#D6FE51' : '#666'; }}
+                >
+                    <Trash2 size={14} strokeWidth={1.75} />
+                </button>
+
                 {/* Hierarchy lock (UI-only per Cycle 2 design lock) */}
                 <button
                     onClick={() => setLocked(!locked)}
@@ -493,12 +531,16 @@ export default function FileExplorer() {
                 </div>
             )}
 
+            <div ref={bodyRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {showTrash ? (
+                <TrashPanel onClose={() => setShowTrash(false)} onRestored={(p) => void handleRestored(p)} />
+            ) : (<>
             <div
                 onDragOver={handleRootDragOver}
                 onDragLeave={handleRootDragLeave}
                 onDrop={(e) => void handleRootDrop(e)}
                 style={{
-                    flex: 1, overflowY: 'auto', overflowX: 'hidden',
+                    flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
                     padding: '4px 0',
                     background: rootDragOver ? 'color-mix(in srgb, var(--accent) 4%, transparent)' : 'transparent',
                     boxShadow: rootDragOver ? 'inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)' : 'none',
@@ -582,11 +624,15 @@ export default function FileExplorer() {
                                 onChange={refresh}
                                 onRequestNewEntry={requestNewEntry}
                                 onRequestMove={setMoveTarget}
+                                onOpen={setPreviewPath}
                                 showFullPath={viewMode === 'flat'}
                             />
                         ))}
                     </>
                 )}
+            </div>
+            {previewPath && <FilePreview path={previewPath} onClose={() => setPreviewPath(null)} />}
+            </>)}
             </div>
 
             {/* Move-to-Thread picker (spec §4.3) */}

@@ -23,9 +23,14 @@ function restoredName(path: string): string {
     return `${dir ? `${dir}/` : ''}${stem} (restored)${ext}`;
 }
 
+// Latte: raw --danger (3.5:1) and --text-tertiary (4.3:1) fail on light surfaces; mixing toward
+// --text-primary keeps the hue and passes in every theme (house pattern, Docs/code.md).
+const DANGER_TEXT = 'color-mix(in srgb, var(--danger) 60%, var(--text-primary))';
+const MUTED_TEXT = 'color-mix(in srgb, var(--text-tertiary) 60%, var(--text-primary))';
+
 const btn = (danger = false): React.CSSProperties => ({
     background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6,
-    color: danger ? 'var(--danger)' : 'var(--text-primary)', fontSize: 11, padding: '3px 8px',
+    color: danger ? DANGER_TEXT : 'var(--text-primary)', fontSize: 11, padding: '3px 8px',
     cursor: 'pointer', fontFamily: 'inherit',
 });
 
@@ -92,7 +97,7 @@ export function TrashPanel({ onClose, onRestored }: { onClose: () => void; onRes
                 <Icon size={14} strokeWidth={1.75} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{dir} · {when}</div>
+                    <div style={{ fontSize: 10, color: MUTED_TEXT }}>{dir} · {when}</div>
                 </div>
                 <button style={btn()} disabled={busy} aria-label={`Restore ${it.name}`} onClick={() => run(() => tryRestore(it))}>Restore</button>
                 <button style={btn(true)} disabled={busy} aria-label={`Delete ${it.name} forever`} onClick={() => onDelete(it)}>Delete forever</button>
@@ -101,18 +106,18 @@ export function TrashPanel({ onClose, onRestored }: { onClose: () => void; onRes
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-surface)' }}>
+        <div role="region" aria-label="Trash" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-surface)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
                 <Trash2 size={14} style={{ color: 'var(--text-secondary)' }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Trash</span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flex: 1 }}>{items.length} item{items.length === 1 ? '' : 's'}</span>
+                <span style={{ fontSize: 11, color: MUTED_TEXT, flex: 1 }}>{items.length} item{items.length === 1 ? '' : 's'}</span>
                 <button style={btn(true)} disabled={busy || items.length === 0} onClick={onEmpty}>Empty trash</button>
                 <button style={{ ...btn(), padding: 3 }} aria-label="Close trash" onClick={onClose}><X size={14} /></button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
-                {loading ? <div style={{ padding: 12, fontSize: 12, color: 'var(--text-tertiary)' }}>Loading…</div>
-                    : error ? <div role="alert" style={{ padding: 12, fontSize: 12, color: 'var(--danger)' }}>Could not load trash: {error}</div>
-                    : items.length === 0 ? <div style={{ padding: 12, fontSize: 12, color: 'var(--text-tertiary)' }}>Trash is empty</div>
+                {loading ? <div style={{ padding: 12, fontSize: 12, color: MUTED_TEXT }}>Loading…</div>
+                    : error ? <div role="alert" style={{ padding: 12, fontSize: 12, color: DANGER_TEXT }}>Could not load trash: {error}</div>
+                    : items.length === 0 ? <div style={{ padding: 12, fontSize: 12, color: MUTED_TEXT }}>Trash is empty</div>
                     : items.map(row)}
             </div>
         </div>

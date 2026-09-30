@@ -106,7 +106,8 @@ describe('FileExplorerCell delete (Plan 076 P1)', () => {
         expect(deleteEntry).toHaveBeenCalledWith('a.md');
 
         deleteEntry.mockClear();
-        fireEvent.doubleClick(screen.getByText('c.md'));
+        fireEvent.click(screen.getByText('c.md'));
+        fireEvent.keyDown(screen.getByRole('treeitem', { name: /c\.md/ }), { key: 'F2' }); // dblclick now opens the preview (P3)
         const input = screen.getByDisplayValue('c.md');
         fireEvent.keyDown(input, { key: 'Backspace' });
 

@@ -47,6 +47,8 @@ interface Props {
     onRequestNewEntry?: (parentPath: string, type: 'file' | 'folder') => void;
     /** Open the "Move to…" destination picker for this entry (spec §4.3). */
     onRequestMove?: (entry: FileEntry) => void;
+    /** Open a file in the preview pane (double-click, Enter, context menu "Open"). */
+    onOpen?: (path: string) => void;
     /** Show full path as secondary line under filename (used in flat view). */
     showFullPath?: boolean;
 }
@@ -58,7 +60,7 @@ const visiblePathsRef: { current: string[] } = { current: [] };
 export function resetVisiblePaths() { visiblePathsRef.current = []; }
 export function pushVisiblePath(p: string) { visiblePathsRef.current.push(p); }
 
-export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry, onRequestMove, showFullPath = false }: Props) {
+export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry, onRequestMove, onOpen, showFullPath = false }: Props) {
     const { expanded, selectedPath, selectedPaths, locked, setSelectedPath, setSelectedPaths, toggleSelected, selectRange, toggleFolder } = useFileExplorer();
     const isExpanded = !!expanded[entry.path];
     const isSelected = selectedPaths.includes(entry.path) || selectedPath === entry.path;
@@ -350,9 +352,13 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                 onDrop={(e) => void handleDrop(e)}
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
-                onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
+                onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (isFolder) toggleFolder(entry.path); else onOpen?.(entry.path);
+                }}
                 onKeyDown={(e) => {
                     if (e.key === 'F2' && isSelected) startRename();
+                    else if (e.key === 'Enter' && isSelected && !isFolder && !renaming) { e.preventDefault(); onOpen?.(entry.path); }
                     else if ((e.key === 'Delete' || e.key === 'Backspace') && isSelected && !locked && !renaming) {
                         e.preventDefault();
                         void handleDelete();
@@ -461,6 +467,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                             <CtxDivider />
                         </>
                     )}
+                    {!isFolder && <CtxItem label="Open" onClick={() => { setSelectedPath(entry.path); setCtx(null); onOpen?.(entry.path); }} />}
                     {canShowInFinder && <CtxItem label="Show in Finder" onClick={() => { setSelectedPath(entry.path); setCtx(null); showInFinder(); }} />}
                     <CtxItem label="Move to…" disabled={locked} onClick={() => { setSelectedPath(entry.path); setCtx(null); onRequestMove?.(entry); }} />
                     <CtxItem label="Rename" shortcut="F2" disabled={locked} onClick={() => { setSelectedPath(entry.path); setCtx(null); startRename(); }} />
@@ -469,7 +476,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
             )}
 
             {isFolder && isExpanded && entry.children?.map((child) => (
-                <FileExplorerCell key={child.path} entry={child} depth={depth + 1} onChange={onChange} onRequestNewEntry={onRequestNewEntry} onRequestMove={onRequestMove} />
+                <FileExplorerCell key={child.path} entry={child} depth={depth + 1} onChange={onChange} onRequestNewEntry={onRequestNewEntry} onRequestMove={onRequestMove} onOpen={onOpen} />
             ))}
         </>
     );

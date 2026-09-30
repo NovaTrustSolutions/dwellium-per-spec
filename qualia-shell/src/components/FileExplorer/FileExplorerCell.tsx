@@ -166,7 +166,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
         // name the clicked row when it is the one (and only) thing being trashed.
         const confirmMsg = targets.length === 1 && targets[0] === entry.path
             ? `Move "${entry.name}"${isFolder ? ' and everything inside it' : ''} to Trash?`
-            : `Move ${targets.length} item${targets.length === 1 ? '' : 's'} to Trash (folders with everything inside)?\n${targets.slice(0, 5).map((p) => p.split('/').pop()).join('\n')}${targets.length > 5 ? `\n…and ${targets.length - 5} more` : ''}`;
+            : `Move ${targets.length} item${targets.length === 1 ? '' : 's'} to Trash?\n${targets.slice(0, 5).map((p) => p.split('/').pop()).join('\n')}${targets.length > 5 ? `\n…and ${targets.length - 5} more` : ''}`;
         const ok = confirm(confirmMsg);
         if (!ok) return;
 

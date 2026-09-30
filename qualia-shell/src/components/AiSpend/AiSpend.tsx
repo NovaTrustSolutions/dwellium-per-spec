@@ -4,12 +4,16 @@
  * plan-advice line ("you're paying for more than you use"). All figures are
  * ESTIMATES (chars/4 tokens × rough $/MTok table) and labeled as such.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Coins, Trash2 } from 'lucide-react';
-import { useLlmUsage, lastNDays, planAdvice, clearLlmUsage } from '../../lib/llmUsageStore';
+import { useLlmUsage, lastNDays, planAdvice, clearLlmUsage, setExternalDevices } from '../../lib/llmUsageStore';
 import { useSubscriptions, monthlyTotal } from '../../lib/subscriptionsStore';
+import { useServerUsage, useSystemUsage } from '../../lib/serverSpend';
+import { UserContext } from '../../context/UserContext';
 import CostAdvisorPanel from './CostAdvisorPanel';
 import BudgetBar from './BudgetBar';
+import BillingPanel from './BillingPanel';
+import ClaudeCodeRow from './ClaudeCodeRow';
 import SpendBreakdown from './SpendBreakdown';
 import SubscriptionsEditor from './SubscriptionsEditor';
 import './AiSpend.css';
@@ -19,6 +23,18 @@ const fmtK = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
 const CONFIRM_CLEAR_MS = 4000;
 
 export default function AiSpend() {
+    // Plan 068 Phase 3: pull in server-side usage (merged into the aggregate
+    // ledger via setExternalDevices('server', …) inside useServerUsage) so
+    // every total below already includes it — no extra wiring needed here.
+    useServerUsage();
+    const isGod = useContext(UserContext)?.user?.role === 'god';
+    const systemUsage = useSystemUsage(isGod);
+    // useSystemUsage only reads the god-only "Shared / system" bucket; merging
+    // it into the aggregate ledger is this widget's job.
+    useEffect(() => {
+        setExternalDevices('system', systemUsage);
+    }, [systemUsage]);
+
     const ledger = useLlmUsage();
     const subscriptions = useSubscriptions();
     const subsTotal = monthlyTotal(subscriptions);
@@ -61,6 +77,17 @@ export default function AiSpend() {
         for (const e of ledger.entries) if (e.ts >= since && e.estCost == null) out[e.provider] = (out[e.provider] ?? 0) + 1;
         return out;
     }, [ledger, week]);
+
+    // Server-side calls this week ("server:*" / "system:*" bySource keys — plan 068 Phase 3).
+    const serverCallsThisWeek = useMemo(() => {
+        let n = 0;
+        for (const d of week) {
+            for (const [key, v] of Object.entries(d.bySource ?? {})) {
+                if (key.startsWith('server:') || key.startsWith('system:')) n += v.calls;
+            }
+        }
+        return n;
+    }, [week]);
 
     const handleClear = () => {
         if (confirmClear) {
@@ -114,9 +141,10 @@ export default function AiSpend() {
             </div>
 
             <BudgetBar ledger={ledger} />
+            <BillingPanel isGod={isGod} />
 
             <p className="spend__coverage-note">
-                Not tracked yet: server-side calls, voice (TTS/STT), avatar.
+                Not tracked yet: voice/avatar in the browser. Server audio calls are counted but unpriced.
             </p>
 
             <section
@@ -161,6 +189,9 @@ export default function AiSpend() {
                         </span>
                     </div>
                 ))}
+                {serverCallsThisWeek > 0 && (
+                    <p className="spend__server-note">Includes server-side calls ({serverCallsThisWeek} this week)</p>
+                )}
             </section>
 
             <SpendBreakdown ledger={ledger} />
@@ -173,6 +204,8 @@ export default function AiSpend() {
             <section className="spend__advisor" aria-label="Time-value advisor">
                 <CostAdvisorPanel variant="full" />
             </section>
+
+            <ClaudeCodeRow />
 
             <footer className="spend__foot">
                 Recorded in the browser · measured tokens when the provider reports them, otherwise ≈ chars/4 · prices from public price tables · local models = $0

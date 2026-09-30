@@ -13,6 +13,7 @@ import { useFileExplorer } from './useFileExplorer';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, Globe, FolderTree, MessageSquare } from 'lucide-react';
 import { rename as apiRename, deleteEntry as apiDelete, move as apiMove } from './fileExplorerApi';
 import { uploadDroppedFiles } from './dropUpload';
+import { deleteTargets, batchSummary } from './moveTargets';
 
 /**
  * 3-tier Holocron hierarchy model (per Ilya 2026-05-28 lock):
@@ -58,7 +59,7 @@ export function resetVisiblePaths() { visiblePathsRef.current = []; }
 export function pushVisiblePath(p: string) { visiblePathsRef.current.push(p); }
 
 export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry, onRequestMove, showFullPath = false }: Props) {
-    const { expanded, selectedPath, selectedPaths, locked, setSelectedPath, toggleSelected, selectRange, toggleFolder } = useFileExplorer();
+    const { expanded, selectedPath, selectedPaths, locked, setSelectedPath, setSelectedPaths, toggleSelected, selectRange, toggleFolder } = useFileExplorer();
     const isExpanded = !!expanded[entry.path];
     const isSelected = selectedPaths.includes(entry.path) || selectedPath === entry.path;
     pushVisiblePath(entry.path);
@@ -130,7 +131,12 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
     const handleContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setSelectedPath(entry.path);
+        // Right-clicking a row already part of the multi-selection keeps that
+        // selection (so Delete/Move act on the whole set); right-clicking
+        // outside it collapses to just this row, matching D2.
+        if (!selectedPaths.includes(entry.path)) {
+            setSelectedPath(entry.path);
+        }
         setCtx({ x: e.clientX, y: e.clientY, entry });
     };
 
@@ -155,14 +161,32 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
 
     const handleDelete = async () => {
         if (locked) return;
-        const ok = confirm(`Delete "${entry.name}"${isFolder ? ' and everything inside it' : ''}? This cannot be undone.`);
+        const targets = deleteTargets(entry.path, selectedPaths);
+        // deleteTargets can swap the clicked row for its selected parent folder, so only
+        // name the clicked row when it is the one (and only) thing being trashed.
+        const confirmMsg = targets.length === 1 && targets[0] === entry.path
+            ? `Move "${entry.name}"${isFolder ? ' and everything inside it' : ''} to Trash?`
+            : `Move ${targets.length} item${targets.length === 1 ? '' : 's'} to Trash (folders with everything inside)?\n${targets.slice(0, 5).map((p) => p.split('/').pop()).join('\n')}${targets.length > 5 ? `\n…and ${targets.length - 5} more` : ''}`;
+        const ok = confirm(confirmMsg);
         if (!ok) return;
-        try {
-            await apiDelete(entry.path);
-            onChange?.();
-        } catch (err: any) {
-            alert(`Delete failed: ${err?.message ?? err}`);
+
+        const succeeded: string[] = [];
+        const failed: string[] = [];
+        for (const path of targets) {
+            try {
+                await apiDelete(path);
+                succeeded.push(path);
+            } catch (err: any) {
+                failed.push(`"${path.split('/').pop()}": ${err?.message ?? err}`);
+            }
         }
+        if (succeeded.length > 0 || failed.length > 0) onChange?.();
+        if (succeeded.length > 0) {
+            // Children of a trashed folder went with it — deselect them too.
+            setSelectedPaths(selectedPaths.filter((p) => !succeeded.some((d) => p === d || p.startsWith(d + '/'))));
+        }
+        const summary = batchSummary('Deleted', succeeded.length, targets.length, failed);
+        if (summary) alert(summary);
     };
 
     // Icon resolves by tier
@@ -202,17 +226,33 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
             try {
                 const payloads = JSON.parse(pathsRaw) as Array<{ name: string; path: string }>;
                 const copy = e.altKey;
+                // Items already inside this folder aren't failures — leave them out of the batch.
+                const eligible = payloads.filter((p) => p.path && p.path !== `${entry.path}/${p.name}`);
                 let moved = 0;
-                for (const p of payloads) {
-                    if (!p.path || p.path === entry.path) continue;
-                    if (entry.path === p.path || entry.path.startsWith(p.path + '/')) continue; // loop guard
-                    if (childNames.includes(p.name)) continue; // would overwrite
+                const failed: string[] = [];
+                for (const p of eligible) {
+                    if (entry.path === p.path) {
+                        failed.push(`"${p.name}": can't move onto itself`);
+                        continue;
+                    }
+                    if (entry.path.startsWith(p.path + '/')) {
+                        failed.push(`"${p.name}": can't move a folder into its own subtree`);
+                        continue;
+                    }
+                    if (childNames.includes(p.name)) {
+                        failed.push(`"${p.name}": already exists there`);
+                        continue;
+                    }
                     try {
                         await apiMove(p.path, `${entry.path}/${p.name}`, copy);
                         moved++;
-                    } catch { /* skip individual failures */ }
+                    } catch (err: any) {
+                        failed.push(`"${p.name}": ${err?.message ?? err}`);
+                    }
                 }
-                if (moved > 0) onChange?.();
+                if (moved > 0 || failed.length > 0) onChange?.();
+                const summary = batchSummary('Moved', moved, eligible.length, failed);
+                if (summary) alert(summary);
                 return;
             } catch (err: any) {
                 alert(`Multi-move failed: ${err?.message ?? err}`);
@@ -311,7 +351,13 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
                 onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
-                onKeyDown={(e) => { if (e.key === 'F2' && isSelected) startRename(); }}
+                onKeyDown={(e) => {
+                    if (e.key === 'F2' && isSelected) startRename();
+                    else if ((e.key === 'Delete' || e.key === 'Backspace') && isSelected && !locked && !renaming) {
+                        e.preventDefault();
+                        void handleDelete();
+                    }
+                }}
                 tabIndex={isSelected ? 0 : -1}
                 role="treeitem"
                 aria-selected={isSelected}

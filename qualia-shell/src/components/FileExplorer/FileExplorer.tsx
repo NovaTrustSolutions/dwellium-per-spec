@@ -22,7 +22,7 @@ import { useFileExplorer } from './useFileExplorer';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
 import { getWorkspaceRoot } from './workspaceRoot';
 import { MoveToModal } from './MoveToModal';
-import { destFor, childNames } from './moveTargets';
+import { destFor, childNames, batchSummary } from './moveTargets';
 import { uploadDroppedFiles } from './dropUpload';
 import { API_BASE } from '../../config';
 import { getAuthHeaders, UserContext } from '../../context/UserContext';
@@ -73,7 +73,8 @@ export default function FileExplorer() {
     // Workspace root path (spec §2.4) — read userId via context directly so a
     // missing provider (tests) degrades gracefully instead of throwing.
     const userCtx = useContext(UserContext);
-    const workspaceRoot = getWorkspaceRoot(userCtx?.user?.id ?? null);
+    const userId = userCtx?.user?.id ?? null;
+    const workspaceRoot = getWorkspaceRoot(userId);
     const [entries, setEntries] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -86,17 +87,25 @@ export default function FileExplorer() {
     // "Move to…" picker target (spec §4.3). Null when the modal is closed.
     const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
 
+    // D6: request-sequence guard — an in-flight fetchTree from a prior refresh() call
+    // (e.g. one started for a different account, or an older overlapping refresh) may
+    // resolve after a newer one starts. Only the call that bumped the sequence last
+    // is allowed to commit its result to state.
+    const requestSeqRef = useRef(0);
     const refresh = useCallback(async () => {
+        const mySeq = ++requestSeqRef.current;
         setLoading(true);
         setError(null);
         try {
             const list = await fetchTree();
+            if (mySeq !== requestSeqRef.current) return; // superseded — drop
             setEntries(list);
         } catch (err: any) {
+            if (mySeq !== requestSeqRef.current) return; // superseded — drop
             setError(err?.message ?? 'Failed to load file tree');
             setEntries([]);
         } finally {
-            setLoading(false);
+            if (mySeq === requestSeqRef.current) setLoading(false);
         }
     }, []);
 
@@ -118,6 +127,7 @@ export default function FileExplorer() {
         } catch (err: any) {
             alert(`Move failed: ${err?.message ?? err}`);
             setMoveTarget(null);
+            await refresh(); // D6: the tree may be stale — that's why the move failed
         }
     }, [moveTarget, refresh, entries]);
 
@@ -221,9 +231,17 @@ export default function FileExplorer() {
         }
     }, [newEntry, newName, cancelNewEntry, refresh]);
 
+    // D1: reload the tree whenever the signed-in account changes (a session-expired
+    // re-auth modal can keep this widget mounted while a DIFFERENT account signs in —
+    // logout alone doesn't cover it since it unmounts the shell). Clear entries and any
+    // state tied to the old user's paths before refreshing so A's tree/pickers never
+    // show once B is signed in.
     useEffect(() => {
+        setEntries([]);
+        setMoveTarget(null);
+        setNewEntry(null);
         void refresh();
-    }, [refresh]);
+    }, [userId, refresh]);
 
     const displayedEntries = viewMode === 'flat' ? sortFlat(flattenTree(entries), flatSort) : entries;
     const fileCount = flattenTree(entries).length;
@@ -253,13 +271,25 @@ export default function FileExplorer() {
             try {
                 const payloads = JSON.parse(pathsRaw) as Array<{ name: string; path: string }>;
                 const copy = e.altKey;
+                // D13: items already at root aren't failures — they're just excluded from the batch.
+                const eligible = payloads.filter((p) => p.path && p.path.includes('/'));
                 let moved = 0;
-                for (const p of payloads) {
-                    if (!p.path || !p.path.includes('/')) continue; // already at root
-                    if (childNames(entries, '').includes(p.name)) continue; // would overwrite
-                    try { await apiMove(p.path, p.name, copy); moved++; } catch { /* skip */ }
+                const failed: string[] = [];
+                for (const p of eligible) {
+                    if (childNames(entries, '').includes(p.name)) {
+                        failed.push(`"${p.name}": already exists at root`);
+                        continue;
+                    }
+                    try {
+                        await apiMove(p.path, p.name, copy);
+                        moved++;
+                    } catch (moveErr: any) {
+                        failed.push(`"${p.name}": ${moveErr?.message ?? moveErr}`);
+                    }
                 }
-                if (moved > 0) await refresh();
+                const summary = batchSummary('Moved', moved, eligible.length, failed);
+                if (summary) alert(summary);
+                if (moved > 0 || failed.length > 0) await refresh();
                 return;
             } catch (err: any) {
                 alert(`Multi-move to root failed: ${err?.message ?? err}`);

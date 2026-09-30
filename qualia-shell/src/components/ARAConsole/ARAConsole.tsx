@@ -27,7 +27,7 @@ const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
-import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
+import { generateGoalPlan, formatPlanForChat, answersForPrompt, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
 import { createGoal, updateGoalPlan, findGoalByTitle, findGoalCandidates } from '../../lib/goalsStore';
@@ -1692,9 +1692,10 @@ export default function ARAConsole() {
                             : `I couldn't find a goal matching "${refineGoalMatch[1]}" — check Mission Control for the exact title.`;
                         setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: reply })]);
                     } else {
-                        const plan = await generateGoalPlan(goal.title, integrations.llm, refineGoalMatch[2]);
+                        const answer = refineGoalMatch[2].trim();
+                        const plan = await generateGoalPlan(goal.title, integrations.llm, answersForPrompt(goal.answers, answer));
                         if (!stillOwnerGoal()) return;
-                        updateGoalPlan(goal.id, plan);
+                        updateGoalPlan(goal.id, plan, { keepDone: true, answer });
                         setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatPlanForChat(goal.title, plan) })]);
                     }
                 }

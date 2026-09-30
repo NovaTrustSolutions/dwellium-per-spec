@@ -15,6 +15,7 @@ import {
     findGoalByTitle,
     findGoalCandidates,
     goalProgress,
+    liveGoals,
     resetGoals,
 } from '../lib/goalsStore';
 import { heuristicPlan, generateGoalPlan, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN, formatPlanForChat } from '../lib/goalPlanner';
@@ -56,7 +57,13 @@ describe('goal lifecycle', () => {
         expect(goalsStore.getSnapshot()[0].status).toBe('done');
 
         deleteGoal(g.id);
-        expect(goalsStore.getSnapshot()).toHaveLength(0);
+        // D5: delete leaves a tombstone in the raw array (so a stale device's
+        // merge never resurrects it) — the visible list is what drops to 0.
+        expect(liveGoals(goalsStore.getSnapshot())).toHaveLength(0);
+        const tombstone = goalsStore.getSnapshot()[0];
+        expect(tombstone.deletedAt).toBeTypeOf('number');
+        expect(tombstone.status).toBe('done');
+        expect(tombstone.title).toBe('');
     });
 
     it('findGoalByTitle matches exact then fuzzy', () => {

@@ -8,7 +8,7 @@
  * `.reset()`. Identity rides integrationsUserIdHolder so ARA's intake tier
  * (outside React) namespaces correctly.
  */
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { goalsUserIdHolder, usePerUserIdentity } from './perUserIdentity';
@@ -72,15 +72,85 @@ function resolveKey(): string {
     return uid ? `goals:${uid}` : 'goals:_anonymous';
 }
 
-function isGoal(g: unknown): g is Goal {
-    return !!g && typeof (g as Goal).id === 'string' && typeof (g as Goal).title === 'string';
+/* ─── D4 repair (plan 075): a remote/local payload of unknown shape is
+ * repaired into a valid Goal rather than dropped outright — a null/missing
+ * `plan.agentActions` or a garbage `notes` array used to throw in
+ * `goalProgress` or fail `isGoal` entirely. Used by `deserialize` AND by
+ * `mergeGoals` for BOTH sides (One Save hydrate hands the remote payload
+ * straight to `merge`, bypassing the deserializer). */
+
+const STATUS_VALUES: ReadonlyArray<Goal['status']> = ['active', 'done', 'paused'];
+
+function toFiniteNumber(v: unknown, fallback: number): number {
+    return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+}
+
+function sanitizeAction(a: unknown): GoalAction | null {
+    if (!a || typeof a !== 'object') return null;
+    const text = (a as Record<string, unknown>).text;
+    if (typeof text !== 'string') return null;
+    return { text, done: !!(a as Record<string, unknown>).done };
+}
+
+function sanitizeActionList(v: unknown): GoalAction[] {
+    if (!Array.isArray(v)) return [];
+    return v.map(sanitizeAction).filter((a): a is GoalAction => a !== null);
+}
+
+function sanitizeTimedNote(n: unknown): GoalNote | null {
+    if (!n || typeof n !== 'object') return null;
+    const text = (n as Record<string, unknown>).text;
+    if (typeof text !== 'string') return null;
+    return { ts: toFiniteNumber((n as Record<string, unknown>).ts, 0), text };
+}
+
+function sanitizeTimedNoteList(v: unknown): GoalNote[] {
+    if (!Array.isArray(v)) return [];
+    return v.map(sanitizeTimedNote).filter((n): n is GoalNote => n !== null);
+}
+
+function sanitizePlan(v: unknown): GoalPlan | undefined {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+    const p = v as Record<string, unknown>;
+    return {
+        brief: typeof p.brief === 'string' ? p.brief : '',
+        agentActions: sanitizeActionList(p.agentActions),
+        userActions: sanitizeActionList(p.userActions),
+        clarifyingQuestions: Array.isArray(p.clarifyingQuestions)
+            ? p.clarifyingQuestions.filter((q): q is string => typeof q === 'string')
+            : [],
+    };
+}
+
+/** Keep iff `id` is a non-empty string and `title` is a string; repair everything else. */
+export function sanitizeGoal(raw: unknown): Goal | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const g = raw as Record<string, unknown>;
+    if (typeof g.id !== 'string' || g.id.length === 0) return null;
+    if (typeof g.title !== 'string') return null;
+
+    const status = STATUS_VALUES.includes(g.status as Goal['status']) ? (g.status as Goal['status']) : 'active';
+    const plan = sanitizePlan(g.plan);
+    const goal: Goal = {
+        id: g.id,
+        title: g.title,
+        status,
+        notes: sanitizeTimedNoteList(g.notes),
+        createdAt: toFiniteNumber(g.createdAt, 0),
+        updatedAt: toFiniteNumber(g.updatedAt, 0),
+    };
+    if (plan) goal.plan = plan;
+    if (Array.isArray(g.answers)) goal.answers = sanitizeTimedNoteList(g.answers);
+    if (typeof g.deletedAt === 'number' && Number.isFinite(g.deletedAt)) goal.deletedAt = g.deletedAt;
+    return goal;
 }
 
 function deserialize(raw: string | null): Goal[] {
     if (!raw) return [];
     try {
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.filter(isGoal) : [];
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(sanitizeGoal).filter((g): g is Goal => g !== null);
     } catch {
         return [];
     }
@@ -92,7 +162,7 @@ export const goalsStore = withSync(
         deserializer: deserialize,
         defaultValue: [],
     }),
-    { objectType: 'goals', holder: goalsUserIdHolder, resolveKey },
+    { objectType: 'goals', holder: goalsUserIdHolder, resolveKey, merge: mergeGoals },
 );
 
 function persist(next: Goal[]): void {
@@ -105,6 +175,20 @@ function newGoalId(): string {
     return `goal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+/** A deleted goal (D5 tombstone) — every mutator below no-ops on it. */
+function isTombstone(g: Goal): boolean {
+    return g.deletedAt != null;
+}
+
+/** Normalize action text for `keepDone` comparison: case/whitespace/trailing-punctuation insensitive. */
+function normalizeActionText(text: string): string {
+    return text.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]+$/, '');
+}
+
+const MAX_NOTES = 200;
+const MAX_ANSWERS = 20;
+const MAX_ANSWER_LEN = 1000;
+
 /* ─── Mutators ─── */
 
 export function createGoal(title: string, plan?: GoalPlan): Goal {
@@ -114,18 +198,46 @@ export function createGoal(title: string, plan?: GoalPlan): Goal {
     return goal;
 }
 
-// P0 contract stub (plan 075): options accepted, implemented in phase 2 W1.
-export function updateGoalPlan(id: string, plan: GoalPlan, _opts?: UpdatePlanOptions): void {
-    persist(goalsStore.getSnapshot().map(g => (g.id === id ? { ...g, plan, updatedAt: Date.now() } : g)));
+/**
+ * D2: replace a goal's plan. `keepDone` carries `done` forward onto actions
+ * in the NEW plan whose normalized text matches a done action on the SAME
+ * side of the CURRENT snapshot (read here, at write time — so a checkbox
+ * toggled during the LLM call that produced `plan` is respected, not the
+ * stale plan the caller captured before awaiting). `answer` appends the
+ * refine answer (trimmed, capped) to the goal's answer history.
+ */
+export function updateGoalPlan(id: string, plan: GoalPlan, opts?: UpdatePlanOptions): void {
+    persist(goalsStore.getSnapshot().map(g => {
+        if (g.id !== id || isTombstone(g)) return g;
+
+        let nextPlan = plan;
+        if (opts?.keepDone && g.plan) {
+            const carryDone = (side: 'agentActions' | 'userActions'): GoalAction[] => {
+                const priorDone = new Set(
+                    g.plan![side].filter(a => a.done).map(a => normalizeActionText(a.text)),
+                );
+                return plan[side].map(a => (a.done ? a : { ...a, done: priorDone.has(normalizeActionText(a.text)) }));
+            };
+            nextPlan = { ...plan, agentActions: carryDone('agentActions'), userActions: carryDone('userActions') };
+        }
+
+        let answers = g.answers;
+        const answerText = opts?.answer?.trim().slice(0, MAX_ANSWER_LEN);
+        if (answerText) {
+            answers = [...(g.answers ?? []), { ts: Date.now(), text: answerText }].slice(-MAX_ANSWERS);
+        }
+
+        return { ...g, plan: nextPlan, answers, updatedAt: Date.now() };
+    }));
 }
 
 export function setGoalStatus(id: string, status: Goal['status']): void {
-    persist(goalsStore.getSnapshot().map(g => (g.id === id ? { ...g, status, updatedAt: Date.now() } : g)));
+    persist(goalsStore.getSnapshot().map(g => (g.id === id && !isTombstone(g) ? { ...g, status, updatedAt: Date.now() } : g)));
 }
 
 export function toggleGoalAction(id: string, side: 'agentActions' | 'userActions', index: number): void {
     persist(goalsStore.getSnapshot().map(g => {
-        if (g.id !== id || !g.plan) return g;
+        if (g.id !== id || !g.plan || isTombstone(g)) return g;
         const actions = g.plan[side].map((a, i) => (i === index ? { ...a, done: !a.done } : a));
         return { ...g, plan: { ...g.plan, [side]: actions }, updatedAt: Date.now() };
     }));
@@ -134,11 +246,23 @@ export function toggleGoalAction(id: string, side: 'agentActions' | 'userActions
 export function addGoalNote(id: string, text: string): void {
     const t = text.trim();
     if (!t) return;
-    persist(goalsStore.getSnapshot().map(g => (g.id === id ? { ...g, notes: [...g.notes, { ts: Date.now(), text: t.slice(0, 500) }], updatedAt: Date.now() } : g)));
+    persist(goalsStore.getSnapshot().map(g => (g.id === id && !isTombstone(g)
+        ? { ...g, notes: [...g.notes, { ts: Date.now(), text: t.slice(0, 500) }].slice(-MAX_NOTES), updatedAt: Date.now() }
+        : g)));
 }
 
+/**
+ * D5: replace the goal with a tombstone instead of removing it from the
+ * array — a stale device's merge must never resurrect a delete. Every
+ * reader skips it: the UI via `liveGoals`, everything else because it's
+ * 'done' with an empty title.
+ */
 export function deleteGoal(id: string): void {
-    persist(goalsStore.getSnapshot().filter(g => g.id !== id));
+    persist(goalsStore.getSnapshot().map(g => {
+        if (g.id !== id) return g;
+        const now = Date.now();
+        return { id: g.id, title: '', status: 'done', notes: [], createdAt: g.createdAt, updatedAt: now, deletedAt: now };
+    }));
 }
 
 /**
@@ -152,7 +276,7 @@ export function deleteGoal(id: string): void {
 export function findGoalByTitle(fragment: string): Goal | null {
     const f = fragment.trim().toLowerCase();
     if (!f) return null;
-    const goals = goalsStore.getSnapshot();
+    const goals = liveGoals(goalsStore.getSnapshot());
     const exact = goals.filter(g => g.title.toLowerCase() === f);
     if (exact.length > 0) {
         return exact.find(g => g.status !== 'done') ?? exact[0];
@@ -170,7 +294,7 @@ export function findGoalByTitle(fragment: string): Goal | null {
 export function findGoalCandidates(fragment: string): Goal[] {
     const f = fragment.trim().toLowerCase();
     if (!f) return [];
-    const goals = goalsStore.getSnapshot().filter(g => g.title.toLowerCase().includes(f));
+    const goals = liveGoals(goalsStore.getSnapshot()).filter(g => g.title.toLowerCase().includes(f));
     return [...goals.filter(g => g.status !== 'done'), ...goals.filter(g => g.status === 'done')];
 }
 
@@ -179,12 +303,34 @@ export function liveGoals(goals: Goal[]): Goal[] {
     return goals.filter(g => !g.deletedAt);
 }
 
+/** Tombstones older than this are pruned during merge.
+ * ponytail: 90-day ceiling — a device that stays offline longer than that
+ * could see one of its deletes resurrected by a stale remote; raise this if
+ * that ever actually happens. */
+const TOMBSTONE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
 /**
- * One Save merge (plan 075 D5): union by id, newer updatedAt wins, tombstones
- * kept. P0 contract stub — returns remote (today's behaviour) until W1.
+ * One Save merge (plan 075 D5): sanitize both sides (One Save hydrate hands
+ * the raw remote payload straight here, bypassing `deserialize`), union by
+ * id, newer `updatedAt` wins (tie → local; a tombstone is just a goal, so a
+ * delete newer than an edit wins and vice versa), drop tombstones older than
+ * 90 days, stable output order by createdAt then id. Pure + deterministic.
  */
-export function mergeGoals(_local: Goal[], remote: Goal[]): Goal[] {
-    return remote;
+export function mergeGoals(local: Goal[], remote: Goal[]): Goal[] {
+    const localSane = (Array.isArray(local) ? local : []).map(sanitizeGoal).filter((g): g is Goal => g !== null);
+    const remoteSane = (Array.isArray(remote) ? remote : []).map(sanitizeGoal).filter((g): g is Goal => g !== null);
+
+    const byId = new Map<string, Goal>();
+    for (const g of localSane) byId.set(g.id, g);
+    for (const g of remoteSane) {
+        const cur = byId.get(g.id);
+        if (!cur || g.updatedAt > cur.updatedAt) byId.set(g.id, g);
+    }
+
+    const now = Date.now();
+    const merged = [...byId.values()].filter(g => g.deletedAt == null || now - g.deletedAt <= TOMBSTONE_MAX_AGE_MS);
+    merged.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+    return merged;
 }
 
 /** Progress 0..1 across both action lists (no plan → 0). */
@@ -206,10 +352,11 @@ export function resetGoals(): void {
 export function useGoals() {
     // Single writer: sets every per-user holder to the active user.id at once.
     usePerUserIdentity();
-    const goals = useSyncExternalStore(
+    const snapshot = useSyncExternalStore(
         goalsStore.subscribe,
         goalsStore.getSnapshot,
         goalsStore.getServerSnapshot,
     );
+    const goals = useMemo(() => liveGoals(snapshot), [snapshot]);
     return { goals, createGoal, updateGoalPlan, setGoalStatus, toggleGoalAction, addGoalNote, deleteGoal };
 }

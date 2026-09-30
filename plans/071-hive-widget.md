@@ -127,3 +127,35 @@ One worktree `.claude/worktrees/071-hive` off `origin/main`, symlink `qualia-she
 
 Full gate (repo CLAUDE.md): `cd qualia-shell && npx tsc -b && npx vitest run && npx react-router build && VITE_APPFOLIO_SEEDS=false npx react-router build && cd .. && node Scripts/verify_no_pii_leak.mjs && SMOKE_TEST_SKIP_BUILD=true node Scripts/smoke_test_ssr_phase8.mjs`.
 Ship: feature branch + draft PR only after the gate is green; never push `main`.
+
+## 6. Phases 3–4 execution contract (2026-09-28, branch `feat/071-hive-p3p4`, stacked on #164)
+
+Findings at execution time: plan 068 is on `main` — `UsageInput.source` and
+`DailyRollup.bySource` exist, and `callLlm` records `req.source`. ARA tags
+`'ara'` / `'team-run'`; Synthesis, Builder Agents, Hydra, Stella do not tag.
+`copawUserIdHolder` was written during render by 4 components, against the
+perUserIdentity single-writer rule (F-015 render-loop class).
+
+P0 (orchestrator, committed first):
+- `lib/sensitiveText.ts` — `isSensitiveFact`, `ZERO_WIDTH` (moved; copawStore re-exports).
+- `lib/perUserIdentity.ts` — `copawUserIdHolder`, `agentActivityUserIdHolder` in ALL_HOLDERS; render writes removed from Hive / Synthesis / Builder Agents / Content Search.
+- `lib/agentActivityStore.ts` — `AgentActivity {source,lastRunAt,ok,error?,snippet?}`,
+  `recordAgentActivity({source?,ok,text?,error?,userId,now?})` (drops on owner change),
+  `currentAgentActivityUserId()`, `useAgentActivity()`, `HIDDEN_SNIPPET`.
+
+Source keys (Hive agent → sources): ara-console → `ara`,`team-run`; stella-agent → `stella`;
+hydra-ai → `hydra`; honcho → `honcho`; two-brains → none (not LLM-driven); synthesis → `synthesis`;
+builder-agents → `builder-agents`.
+
+W1 (parallel, disjoint files):
+- A — chokepoints + tags: `lib/llmClient.ts`, `lib/llmStream.ts` record activity (success + failure, only when `source`);
+  add `source` in Synthesis.tsx, BuilderAgents.tsx, HydraAI/HydraSplit.tsx, StellaAgent.tsx (callLlm path);
+  honcho LLM calls tagged `honcho` if untagged; tests `test/agentActivityStore.test.ts`.
+- B — Phase 4: copawStore v2 `{v:2, facts, deleted: Record<id, ts>, clearedAt}` with `merge` (union by id,
+  deletes + clearedAt win, cap 500 newest), `normalize` for v1 arrays; `copawStore.getSnapshot()` KEEPS
+  returning `MemoryFact[]` for every reader (Hive, ContentSearch, unifiedMemory, tests) — v2 lives in an
+  inner synced store. `clearMemory` = clearedAt tombstone, `deleteFact` = deleted-id tombstone.
+- C — Hive UI: per-agent last run (relative), status open/closed + **error** badge when last run failed,
+  snippet line, 7-day calls + cost from `lastNDays(7)` bySource; cost row = 7-day total for the 7 agents +
+  "Other features" + "by Domain isn't tracked". Tests in `test/Hive.test.tsx`.
+W2 adversarial reviewer → orchestrator fixes → full gate → push (Auto-fix PR flow).

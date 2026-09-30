@@ -103,7 +103,7 @@ export function useHonchoBackgroundRunner(): void {
             const dataLines: string[] = [];
             const goals = goalsStore.getSnapshot().filter(g => g.status !== 'done');
             if (goals.length > 0) {
-                const top = goals.slice(0, 3).map(g => `${g.title} ${goalProgress(g)}%`).join(' · ');
+                const top = goals.slice(0, 3).map(g => `${g.title} ${Math.round(goalProgress(g) * 100)}%`).join(' · ');
                 dataLines.push(`Goals: ${top}`);
             }
             const week = lastNDays(7);

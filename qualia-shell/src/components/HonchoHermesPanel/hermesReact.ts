@@ -79,6 +79,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
             temperature: 0.2,
             maxTokens: 600,
             responseFormat: 'json',
+            source: 'honcho',
         });
         const v = extractJson<LoopVerdict>(raw);
         if (!v) break;
@@ -112,6 +113,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
             prompt: `TASK: ${task}\n\n${scratchpad.join('\n')}`,
             temperature: 0.2,
             maxTokens: 600,
+            source: 'honcho',
         });
         if (raw && raw.trim()) {
             steps.push({ type: 'final_answer', content: raw.trim(), timestamp: now() });

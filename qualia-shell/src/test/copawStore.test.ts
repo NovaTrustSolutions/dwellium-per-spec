@@ -165,3 +165,28 @@ describe('deleteFact', () => {
         expect(remaining[0].id).toBe(keep.id);
     });
 });
+
+describe('v1 -> v2 persisted-shape migration', () => {
+    it('a v1 array in localStorage migrates and reads back as the same facts', () => {
+        copawUserIdHolder.current = 'migrate-user';
+        const v1 = [{ id: 'a1', text: 'An old fact stored before the v2 tombstone shape existed here.', source: 'A', createdAt: NOW.toISOString() }];
+        localStorage.setItem('dwellium:copaw-memory:migrate-user', JSON.stringify(v1));
+        copawStore.reset();
+        expect(copawStore.getSnapshot()).toEqual(v1);
+    });
+});
+
+describe('getSnapshot reference stability', () => {
+    it('returns the same array reference across calls when nothing changed', () => {
+        copawUserIdHolder.current = 'ref-user';
+        captureFacts('A', 'A stable fact used to check getSnapshot reference stability here.', 'ref-user', NOW);
+        const a = copawStore.getSnapshot();
+        const b = copawStore.getSnapshot();
+        expect(a).toBe(b);
+    });
+
+    it('returns the same reference before any write too (server/default snapshot)', () => {
+        copawUserIdHolder.current = 'never-written-user';
+        expect(copawStore.getSnapshot()).toBe(copawStore.getSnapshot());
+    });
+});

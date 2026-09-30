@@ -20,6 +20,7 @@
 import type { IntegrationsBundle, LlmProvider } from '../types/integrations';
 import { recordAiFailure, recordAiSuccess } from './aiHealthStore';
 import { recordLlmUsage, currentUsageUserId } from './llmUsageStore';
+import { recordAgentActivity, currentAgentActivityUserId } from './agentActivityStore';
 import { DEFAULT_MODELS } from '../types/integrations';
 
 // ── Request / response types ─────────────────────────────────────────
@@ -105,6 +106,7 @@ export async function callLlm(
     // logout or account switch mid-call must not land usage in the wrong
     // (or anonymous) ledger.
     const userId = currentUsageUserId();
+    const activityUid = currentAgentActivityUserId(); // own holder, captured before the await
     let res: LlmResponse | null;
     try {
         res = await dispatchLlm(req, llm);
@@ -115,6 +117,12 @@ export async function callLlm(
         // itself. Recording never swallows the error.
         if (err instanceof LlmError) recordAiFailure(err.provider, err.status);
         else recordAiFailure(llm.active ?? 'unknown', 0);
+        recordAgentActivity({
+            source: req.source,
+            ok: false,
+            error: err instanceof LlmError ? `${err.status}: ${err.message}` : err instanceof Error ? err.message : String(err),
+            userId: activityUid,
+        });
         throw err;
     }
     // P12-1 AI-spend ledger: one chokepoint records usage for every
@@ -135,6 +143,7 @@ export async function callLlm(
             source: req.source,
             userId,
         });
+        recordAgentActivity({ source: req.source, ok: true, text: res.text, userId: activityUid });
     }
     return res;
 }

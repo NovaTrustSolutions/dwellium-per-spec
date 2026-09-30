@@ -47,6 +47,7 @@ export default function Synthesis() {
                 prompt,
                 maxTokens: 1200,
                 temperature: 0.4,
+                source: 'synthesis',
             }, integrations.llm);
             if (res && res.text.trim()) {
                 setResult(res.text.trim());

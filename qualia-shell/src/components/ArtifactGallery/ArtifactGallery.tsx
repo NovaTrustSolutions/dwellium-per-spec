@@ -17,6 +17,7 @@ const TYPE_LABELS: Record<ArtifactType, string> = {
 
 const SOURCE_LABELS: Record<string, string> = {
     'ara': 'ARA', 'team-run': 'Team run', 'skill': 'Skill', 'stella': 'Stella', 'manual': 'Manual',
+    'mission-control': 'Mission Control',
 };
 
 function timeAgo(ts: number): string {

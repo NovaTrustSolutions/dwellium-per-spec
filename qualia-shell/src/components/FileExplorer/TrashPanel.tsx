@@ -15,10 +15,10 @@ function splitPath(p: string): { dir: string; base: string } {
     return { dir: i < 0 ? '' : p.slice(0, i), base: i < 0 ? p : p.slice(i + 1) };
 }
 
-/** "a/notes.md" -> "a/notes (restored).md" (extension kept). */
-function restoredName(path: string): string {
+/** "a/notes.md" -> "a/notes (restored).md" (a file keeps its extension; folders have none). */
+function restoredName(path: string, isDir: boolean): string {
     const { dir, base } = splitPath(path);
-    const dot = base.lastIndexOf('.');
+    const dot = isDir ? -1 : base.lastIndexOf('.');
     const [stem, ext] = dot > 0 ? [base.slice(0, dot), base.slice(dot)] : [base, ''];
     return `${dir ? `${dir}/` : ''}${stem} (restored)${ext}`;
 }
@@ -72,7 +72,7 @@ export function TrashPanel({ onClose, onRestored }: { onClose: () => void; onRes
         } catch (e) {
             if (!isConflict(e)) { alert(errMsg(e)); return; }
             if (retried) { alert(`"${as}" already exists too. Nothing was restored.`); return; }
-            const name = window.prompt(`"${it.path}" already exists. Restore as:`, restoredName(it.path));
+            const name = window.prompt(`"${it.path}" already exists. Restore as:`, restoredName(it.path, it.isDir));
             if (name && name.trim()) await tryRestore(it, name.trim(), true);
         }
     };

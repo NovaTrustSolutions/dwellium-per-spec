@@ -158,14 +158,29 @@ export default function FileExplorer() {
         }
     }, [moveTarget, refresh, entries]);
 
-    // Move focus into the preview so Esc (handled by FilePreview's region) works at once.
+    // Move focus into the preview so Esc (handled by FilePreview's region) works at once,
+    // and hand it back to the row that opened it on close.
+    const openerRef = useRef<HTMLElement | null>(null);
     useEffect(() => {
         if (previewPath) bodyRef.current?.querySelector<HTMLElement>('[aria-label="Close preview"]')?.focus();
     }, [previewPath]);
+    const openPreview = useCallback((path: string) => {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && active.closest('[role="treeitem"]')) openerRef.current = active;
+        setPreviewPath(path);
+    }, []);
+    const closePreview = useCallback(() => {
+        setPreviewPath(null);
+        const opener = openerRef.current;
+        openerRef.current = null;
+        if (opener && document.contains(opener)) opener.focus();
+    }, []);
 
     // Trash restore: the item is back in the tree — reload and tell the user (owner-checked).
-    const handleRestored = useCallback(async (path: string) => {
-        const owner = userIdRef.current;
+    // `owner` is the account the Trash panel was rendered for — i.e. who clicked Restore —
+    // so a restore that finishes after an account switch never toasts on the next account.
+    const handleRestored = useCallback(async (path: string, owner: string | null) => {
+        if (userIdRef.current !== owner) return;
         await refresh();
         if (userIdRef.current !== owner) return;
         setToast(`Restored "${path}"`);
@@ -465,7 +480,7 @@ export default function FileExplorer() {
 
                 {/* Trash panel toggle */}
                 <button
-                    onClick={() => setShowTrash((v) => !v)}
+                    onClick={() => { setShowTrash((v) => !v); setPreviewPath(null); }}
                     title="Trash"
                     aria-label="Trash"
                     aria-pressed={showTrash}
@@ -533,7 +548,7 @@ export default function FileExplorer() {
 
             <div ref={bodyRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             {showTrash ? (
-                <TrashPanel onClose={() => setShowTrash(false)} onRestored={(p) => void handleRestored(p)} />
+                <TrashPanel onClose={() => setShowTrash(false)} onRestored={(p) => void handleRestored(p, userId)} />
             ) : (<>
             <div
                 onDragOver={handleRootDragOver}
@@ -624,14 +639,14 @@ export default function FileExplorer() {
                                 onChange={refresh}
                                 onRequestNewEntry={requestNewEntry}
                                 onRequestMove={setMoveTarget}
-                                onOpen={setPreviewPath}
+                                onOpen={openPreview}
                                 showFullPath={viewMode === 'flat'}
                             />
                         ))}
                     </>
                 )}
             </div>
-            {previewPath && <FilePreview path={previewPath} onClose={() => setPreviewPath(null)} />}
+            {previewPath && <FilePreview path={previewPath} onClose={closePreview} />}
             </>)}
             </div>
 

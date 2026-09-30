@@ -144,4 +144,51 @@ describe('FileExplorer P3 integration', () => {
         await waitFor(() => expect(screen.queryByText('Trash is empty')).toBeNull());
         expect(screen.getByRole('button', { name: 'Trash' }).getAttribute('aria-pressed')).toBe('false');
     });
+
+    it('review: a restore that finishes after an account switch does not toast on the new account', async () => {
+        m.listTrash.mockResolvedValue([{ id: 'i1', path: 'gone.md', name: 'gone.md', isDir: false, deletedAt: null }]);
+        let resolveRestore!: (v: { path: string }) => void;
+        m.restoreFromTrash.mockReturnValue(new Promise((r) => { resolveRestore = r; }));
+        const { rerender } = await setup();
+        fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+        fireEvent.click(await screen.findByLabelText('Restore gone.md'));
+        await waitFor(() => expect(m.restoreFromTrash).toHaveBeenCalled());
+        rerender(<Wrapper userId="u2" />);
+        await screen.findByText('a.txt');
+        resolveRestore({ path: 'gone.md' });
+        await new Promise((r) => setTimeout(r, 30));
+        expect(screen.queryByText('Restored "gone.md"')).toBeNull();
+    });
+
+    it('review: opening Trash closes the preview, so it does not reappear after', async () => {
+        await setup();
+        await openA();
+        fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+        fireEvent.click(await screen.findByLabelText('Close trash'));
+        await screen.findByText('a.txt');
+        expect(screen.queryByRole('region', { name: /Preview of/ })).toBeNull();
+        expect(m.readFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('review: closing the preview returns focus to the row that opened it', async () => {
+        await setup();
+        fireEvent.click(screen.getByText('a.txt'));
+        const rowEl = screen.getByText('a.txt').closest('[role="treeitem"]') as HTMLElement;
+        rowEl.focus();
+        fireEvent.keyDown(rowEl, { key: 'Enter' });
+        await screen.findByText('hello world');
+        fireEvent.click(screen.getByLabelText('Close preview'));
+        await waitFor(() => expect(document.activeElement).toBe(rowEl));
+    });
+
+    it('review: restore-as suggestion for a dotted FOLDER name keeps the whole name', async () => {
+        m.listTrash.mockResolvedValue([{ id: 'i1', path: 'docs/v1.2', name: 'v1.2', isDir: true, deletedAt: null }]);
+        m.restoreFromTrash.mockRejectedValueOnce(new api.ApiError('x', 409, 'DEST_EXISTS'));
+        const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
+        await setup();
+        fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+        fireEvent.click(await screen.findByLabelText('Restore v1.2'));
+        await waitFor(() => expect(prompt).toHaveBeenCalledWith('"docs/v1.2" already exists. Restore as:', 'docs/v1.2 (restored)'));
+        prompt.mockRestore();
+    });
 });

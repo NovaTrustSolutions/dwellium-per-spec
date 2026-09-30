@@ -141,5 +141,14 @@ export function useFileDialogs() {
         </>
     );
 
-    return { confirm, prompt, notify, host };
+    /** Cancel every open/queued dialog and clear toasts — used on account switch so nothing
+     *  from the previous account stays on screen or can be confirmed afterwards. */
+    const cancelAll = useCallback(() => {
+        [cur.current, ...queue.current].forEach((r) => (r as { resolve: (v: unknown) => void } | null)?.resolve(r ? cancelValue(r) : null));
+        queue.current = [];
+        show(null);
+        setToasts([]);
+    }, []);
+
+    return { confirm, prompt, notify, host, cancelAll };
 }

@@ -86,10 +86,12 @@ export default function ContentSearch() {
 
     useEffect(() => {
         let cancelled = false;
+        let filesSeq = 0; // newest load wins: an older fetch resolving late must not overwrite a newer list
         const loadFiles = () => {
+            const mine = ++filesSeq;
             fetchTree()
-                .then((t) => { if (!cancelled) { setFiles(allFilePaths(t)); setFilesUnavailable(false); } })
-                .catch(() => { if (!cancelled) setFilesUnavailable(true); });
+                .then((t) => { if (!cancelled && mine === filesSeq) { setFiles(allFilePaths(t)); setFilesUnavailable(false); } })
+                .catch(() => { if (!cancelled && mine === filesSeq) setFilesUnavailable(true); });
         };
         const loadTranscripts = () => { if (!cancelled) refreshTranscripts(); };
         const loadNames = () => { fetchFileNames().then((m) => { if (!cancelled) fileNamesRef.current = m; }); };

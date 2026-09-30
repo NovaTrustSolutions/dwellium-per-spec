@@ -34,10 +34,13 @@ function FilesGraphView() {
 
     useEffect(() => {
         let cancelled = false;
+        let seq = 0; // newest load wins: an older fetch resolving late must not overwrite a newer tree
         const load = () => (async () => {
-            try { const t = await fetchTree(); if (!cancelled) { setTree(t); setOffline(false); } }
-            catch { if (!cancelled) setOffline(true); }
-            finally { if (!cancelled) setLoading(false); }
+            const mine = ++seq;
+            const live = () => !cancelled && mine === seq;
+            try { const t = await fetchTree(); if (live()) { setTree(t); setOffline(false); } }
+            catch { if (live()) setOffline(true); }
+            finally { if (live()) setLoading(false); }
         })();
         void load();
         let timer: ReturnType<typeof setTimeout> | undefined;

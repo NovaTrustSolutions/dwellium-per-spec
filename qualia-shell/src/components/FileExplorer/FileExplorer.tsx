@@ -326,8 +326,11 @@ export default function FileExplorer() {
         setFilter('');
         setFocusPath(null);
         setFocusReq(null);
+        // Nothing opened for the previous account (a delete confirm, a restore prompt, its toasts)
+        // may stay on screen for the next one.
+        fileDialogs.cancelAll();
         void refresh();
-    }, [userId, refresh]);
+    }, [userId, refresh, fileDialogs.cancelAll]);
 
     // P4: other widgets (Workspace, Wiki, other windows) and our own mutations announce tree changes.
     // Debounced so a burst of mutations is one refetch; refresh()'s sequence guard still orders the results.
@@ -376,7 +379,14 @@ export default function FileExplorer() {
         const r = navKey(rows, path, key);
         if (!r) return false;
         if (r.focus) { setSelectedPath(r.focus); requestFocus(r.focus); }
-        else if (r.toggle) { if (!forceExpand?.has(r.toggle)) toggleFolder(r.toggle); }
+        else if (r.toggle) {
+            if (!forceExpand?.has(r.toggle)) toggleFolder(r.toggle);
+            // A folder the filter holds open can't collapse — ArrowLeft moves to its parent instead (APG).
+            else if (key === 'ArrowLeft') {
+                const parent = rows.find((x) => x.path === r.toggle)?.parent;
+                if (parent) { setSelectedPath(parent); requestFocus(parent); }
+            }
+        }
         else if (r.open) openPreview(r.open);
         return true;
     };

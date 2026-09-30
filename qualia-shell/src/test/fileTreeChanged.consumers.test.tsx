@@ -98,3 +98,38 @@ describe('FILE_TREE_CHANGED consumers', () => {
         expect(fetchTreeMock.mock.calls.length).toBe(before);
     });
 });
+
+describe('newest load wins (plan 076 P4 review)', () => {
+    it('Workspace: an older loadTree resolving after a newer one does not overwrite it', async () => {
+        const { useWorkspaceStore } = await import('../components/Workspace/workspaceStore');
+        let rOld!: (t: unknown) => void; let rNew!: (t: unknown) => void;
+        fetchTreeMock.mockReturnValueOnce(new Promise((r) => { rOld = r; }) as never).mockReturnValueOnce(new Promise((r) => { rNew = r; }) as never);
+        const a = useWorkspaceStore.getState().loadTree();
+        const b = useWorkspaceStore.getState().loadTree();
+        rNew([{ name: 'NEWER.md', path: 'NEWER.md', tier: 'file' }]); await b;
+        rOld([{ name: 'OLDER.md', path: 'OLDER.md', tier: 'file' }]); await a;
+        expect(useWorkspaceStore.getState().tree.map((x) => x.name)).toEqual(['NEWER.md']);
+    });
+});
+
+describe('newest load wins — KnowledgeGraph (plan 076 P4 review)', () => {
+    it('an older fetch resolving after a newer one does not overwrite the graph', async () => {
+        // The Workspace store also listens (module-level); an earlier test left a tree cached there.
+        (await import('../components/Workspace/workspaceStore')).useWorkspaceStore.getState().reset();
+        const pending: Array<(t: unknown) => void> = [];
+        fetchTreeMock.mockReset();
+        fetchTreeMock.mockImplementation(() => new Promise((r) => { pending.push(r); }));
+        const tree = (d: string) => [{ name: d, path: d, tier: 'domain', children: [{ name: 'f.md', path: `${d}/f.md`, tier: 'file' }] }];
+        render(<KnowledgeGraph />);
+        fireEvent.click(screen.getByRole('tab', { name: 'Workspace Files' }));
+        await advance(10);
+        const before = pending.length;
+        fire(); await advance(310); // the event starts a newer load
+        expect(pending.length).toBe(before + 1);
+        await act(async () => { pending[pending.length - 1](tree('NEWERDOM')); });
+        await act(async () => { pending.slice(0, -1).forEach((r) => r(tree('OLDERDOM'))); });
+        await advance(10);
+        expect(document.body.textContent).toContain('NEWERDOM');
+        expect(document.body.textContent).not.toContain('OLDERDOM');
+    });
+});

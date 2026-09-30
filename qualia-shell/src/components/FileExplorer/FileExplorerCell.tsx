@@ -231,7 +231,10 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
         const message = targets.length === 1 && targets[0] === entry.path
             ? `Move "${entry.name}"${isFolder ? ' and everything inside it' : ''} to Trash?`
             : `Move ${targets.length} item${targets.length === 1 ? '' : 's'} to Trash?\n${targets.slice(0, 5).map((p) => p.split('/').pop()).join('\n')}${targets.length > 5 ? `\n…and ${targets.length - 5} more` : ''}`;
-        const ok = await dialogs.confirm({ title: 'Move to Trash', message, confirmLabel: 'Move to Trash', danger: true });
+        // Selected items the filter (or a collapsed folder) is hiding are still trashed — say so.
+        const hidden = targets.filter((p) => !visiblePathsRef.current.includes(p)).length;
+        const fullMessage = hidden ? `${message}\n(${hidden} of these ${hidden === 1 ? 'is' : 'are'} not shown right now.)` : message;
+        const ok = await dialogs.confirm({ title: 'Move to Trash', message: fullMessage, confirmLabel: 'Move to Trash', danger: true });
         // The dialog outlives a re-auth: never delete A's paths from B's account.
         if (!ok || ctxValue.getOwner() !== owner) return;
 

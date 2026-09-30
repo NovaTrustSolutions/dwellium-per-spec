@@ -7,7 +7,7 @@ import { StrictMode } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import FileExplorer from '../components/FileExplorer/FileExplorer';
-import { fileExplorerStore, saveFileExplorer } from '../components/FileExplorer/fileExplorerStore';
+import { fileExplorerStore, saveFileExplorer, fileExplorerUserIdHolder } from '../components/FileExplorer/fileExplorerStore';
 import * as api from '../components/FileExplorer/fileExplorerApi';
 import { UserContext } from '../context/UserContext';
 import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
@@ -445,5 +445,42 @@ describe('file-tree-changed', () => {
         window.dispatchEvent(new Event(api.FILE_TREE_CHANGED));
         await new Promise((r) => setTimeout(r, 450));
         expect(m.fetchTree.mock.calls.length).toBe(base + 1);
+    });
+});
+
+describe('P4 review follow-ups (orchestrator)', () => {
+    it('an account switch closes an open dialog so the previous account\'s file names disappear', async () => {
+        const { rerender } = render(ui('u1'));
+        await screen.findByRole('treeitem', { name: /b\.md/ });
+        fireEvent.contextMenu(row('b.md'));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+        await dialog();
+        rerender(ui('u2'));
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        expect(m.deleteEntry).not.toHaveBeenCalled();
+    });
+
+    it('Delete says how many selected items the filter is hiding', async () => {
+        fileExplorerUserIdHolder.current = null; // an earlier test left it on 'u2'; mount() has no user
+        saveFileExplorer({ selectedPaths: ['b.md', 'c.png'], selectedPath: 'c.png' });
+        await mount();
+        expect(fileExplorerStore.getSnapshot().selectedPaths).toEqual(['b.md', 'c.png']);
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Filter files' }), { target: { value: 'b.md' } });
+        expect(rowPaths()).toEqual(['b.md']);
+        expect(fileExplorerStore.getSnapshot().selectedPaths).toEqual(['b.md', 'c.png']);
+        fireEvent.contextMenu(row('b.md'));
+        expect(fileExplorerStore.getSnapshot().selectedPaths).toEqual(['b.md', 'c.png']);
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+        const d = await dialog();
+        expect(d.textContent).toMatch(/1 of these is not shown right now/);
+        fireEvent.click(within(d).getByRole('button', { name: 'Cancel' }));
+    });
+
+    it('ArrowLeft on a folder the filter holds open moves to its parent', async () => {
+        await mount();
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Filter files' }), { target: { value: 'deep' } });
+        row('A/B').focus();
+        key('A/B', 'ArrowLeft');
+        await waitFor(() => expect(focused()).toBe('A'));
     });
 });

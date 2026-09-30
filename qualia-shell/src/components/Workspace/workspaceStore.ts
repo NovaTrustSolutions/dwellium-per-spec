@@ -43,6 +43,8 @@ import {
 import { fetchTree, mkdir, rename, move, deleteEntry, FILE_TREE_CHANGED } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { captureOwner } from '../../lib/perUserIdentity';
+
+let treeLoadSeq = 0;
 import { SEED_DOMAINES, SEED_TREE } from './workspaceLocalSeed';
 
 /**
@@ -285,14 +287,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         // Plan 076 P4: the file-tree-changed event can start this at any time — a fetch begun as
         // account A must never land in (or be persisted to) account B's workspace after a switch.
         const stillOwner = captureOwner();
+        const mine = ++treeLoadSeq; // newest load wins (the event, focus and mutations can overlap)
         set({ treeLoading: true, treeError: null });
         try {
             const tree = await fetchTree();
-            if (!stillOwner()) return;
+            if (!stillOwner() || mine !== treeLoadSeq) return;
             set({ tree, treeLoading: false, offline: false });
             persistWorkspace({ tree, domaines: get().domaines, threadMetas: get().threadMetas });
         } catch (err) {
-            if (!stillOwner()) return;
+            if (!stillOwner() || mine !== treeLoadSeq) return;
             set({
                 treeError: err instanceof Error ? err.message : 'Failed to load workspace tree',
                 treeLoading: false,

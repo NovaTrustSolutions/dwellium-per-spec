@@ -213,6 +213,8 @@ export default function SubscriptionsEditor(): JSX.Element;  // list + add / ren
 
 W1 two coders: (a) `AiSpend.tsx` tabs **Overview / By model / By feature**, an accessible chart (`role="img"` + visually-hidden table), CSV export of entries (client-side Blob); (b) budget: new `aiBudgetStore.ts` (per-user, One Save, `.reset()`), monthly budget input, a pace-vs-budget bar, and a warning line in the widget + Morning Brief when the pace exceeds budget. W2 reviewer. Add a proper subscriptions editor (add / remove / rename) in the widget, replacing `window.prompt` (D4).
 
+### Phase 2 status — DONE (PR #154, merged `9cf7528`, 2026-09-27)
+
 ### Phase 3 — Server-side spend, real bills, Claude Code (P2)
 
 **Decisions (Ilya, 2026-09-28):** server-side AI calls COUNT toward your total; reconcile against real provider invoices; include Claude Code usage — shown as **API-equivalent, not spend** (a Max subscription already covers it; no double count). Invoice reconciliation and the unattributed "Shared / system" server bucket are **god-role only**.
@@ -269,7 +271,7 @@ export function useClaudeCodeUsage(): { tokens: {...}; apiEquivalentUsd: number 
 // components/AiSpend/ClaudeCodeRow.tsx: tokens + "≈ $X at API rates · covered by your plan" — never added to spend.
 ```
 
-### Phase 2 status — DONE (PR #154, merged `9cf7528`, 2026-09-27)
+### Phase 3 status — backend DONE (NovaTrustSolutions/Dwellium#19, merged `e653fb9`, 2026-09-30); frontend PR #169. After the backend deploys, Ilya sets ANTHROPIC_ADMIN_API_KEY / OPENAI_ADMIN_API_KEY himself (hidden prompt).
 
 ### Phase 4 — Advisor (P2)
 
@@ -308,3 +310,5 @@ Dismiss/snooze per task (persisted), "Delegate to Hermes" button (enqueue on the
 - Blocking or throttling calls when over budget (warning only; blocking needs its own decision).
 - Fixing the ~30-holder login race (C4) systemically. Phase 1 closes it for spend only; spin a separate task for the rest.
 - TTS/STT/avatar pricing (listed as untracked in the UI).
+
+### Phase 4 status — DONE (PR #161, merged `4360f3a`, 2026-09-30)

@@ -27,12 +27,12 @@ import { getMarkdownExtensions, registerEditorView } from './markdownConfig';
 import { useScribeStore } from './scribeStore';
 import {
     dumpStore,
-    dumpUserIdHolder,
     appendDump,
     compileBrainDumpMarkdown,
     type DumpEntry,
 } from './dumpStore';
 import { UserContext } from '../../context/UserContext';
+import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 
@@ -46,7 +46,7 @@ export default function DumpMode() {
     // anonymous/test envs degrade to the `_anonymous` namespace gracefully.
     const userCtx = useContext(UserContext);
     const userId = userCtx?.user?.id ?? null;
-    dumpUserIdHolder.current = userId;
+    usePerUserIdentity();
 
     const dumps: DumpEntry[] = useSyncExternalStore(
         dumpStore.subscribe,

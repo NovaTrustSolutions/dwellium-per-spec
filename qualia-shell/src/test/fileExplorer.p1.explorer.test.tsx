@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FileExplorer from '../components/FileExplorer/FileExplorer';
-import { fileExplorerStore } from '../components/FileExplorer/fileExplorerStore';
+import { fileExplorerStore, saveFileExplorer } from '../components/FileExplorer/fileExplorerStore';
 import { UserContext } from '../context/UserContext';
 import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
 
@@ -134,5 +134,35 @@ describe('FileExplorer P1 — account switch, stale responses, multi-drop summar
         expect(message).toMatch(/Moved 0 of 2/);
 
         alertSpy.mockRestore();
+    });
+
+    it('review #1: drops persisted selections that no longer exist once the tree loads', async () => {
+        saveFileExplorer({ selectedPaths: ['real.md', 'ghost.md'], selectedPath: 'ghost.md' });
+        fetchTree.mockResolvedValue([{ name: 'real.md', path: 'real.md', tier: 'file' }]);
+        render(<Wrapper userId="userA" />);
+        await screen.findByText('real.md');
+        await waitFor(() => expect(fileExplorerStore.getSnapshot().selectedPaths).toEqual(['real.md']));
+        expect(fileExplorerStore.getSnapshot().selectedPath).toBeNull();
+    });
+
+    it('review #3: a move started as user A does not toast on user B\'s screen', async () => {
+        const tree: FileEntry[] = [
+            { name: 'target', path: 'target', tier: 'domain', children: [] },
+            { name: 'doc.md', path: 'doc.md', tier: 'file' },
+        ];
+        fetchTree.mockResolvedValue(tree);
+        const dMove = deferred<void>();
+        apiMove.mockImplementation(() => dMove.promise);
+
+        const { rerender } = render(<Wrapper userId="userA" />);
+        fireEvent.contextMenu(await screen.findByText('doc.md'));
+        fireEvent.click(screen.getByText('Move to…'));
+        fireEvent.click(await screen.findByRole('button', { name: /target/ }));
+        await waitFor(() => expect(apiMove).toHaveBeenCalledTimes(1));
+
+        rerender(<Wrapper userId="userB" />);
+        dMove.resolve();
+        await new Promise((r) => setTimeout(r, 20));
+        expect(screen.queryByText(/Moved "doc\.md"/)).toBeNull();
     });
 });

@@ -453,16 +453,17 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                         boxShadow: '0 12px 32px rgba(0,0,0,0.65)',
                     }}
                 >
+                    {/* Only Delete acts on a multi-selection; every other item collapses it to this row. */}
                     {isFolder && (
                         <>
-                            <CtxItem label="New File" disabled={locked} onClick={() => { onRequestNewEntry?.(entry.path, 'file'); setCtx(null); }} />
-                            <CtxItem label="New Folder" disabled={locked} onClick={() => { onRequestNewEntry?.(entry.path, 'folder'); setCtx(null); }} />
+                            <CtxItem label="New File" disabled={locked} onClick={() => { setSelectedPath(entry.path); onRequestNewEntry?.(entry.path, 'file'); setCtx(null); }} />
+                            <CtxItem label="New Folder" disabled={locked} onClick={() => { setSelectedPath(entry.path); onRequestNewEntry?.(entry.path, 'folder'); setCtx(null); }} />
                             <CtxDivider />
                         </>
                     )}
-                    {canShowInFinder && <CtxItem label="Show in Finder" onClick={() => { setCtx(null); showInFinder(); }} />}
-                    <CtxItem label="Move to…" disabled={locked} onClick={() => { setCtx(null); onRequestMove?.(entry); }} />
-                    <CtxItem label="Rename" shortcut="F2" disabled={locked} onClick={() => { setCtx(null); startRename(); }} />
+                    {canShowInFinder && <CtxItem label="Show in Finder" onClick={() => { setSelectedPath(entry.path); setCtx(null); showInFinder(); }} />}
+                    <CtxItem label="Move to…" disabled={locked} onClick={() => { setSelectedPath(entry.path); setCtx(null); onRequestMove?.(entry); }} />
+                    <CtxItem label="Rename" shortcut="F2" disabled={locked} onClick={() => { setSelectedPath(entry.path); setCtx(null); startRename(); }} />
                     <CtxItem label="Delete" danger disabled={locked} onClick={() => { setCtx(null); void handleDelete(); }} />
                 </div>
             )}

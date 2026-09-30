@@ -146,4 +146,13 @@ describe('FileExplorerCell delete (Plan 076 P1)', () => {
         // The child went with its folder — nothing stays selected.
         await waitFor(() => expect(fileExplorerStore.getSnapshot().selectedPaths).toEqual([]));
     });
+
+    it('review #2: menu actions other than Delete collapse a multi-selection to the clicked row', async () => {
+        await renderTree();
+        cmdClick('a.md');
+        cmdClick('b.md');
+        fireEvent.contextMenu(screen.getByText('b.md'));
+        fireEvent.click(screen.getByText('Rename'));
+        await waitFor(() => expect(fileExplorerStore.getSnapshot().selectedPaths).toEqual(['b.md']));
+    });
 });

@@ -19,6 +19,7 @@ import { useEffect, useState, useCallback, useRef, useContext } from 'react';
 import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot, Folder, FileText } from 'lucide-react';
 import { FileExplorerCell, resetVisiblePaths, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
+import { fileExplorerStore, saveFileExplorer } from './fileExplorerStore';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
 import { getWorkspaceRoot } from './workspaceRoot';
 import { MoveToModal } from './MoveToModal';
@@ -75,6 +76,10 @@ export default function FileExplorer() {
     const userCtx = useContext(UserContext);
     const userId = userCtx?.user?.id ?? null;
     const workspaceRoot = getWorkspaceRoot(userId);
+    // Post-await UI (toasts/alerts) checks this so a move or paste started as one
+    // account never reports on another account's screen after a re-auth switch.
+    const userIdRef = useRef(userId);
+    userIdRef.current = userId;
     const [entries, setEntries] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -100,6 +105,16 @@ export default function FileExplorer() {
             const list = await fetchTree();
             if (mySeq !== requestSeqRef.current) return; // superseded — drop
             setEntries(list);
+            // The selection is persisted, so it can name paths that are gone (deleted
+            // elsewhere, another device). Drop them so Delete never acts on a ghost.
+            const live = new Set<string>();
+            (function collect(l: FileEntry[]) { l.forEach((x) => { live.add(x.path); if (x.children) collect(x.children); }); })(list);
+            const sel = fileExplorerStore.getSnapshot();
+            const keep = sel.selectedPaths.filter((p) => live.has(p));
+            const anchor = sel.selectedPath && live.has(sel.selectedPath) ? sel.selectedPath : null;
+            if (keep.length !== sel.selectedPaths.length || anchor !== sel.selectedPath) {
+                saveFileExplorer({ selectedPaths: keep, selectedPath: anchor });
+            }
         } catch (err: any) {
             if (mySeq !== requestSeqRef.current) return; // superseded — drop
             setError(err?.message ?? 'Failed to load file tree');
@@ -113,6 +128,7 @@ export default function FileExplorer() {
     const doMove = useCallback(async (destPath: string) => {
         const src = moveTarget;
         if (!src) return;
+        const owner = userIdRef.current;
         // The backend's rename() replaces an existing destination — refuse instead of overwriting.
         if (childNames(entries, destPath).includes(src.name)) {
             alert(`"${src.name}" already exists in ${destPath || 'root'}. Rename one of them first.`);
@@ -122,9 +138,11 @@ export default function FileExplorer() {
             await apiMove(src.path, destFor(destPath, src.name), false);
             setMoveTarget(null);
             await refresh();
+            if (userIdRef.current !== owner) return;
             setToast(`Moved "${src.name}" to ${destPath || 'root'}`);
             setTimeout(() => setToast(null), 3000);
         } catch (err: any) {
+            if (userIdRef.current !== owner) return;
             alert(`Move failed: ${err?.message ?? err}`);
             setMoveTarget(null);
             await refresh(); // D6: the tree may be stale — that's why the move failed
@@ -172,6 +190,7 @@ export default function FileExplorer() {
         // unused but kept for symmetry with flat view counts
         void allFiles;
 
+        const owner = userIdRef.current;
         let pastedCount = 0;
         for (const item of imageItems) {
             const blob = item.getAsFile();
@@ -192,6 +211,7 @@ export default function FileExplorer() {
         }
         if (pastedCount > 0) {
             await refresh();
+            if (userIdRef.current !== owner) return;
             setToast(`${pastedCount} screenshot${pastedCount === 1 ? '' : 's'} pasted to ${targetFolder || 'root'}`);
             setTimeout(() => setToast(null), 3000);
         }

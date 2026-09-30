@@ -14,7 +14,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
 
 const fetchTreeMock = vi.fn();
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: () => fetchTreeMock(),
 }));
 
@@ -105,5 +106,21 @@ describe('Cycle 6 — workspaceStore.projectsForDomaine()', () => {
 
     it('returns an empty array for an unknown domaine path', () => {
         expect(useWorkspaceStore.getState().projectsForDomaine('Nope')).toEqual([]);
+    });
+});
+
+describe('loadTree owner guard (plan 076 P4)', () => {
+    it('drops a tree that arrives after an account switch', async () => {
+        const { setPerUserIdentity } = await import('../lib/perUserIdentity');
+        setPerUserIdentity('userA');
+        let resolve!: (t: FileEntry[]) => void;
+        fetchTreeMock.mockReturnValueOnce(new Promise<FileEntry[]>((r) => { resolve = r; }));
+        const pending = useWorkspaceStore.getState().loadTree();
+        setPerUserIdentity('userB');
+        useWorkspaceStore.getState().reset();
+        resolve(TREE);
+        await pending;
+        expect(useWorkspaceStore.getState().tree).toEqual([]);
+        setPerUserIdentity(null);
     });
 });

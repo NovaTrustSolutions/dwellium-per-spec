@@ -40,8 +40,9 @@ import {
     fetchDomaines, fetchThreadMeta, putDomaine, putThreadMeta,
     type DomaineMeta, type DomainePatch, type ThreadMeta,
 } from './workspaceApi';
-import { fetchTree, mkdir, rename, move, deleteEntry } from '../FileExplorer/fileExplorerApi';
+import { fetchTree, mkdir, rename, move, deleteEntry, FILE_TREE_CHANGED } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
+import { captureOwner } from '../../lib/perUserIdentity';
 import { SEED_DOMAINES, SEED_TREE } from './workspaceLocalSeed';
 
 /**
@@ -281,12 +282,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     },
 
     loadTree: async () => {
+        // Plan 076 P4: the file-tree-changed event can start this at any time — a fetch begun as
+        // account A must never land in (or be persisted to) account B's workspace after a switch.
+        const stillOwner = captureOwner();
         set({ treeLoading: true, treeError: null });
         try {
             const tree = await fetchTree();
+            if (!stillOwner()) return;
             set({ tree, treeLoading: false, offline: false });
             persistWorkspace({ tree, domaines: get().domaines, threadMetas: get().threadMetas });
         } catch (err) {
+            if (!stillOwner()) return;
             set({
                 treeError: err instanceof Error ? err.message : 'Failed to load workspace tree',
                 treeLoading: false,
@@ -442,3 +448,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     reset: () => set({ ...INITIAL }),
 }));
+
+// Refetch the cached tree when the file explorer mutates it (debounced ~300 ms).
+// ponytail: the store has no start/stop lifecycle, so this is a once-per-module listener on
+// the singleton store (window-flag guard survives HMR re-evaluation). It only refetches when
+// a tree is already cached, so an unused Workspace never triggers network, and reset()
+// (account switch / sign-out empties the tree) makes a pending timer a no-op.
+if (typeof window !== 'undefined') {
+    const w = window as unknown as { __dwelliumWsTreeListener?: boolean };
+    if (!w.__dwelliumWsTreeListener) {
+        w.__dwelliumWsTreeListener = true;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        window.addEventListener(FILE_TREE_CHANGED, () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                if (useWorkspaceStore.getState().tree.length > 0) void useWorkspaceStore.getState().loadTree();
+            }, 300);
+        });
+    }
+}

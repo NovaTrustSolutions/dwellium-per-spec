@@ -23,7 +23,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
-import { fetchTree, readFile } from '../FileExplorer/fileExplorerApi';
+import { fetchTree, readFile, FILE_TREE_CHANGED } from '../FileExplorer/fileExplorerApi';
 import { collectMoveTargets, type MoveTarget } from '../FileExplorer/moveTargets';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { activeThreadStore, activeThreadUserIdHolder } from '../Workspace/activeThreadStore';
@@ -140,6 +140,19 @@ export default function Wiki() {
     }, []);
 
     useEffect(() => loadTree(), [loadTree]);
+
+    // Explorer mutated the tree: refetch (debounced). loadTree cancels any in-flight fetch; on
+    // unmount the latest cancel (cancelLoadRef, not just the first) drops a late result.
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const onChanged = (): void => { clearTimeout(timer); timer = setTimeout(() => { loadTree(); }, 300); };
+        window.addEventListener(FILE_TREE_CHANGED, onChanged);
+        return () => {
+            window.removeEventListener(FILE_TREE_CHANGED, onChanged);
+            clearTimeout(timer);
+            cancelLoadRef.current?.();
+        };
+    }, [loadTree]);
 
     // Initial selection, once nodes are known: prefer the active thread if present in the tree.
     useEffect(() => {

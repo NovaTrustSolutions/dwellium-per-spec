@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, useId, type KeyboardEvent, type ReactNode } from 'react';
 import { Search, FileText, Brain, Layers, Inbox, BookOpen, Cpu, StickyNote, Mic } from 'lucide-react';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
-import { fetchTree } from '../FileExplorer/fileExplorerApi';
+import { fetchTree, FILE_TREE_CHANGED } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { dumpStore, type DumpEntry } from '../Scribe/dumpStore';
 import { synthesisStore, type Synthesis } from '../Synthesis/synthesisStore';
@@ -99,10 +99,15 @@ export default function ContentSearch() {
         loadFiles();
         loadTranscripts();
         loadNames();
+        let treeTimer: ReturnType<typeof setTimeout> | undefined;
+        const onTreeChanged = () => { clearTimeout(treeTimer); treeTimer = setTimeout(loadFiles, 300); };
+        window.addEventListener(FILE_TREE_CHANGED, onTreeChanged);
         window.addEventListener('focus', onFocus);
         window.addEventListener('storage', loadTranscripts);
         return () => {
             cancelled = true;
+            clearTimeout(treeTimer);
+            window.removeEventListener(FILE_TREE_CHANGED, onTreeChanged);
             window.removeEventListener('focus', onFocus);
             window.removeEventListener('storage', loadTranscripts);
         };

@@ -16,7 +16,8 @@ const renameMock = vi.fn();
 const moveMock = vi.fn();
 const deleteEntryMock = vi.fn();
 const fetchTreeMock = vi.fn();
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: () => fetchTreeMock(),
     mkdir: (path: string) => mkdirMock(path),
     rename: (fromPath: string, toName: string) => renameMock(fromPath, toName),

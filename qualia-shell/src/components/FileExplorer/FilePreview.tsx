@@ -3,17 +3,70 @@
  * Markdown goes through renderSafeMarkdown (the only allowed innerHTML path);
  * everything else is shown as wrapped plain text.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import { readFile, ApiError } from './fileExplorerApi';
+import { readFile, fetchBytes, ApiError } from './fileExplorerApi';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 
 type State =
     | { kind: 'loading' }
-    | { kind: 'ready'; content: string }
+    | { kind: 'ready'; content: string; path: string }
+    | { kind: 'image'; url: string }
     | { kind: 'error'; message: string };
 
 const isMarkdown = (path: string) => /\.(md|markdown)$/i.test(path);
+const isImage = (path: string) => /\.(png|jpe?g|gif|webp)$/i.test(path);
+const MD_IMG = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
+
+/** Resolve a relative image ref against the markdown file's folder; null if it escapes the user root. */
+function resolveRelative(mdPath: string, src: string): string | null {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith('/')) return null;
+    const out = mdPath.split('/').slice(0, -1);
+    for (const seg of src.split(/[?#]/)[0].split('/')) {
+        if (seg === '' || seg === '.') continue;
+        if (seg === '..') { if (!out.length) return null; out.pop(); } else out.push(seg);
+    }
+    return out.length ? out.join('/') : null;
+}
+
+/** Replace `![alt](src)` text (renderSafeMarkdown leaves it as text) with real <img> nodes; returns [img, path] pairs to load. */
+function inflateImages(root: HTMLElement, mdPath: string): Array<[HTMLImageElement, string]> {
+    const pending: Array<[HTMLImageElement, string]> = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes: Text[] = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!(n.parentElement?.closest('pre, code')) && n.nodeValue && n.nodeValue.includes('![')) nodes.push(n as Text);
+    }
+    for (const node of nodes) {
+        const frag = document.createDocumentFragment();
+        let last = 0;
+        const text = node.nodeValue ?? '';
+        for (const m of text.matchAll(MD_IMG)) {
+            frag.append(text.slice(last, m.index));
+            last = (m.index ?? 0) + m[0].length;
+            if (/^https?:\/\//i.test(m[2])) {
+                // Never auto-load a remote image: opening a file must not ping whatever server it
+                // names (tracking pixels). Show a link the user can choose to follow instead.
+                const a = document.createElement('a');
+                a.href = m[2];
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.textContent = `Remote image: ${m[1] || m[2]}`;
+                frag.append(a);
+            } else {
+                const img = document.createElement('img');
+                img.alt = m[1];
+                img.style.maxWidth = '100%';
+                const rel = resolveRelative(mdPath, m[2]);
+                if (rel) pending.push([img, rel]);
+                frag.append(img);
+            }
+        }
+        frag.append(text.slice(last));
+        node.replaceWith(frag);
+    }
+    return pending;
+}
 
 function errorMessage(err: unknown): string {
     if (err instanceof ApiError && err.status === 413) return 'Too large to preview (limit 2 MB)';
@@ -23,26 +76,52 @@ function errorMessage(err: unknown): string {
 
 export function FilePreview({ path, onClose }: { path: string; onClose: () => void }) {
     const [state, setState] = useState<State>({ kind: 'loading' });
-    const seq = useRef(0);
     const name = path.split('/').pop() || path;
 
+    const html = useMemo(() => (state.kind === 'ready' && state.path === path && isMarkdown(path) ? renderSafeMarkdown(state.content) : ''), [state, path]);
+    const mdRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        const mine = ++seq.current;
+        let live = true;
+        const urls: string[] = [];
+        const fresh = () => live;
+        const mint = (b: Blob) => { const u = URL.createObjectURL(b); urls.push(u); return u; };
         setState({ kind: 'loading' });
-        readFile(path).then(
-            (r) => { if (mine === seq.current) setState({ kind: 'ready', content: r.content }); },
-            (e) => { if (mine === seq.current) setState({ kind: 'error', message: errorMessage(e) }); },
-        );
+        const fail = (e: unknown) => { if (fresh()) setState({ kind: 'error', message: errorMessage(e) }); };
+        if (isImage(path)) {
+            fetchBytes(path).then((b) => { if (fresh()) setState({ kind: 'image', url: mint(b) }); }, fail);
+        } else {
+            readFile(path).then((r) => { if (fresh()) setState({ kind: 'ready', content: r.content, path }); }, fail);
+        }
+        return () => { live = false; urls.forEach((u) => URL.revokeObjectURL(u)); };
     }, [path]);
+
+    useEffect(() => {
+        const root = mdRef.current;
+        if (!root || !html) return;
+        const urls: string[] = [];
+        let live = true;
+        for (const [img, rel] of inflateImages(root, path)) {
+            fetchBytes(rel).then((b) => {
+                if (!live) return;
+                const u = URL.createObjectURL(b);
+                urls.push(u);
+                img.src = u;
+            }, () => { /* leave alt-only */ });
+        }
+        return () => { live = false; urls.forEach((u) => URL.revokeObjectURL(u)); };
+    }, [html, path]);
 
     const muted = { padding: 12, fontSize: 12, color: 'var(--text-secondary)' } as const;
     let body;
     if (state.kind === 'loading') body = <div style={muted}>Loading…</div>;
     else if (state.kind === 'error') body = <div role="alert" style={muted}>{state.message}</div>;
-    else if (isMarkdown(path)) {
-        body = <div data-testid="preview-markdown" style={{ padding: 12, fontSize: 13, color: 'var(--text-primary)' }} dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(state.content) }} />;
+    else if (state.kind === 'image') {
+        body = <div style={{ padding: 12 }}><img src={state.url} alt={name} style={{ maxWidth: '100%', height: 'auto' }} /></div>;
+    } else if (isMarkdown(path)) {
+        body = <div ref={mdRef} data-testid="preview-markdown" style={{ padding: 12, fontSize: 13, color: 'var(--text-primary)' }} dangerouslySetInnerHTML={{ __html: html }} />;
     } else {
-        body = <pre style={{ margin: 0, padding: 12, fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace, monospace' }}>{state.content}</pre>;
+        body = <pre style={{ margin: 0, padding: 12, fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace, monospace' }}>{state.kind === 'ready' ? state.content : ''}</pre>;
     }
 
     return (

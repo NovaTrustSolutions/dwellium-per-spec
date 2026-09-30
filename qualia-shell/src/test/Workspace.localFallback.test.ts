@@ -18,7 +18,8 @@ const fetchTreeMock = vi.fn();
 vi.mock('../components/Workspace/workspaceApi', () => ({
     fetchDomaines: () => fetchDomainesMock(),
 }));
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: () => fetchTreeMock(),
     mkdir: vi.fn(), rename: vi.fn(), move: vi.fn(), deleteEntry: vi.fn(),
 }));

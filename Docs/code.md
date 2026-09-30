@@ -486,6 +486,13 @@ Append-only log. Each entry: error → root cause → fix → prevention.
 - **Fix:** root `.gitattributes` → `Docs/code.md merge=union` (git's built-in union driver keeps both sides' lines). `git check-attr merge Docs/code.md` → `union`. Proven in a throwaway repo: the same two-branch append conflicts without the rule and merges cleanly with it (0 markers).
 - **Prevention / caveats:** keep entries append-only — union keeps both copies if two branches edit the SAME existing line, so fix an old entry in its own small PR. A union merge doesn't insert a blank line between the two new entries; tidy if needed. Local `git merge` honours the attribute; whether GitHub's PR mergeability check does is NOT verified yet — confirm on the next collision.
 
+## 2026-09-26 — Wiki deep-link test flaked under the full suite
+
+- **Error:** `Wiki.test.tsx` "selects the page named by dwellium:wiki-open-page" failed ~1 in 8 under parallel load (passed alone).
+- **Root cause:** not a lost event (the listener attaches on the first commit, before the awaited button appears): `window.dispatchEvent` runs outside React's event system, so the resulting state update was only scheduled, and under CPU load the flush outlasted `waitFor`'s 1 s default.
+- **Fix:** dispatch inside `await act(async () => …)` and assert directly. 20/20 runs green under load; breaking the listener still fails the test.
+- **Prevention:** wrap non-React `dispatchEvent` calls that should update a component in `act`, rather than widening timeouts.
+- **Second Wiki flake, a real product race:** "moves focus to the page heading when the user picks a node" failed under load with **Acme** selected after a click on **Beta**. The initial-selection effect (`Wiki.tsx`, runs after the tree paints) called `selectPath(nodes[0])` from a stale "nothing selected" view, so a click landing between paint and that effect was overwritten. Fix: `setSelectedPath((prev) => prev ?? initial)`. Under two concurrent full-suite loads: 1/20 failures before, 0/20 after (RTL's `act` flushes the effect before any click, so no deterministic test). Rule: an "initial default" effect must use a functional update that never replaces a value the user set.
 ## 2026-09-26 — Five more per-user holders were set only by their widget (copaw memory leaked across accounts)
 
 - **Error:** after an account switch, `unifiedMemory.recall()` / `memoryCounts()` — reached by the `skill-memory-recall` agent skill and the "recall memory" command with no widget open — read the PREVIOUS account's CoPaw memory until Hive or Synthesis rendered.

@@ -14,7 +14,11 @@
 ## Status
 
 - **Priority**: P0 (Phase 1–2), P1 (Phase 3), P2 (Phase 4–5)
-- **Progress (2026-09-25)**: Phases 1–5 DONE + per-account isolation (holders, sign-in gate, owner-bound object ids, brief owner check). Frontend `feat/067-thoughtweaver-phase1`, backend `feat/067-thoughtweaver-p2` @ `e00caf2` — not pushed. Harness: before 44/68 → after 68/68.
+- **Status**: ✅ ALL PHASES MERGED — Phases 1–5 + per-account isolation.
+  - Frontend: NovaTrustSolutions/dwellium-per-spec#146 (merge `2862c0b`, 2026-09-25; branch was named `feat/067-thoughtweaver-phase1` but carries Phases 1–5). Live on Netlify production (verified 2026-09-25 by crawling prod chunks for phase markers).
+  - Backend: NovaTrustSolutions/Dwellium#14 → `main` (`e4ffa98`), then Dwellium#16 → `backend/ship` (`5b602cd`, 2026-09-25).
+  - Cloud Run deploy of `backend/ship`: PENDING (Ilya; `ENABLE_SNAPSHOTS=true SNAPSHOT_CUTOVER=1 DWELLIUM_SNAPSHOT_INTERVAL_MIN=5 bash deploy/cloud-run.sh`).
+  - Harness: before 44/68 → after 68/68.
 - **Effort**: L overall (5 phases, each S–M)
 - **Planned at**: frontend `706233b` (main), 2026-09-25
 - **Source**: read-only audit — 4 mappers by file ownership + 1 refute-first reviewer
@@ -63,7 +67,7 @@ Cross-cutting (out of scope, file a follow-up): D1's in-memory retry queue affec
 
 ## Phases (swarm waves by file ownership)
 
-### Phase 1 — Stop data loss (D1, D2, G3) · P0 · M  *(design revised at execution, 2026-09-25)*
+### Phase 1 — Stop data loss (D1, D2, G3) · P0 · M  *(design revised at execution, 2026-09-25)*  · ✅ MERGED (#146)
 The capture array shape is read by ConnectionsPanel, unifiedMemory, dailySynthesis, Drive backup,
 Stella and the backend (Morning Brief, KG) — so no shape change. Instead:
 - **W1 coder A — `src/lib/oneSaveStore.ts` (root fix for D1, all stores):** `set()` writes a
@@ -80,7 +84,7 @@ Stella and the backend (Morning Brief, KG) — so no shape change. Instead:
 - **Acceptance** (mutation-checked): stale-remote hydrate after a "reload" keeps an unsaved
   capture; delete an imported capture → next import does not bring it back; StrictMode mount.
 
-### Phase 2 — Per-user isolation (D3, D4, D5) · P0 · M  *(G1/G2 = recommended options, approved 2026-09-25)*
+### Phase 2 — Per-user isolation (D3, D4, D5) · P0 · M  *(G1/G2 = recommended options, approved 2026-09-25)*  · ✅ MERGED (#146)
 **CONTRACT (shared by all three coders):**
 - Backend `POST /api/thought-weaver/capture` `{ text }` → `{ success, data: { filed_to, confidence, destination_name, classification } }` — classify only, store NOTHING. 400 if empty, 413 if text > 20 000 chars.
 - Backend `POST /api/thought-weaver/inbox` `{ text }` → classifies server-side and appends
@@ -96,14 +100,14 @@ Stella and the backend (Morning Brief, KG) — so no shape change. Instead:
 Waves: W1 = backend coder (backend worktree `~/dwellium-backend/worktrees/067-thoughtweaver`) ∥ widget coder (`ThoughtWeaver.tsx`, new `twInbox.ts`) ∥ phone coder (`app/routes/capture.tsx`). W2 = orchestrator read + full gates. D5: header stats come from `deriveStats(localCaptures)` only.
 - **Acceptance**: backend supertest — user A's inbox never readable/writable as B; removed routes 404; 413 on oversize; `/capture` leaves no state. Frontend — no request URL contains `key=`; phone capture shows sign-in on 401; desktop imports an inbox item once and a deleted one stays deleted.
 
-### Phase 3 — Safety UX (D6, D9) · P1 · S
+### Phase 3 — Safety UX (D6, D9) · P1 · S  · ✅ MERGED (#146)
 - Confirm on backend delete (reuse the `window.confirm` pattern at `:571`); `aria-live="polite"` on the result toast, `aria-busy` on Capture; toast for "Sync from captures (N added)".
 
-### Phase 4 — Styling (D7) · P2 · M
+### Phase 4 — Styling (D7) · P2 · M  · ✅ MERGED (#146)
 - Single owner: `ThoughtWeaver.css`. Map the 43 orphaned classes onto the existing unused BEM rules (rename in CSS, not TSX, to keep the diff in one file); delete CSS rules nothing renders; theme tokens only (`grep -rn -- '--name:' src/styles` before using any); container query for narrow windows.
 - **Acceptance**: harness before/after (`dwellium-standalone-widget-harness`), cosmos + latte (seed `dwellium-theme` via `addInitScript` and assert luminance), axe 0 serious; re-run the class-diff script → 0 orphans.
 
-### Phase 5 — Categorizer + drift (D8, D10) · P2/P3 · S
+### Phase 5 — Categorizer + drift (D8, D10) · P2/P3 · S  · ✅ MERGED (#146)
 - `localCategorizer.ts` + backend classifier: word-boundary regex (`\b…\b`, escaped); `detectName` requires a social cue or rejects when followed by project/street/lake-style nouns; non-Latin text gets an explicit "heuristic is English-only" label. Balanced-bracket `parseJsonLoose`.
 - Stella Dream → `thoughtWeaverStore.getSnapshot()`; fix `widgetSearch.ts` description; mark plan 028 DONE-superseded, close BACKLOG item, note in `docs/code.md`.
 - **Acceptance**: table-driven tests for every false positive above.

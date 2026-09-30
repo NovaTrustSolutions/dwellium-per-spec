@@ -221,7 +221,37 @@ W1 two coders: (a) `AiSpend.tsx` tabs **Overview / By model / By feature**, an a
 
 Questions for Ilya: (a) do backend calls count toward the user's widget total, or show separately? (b) do you want the admin-key reconciliation at all? (c) include CLI usage?
 
+### Phase 2 status — DONE (PR #154, merged `9cf7528`, 2026-09-27)
+
 ### Phase 4 — Advisor (P2)
+
+**Decision (Ilya, 2026-09-27): the advisor reads the user's OWN to-dos (ThoughtWeaver "Today" list), not the AI personas' queue.** Persona-queue tasks are already with AI (the Hermes runner auto-claims them), so "your time" advice and a "Delegate" button made no sense there.
+
+**Phase 4 contract (pre-seeded).** `TodoItem.advisor?` is added to `components/ThoughtWeaver/todoStore.ts`.
+
+```ts
+// todoStore.ts (pre-seeded type)
+interface TodoAdvisorState { dismissed?: boolean; snoozedUntil?: number; delegatedTo?: { personaId: string; taskId: string; at: string } }
+TodoItem.advisor?: TodoAdvisorState;
+
+// lib/advisorActions.ts (F2) — each returns false/null and changes nothing when the to-do id is unknown
+export function dismissAdvice(todoId: string): boolean;
+export function snoozeAdvice(todoId: string, untilMs: number): boolean;
+export function undoAdvice(todoId: string): boolean;                 // clears dismissed + snoozedUntil (not delegation)
+export function delegateTodo(todoId: string, personaId: string): string | null; // addTask(personaId, text, 'user') then records delegatedTo; returns taskId
+
+// costAdvisor.ts (F1)
+export interface AdvisorTask { id: string; title: string }
+export function advisorCandidates(todos: TodoItem[], now?: number): AdvisorTask[]; // !done, !dismissed, snoozedUntil <= now, !delegatedTo
+export function evaluateTasks(tasks: AdvisorTask[], kpiPerHour: number, opts?: AdvisorOptions): Recommendation[];
+export function costAdvisoryLines(tasks: AdvisorTask[], kpiPerHour: number, max?: number): string[];
+export interface MeasuredAiCost { perTaskUsd: number; samples: number }
+export function measuredHermesTaskCost(ledger: UsageLedger, work: PersonaWorkState, now?: number): MeasuredAiCost | null; // last 30 days: sum of ledger entries with source 'hermes' / Hermes tasks completed; null when < 5 completed
+// AdvisorOptions gains aiCostOverrideUsd?: number; Recommendation gains aiCostSource: 'benchmark' | 'measured'
+export function pickHermesPersona(category: TaskCategory): string;   // always a HERMES_PERSONA_IDS member
+```
+Hermes runner LLM calls are tagged `source: 'hermes'` (F2).
+
 
 Dismiss/snooze per task (persisted), "Delegate to Hermes" button (enqueue on the persona queue that already exists), AI cost per category from the ledger's `bySource` average when ≥5 samples, categorizer fix for "email" (reply/respond → support first). Tests: categorizer table + evaluateTasks with dismissed ids.
 

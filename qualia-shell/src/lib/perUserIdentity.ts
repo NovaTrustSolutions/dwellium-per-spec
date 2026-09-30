@@ -102,6 +102,9 @@ export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 058 — per-user Universal Shell nav persistence (universalShellStore). */
 export const universalShellUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 068 phase 2 — per-user monthly AI budget (aiBudgetStore). */
+export const aiBudgetUserIdHolder: UserIdHolder = makeHolder();
+
 /** Plan 067 — ThoughtWeaver captures / imported ids / to-dos / reports. Were
  *  set only when the widget rendered, so readers outside it (unifiedMemory,
  *  dailySynthesis, ConnectionsPanel) could read the PREVIOUS account's
@@ -110,6 +113,19 @@ export const thoughtWeaverUserIdHolder: UserIdHolder = makeHolder();
 export const twImportedUserIdHolder: UserIdHolder = makeHolder();
 export const todoUserIdHolder: UserIdHolder = makeHolder();
 export const reportUserIdHolder: UserIdHolder = makeHolder();
+
+/** Plan 067 (2026-09-25) — five more per-widget-render-only holders. Were set
+ *  only when their widget rendered, so readers outside it (unifiedMemory's
+ *  `recall`/`memoryCounts`, reached from the `skill-memory-recall` agent skill
+ *  and `dwelliumCommands.recallMemory`) could read the PREVIOUS account's
+ *  copaw memory after a switch until the widget was opened. */
+export const dumpUserIdHolder: UserIdHolder = makeHolder();
+export const synthesisUserIdHolder: UserIdHolder = makeHolder();
+export const wikiUserIdHolder: UserIdHolder = makeHolder();
+export const foundryUserIdHolder: UserIdHolder = makeHolder();
+export const copawUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 071 phase 3 — per-user last run / status per agent (agentActivityStore). */
+export const agentActivityUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -144,10 +160,17 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     gridLockUserIdHolder,
     stellaPrefsUserIdHolder,
     universalShellUserIdHolder,
+    aiBudgetUserIdHolder,
     thoughtWeaverUserIdHolder,
     twImportedUserIdHolder,
     todoUserIdHolder,
     reportUserIdHolder,
+    dumpUserIdHolder,
+    synthesisUserIdHolder,
+    wikiUserIdHolder,
+    foundryUserIdHolder,
+    copawUserIdHolder,
+    agentActivityUserIdHolder,
 ];
 
 /**
@@ -156,7 +179,32 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
  * Safe to call during render — it only mutates plain objects.
  */
 export function setPerUserIdentity(userId: string | null): void {
+    currentOwnerId = userId;
     for (const holder of ALL_HOLDERS) holder.current = userId;
+}
+
+/* ── Owner guard for async writers ───────────────────────────────────────────
+ * Every per-user store resolves its key from its holder AT WRITE TIME. Code
+ * that starts as user A, awaits (fetch / LLM / timer), then writes would land
+ * A's result in B's namespace (or `_anonymous`) if the account changed in
+ * between — and a One Save store would push it to B's server copy too.
+ * Capture the owner BEFORE the first await and re-check right before the
+ * write (same idea as oneSaveStore hydrate's `ownerAtStart`):
+ *
+ *     const stillOwner = captureOwner();
+ *     const result = await work();
+ *     if (!stillOwner()) return;   // account changed — drop, never redirect
+ *     recordThing(result);
+ *
+ * ponytail: per-call-site guard (JS has no async context a store could read);
+ * an AsyncContext-based store-level guard can replace these when it ships.
+ */
+let currentOwnerId: string | null = null;
+
+/** Snapshot the signed-in owner now; the returned check is true only while it is unchanged. */
+export function captureOwner(): () => boolean {
+    const atStart = currentOwnerId;
+    return () => currentOwnerId === atStart;
 }
 
 /**

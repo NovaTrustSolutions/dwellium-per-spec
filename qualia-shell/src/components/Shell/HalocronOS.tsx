@@ -38,7 +38,8 @@ const CognitiveHarness = lazy(() => import('../CognitiveHarness/CognitiveHarness
 const AdvisoryBoardDiagram = lazy(() => import('../AdvisoryBoard/AdvisoryBoardDiagram'));
 import { advisoryLensBus } from '../../lib/busChannels';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
-import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
+import { useServerUsage } from '../../lib/serverSpend';
+import { useSubscriptions, monthlyTotal, prorateMonthly } from '../../lib/subscriptionsStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext, type DwelliumUser } from '../../context/UserContext';
@@ -334,24 +335,18 @@ export default function HalocronOS() {
     usePerUserIdentity();
     const greetingName = accountGreetingName(userCtx?.user);
     const { integrations } = useIntegrations();
+    // Plan 068 Phase 3: pull server-side usage into the aggregate ledger so
+    // the Home spend total includes it without opening the AI Spend widget.
+    useServerUsage();
     const usage = useLlmUsage();
     const subs = useSubscriptions();
     const days = lastNDays(RANGE_DAYS[range], usage);
     const tokenSpend = days.reduce((s, d) => s + d.estCost, 0);   // real est. $ from the ledger
     const calls = days.reduce((s, d) => s + d.calls, 0);          // real LLM turns
     const flatMonthly = monthlyTotal(subs);                       // real subscriptions / month
-    const totalSpend = flatMonthly + tokenSpend;
+    const subsForRange = prorateMonthly(flatMonthly, RANGE_DAYS[range]); // prorated to the selected range
+    const totalSpend = subsForRange + tokenSpend;
     const fmt = (n: number) => n >= 100 ? `$${Math.round(n).toLocaleString()}` : `$${n.toFixed(2)}`;
-
-    // Edit subscriptions inline so the figure is EXACTLY the user's spend.
-    const editPlans = () => {
-        const next = subs.map((s) => {
-            const v = window.prompt(`${s.name} (${s.vendor}) — monthly $`, String(s.monthly));
-            return v == null ? s : { ...s, monthly: Number(v.replace(/[^0-9.]/g, '')) || 0 };
-        });
-        saveSubscriptions(next);
-        subscriptionsStore.set(next, () => {}); // ensure snapshot update for SSR-store consumers
-    };
 
     // Bus listener MUST be declared before the early return below so the hook
     // count is identical whether the OS is enabled or not — otherwise toggling
@@ -708,10 +703,14 @@ export default function HalocronOS() {
                             </div>
 
                             <div className="hos-glance">
-                                <button type="button" className="hos-glance__card hos-glance__card--spend" onClick={editPlans} title="Click to edit your real plans">
+                                <button type="button" className="hos-glance__card hos-glance__card--spend" onClick={() => openWidget('ai-spend', 'AI Spend')} title="Open AI Spend to edit">
                                     <div className="hos-glance__cap">AI SPEND</div>
                                     <div className="hos-glance__val">{fmt(totalSpend)}</div>
-                                    <div className="hos-glance__sub">{fmt(flatMonthly)} subscriptions + {fmt(tokenSpend)} tokens ({RANGE_LABEL[range]}) · click to edit</div>
+                                    <div className="hos-glance__sub">
+                                        {subs.length === 0
+                                            ? 'No subscriptions added · open AI Spend to edit'
+                                            : `${fmt(subsForRange)} subscriptions (prorated, ${RANGE_LABEL[range]}) + ${fmt(tokenSpend)} tokens · open AI Spend to edit`}
+                                    </div>
                                 </button>
                                 <div className="hos-glance__card hos-glance__card--save">
                                     <div className="hos-glance__cap">TOKENS · EST</div>

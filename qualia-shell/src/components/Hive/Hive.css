@@ -1,0 +1,17 @@
+/* Hive — container-query root so the CoPaw memory rail narrows on tight
+   window widths instead of squeezing the agent grid. `.hive-root` is the
+   container; the rule targets `.hive-rail` (a descendant), never itself. */
+.hive-root {
+    container-type: inline-size;
+    container-name: hive;
+}
+
+.hive-rail {
+    width: 280px;
+}
+
+@container hive (max-width: 900px) {
+    .hive-rail {
+        width: 200px;
+    }
+}

@@ -29,7 +29,7 @@ import { parseBoard, parseInterviewQuestions } from '../../lib/advisoryBoard/par
 import { advisoryBoardStore, removeSession, saveSession } from '../../lib/advisoryBoard/store';
 import { DEMO_BOARD } from '../../lib/advisoryBoard/demo';
 import type { AdvisoryBoardSession } from '../../lib/advisoryBoard/types';
-import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
 import AdvisoryBoardDiagram from './AdvisoryBoardDiagram';
 import './AdvisoryBoard.css';
 
@@ -94,6 +94,7 @@ export default function AdvisoryBoard() {
         if (busy) return;
         if (!llmReady) { setErr('Add an AI key to run the board.'); return; }
         setBusy('board'); setErr('');
+        const stillOwner = captureOwner();
         try {
             const raw = await run(buildBoardPrompt({ topic, questions, answers, skipped }), 2600);
             const next: AdvisoryBoardSession = {
@@ -101,7 +102,7 @@ export default function AdvisoryBoard() {
                 result: parseBoard(raw), lensNotes: {}, updatedAt: Date.now(),
             };
             setSession(next);
-            saveSession(next);
+            if (stillOwner()) saveSession(next); // account switched mid-run — drop, never redirect
             setStage('result');
         } catch (e: unknown) {
             setErr(e instanceof Error ? e.message : 'The board run failed.');
@@ -116,12 +117,13 @@ export default function AdvisoryBoard() {
         const subject = (target?.topic || topic).trim();
         if (!subject) { setErr('Write the decision first, then ask a single lens.'); return; }
         setBusy(lensId); setErr('');
+        const stillOwner = captureOwner();
         try {
             const raw = await run(buildLensPrompt(lensId, subject, target?.result?.contextRead), 700);
             if (target) {
                 const next = { ...target, lensNotes: { ...target.lensNotes, [lensId]: raw }, updatedAt: Date.now() };
                 setSession(next);
-                saveSession(next);
+                if (stillOwner()) saveSession(next); // account switched mid-run — drop, never redirect
             }
         } catch (e: unknown) {
             setErr(e instanceof Error ? e.message : 'That lens failed to answer.');

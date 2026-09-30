@@ -4,14 +4,13 @@
  * Each is an input → `callLlm` → structured output flow. Output can be copied
  * or opened in Scribe. Honest offline state when no LLM is configured.
  */
-import { useState, useCallback, useContext } from 'react';
+import { useState, useCallback } from 'react';
 import { Bot, Play, Copy, FileUp, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useScribeStore } from '../Scribe/scribeStore';
-import { UserContext } from '../../context/UserContext';
 import { captureFacts, copawUserIdHolder } from '../Hive/copawStore';
 import { AGENTS, composePrompt, canRun, type AgentMode } from './agentDefs';
 
@@ -22,8 +21,6 @@ export default function BuilderAgents() {
     const { integrations } = useIntegrations();
     const ai = useAIAvailability();
     const llmReady = hasActiveLlm(integrations.llm);
-    const userCtx = useContext(UserContext);
-    copawUserIdHolder.current = userCtx?.user?.id ?? null;
     const [mode, setMode] = useState<AgentMode>('schema');
     const [values, setValues] = useState<Record<string, string>>({ format: 'JSON Schema' });
     const [output, setOutput] = useState('');
@@ -38,12 +35,13 @@ export default function BuilderAgents() {
         if (!canRun(mode, values) || busy) return;
         if (!hasActiveLlm(integrations.llm)) { setErr('No LLM configured — add a key above.'); return; }
         setBusy(true); setErr(''); setOutput(''); setCopied(false);
+        const uid = copawUserIdHolder.current; // before the await — see captureFacts
         try {
             const { systemPrompt, prompt } = composePrompt(mode, values);
-            const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text' }, integrations.llm);
+            const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text', source: 'builder-agents' }, integrations.llm);
             if (res && res.text.trim()) {
                 setOutput(res.text.trim());
-                captureFacts(def.label, res.text.trim()); // CoPaw §8.5
+                captureFacts(def.label, res.text.trim(), uid); // CoPaw §8.5
             }
             else setErr('The agent returned no output.');
         } catch (e: any) {

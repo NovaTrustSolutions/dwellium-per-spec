@@ -164,6 +164,24 @@ describe('run with agent', () => {
         expect(artifacts.some(a => a.source === 'mission-control' && a.content === 'Draft output text')).toBe(true);
     });
 
+    it('action edited mid-run -> no "result saved" note, no artifact, no result (review p3 #2)', async () => {
+        const run = deferred<{ ok: true; text: string }>();
+        vi.mocked(runGoalAction).mockReturnValue(run.promise as never);
+        const g = goalWithPlan('Grow');
+        const actionText = g.plan!.agentActions[0].text;
+        renderMc();
+        fireEvent.click(screen.getByRole('button', { name: `Run with agent: ${actionText}` }));
+        // Edit the action's text while the run is in flight (straight through the store).
+        const { editGoalAction } = await import('../lib/goalsStore');
+        editGoalAction(g.id, 'agentActions', 0, 'Changed while running');
+        // Rows are keyed by text, so the edited row remounts; settle the in-flight run inside act.
+        await act(async () => { run.resolve({ ok: true, text: 'Orphan draft' }); await run.promise; });
+        const stored = goalsStore.getSnapshot().find(x => x.id === g.id)!;
+        expect(stored.notes).toHaveLength(0);
+        expect(stored.plan!.agentActions.some(a => a.result)).toBe(false);
+        expect(artifactStore.getSnapshot().some(a => a.content === 'Orphan draft')).toBe(false);
+    });
+
     it('no-llm -> alert', async () => {
         vi.mocked(runGoalAction).mockResolvedValue({ ok: false, reason: 'no-llm' });
         const g = goalWithPlan('Grow');

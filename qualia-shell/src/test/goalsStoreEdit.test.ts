@@ -270,3 +270,21 @@ describe('sanitize round-trip of targetDate/result through mergeGoals', () => {
         expect(repaired!.plan!.agentActions[0].result).toBeUndefined();
     });
 });
+
+describe('setGoalActionResult — duplicate action text (review p3 #1)', () => {
+    it('prefers the clicked row index when its text still matches', () => {
+        const g = createGoal('Dup');
+        updateGoalPlan(g.id, { brief: 'b', agentActions: [{ text: 'Draft an email', done: false }, { text: 'Draft an email', done: false }], userActions: [], clarifyingQuestions: [] });
+        expect(setGoalActionResult(g.id, 'agentActions', 'Draft an email', 'SECOND', 1)).toBe(true);
+        const acts = goalsStore.getSnapshot().find(x => x.id === g.id)!.plan!.agentActions;
+        expect(acts[0].result).toBeUndefined();
+        expect(acts[1].result?.text).toBe('SECOND');
+    });
+    it('falls back to text when the clicked row moved', () => {
+        const g = createGoal('Moved');
+        updateGoalPlan(g.id, { brief: 'b', agentActions: [{ text: 'A', done: false }, { text: 'B', done: false }], userActions: [], clarifyingQuestions: [] });
+        removeGoalAction(g.id, 'agentActions', 0); // B shifts 1 → 0
+        expect(setGoalActionResult(g.id, 'agentActions', 'B', 'res', 1)).toBe(true);
+        expect(goalsStore.getSnapshot().find(x => x.id === g.id)!.plan!.agentActions[0].result?.text).toBe('res');
+    });
+});

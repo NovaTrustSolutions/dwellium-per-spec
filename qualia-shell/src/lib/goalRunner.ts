@@ -21,9 +21,10 @@ function neutralizeDelimiterLines(text: string): string {
     return text
         .split('\n')
         .map(line => {
-            const trimmed = line.trimStart();
+            // Ignore leading whitespace, bullets and punctuation ("- ANSWERS…", "> GOAL…").
+            const trimmed = line.replace(/^[\s\p{P}\p{S}\d]+/u, '');
             const isForged = BLOCK_DELIMITERS.some(d => trimmed.toUpperCase().startsWith(d));
-            return isForged ? line.replace(/^(\s*)/, '$1​') : line;
+            return isForged ? `[quoted] ${line}` : line;
         })
         .join('\n');
 }

@@ -370,17 +370,19 @@ export function removeGoalAction(id: string, side: GoalSide, index: number): voi
 
 /**
  * Store (or clear with null) the run result on the action whose text equals
- * `actionText` — located by text, not index, so an edit during the run can't
- * attach it to the wrong row. Returns false when no such action exists.
+ * `actionText`. `index` (the row the user clicked) wins when that row still has
+ * `actionText` — two actions can share text; otherwise the first row with that
+ * text is used (the row moved), and an edited/removed action matches nothing.
+ * Returns false when nothing was written.
  */
-export function setGoalActionResult(id: string, side: GoalSide, actionText: string, text: string | null): boolean {
+export function setGoalActionResult(id: string, side: GoalSide, actionText: string, text: string | null, index?: number): boolean {
     let found = false;
     const now = Date.now();
     const t = text === null ? null : text.slice(0, MAX_RESULT_LEN);
     persist(goalsStore.getSnapshot().map(g => {
         if (g.id !== id || !g.plan || isTombstone(g)) return g;
         const list = g.plan[side];
-        const idx = list.findIndex(a => a.text === actionText);
+        const idx = index !== undefined && list[index]?.text === actionText ? index : list.findIndex(a => a.text === actionText);
         if (idx === -1) return g;
         found = true;
         const actions = list.map((a, i) => {

@@ -85,8 +85,10 @@ function ActionRow({ goal, side, action, index }: { goal: Goal; side: GoalSide; 
         const stillOwner = captureOwner();
         const result = await runGoalAction(goal, action.text, integrations.llm);
         if (!stillOwner()) return; // account switched mid-run — drop the result entirely
-        if (result.ok) {
-            setGoalActionResult(goal.id, side, action.text, result.text);
+        // Attach first; the note + artifact only when the result actually landed (the action
+        // may have been edited/removed or the goal deleted while the run was in flight).
+        const saved = result.ok && setGoalActionResult(goal.id, side, action.text, result.text, index);
+        if (saved) {
             addGoalNote(goal.id, `▶ ${action.text} — result saved`);
             recordArtifact({
                 content: result.text,
@@ -161,7 +163,7 @@ function ActionRow({ goal, side, action, index }: { goal: Goal; side: GoalSide; 
                     <div className="mc__result-actions">
                         <button aria-label={`Mark done: ${action.text}`} onClick={markDone} disabled={action.done}>Mark done</button>
                         <button aria-label={`Open in ARA: ${action.text}`} onClick={openInAra}>Open in ARA</button>
-                        <button aria-label={`Dismiss result: ${action.text}`} onClick={() => setGoalActionResult(goal.id, side, action.text, null)}>Dismiss</button>
+                        <button aria-label={`Dismiss result: ${action.text}`} onClick={() => setGoalActionResult(goal.id, side, action.text, null, index)}>Dismiss</button>
                     </div>
                 </div>
             )}

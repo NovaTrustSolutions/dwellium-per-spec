@@ -17,7 +17,7 @@ import {
 } from '../lib/morningBriefStore';
 import { memoryStore, memoryUserIdHolder } from '../components/HonchoHermesPanel/honchoMemoryStore';
 import { hermesLearningStore, hermesLearningUserIdHolder, recordRun } from '../components/HonchoHermesPanel/hermesLearningStore';
-import { goalsStore, goalsUserIdHolder, createGoal } from '../lib/goalsStore';
+import { goalsStore, goalsUserIdHolder, createGoal, updateGoalPlan, toggleGoalAction } from '../lib/goalsStore';
 import { artifactStore, recordArtifact } from '../lib/artifactStore';
 
 beforeEach(() => {
@@ -52,6 +52,20 @@ describe('buildDreamCorpus — the "re-reads everything" widening', () => {
         expect(c.text).toContain('Grow tenant satisfaction');
         expect(c.text).toContain('1 open question');
         expect(c.text).toContain('Documents produced');
+    });
+
+    it('D3: renders goal progress as a whole percent, not a 0..1 fraction', () => {
+        const g = createGoal('Fix the roof', {
+            brief: 'b',
+            agentActions: [{ text: 'a1', done: false }, { text: 'a2', done: false }],
+            userActions: [{ text: 'u1', done: false }],
+            clarifyingQuestions: [],
+        });
+        updateGoalPlan(g.id, g.plan!);
+        toggleGoalAction(g.id, 'agentActions', 0); // 1 of 3 done → 33%
+        const c = buildDreamCorpus();
+        expect(c.text).toContain('Fix the roof — 33% done');
+        expect(c.text).not.toContain('0.333');
     });
 });
 

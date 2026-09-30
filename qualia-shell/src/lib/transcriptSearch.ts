@@ -10,8 +10,20 @@
 
 const TRANSCRIPTION_LOG_KEY = 'dwellium-transcription-log';
 
-interface LogSegment { text: string; speaker: string; start?: number }
-interface LogEntry { id: string; title: string; segments: LogSegment[]; createdAt: number; wordCount?: number }
+export interface TranscriptLogSegment { text: string; speaker: string; start?: number }
+export interface TranscriptLogEntry { id: string; title: string; segments: TranscriptLogSegment[]; createdAt: number; wordCount?: number }
+
+/** Coerce an arbitrary segment into a safe shape, or drop it if unusable. */
+function sanitizeSegment(s: unknown): TranscriptLogSegment | null {
+    if (!s || typeof s !== 'object') return null;
+    const { text, speaker, start } = s as Record<string, unknown>;
+    if (typeof text !== 'string') return null;
+    return {
+        text,
+        speaker: typeof speaker === 'string' ? speaker : '',
+        ...(typeof start === 'number' ? { start } : {}),
+    };
+}
 
 export interface TranscriptHit {
     id: string;
@@ -23,7 +35,7 @@ export interface TranscriptHit {
     createdAt: number;
 }
 
-function readLog(raw?: string | null): LogEntry[] {
+export function readTranscriptLog(raw?: string | null): TranscriptLogEntry[] {
     let source = raw;
     if (source === undefined) {
         try { source = localStorage.getItem(TRANSCRIPTION_LOG_KEY); } catch { return []; }
@@ -31,9 +43,14 @@ function readLog(raw?: string | null): LogEntry[] {
     if (!source) return [];
     try {
         const parsed = JSON.parse(source);
-        return Array.isArray(parsed)
-            ? parsed.filter((e: any): e is LogEntry => e && typeof e.id === 'string' && Array.isArray(e.segments))
-            : [];
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .filter((e: any): e is TranscriptLogEntry => e && typeof e.id === 'string' && Array.isArray(e.segments))
+            .map((e: TranscriptLogEntry) => ({
+                ...e,
+                title: typeof e.title === 'string' ? e.title : '',
+                segments: e.segments.map(sanitizeSegment).filter((s): s is TranscriptLogSegment => s !== null),
+            }));
     } catch {
         return [];
     }
@@ -44,7 +61,7 @@ export function searchTranscriptions(query: string, k = 5, raw?: string | null):
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
     const hits: Array<TranscriptHit & { rank: number }> = [];
-    for (const entry of readLog(raw)) {
+    for (const entry of readTranscriptLog(raw)) {
         const speakerSeg = entry.segments.find(s => (s.speaker || '').toLowerCase().includes(q));
         const textSeg = entry.segments.find(s => (s.text || '').toLowerCase().includes(q));
         const titleHit = (entry.title || '').toLowerCase().includes(q);

@@ -19,8 +19,31 @@ const SOURCE_LABELS: Record<string, string> = {
     test: 'Provider test',
     'skill:web_search': 'Web search',
     'skill:image': 'Image generation',
+    brief: 'Morning Brief',
+    automation: 'Automations',
+    hydra: 'Hydra',
+    embeddings: 'Embeddings',
+    transcription: 'Transcription',
+    tts: 'Text to speech',
+    inbox: 'Inbox',
+    stella: 'Stella',
+    design: 'Design agent',
+    civil: 'Civil agent',
+    idocs: 'iDocs',
+    'llm-router': 'Router',
     other: 'Other',
 };
+
+/** "server:<feature>" -> "Server · <Label>", "system:<feature>" -> "Shared · <Label>" (plan 068 Phase 3). */
+function featureLabel(key: string): string {
+    const serverMatch = key.match(/^(server|system):(.+)$/);
+    if (serverMatch) {
+        const [, prefix, feature] = serverMatch;
+        const bucket = prefix === 'server' ? 'Server' : 'Shared';
+        return `${bucket} · ${SOURCE_LABELS[feature] ?? feature}`;
+    }
+    return SOURCE_LABELS[key] ?? key;
+}
 
 type Tab = 'model' | 'feature';
 type Range = 7 | 30;
@@ -53,7 +76,7 @@ function buildRows(ledger: UsageLedger, tab: Tab, range: Range): Row[] {
     return Object.entries(agg)
         .map(([key, v]) => ({
             key,
-            label: tab === 'feature' ? (SOURCE_LABELS[key] ?? key) : key,
+            label: tab === 'feature' ? featureLabel(key) : key,
             calls: v.calls,
             cost: v.cost,
             unpriced: unpriced[key] ?? 0,

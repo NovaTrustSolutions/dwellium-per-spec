@@ -20,6 +20,13 @@ vi.mock('../lib/llmClient', async (orig) => ({
 vi.mock('../hooks/useIntegrations', () => ({
     useIntegrations: () => ({ integrations: { llm: { active: 'openai' } } }),
 }));
+// Synthesis (plan 070) awaits a source lookup before the LLM call; hold it per test. Only
+// recallPassages is replaced — Stella's recallContext stays real.
+const recallPassages = vi.fn();
+vi.mock('../lib/memoryGraphRag/recall', async (orig) => ({
+    ...(await orig<object>()),
+    recallPassages: (...args: unknown[]) => recallPassages(...args),
+}));
 // AvatarHarness calls useUser(), which needs the full provider — not under test here.
 vi.mock('../components/AvatarHarness/AvatarHarness', () => ({ default: () => null }));
 
@@ -35,8 +42,9 @@ import { personaConfigStore, usePersonaConfig } from '../components/PersonaStudi
 
 function deferred<T>() {
     let resolve!: (v: T) => void;
-    const promise = new Promise<T>((r) => { resolve = r; });
-    return { promise, resolve };
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
 }
 
 /** The component tree for `id` (null = signed out), the way the shell provides it. */
@@ -59,6 +67,8 @@ beforeEach(() => {
     dreamStore.reset();
     personaConfigStore.reset();
     callLlm.mockReset();
+    recallPassages.mockReset();
+    recallPassages.mockResolvedValue([]);
     setPerUserIdentity('user-a');
 });
 afterEach(() => {
@@ -98,34 +108,66 @@ describe('owner-race guard — BuilderAgents run → captureFacts', () => {
     });
 });
 
-describe('owner-race guard — Synthesis runSynthesis → captureFacts', () => {
-    const start = () => {
+describe('owner-race guard — Synthesis run → answer + CoPaw (plan 070 run path)', () => {
+    // Plan 070: a run awaits the source lookup (recallPassages), then the LLM; CoPaw facts
+    // land only on Capture, never on a bare Synthesize. Every owner-switch exit says why.
+    const ask = () => {
+        fireEvent.change(screen.getByLabelText('Question to synthesize'), { target: { value: 'what now' } });
+        fireEvent.click(screen.getByRole('button', { name: /^Synthesize$/ }));
+    };
+    const start = async () => {
         const d = deferred<{ text: string } | null>();
         callLlm.mockReturnValueOnce(d.promise);
         const view = render(asUser(Synthesis, 'user-a'));
-        fireEvent.change(screen.getByPlaceholderText(/synthesize across your corpus/), { target: { value: 'what now' } });
-        fireEvent.click(screen.getByRole('button', { name: /Synthesize/ }));
-        expect(callLlm).toHaveBeenCalledTimes(1);
+        ask();
+        await waitFor(() => expect(callLlm).toHaveBeenCalledTimes(1)); // after the source lookup
         return { d, ...view };
     };
+    const settled = () => waitFor(() => expect(screen.getByRole('button', { name: /^Synthesize$/ })).toBeInTheDocument());
 
-    it('account switches mid-LLM-call → no facts in either account, result hidden, busy clears', async () => {
-        const { d, rerender } = start();
+    it('account switches mid-LLM-call → answer hidden, nothing stored, busy clears, says why', async () => {
+        const { d, rerender } = await start();
         switchToB(rerender, Synthesis);
         await act(async () => { d.resolve({ text: LLM_TEXT }); });
-        await waitFor(() => expect(screen.getByRole('button', { name: /^Synthesize$/ })).toBeInTheDocument());
+        await settled();
+        expect(screen.queryByText(LLM_TEXT)).toBeNull();
+        expect(screen.queryByRole('button', { name: /^Capture$/ })).toBeNull();
         expect(localStorage.getItem(COPAW_A)).toBeNull();
         expect(localStorage.getItem(COPAW_B)).toBeNull();
         expect(copawStore.getSnapshot()).toEqual([]);
-        expect(screen.queryByText(LLM_TEXT)).toBeNull();
         expect(screen.getByText(ACCOUNT_CHANGED)).toBeInTheDocument();
     });
 
-    it('control: no switch → facts land in user-a\'s CoPaw memory', async () => {
-        const { d } = start();
+    it('account switches during the source lookup → the paid LLM call never goes out, says why', async () => {
+        const lookup = deferred<never[]>();
+        recallPassages.mockReturnValueOnce(lookup.promise);
+        const { rerender } = render(asUser(Synthesis, 'user-a'));
+        ask();
+        await waitFor(() => expect(recallPassages).toHaveBeenCalled());
+        switchToB(rerender, Synthesis);
+        await act(async () => { lookup.resolve([]); });
+        await settled();
+        expect(callLlm).not.toHaveBeenCalled();
+        expect(screen.getByText(ACCOUNT_CHANGED)).toBeInTheDocument();
+    });
+
+    it('the LLM call fails after the switch → B sees why the run stopped, not A\'s provider error', async () => {
+        const { d, rerender } = await start();
+        switchToB(rerender, Synthesis);
+        await act(async () => { d.reject(new Error('provider 500 for user-a')); });
+        await settled();
+        expect(screen.queryByText(/provider 500 for user-a/)).toBeNull();
+        expect(screen.getByText(ACCOUNT_CHANGED)).toBeInTheDocument();
+    });
+
+    it('control: no switch → the answer shows; facts land in user-a\'s CoPaw only on Capture', async () => {
+        const { d } = await start();
         await act(async () => { d.resolve({ text: LLM_TEXT }); });
         await waitFor(() => expect(screen.getByText(LLM_TEXT)).toBeInTheDocument());
+        expect(localStorage.getItem(COPAW_A)).toBeNull(); // a bare Synthesize stores nothing (plan 070)
+        fireEvent.click(screen.getByRole('button', { name: /^Capture$/ }));
         expect(normalizeCopaw(JSON.parse(localStorage.getItem(COPAW_A) ?? '[]')).facts).toHaveLength(2); // v2 shape since plan 071
+        expect(screen.queryByText(ACCOUNT_CHANGED)).toBeNull();
     });
 });
 

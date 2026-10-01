@@ -12,13 +12,14 @@ import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useScribeStore } from '../Scribe/scribeStore';
 import { captureFacts, copawUserIdHolder } from '../Hive/copawStore';
-import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 import { AGENTS, composePrompt, canRun, type AgentMode } from './agentDefs';
 
 const ACCENT = '#D6FE51';
 const MODES: AgentMode[] = ['schema', 'prd', 'gap'];
 
 export default function BuilderAgents() {
+    usePerUserIdentity();
     const { integrations } = useIntegrations();
     const ai = useAIAvailability();
     const llmReady = hasActiveLlm(integrations.llm);
@@ -36,12 +37,12 @@ export default function BuilderAgents() {
         if (!canRun(mode, values) || busy) return;
         if (!hasActiveLlm(integrations.llm)) { setErr('No LLM configured — add a key above.'); return; }
         setBusy(true); setErr(''); setOutput(''); setCopied(false);
+        const stillOwner = captureOwner();
         const uid = copawUserIdHolder.current; // before the await — see captureFacts
         try {
             const { systemPrompt, prompt } = composePrompt(mode, values);
-            const stillOwner = captureOwner();
             const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text', source: 'builder-agents' }, integrations.llm);
-            // owner-race guard: account changed mid-call — drop output + CoPaw facts (finally clears busy).
+            // owner-race guard: account switched mid-run — drop A's output + CoPaw facts, say why (finally clears busy).
             if (!stillOwner()) { setErr(ACCOUNT_CHANGED); return; }
             if (res && res.text.trim()) {
                 setOutput(res.text.trim());

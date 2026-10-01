@@ -389,6 +389,9 @@ function makeSynced<T>(
         const scheduledOwnerId = ownerId();
         const scheduledObjectId = objectIdOverride ?? objectId();
         pending.add(scheduledObjectId);
+        // A newer write supersedes a parked replay of an older failed one for the same object
+        // (else the replay would replace this write in the flush queue); onFailed re-parks it.
+        failed.delete(scheduledObjectId);
         markDirty(scheduledObjectId);
         if (sharedSlot) setSlotOwner(objectType, scheduledOwnerId);
         emitSync();

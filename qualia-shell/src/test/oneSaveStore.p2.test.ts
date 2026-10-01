@@ -122,6 +122,17 @@ describe('oneSaveStore plan 079 p2 (objectSuffix / acceptRemote)', () => {
             expect(oneSaveClient.put).toHaveBeenCalledWith(expect.objectContaining({ id: ID_A, payload: 'A value' }));
         });
 
+        it('review 2: a newer write supersedes the parked replay of an older failed one (no rollback)', async () => {
+            const { ref, setLocal } = await failBoardAWrite();   // A1 failed and is parked
+            setLocal('A2');                                       // newer edit queued for A
+            ref.suffix = '__b';                                   // user flips to B inside the debounce
+            backendStatusStore.markOnline();                      // reconnect fires any parked replays
+            await vi.advanceTimersByTimeAsync(10 + 500);
+            const putsToA = vi.mocked(oneSaveClient.put).mock.calls.map(c => c[0]).filter(o => o.id === ID_A).map(o => o.payload);
+            expect(putsToA[putsToA.length - 1]).toBe('A2');
+            expect(putsToA).not.toContain('A1');
+        });
+
         it('review: replays the captured payload to ITS OWN object after the suffix changed (never onto B)', async () => {
             const { ref } = await failBoardAWrite();
             ref.suffix = '__b';

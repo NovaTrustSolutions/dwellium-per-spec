@@ -5,6 +5,33 @@ import { scanFolder } from './scripts/kbScan.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import os from 'node:os';
+
+/**
+ * tokenSaverStatsPlugin — the Token Saver widget is dev-only (widgetRegistry
+ * gates it on import.meta.env.DEV). In dev, serve /token-saver-stats.json
+ * straight from ~/.token-saver/stats-dwellium.json (written by refresh.sh), so
+ * no per-machine copy has to live in public/. In builds, drop any leftover
+ * public/ copy from the output so personal usage never ships.
+ */
+function tokenSaverStatsPlugin() {
+    const FILE = 'token-saver-stats.json';
+    let outDir = '';
+    return {
+        name: 'token-saver-stats',
+        configResolved(config: import('vite').ResolvedConfig) { outDir = config.build.outDir; },
+        configureServer(server: import('vite').ViteDevServer) {
+            server.middlewares.use(`/${FILE}`, (_req, res) => {
+                const src = path.join(os.homedir(), '.token-saver', 'stats-dwellium.json');
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Cache-Control', 'no-store');
+                try { res.end(fs.readFileSync(src)); }
+                catch { res.statusCode = 404; res.end('{"error":"run ~/.token-saver/refresh.sh"}'); }
+            });
+        },
+        closeBundle() { if (outDir) fs.rmSync(path.join(outDir, FILE), { force: true }); },
+    };
+}
 
 /**
  * kgGraphRepoPlugin — dev-server route that REALLY clones + graphs a repo for
@@ -173,7 +200,7 @@ function appCommitVersion(): string {
 }
 
 export default defineConfig({
-    plugins: [reactRouter(), kgGraphRepoPlugin(), kbScanPlugin(), eyeContactPlugin()],
+    plugins: [reactRouter(), kgGraphRepoPlugin(), kbScanPlugin(), eyeContactPlugin(), tokenSaverStatsPlugin()],
     define: {
         // App version from commit count — see appCommitVersion() above.
         __APP_VERSION__: JSON.stringify(appCommitVersion()),

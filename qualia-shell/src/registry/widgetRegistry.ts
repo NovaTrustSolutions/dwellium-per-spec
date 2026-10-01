@@ -604,17 +604,23 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 380,
         category: 'tools',
     },
-    'token-saver': {
-        id: 'token-saver',
-        label: 'Token Saver',
-        description: 'Whether the token-saver skill is active, and the estimated tokens and cost it has saved.',
-        tip: { tryThis: 'Check how much of your input was served from cache.', related: ['ai-spend', 'system-health'] },
-        icon: 'zap',
-        component: lazyWithReload(() => import('../components/TokenSaver/TokenSaver')),
-        minWidth: 420,
-        minHeight: 400,
-        category: 'tools',
-    },
+    // DEV/LOCAL ONLY (owner decision 2026-09-24): reads a machine-local stats
+    // snapshot that is not tracked or deployed. Vite inlines
+    // import.meta.env.DEV as `false` in production builds, so this entry — and
+    // the dynamic import, hence the TokenSaver chunk — is dropped entirely.
+    ...(import.meta.env.DEV ? {
+        'token-saver': {
+            id: 'token-saver',
+            label: 'Token Saver',
+            description: 'Token-saver skill status and how much Claude Code input came from prompt cache.',
+            tip: { tryThis: 'Check how much of your input was served from cache.', related: ['ai-spend', 'system-health'] },
+            icon: 'zap',
+            component: lazyWithReload(() => import('../components/TokenSaver/TokenSaver')),
+            minWidth: 420,
+            minHeight: 400,
+            category: 'tools',
+        } satisfies WidgetRegistration,
+    } : {}),
     // P12-7 (gap items 8+9): connections + memory stack + agent context.
     'connections': {
         id: 'connections',

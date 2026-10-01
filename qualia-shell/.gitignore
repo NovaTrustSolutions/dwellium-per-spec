@@ -32,3 +32,6 @@ node_modules
 playwright-report/
 test-results/
 *.json.bak
+
+# Token Saver stats: machine-local snapshot for the DEV-only widget (never commit)
+public/token-saver-stats.json

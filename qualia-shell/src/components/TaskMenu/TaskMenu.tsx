@@ -125,7 +125,7 @@ export default function TaskMenu() {
             if (!taskId) return;
 
             // The highlight looks up the LIST row, so a deep link must leave the Board tab.
-            chooseView('list');
+            setView('list'); // not chooseView: a deep link must not overwrite the saved tab preference
             setReassignTarget(null);
             setFilterUrgency('all');
             setSortBy('date');
@@ -134,7 +134,7 @@ export default function TaskMenu() {
 
         window.addEventListener('qualia-taskmenu-focus-task', onFocusTask);
         return () => window.removeEventListener('qualia-taskmenu-focus-task', onFocusTask);
-    }, [chooseView]);
+    }, []);
 
     useEffect(() => {
         if (!pendingFocusTaskId) return;

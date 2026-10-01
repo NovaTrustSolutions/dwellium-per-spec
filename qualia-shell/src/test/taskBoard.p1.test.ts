@@ -782,3 +782,90 @@ describe('[review] no fake revert, safe repaired audit, urgency whitelist', () =
         expect(next).toBe(b);
     });
 });
+
+// ───────────────────────── phase 1 review findings (probes p1–p7) ─────────────────────────
+describe('[review-2] Undo last AI never destroys later work', () => {
+    it('does not delete an AI-added card the user has edited since', () => {
+        const ctx = det();
+        let b = addTo(createInitialBoard(), ctx, 'todo', 'AI card', ARA);
+        const id = b.cards[0].id;
+        b = applyAction(b, { type: 'EDIT_CARD', cardId: id, patch: { description: 'my notes' } }, USER, ctx);
+        const r = undoLastAi(b, ctx, USER);
+        expect(r.changed).toBe(false);
+        expect(r.state.cards.map(c => c.id)).toEqual([id]);
+        expect(last(r.state).summary).toMatch(/^Nothing to revert: .*\(changed since\)$/);
+        expect(r.state.audit.find(e => e.actor.kind === 'ai')!.reversed).toBe(true);
+    });
+    it('does not remove an AI-added column that now holds the user\'s cards', () => {
+        const ctx = det();
+        let b = applyAction(createInitialBoard(), { type: 'ADD_COLUMN', column: col('ai-col', 9) }, ARA, ctx);
+        b = addTo(b, ctx, 'ai-col', 'mine');
+        const r = undoLastAi(b, ctx, USER);
+        expect(r.state.columns.some(c => c.id === 'ai-col')).toBe(true);
+        expectCards(r.state, 1);
+    });
+    it('does not overwrite a field the user edited after the AI', () => {
+        const ctx = det();
+        let b = addTo(createInitialBoard(), ctx, 'todo', 'X');
+        const id = b.cards[0].id;
+        b = applyAction(b, { type: 'EDIT_CARD', cardId: id, patch: { title: 'AI title' } }, ARA, ctx);
+        b = applyAction(b, { type: 'EDIT_CARD', cardId: id, patch: { title: 'User title' } }, USER, ctx);
+        expect(undoLastAi(b, ctx, USER).state.cards[0].title).toBe('User title');
+    });
+    it('plain LIFO undo still undoes an add once the later edit is undone', () => {
+        const ctx = det();
+        let b = addTo(createInitialBoard(), ctx, 'todo', 'card');
+        b = applyAction(b, { type: 'EDIT_CARD', cardId: b.cards[0].id, patch: { description: 'd' } }, USER, ctx);
+        b = undo(b, ctx, USER).state;
+        const r = undo(b, ctx, USER);
+        expect(r.changed).toBe(true);
+        expect(r.state.cards).toHaveLength(0);
+    });
+});
+
+describe('[review-2] Load Board, no-op column edits, malformed inverses, AI-door input', () => {
+    it('REPLACE_BOARD repairs the loaded file (card in an unknown column stays visible; null columns dropped)', () => {
+        const ctx = det();
+        const b = applyAction(createInitialBoard(), {
+            type: 'REPLACE_BOARD',
+            board: { columns: [null, { id: 'a', title: 'A', width: 288, order: 0 }], cards: [{ id: 'c', title: 'c', columnId: 'gone', order: 0, createdAt: 't', enteredColumnAt: 't', description: '' }], audit: [] } as any,
+        }, USER, ctx);
+        expect(b.columns.every(c => c && typeof c.id === 'string')).toBe(true);
+        expectCards(b, 1);
+    });
+    it('unchanged column edits and same-place moves log nothing', () => {
+        const ctx = det();
+        let b = addTo(createInitialBoard(), ctx, 'todo', 'X');
+        const id = b.cards[0].id;
+        const todo = b.columns.find(c => c.id === 'todo')!;
+        for (const a of [
+            { type: 'RESIZE_COLUMN', columnId: 'todo', width: todo.width },
+            { type: 'RENAME_COLUMN', columnId: 'todo', title: todo.title },
+            { type: 'UPDATE_COLUMN_LIMITS', columnId: 'todo', minWip: undefined, maxWip: undefined },
+            { type: 'UPDATE_COLUMN_POLICIES', columnId: 'todo', policies: [] },
+            { type: 'MOVE_CARD', cardId: id, toColumnId: 'todo', toOrder: b.cards[0].order },
+            { type: 'MOVE_CARDS', cardIds: [id], toColumnId: 'todo' },
+            { type: 'RESIZE_COLUMN', columnId: 'todo', width: Number.NaN },
+        ] as const) {
+            expect(applyAction(b, a as any, USER, ctx)).toBe(b);
+        }
+    });
+    it('a malformed stored inverse never throws and never wedges Undo', () => {
+        const ctx = det();
+        const b = repairBoard({ audit: [{ id: 'x', type: 'MOVE_CARD', summary: 'bad', ts: 't', actor: { kind: 'user' }, inverse: { type: 'RESTORE_POSITIONS' } }] });
+        const r = undo(b, ctx, USER);
+        expect(r.changed).toBe(false);
+        expect(r.state.audit[0].reversed).toBe(true);
+        expect(undo(r.state, ctx, USER).undone).toBeNull();
+    });
+    it('rejects duplicate card/column ids and non-string-array tags', () => {
+        const ctx = det();
+        let b = addTo(createInitialBoard(), ctx, 'todo', 'first');
+        const dup = { ...b.cards[0], title: 'second' };
+        expect(applyAction(b, { type: 'ADD_CARD', card: dup }, ARA, ctx)).toBe(b);
+        expect(applyAction(b, { type: 'ADD_COLUMN', column: col('todo', 5) }, ARA, ctx)).toBe(b);
+        expect(applyAction(b, { type: 'EDIT_CARD', cardId: b.cards[0].id, patch: { tags: 'x' as any } }, ARA, ctx)).toBe(b);
+        b = applyAction(b, { type: 'RESIZE_COLUMN', columnId: 'todo', width: 5000 }, USER, ctx);
+        expect(b.columns.find(c => c.id === 'todo')!.width).toBe(640);
+    });
+});

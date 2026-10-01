@@ -58,5 +58,7 @@ describe('TaskMenu deep link', () => {
 
         await waitFor(() => expect(listTab().getAttribute('aria-selected')).toBe('true'));
         expect(boardTab().getAttribute('aria-selected')).toBe('false');
+        // review: the deep link must not overwrite the user's saved tab preference
+        expect(localStorage.getItem('dwellium:taskmenu-view')).toBe('board');
     });
 });

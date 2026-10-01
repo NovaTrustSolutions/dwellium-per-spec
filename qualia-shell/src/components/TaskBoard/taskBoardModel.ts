@@ -309,7 +309,7 @@ function planEdit(card: TaskCard, patch: CardPatch): { card: TaskCard; inverse: 
     if (patch.assignee !== undefined && !same(patch.assignee, card.assignee ?? null)) {
         next.assignee = patch.assignee; inverse.assignee = card.assignee ?? null;
     }
-    if (patch.tags !== undefined && !same(patch.tags, card.tags ?? [])) {
+    if (Array.isArray(patch.tags) && patch.tags.every(t => typeof t === 'string') && !same(patch.tags, card.tags ?? [])) {
         next.tags = patch.tags; inverse.tags = card.tags ?? [];
     }
     return Object.keys(inverse).length === 0 ? null : { card: next, inverse };
@@ -322,6 +322,7 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
     // No-op contract: a reducer that changes nothing returns `state` itself (same object).
     switch (action.type) {
         case 'ADD_CARD': {
+            if (state.cards.some(c => c.id === action.card.id)) return { next: state, inverse: null }; // duplicate id
             const columnId = landingColumnId(state, action.card.columnId);
             const card = columnId === action.card.columnId ? action.card : { ...action.card, columnId, order: nextOrder(state.cards, columnId) };
             return {
@@ -352,6 +353,7 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
             const prior: CardPosition = { cardId: card.id, columnId: card.columnId, order: card.order, enteredColumnAt: card.enteredColumnAt };
             const columnChanged = card.columnId !== action.toColumnId;
             const toOrder = action.toOrder ?? nextOrder(state.cards, action.toColumnId);
+            if (!columnChanged && (toOrder === card.order || action.toOrder === undefined)) return { next: state, inverse: null }; // already there
             const moved: TaskCard = {
                 ...card,
                 columnId: action.toColumnId,
@@ -373,6 +375,7 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
                 const idx = movedCards.findIndex(c => c.id === cardId);
                 if (idx < 0) continue;
                 const card = movedCards[idx];
+                if (card.columnId === action.toColumnId) continue; // already there
                 priors.push({ cardId: card.id, columnId: card.columnId, order: card.order, enteredColumnAt: card.enteredColumnAt });
                 const columnChanged = card.columnId !== action.toColumnId;
                 movedCards[idx] = {
@@ -418,6 +421,7 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
             };
         }
         case 'ADD_COLUMN': {
+            if (state.columns.some(c => c.id === action.column.id)) return { next: state, inverse: null }; // duplicate id
             return {
                 next: { ...state, columns: [...state.columns, action.column] },
                 inverse: { type: 'REMOVE_COLUMN', columnId: action.column.id },
@@ -447,7 +451,7 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
         }
         case 'RENAME_COLUMN': {
             const column = state.columns.find(c => c.id === action.columnId);
-            if (!column) return { next: state, inverse: null };
+            if (!column || !action.title.trim() || action.title === column.title) return { next: state, inverse: null };
             return {
                 next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, title: action.title } : c) },
                 inverse: { type: 'RENAME_COLUMN', columnId: column.id, title: column.title },
@@ -455,25 +459,30 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
         }
         case 'RESIZE_COLUMN': {
             const column = state.columns.find(c => c.id === action.columnId);
-            if (!column) return { next: state, inverse: null };
+            if (!column || !Number.isFinite(action.width)) return { next: state, inverse: null };
+            const width = Math.min(640, Math.max(200, Math.round(action.width)));
+            if (width === column.width) return { next: state, inverse: null };
             return {
-                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, width: action.width } : c) },
+                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, width } : c) },
                 inverse: { type: 'RESIZE_COLUMN', columnId: column.id, width: column.width },
             };
         }
         case 'UPDATE_COLUMN_LIMITS': {
             const column = state.columns.find(c => c.id === action.columnId);
-            if (!column) return { next: state, inverse: null };
+            const limit = (v: number | undefined): number | undefined => (Number.isFinite(v) && (v as number) >= 0 ? Math.floor(v as number) : undefined);
+            const minWip = limit(action.minWip), maxWip = limit(action.maxWip);
+            if (!column || (minWip === column.minWip && maxWip === column.maxWip)) return { next: state, inverse: null };
             return {
-                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, minWip: action.minWip, maxWip: action.maxWip } : c) },
+                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, minWip, maxWip } : c) },
                 inverse: { type: 'UPDATE_COLUMN_LIMITS', columnId: column.id, minWip: column.minWip, maxWip: column.maxWip },
             };
         }
         case 'UPDATE_COLUMN_POLICIES': {
             const column = state.columns.find(c => c.id === action.columnId);
-            if (!column) return { next: state, inverse: null };
+            const policies = Array.isArray(action.policies) ? action.policies.filter(x => typeof x === 'string') : [];
+            if (!column || same(policies, column.policies ?? [])) return { next: state, inverse: null };
             return {
-                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, policies: action.policies } : c) },
+                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, policies } : c) },
                 inverse: { type: 'UPDATE_COLUMN_POLICIES', columnId: column.id, policies: column.policies ?? [] },
             };
         }
@@ -503,8 +512,9 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
             return { next: state, inverse: null };
         }
         case 'REPLACE_BOARD': {
+            const board = repairBoard(action.board); // Load Board files are untrusted
             return {
-                next: action.board,
+                next: { columns: board.columns, cards: board.cards },
                 inverse: { type: 'REPLACE_BOARD', board: { columns: state.columns, cards: state.cards, audit: [] } }
             };
         }
@@ -618,6 +628,22 @@ function applicableInverse(state: BoardState, target: AuditEntry): { inverse: Bo
 }
 
 /**
+ * Reverting an older add/edit would destroy work done since: a card that later live
+ * (reversible, not undone) entries touched is not deleted, a field edited again is not
+ * overwritten, and a column that holds cards is not removed. Plain LIFO undo never
+ * hits this (those later entries are undone first); "Undo last AI" does.
+ */
+function changedSince(state: BoardState, target: AuditEntry): boolean {
+    const inv = target.inverse as BoardAction;
+    const later = state.audit.slice(state.audit.indexOf(target) + 1).filter(e => !e.reversed && e.inverse);
+    const touches = (e: AuditEntry, cardId: string): boolean => e.cardId === cardId || !!e.cardIds?.includes(cardId);
+    if (inv.type === 'REMOVE_CARD') return later.some(e => touches(e, inv.cardId));
+    if (inv.type === 'EDIT_CARD') return later.some(e => e.type === 'EDIT_CARD' && touches(e, inv.cardId));
+    if (inv.type === 'REMOVE_COLUMN') return state.cards.some(c => c.columnId === inv.columnId);
+    return false;
+}
+
+/**
  * Undo the most recent reversible action (optionally only those matching a
  * filter — e.g. AI-authored). Applies the inverse, marks the original entry
  * reversed, and appends a truthful UNDO entry to the log. Returns the same
@@ -627,10 +653,20 @@ export function undo(state: BoardState, ctx: ActionContext, actor: Actor, filter
     const target = lastReversible(state, filter);
     if (!target || !target.inverse) return { state, undone: null, changed: false };
     const data: BoardData = { columns: state.columns, cards: state.cards };
-    const { inverse, skipped } = applicableInverse(state, target);
-    const { next } = reduceData(data, inverse, ctx);
+    const blocked = changedSince(state, target);
+    let next: BoardData = data, skipped = 0;
+    if (!blocked) {
+        try {
+            const applicable = applicableInverse(state, target);
+            skipped = applicable.skipped;
+            next = reduceData(data, applicable.inverse, ctx).next;
+        } catch {
+            next = data; // malformed stored inverse: report it, mark it reversed, never wedge the Undo button
+        }
+    }
     const changed = next !== data;
-    const summary = !changed ? `Nothing to revert: ${target.summary}`
+    const summary = blocked ? `Nothing to revert: ${target.summary} (changed since)`
+        : !changed ? `Nothing to revert: ${target.summary}`
         : skipped > 0 ? `Reverted: ${target.summary} (skipped ${skipped} card(s) moved since)`
         : `Reverted: ${target.summary}`;
     const undoEntry: AuditEntry = {

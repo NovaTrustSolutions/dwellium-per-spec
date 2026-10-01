@@ -69,6 +69,19 @@ export interface SyncOptions<T> {
      * before this option existed.
      */
     merge?: (local: T, remote: T) => T;
+    /**
+     * Appended to the object id: `${objectType}_${ownerId()}${objectSuffix()}`.
+     * Lets ONE store address several server objects (e.g. one per board) while
+     * the owner stays the account. Must only yield [A-Za-z0-9_.-]. Read live on
+     * every call, so changing what it returns re-points the store.
+     */
+    objectSuffix?: () => string;
+    /**
+     * Non-merge stores only (never called when `merge` is set). Runs on a remote
+     * payload AFTER the dirty-marker check and before it is applied. Return the
+     * value to apply, or null to keep local AND schedule a write-through of it.
+     */
+    acceptRemote?: (remote: unknown, local: T) => T | null;
 }
 
 export interface StaticSyncOptions<T> {
@@ -355,14 +368,18 @@ function makeSynced<T>(
     setOwner: (userId: string | null) => void,
     merge?: (local: T, remote: T) => T,
     sharedSlot = false,
+    extra: Pick<SyncOptions<T>, 'objectSuffix' | 'acceptRemote'> = {},
 ): SyncedStore<T> {
-    const objectId = (): string => `${objectType}_${ownerId()}`;
-    // Set by the most recent hydrate() this session; lets migrate() skip its
+    const { objectSuffix, acceptRemote } = extra;
+    const objectId = (): string => `${objectType}_${ownerId()}${objectSuffix ? objectSuffix() : ''}`;
+    // Recorded per objectId by hydrate() this session; lets migrate() skip its
     // own existence-check GET when hydrate() (bulk-fed or its own GET) already
     // answered "does this object exist remotely?" — halves the request count
-    // on a first-ever login (see MAX_LOGIN_REQUESTS). `null` = unknown (no
-    // hydrate() ran yet this session) → migrate() falls back to its own GET.
-    let lastHydrateSeen: boolean | null = null;
+    // on a first-ever login (see MAX_LOGIN_REQUESTS). Per object because one
+    // store can address several (objectSuffix): an answer about board A must
+    // never stand in for board B. Missing entry = unknown (no hydrate() ran for
+    // THAT object yet) → migrate() falls back to its own GET.
+    const hydrateSeen = new Map<string, boolean>();
     // Bumped on every local set(); hydrate() compares before/after its await so a
     // remote snapshot fetched BEFORE a local edit never overwrites that edit.
     let localWriteSeq = 0;
@@ -398,13 +415,14 @@ function makeSynced<T>(
             onFailed: () => {
                 pending.delete(scheduledObjectId);
                 // Marker stays set on failure — see dirty-marker block above.
-                // Replay only while the SAME owner is still active — scheduleWriteThrough
-                // re-captures ownerId() at call time, so without this guard a switched
-                // account would inherit the previous user's payload.
+                // Replay only while the SAME owner AND the SAME object are still active —
+                // scheduleWriteThrough re-captures ownerId()/objectId() at call time, so
+                // without this guard a switched account (or a switched objectSuffix, e.g.
+                // another board) would inherit the previous payload.
                 // Merge stores replay the CURRENT local value: a hydrate may have merged
                 // remote into it since this write failed, and replaying the captured
                 // `value` would overwrite that merge with a stale copy (plan 070 P4).
-                failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId) scheduleWriteThrough(merge ? base.getSnapshot() : value); });
+                failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId && objectId() === scheduledObjectId) scheduleWriteThrough(merge ? base.getSnapshot() : value); });
                 emitSync();
             },
         });
@@ -427,8 +445,9 @@ function makeSynced<T>(
             if (!ONE_SAVE_ENABLED) return;
             const seqAtStart = localWriteSeq;
             const ownerAtStart = ownerId();
-            const remote = (prefetched !== undefined ? prefetched : await oneSaveClient.get<T>(objectId())) as DwelliumObject<T> | null;
-            lastHydrateSeen = remote != null;
+            const idAtStart = objectId();
+            const remote = (prefetched !== undefined ? prefetched : await oneSaveClient.get<T>(idAtStart)) as DwelliumObject<T> | null;
+            hydrateSeen.set(idAtStart, remote != null);
             // A local edit landed while the GET was in flight (e.g. typing in a
             // just-opened lazy widget): local is newer and is already queued for
             // write-through — applying the stale remote would eat the user's input.
@@ -439,7 +458,9 @@ function makeSynced<T>(
             // The account switched while the GET was in flight: the dynamic-key base
             // store now resolves to the NEW owner's key, so applying (or merging) the
             // old owner's payload would write it into the new account's storage.
-            if (ownerId() !== ownerAtStart) return;
+            // Same for the object: a changed objectSuffix means the base store now
+            // resolves to ANOTHER object's key (e.g. the user switched boards).
+            if (ownerId() !== ownerAtStart || objectId() !== idAtStart) return;
             // A local write is still debounced or its flush already failed once
             // (dirty marker set by scheduleWriteThrough, cleared only on a
             // successful save) — local wins over whatever remote just answered,
@@ -476,7 +497,13 @@ function makeSynced<T>(
                         scheduleWriteThrough(merged);
                     }
                 } else {
-                    base.set(remoteValue, () => persistLocal(remoteValue));
+                    const accepted = acceptRemote ? acceptRemote(remote.payload, base.getSnapshot()) : remoteValue;
+                    if (accepted === null) {
+                        // acceptRemote vetoed the remote: keep local and push it up.
+                        scheduleWriteThrough(base.getSnapshot());
+                        return;
+                    }
+                    base.set(accepted, () => persistLocal(accepted));
                 }
                 if (sharedSlot) setSlotOwner(objectType, ownerId());
             }
@@ -486,10 +513,14 @@ function makeSynced<T>(
             if (!ONE_SAVE_ENABLED) return;
             // Reuse hydrate()'s answer when we have one this session — skips a
             // second GET for the exact same object migrate() would otherwise ask about.
-            const exists = lastHydrateSeen ?? (await oneSaveClient.get<T>(objectId())) != null;
+            const idAtStart = objectId();
+            const exists = hydrateSeen.get(idAtStart) ?? (await oneSaveClient.get<T>(idAtStart)) != null;
             if (exists) return; // already durable — don't clobber
+            // The existence check above was about idAtStart; if the object changed
+            // during that GET, `local` below is another object's — don't backfill it.
+            if (objectId() !== idAtStart) return;
             const local = base.getSnapshot();
-            await oneSaveClient.put({ id: objectId(), type: objectType, ownerId: ownerId(), payload: local });
+            await oneSaveClient.put({ id: idAtStart, type: objectType, ownerId: ownerId(), payload: local });
         },
     };
 
@@ -512,7 +543,7 @@ export function withSync<T>(base: LocalStorageStore<T>, opts: SyncOptions<T>): S
     };
     return makeSynced(base, opts.objectType, ownerId, persistLocal, opts.debounceMs ?? 800, (userId) => {
         opts.holder.current = userId;
-    }, opts.merge);
+    }, opts.merge, false, { objectSuffix: opts.objectSuffix, acceptRemote: opts.acceptRemote });
 }
 
 /** Wrap a static-key store; owner is the logged-in user (set by bootstrap). */

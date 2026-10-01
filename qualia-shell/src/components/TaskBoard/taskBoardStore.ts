@@ -47,14 +47,87 @@ function deserialize(raw: string | null): BoardState {
     }
 }
 
+// ── Per-board server object (plan 079 B1) ──────────────────────────
+/** FNV-1a 32-bit → 8 hex chars. Stable, not cryptographic; only disambiguates slugs. */
+function hash8(s: string): string {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * Suffix of the One Save object id `task-board_<uid><suffix>`. '' for the Global
+ * board (legacy id, no migration); `__<slug>` for a project board, where the slug is
+ * the project id limited to the backend's [A-Za-z0-9_.-] and 60 chars, plus `_<hash>`
+ * of the ORIGINAL id whenever that changed it (so two odd ids never collide).
+ * ponytail: assumes the user id is short (<=~45 chars) so the whole id stays under the backend's 128.
+ */
+export function boardObjectSuffix(projectId: string | null): string {
+    if (!projectId || projectId === 'global') return '';
+    const slug = projectId.replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 60);
+    return `__${slug}${slug === projectId ? '' : `_${hash8(projectId)}`}`;
+}
+
+// ── Remote acceptance (plan 079 B2) ─────────────────────────────────
+const legacyFlagKey = (uid: string): string => `taskboard:legacy-checked:${uid}`;
+
+/** One-time per user: does the legacy `task-board_<uid>` object hold a different board than this Global one? */
+function legacyObjectIsForeign(local: BoardState, remote: BoardState): boolean {
+    const uid = taskBoardUserIdHolder.current ?? '_anonymous';
+    try {
+        if (localStorage.getItem(legacyFlagKey(uid))) return false;
+        localStorage.setItem(legacyFlagKey(uid), '1'); // set whatever the outcome
+    } catch { /* sandboxed: no flag, the check just runs again next time */ }
+    if (local.cards.length === 0) return false;
+    const ids = new Set(local.cards.map(c => c.id));
+    return !remote.cards.some(c => ids.has(c.id));
+}
+
+/** Validate a remote board and refuse to let it erase or replace a non-empty local one. */
+function acceptRemoteBoard(remote: unknown, local: BoardState): BoardState | null {
+    const r = repairBoard(remote);
+    const pid = taskBoardProjectIdHolder.current;
+    const foreign = (!pid || pid === 'global') && legacyObjectIsForeign(local, r);
+    // ponytail: a board emptied on purpose on another device is resurrected here; accepted over losing a board.
+    if ((r.cards.length === 0 && local.cards.length >= 1) || foreign) return null;
+    return r;
+}
+
 export const taskBoardStore = withSync(
     createLocalStorageStore<BoardState>({
         key: resolveKey,
         deserializer: deserialize,
         defaultValue: createInitialBoard(),
     }),
-    { objectType: 'task-board', holder: taskBoardUserIdHolder, resolveKey },
+    {
+        objectType: 'task-board', holder: taskBoardUserIdHolder, resolveKey,
+        objectSuffix: () => boardObjectSuffix(taskBoardProjectIdHolder.current),
+        acceptRemote: acceptRemoteBoard,
+    },
 );
+
+// ── Board-scoped async guard (plan 079 B6) ──────────────────────────
+/** Capture the active board now; the returned fn is true while the board (user AND project) is unchanged. */
+export function captureBoard(): () => boolean {
+    const key = resolveKey();
+    return () => resolveKey() === key;
+}
+
+// ── Local save failure (plan 079 B7) ────────────────────────────────
+const SAVE_ERROR_MSG = "Couldn't save this board on this device (storage full). Your last change is only in memory.";
+let saveError: string | null = null;
+const saveErrorListeners = new Set<() => void>();
+function setSaveError(next: string | null): void {
+    if (next === saveError) return;
+    saveError = next;
+    saveErrorListeners.forEach(l => l());
+}
+/** Tiny external store for useSyncExternalStore; null = last local write succeeded. */
+export const taskBoardSaveError = {
+    subscribe(l: () => void): () => void { saveErrorListeners.add(l); return () => { saveErrorListeners.delete(l); }; },
+    getSnapshot: (): string | null => saveError,
+    getServerSnapshot: (): string | null => null,
+};
 
 // Real (non-deterministic) context for production. Tests use the pure model
 // directly with an injected deterministic ctx.
@@ -68,7 +141,7 @@ const ctx: ActionContext = { now: () => new Date().toISOString(), id: newId };
 
 function persist(next: BoardState): void {
     taskBoardStore.set(next, () => {
-        try { localStorage.setItem(resolveKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+        try { localStorage.setItem(resolveKey(), JSON.stringify(next)); setSaveError(null); } catch { setSaveError(SAVE_ERROR_MSG); }
     });
 }
 
@@ -192,10 +265,15 @@ export function logEvent(summary: string, cardId?: string, actor: Actor = { kind
     return dispatch({ type: 'LOG_EVENT', summary, cardId }, actor);
 }
 
+/** Keeps one board object well under the backend body limit (~1 MB). */
+export const MAX_BOARD_JSON = 700_000;
+
 export function attachToCard(cardId: string, meta: { name: string; size: number; type: string; dataUrl?: string }, actor: Actor = { kind: 'user' }): BoardState {
+    // Too big to inline on top of the current board → keep metadata only.
+    const inline = meta.dataUrl && JSON.stringify(taskBoardStore.getSnapshot()).length + meta.dataUrl.length <= MAX_BOARD_JSON;
     const attachment: Attachment = {
         id: newId(), name: meta.name, size: meta.size, type: meta.type,
-        addedAt: new Date().toISOString(), dataUrl: meta.dataUrl,
+        addedAt: new Date().toISOString(), dataUrl: inline ? meta.dataUrl : undefined,
     };
     return dispatch({ type: 'ADD_ATTACHMENT', cardId, attachment }, actor);
 }
@@ -219,22 +297,27 @@ export async function routeCard(cardId: string): Promise<RouteResult> {
 
     if (a.kind === 'ai') {
         const endpoint = aiEndpoint(a.id);
+        const sameBoard = captureBoard();
+        let res: Response | null = null;
         try {
-            const res = await fetch(endpoint, {
+            res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: composeCardPrompt(card), source: 'task-board', cardId }),
             });
-            if (res.ok) {
-                logEvent(`Sent "${card.title}" to AI · ${a.label}`, cardId);
-                return { status: 'sent', detail: `Sent to ${a.label}.` };
-            }
+        } catch { /* offline: handled below */ }
+        // The user switched board/account while the request was in flight: logging now would write onto the wrong board.
+        if (!sameBoard()) return { status: 'none', detail: 'The board changed while sending; the result was not logged.' };
+        if (res?.ok) {
+            logEvent(`Sent "${card.title}" to AI · ${a.label}`, cardId);
+            return { status: 'sent', detail: `Sent to ${a.label}.` };
+        }
+        if (res) {
             logEvent(`Queued "${card.title}" for AI · ${a.label} (agent returned ${res.status})`, cardId);
             return { status: 'queued', detail: `${a.label} unavailable (HTTP ${res.status}) — queued, not sent.` };
-        } catch {
-            logEvent(`Queued "${card.title}" for AI · ${a.label} (backend offline)`, cardId);
-            return { status: 'queued', detail: `${a.label} is offline — queued, not sent.` };
         }
+        logEvent(`Queued "${card.title}" for AI · ${a.label} (backend offline)`, cardId);
+        return { status: 'queued', detail: `${a.label} is offline — queued, not sent.` };
     }
 
     // person → compose an email DRAFT (never auto-send)

@@ -567,6 +567,21 @@ function actionCardId(action: BoardAction): string | undefined {
     }
 }
 
+// ── Bounded audit log (plan 079 B4) ────────────────────────────────
+export const AUDIT_LIMIT = 500;          // newest entries kept
+export const HEAVY_INVERSE_WINDOW = 50;  // older entries lose a heavy inverse (they stay in the log, no longer reversible)
+
+// heavy = whole-board snapshot or anything carrying attachment bytes
+const isHeavyInverse = (inv: BoardAction): boolean => inv.type === 'REPLACE_BOARD' || JSON.stringify(inv).includes('"dataUrl"');
+
+/** Cap the log length, then drop heavy inverses older than the newest HEAVY_INVERSE_WINDOW. */
+function boundAudit(audit: AuditEntry[]): AuditEntry[] {
+    const kept = audit.length > AUDIT_LIMIT ? audit.slice(audit.length - AUDIT_LIMIT) : audit;
+    const cut = kept.length - HEAVY_INVERSE_WINDOW;
+    // ponytail: re-stringifies every older light inverse per action (<=450 small ones); cache a heavy flag on the entry if this shows up in a profile.
+    return kept.map((e, i) => (i < cut && e.inverse && isHeavyInverse(e.inverse) ? { ...e, inverse: null } : e));
+}
+
 // ── Public: applyAction (the single mutation choke-point) ──────────
 /** Cards a MOVE_CARD/MOVE_CARDS actually moved, read off its RESTORE_POSITIONS inverse. */
 function movedIds(action: BoardAction, inverse: BoardAction | null): { cardIds: string[]; to: string } | null {
@@ -590,7 +605,7 @@ export function applyAction(state: BoardState, action: BoardAction, actor: Actor
         cardId: actionCardId(action),
         ...(moved ?? {}),
     };
-    return { columns: next.columns, cards: next.cards, audit: [...state.audit, entry] };
+    return { columns: next.columns, cards: next.cards, audit: boundAudit([...state.audit, entry]) };
 }
 
 /** Audit entries for one card, oldest→newest — the per-card project timeline. */
@@ -680,7 +695,7 @@ export function undo(state: BoardState, ctx: ActionContext, actor: Actor, filter
         ...(target.cardIds ? { cardIds: target.cardIds } : {}),
     };
     const audit = state.audit.map(e => e.id === target.id ? { ...e, reversed: true } : e);
-    return { state: { columns: next.columns, cards: next.cards, audit: [...audit, undoEntry] }, undone: target, changed };
+    return { state: { columns: next.columns, cards: next.cards, audit: boundAudit([...audit, undoEntry]) }, undone: target, changed };
 }
 
 /** Convenience: undo the last AI-authored action specifically. */

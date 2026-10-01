@@ -1,6 +1,6 @@
 # 079 — Task Board widget: capability report, audit, improvement plan
 
-Status: phases 1–4 DONE 2026-10-01 (branches feat/079-task-board-p1…-p4 stacked, unpushed); phase 5 in progress (feat/079-task-board-p5). Base: `origin/main` @ `fe281de`
+Status: phases 1–5 DONE 2026-10-01 — five stacked local branches feat/079-task-board-p1 … -p5 (unpushed). Each phase: contract → coders by file → tests from the contract (fail-before proven) → orchestrator read + mutation checks → full gate → adversarial review → fixes → full gate; phases 4–5 also proven in a real browser (harness ~/dwellium-harness/079-task-board: 17/17 + 10/10). Known limits: solarized contrast (app-wide tokens, PR #135); whole-board last-writer-wins across devices (D2); a deliberately emptied board can be resurrected by a stale device. Base: `origin/main` @ `fe281de`
 (local `main` was level with it). Backend read at `origin/main` via `git show` (its working tree is on another branch).
 Swarm: ruflo `swarm-1790844744917-lsf0h7` (hierarchical). ruflo only *registered* the agents
 (`tb-m1-model`, `tb-m2-persistence`, `tb-m3-ui`, `tb-m4-integration`, `tb-r1-refuter`); the work ran as

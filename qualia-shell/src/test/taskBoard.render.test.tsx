@@ -61,6 +61,7 @@ describe('TaskBoard renders (real component mount)', () => {
         cleanup();
         patchWidgetMemory('task-board', { openCardId: 'card-that-was-deleted' });
         render(<TaskBoard />);
-        expect(screen.getByText('Backlog')).toBeTruthy();
+        // heading query: every card's "Move … to" select now also lists "Backlog" as an <option>
+        expect(screen.getByRole('heading', { name: 'Backlog' })).toBeTruthy();
     });
 });

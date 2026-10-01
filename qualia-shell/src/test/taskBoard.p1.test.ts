@@ -479,8 +479,9 @@ describe('[C6] EDIT_CARD', () => {
 describe('[C7] cardTimeline covers bulk moves and their undo', () => {
     it('includes MOVE_CARDS and the UNDO of it for EACH affected card, and nothing for unaffected cards', () => {
         const ctx = det();
-        let { b, a, c } = twoBacklog(ctx);
-        b = addTo(b, ctx, 'backlog', 'untouched');
+        const seeded = twoBacklog(ctx);
+        const { a, c } = seeded;
+        let b = addTo(seeded.b, ctx, 'backlog', 'untouched');
         const other = b.cards[2];
         b = applyAction(b, { type: 'MOVE_CARDS', cardIds: [a.id, c.id], toColumnId: 'todo' }, ARA, ctx);
         b = undoLastAi(b, ctx, USER).state;
@@ -835,7 +836,7 @@ describe('[review-2] Load Board, no-op column edits, malformed inverses, AI-door
     });
     it('unchanged column edits and same-place moves log nothing', () => {
         const ctx = det();
-        let b = addTo(createInitialBoard(), ctx, 'todo', 'X');
+        const b = addTo(createInitialBoard(), ctx, 'todo', 'X');
         const id = b.cards[0].id;
         const todo = b.columns.find(c => c.id === 'todo')!;
         for (const a of [

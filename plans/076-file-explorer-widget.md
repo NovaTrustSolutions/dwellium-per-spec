@@ -1,7 +1,7 @@
 # 076 — File Explorer widget: audit + improvement plan
 
-Status: DRAFT (read-only audit 2026-09-30; nothing implemented). Base: frontend `main` @ `4360f3a`,
-backend `backend/ship` @ `5b602cd` (the backend's real trunk; `origin/main` is stale).
+Status: BUILT, NOT MERGED (2026-09-30) — all 4 phases committed and reviewed. Frontend `feat/076-file-explorer-p4` @ 099589d (stacked p1 → p3 → p4); backend `fix/076-p4-upload` @ 4b7d956 (stacked on `fix/076-file-explorer-safety` → `fix/076-p3-trash`, target `backend/ship`). Deploy the backend first.
+Audited read-only 2026-09-30 against frontend `main` @ `4360f3a`, backend `backend/ship` @ `5b602cd` (the backend's real trunk; `origin/main` is stale).
 Swarm: ruflo `swarm-1790743460231-s4461y` (hierarchical). ruflo only *registered* the agents
 (`fe-ui-mapper`, `fe-data-mapper`, `be-routes-mapper`, `refute-reviewer`); the work ran as Claude Code
 subagents: 3 mappers by file ownership, then 1 refute-first reviewer given 18 claims. Result: 17

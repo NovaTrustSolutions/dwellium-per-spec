@@ -228,10 +228,11 @@ describe('provenance gate — skill matching only on user-origin input', () => {
 describe('Option B — autonomous-safe skill allowlist', () => {
     it('SAFE_AUTONOMOUS_SKILL_IDS is exactly the read-only safe set', () => {
         expect([...SAFE_AUTONOMOUS_SKILL_IDS].sort()).toEqual(
-            ['skill-calculator', 'skill-memory-recall', 'skill-weather', 'skill-web-search'],
+            // skill-knowledge-graph: read-only graph query (plan 072 phase 5, Ilya: Hermes answers from the graph).
+            ['skill-calculator', 'skill-knowledge-graph', 'skill-memory-recall', 'skill-weather', 'skill-web-search'],
         );
         // Dangerous skills must NOT be on the allowlist (security invariant).
-        for (const id of ['skill-code-runner', 'skill-compose-widget', 'skill-memory-remember']) {
+        for (const id of ['skill-code-runner', 'skill-compose-widget', 'skill-memory-remember', 'skill-image-gen']) {
             expect(SAFE_AUTONOMOUS_SKILL_IDS.has(id)).toBe(false);
         }
     });

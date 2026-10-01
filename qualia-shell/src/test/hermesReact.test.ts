@@ -2,8 +2,15 @@
  * hermesReact — P11-6: multi-step ReAct loop + merged tool registry. Mock
  * LLM + mock skills throughout (no network).
  */
-import { describe, it, expect, vi } from 'vitest';
-import { runReactLoop, mergedToolNames, BROWSER_SKILL_TOOLS } from '../components/HonchoHermesPanel/hermesReact';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+
+const callLlmMock = vi.fn();
+vi.mock('../lib/llmClient', () => ({
+    callLlm: (...args: unknown[]) => callLlmMock(...args),
+    parseAnthropicUsage: () => null,
+}));
+
+import { runReactLoop, mergedToolNames, BROWSER_SKILL_TOOLS, buildReactLoopFn } from '../components/HonchoHermesPanel/hermesReact';
 import { runHermes } from '../components/HonchoHermesPanel/hermesRunner';
 
 const SKILLS = [
@@ -89,5 +96,47 @@ describe('merged registry + runner integration', () => {
         });
         expect(r.via).toBe('llm');
         expect(r.result).toBe('single-shot answer');
+    });
+});
+
+describe('buildReactLoopFn — autonomous tool allowlist (security)', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        callLlmMock.mockReset();
+    });
+
+    it('the tool list offered to the model excludes Code Runner (JS)', async () => {
+        callLlmMock.mockResolvedValueOnce({ text: '{"final": "no tools needed"}' });
+        const loop = buildReactLoopFn({ active: null } as never);
+        await loop('say hi', '');
+        const systemPrompt = (callLlmMock.mock.calls[0][0] as { systemPrompt: string }).systemPrompt;
+        expect(systemPrompt).not.toContain('Code Runner (JS)');
+        expect(systemPrompt).toContain('Knowledge Graph');
+    });
+
+    it('asking for "Code Runner (JS)" never runs it — observation says not available', async () => {
+        callLlmMock
+            .mockResolvedValueOnce({ text: '{"thought": "escape", "action": {"tool": "Code Runner (JS)", "input": "fetch(\'/evil\')"}}' })
+            .mockResolvedValueOnce({ text: '{"final": "done"}' });
+        const loop = buildReactLoopFn({ active: null } as never);
+        const result = await loop('run some js', '');
+        // toolsUsed only records that a tool NAME was invoked, not that it ran —
+        // the security guarantee is the observation, proving skill.run() never fired.
+        const observation = result?.steps.find(s => s.type === 'observation')?.content ?? '';
+        expect(observation.toLowerCase()).toContain('not available');
+    });
+
+    it('asking for the knowledge-graph tool by name runs it (mock fetch)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => ({
+            json: async () => ({ success: true, data: { answer: 'NODE Roof Estimate' } }),
+        })));
+        callLlmMock
+            .mockResolvedValueOnce({ text: '{"thought": "ask the graph", "action": {"tool": "Knowledge Graph", "input": "roof estimates"}}' })
+            .mockResolvedValueOnce({ text: '{"final": "Roof Estimate is connected."}' });
+        const loop = buildReactLoopFn({ active: null } as never);
+        const result = await loop('what connects to roof estimates', '');
+        expect(result?.toolsUsed).toContain('Knowledge Graph');
+        const observation = result?.steps.find(s => s.type === 'observation')?.content ?? '';
+        expect(observation).toContain('Roof Estimate');
     });
 });

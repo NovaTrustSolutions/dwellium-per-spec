@@ -52,12 +52,15 @@
 @supports (-moz-appearance: none) {
     .kg-tabs { scrollbar-width: thin; scrollbar-color: var(--accent) color-mix(in srgb, var(--text-secondary) 14%, transparent); }
 }
+/* The whole card is the click target: the padding lives on the button, not the wrapper. */
+.kg-tab__main { all: unset; box-sizing: border-box; display: block; width: 100%; height: 100%; padding: 12px 14px; border-radius: inherit; cursor: pointer; text-align: left; }
+.kg-tab__main:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 .kg-tab {
     position: relative;
     flex: 0 0 230px; text-align: left; cursor: pointer;
     background: var(--bg-surface, rgba(20,16,11,.55));
     border: 1px solid var(--border-default, rgba(255,255,255,.1));
-    border-radius: 12px; padding: 12px 14px; transition: all .2s; font-family: inherit; color: var(--text-secondary, #9a8757);
+    border-radius: 12px; padding: 0; transition: all .2s; font-family: inherit; color: var(--text-secondary, #9a8757);
 }
 .kg-tab__remove {
     position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; line-height: 1;

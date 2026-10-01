@@ -18,7 +18,7 @@ import TaskBoard from '../components/TaskBoard/TaskBoard';
 import {
     taskBoardStore, taskBoardUserIdHolder, taskBoardProjectIdHolder,
     addCard, moveCard, moveCards, undo, addColumn, renameColumn, resizeColumn,
-    updateColumnLimits, updateColumnPolicies, loadBoardState,
+    updateColumnLimits, updateColumnPolicies, loadBoardState, removeCard, removeColumn, addSubtask,
 } from '../components/TaskBoard/taskBoardStore';
 import type { BoardState, TaskCard } from '../components/TaskBoard/taskBoardModel';
 import { patchWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
@@ -408,13 +408,15 @@ describe('column resize separator', () => {
         expect(sep()).toHaveAttribute('aria-valuemax', '640');
     });
 
-    it('ArrowRight widens the column by 16 and ArrowLeft narrows it back', () => {
+    it('ArrowRight widens the column by 16 and ArrowLeft narrows it back (committed on blur)', () => {
         render(<TaskBoard />);
         const start = width('todo');
         fireEvent.keyDown(sep(), { key: 'ArrowRight' });
-        expect(width('todo')).toBe(start + 16);
         expect(sep()).toHaveAttribute('aria-valuenow', String(start + 16));
+        fireEvent.blur(sep());
+        expect(width('todo')).toBe(start + 16);
         fireEvent.keyDown(sep(), { key: 'ArrowLeft' });
+        fireEvent.blur(sep());
         expect(width('todo')).toBe(start);
     });
 
@@ -422,10 +424,35 @@ describe('column resize separator', () => {
         render(<TaskBoard />);
         act(() => { resizeColumn('todo', 640); });
         fireEvent.keyDown(sep(), { key: 'ArrowRight' });
+        fireEvent.blur(sep());
         expect(width('todo')).toBe(640);
         act(() => { resizeColumn('todo', 200); });
         fireEvent.keyDown(sep(), { key: 'ArrowLeft' });
+        fireEvent.blur(sep());
         expect(width('todo')).toBe(200);
+    });
+
+    const resizeEntries = (): number => board().audit.filter(e => e.type === 'RESIZE_COLUMN').length;
+
+    it('review fix 3: 40 key presses track aria-valuenow live and write ONE audit entry on blur', () => {
+        render(<TaskBoard />);
+        const start = width('todo');
+        const before = resizeEntries();
+        for (let i = 0; i < 40; i++) { fireEvent.keyDown(sep(), { key: 'ArrowRight' }); fireEvent.keyUp(sep(), { key: 'ArrowRight' }); }
+        expect(sep()).toHaveAttribute('aria-valuenow', String(Math.min(640, start + 640)));
+        expect(width('todo')).toBe(start); // nothing persisted yet
+        expect(resizeEntries()).toBe(before);
+        fireEvent.blur(sep());
+        expect(width('todo')).toBe(640);
+        expect(resizeEntries()).toBe(before + 1);
+    });
+
+    it('review fix 3: the resize also lands on its own once the keys go idle', async () => {
+        render(<TaskBoard />);
+        const start = width('todo');
+        fireEvent.keyDown(sep(), { key: 'ArrowRight' });
+        fireEvent.keyDown(sep(), { key: 'ArrowRight' });
+        await waitFor(() => expect(width('todo')).toBe(start + 32), { timeout: 1500 });
     });
 });
 
@@ -574,5 +601,113 @@ describe('metrics dashboard', () => {
         const drawer = await openMetrics();
         await clickTab(/throughput/i);
         expect(text(drawer)).toMatch(/per week/i);
+    });
+});
+
+
+// ── Review fixes (adversarial pass on 1aa7baa) ──────────────────────
+describe('review fixes', () => {
+    const opener = (title: string): HTMLElement => screen.getByRole('button', { name: title });
+    const openMetricsTab = async (tab: RegExp): Promise<HTMLElement> => {
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'Metrics' }));
+        await user.click(screen.getByRole('tab', { name: tab }));
+        return screen.getByText('Kanban System Metrics').closest('aside') as HTMLElement;
+    };
+
+    it('1: opening a next step from inside the card view keeps focus in the dialog and Escape still closes', async () => {
+        const parent = addCard({ title: 'Parent', columnId: 'todo' }).cards.find(c => c.title === 'Parent')!;
+        addSubtask(parent.id, 'Child step');
+        patchWidgetMemory('task-board', { openCardId: parent.id });
+        render(<TaskBoard />);
+        const dialog = await screen.findByRole('dialog', { name: 'Card: Parent' });
+        await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Child step' }));
+        const next = await screen.findByRole('dialog', { name: 'Card: Child step' });
+        await waitFor(() => expect(next.contains(document.activeElement)).toBe(true));
+        fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
+    it('2: after a bulk move focus lands on the first moved card title', async () => {
+        addCard({ title: 'One', columnId: 'backlog' });
+        addCard({ title: 'Two', columnId: 'backlog' });
+        render(<TaskBoard />);
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('checkbox', { name: 'Select One' }));
+        await user.click(screen.getByRole('checkbox', { name: 'Select Two' }));
+        await user.selectOptions(screen.getByLabelText('Move selected cards to column'), 'Done');
+        await waitFor(() => expect(document.activeElement).toBe(opener('One')));
+    });
+
+    it('2: after a per-card move confirmed through the exit dialog focus lands on the moved card title', async () => {
+        addCard({ title: 'Mover', columnId: 'todo' });
+        updateColumnPolicies('todo', ['Tests written']);
+        render(<TaskBoard />);
+        const user = userEvent.setup();
+        await user.selectOptions(screen.getByRole('combobox', { name: 'Move Mover to' }), 'Done');
+        const dialog = await screen.findByRole('dialog', { name: 'Column Exit Criteria Enforced' });
+        await user.click(within(dialog).getByRole('checkbox'));
+        await user.click(within(dialog).getByRole('button', { name: 'Move Card' }));
+        await waitFor(() => expect(document.activeElement).toBe(opener('Mover')));
+        expect(colOf('Mover')).toBe('done');
+    });
+
+    it('4: an unparsable audit timestamp never shows NaN in the cycle metrics', async () => {
+        at(0);
+        addCard({ title: 'Odd', columnId: 'backlog' });
+        at(2); moveCard(cardByTitle('Odd').id, 'todo');
+        at(6); moveCard(cardByTitle('Odd').id, 'done');
+        act(() => { taskBoardStore.set({ ...board(), audit: board().audit.map(e => (e.type === 'MOVE_CARD' && e.to === 'todo' ? { ...e, ts: 'yesterday' } : e)) }, () => undefined); });
+        render(<TaskBoard />);
+        const drawer = await openMetricsTab(/cycle/i);
+        expect(drawer.textContent).not.toMatch(/NaN/);
+        const label = within(drawer).getAllByRole('img').map(i => i.getAttribute('aria-label') ?? '').join(' | ');
+        expect(label).not.toMatch(/NaN/);
+    });
+
+    it('5: a one-column board has no Done, so nothing counts as completed', async () => {
+        for (const id of ['backlog', 'todo', 'in-progress']) removeColumn(id);
+        addCard({ title: 'Lonely', columnId: 'done' });
+        render(<TaskBoard />);
+        const drawer = await openMetricsTab(/throughput/i);
+        expect((drawer.textContent ?? '').replace(/\s+/g, ' ')).toMatch(/Completed Tasks\s*0(?!\d)/);
+    });
+
+    it('6: an orphaned sub-task (parent deleted) shows no "Parent project" button', async () => {
+        const parent = addCard({ title: 'Doomed parent', columnId: 'todo' }).cards.find(c => c.title === 'Doomed parent')!;
+        addSubtask(parent.id, 'Orphan');
+        removeCard(parent.id);
+        patchWidgetMemory('task-board', { openCardId: cardByTitle('Orphan').id });
+        render(<TaskBoard />);
+        await screen.findByRole('dialog', { name: 'Card: Orphan' });
+        expect(screen.queryByRole('button', { name: /Parent project/ })).toBeNull();
+    });
+
+    it('7: cancelling the WIP dialog after a bulk move keeps the selection', async () => {
+        addCard({ title: 'Resident', columnId: 'todo' });
+        addCard({ title: 'Newcomer', columnId: 'backlog' });
+        updateColumnLimits('todo', undefined, 1);
+        render(<TaskBoard />);
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('checkbox', { name: 'Select Newcomer' }));
+        await user.selectOptions(screen.getByLabelText('Move selected cards to column'), 'To Do');
+        const dialog = await screen.findByRole('dialog', { name: 'WIP Limit Exceeded' });
+        await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+        expect(screen.getByRole('checkbox', { name: 'Select Newcomer' })).toBeChecked();
+        expect(screen.getByLabelText('Move selected cards to column')).toBeTruthy();
+    });
+
+    it('7: no "Moved…" announcement when the confirmed move changed nothing (card removed meanwhile)', async () => {
+        addCard({ title: 'Resident', columnId: 'in-progress' });
+        addCard({ title: 'Mover', columnId: 'todo' });
+        updateColumnLimits('in-progress', undefined, 1);
+        render(<TaskBoard />);
+        const user = userEvent.setup();
+        await user.selectOptions(screen.getByRole('combobox', { name: 'Move Mover to' }), 'In Progress');
+        const dialog = await screen.findByRole('dialog', { name: 'WIP Limit Exceeded' });
+        act(() => { removeCard(cardByTitle('Mover').id); });
+        await user.click(within(dialog).getByRole('button', { name: /Override/ }));
+        await act(async () => { await new Promise(r => setTimeout(r, 80)); });
+        expect(region()).not.toMatch(/Moved/);
     });
 });

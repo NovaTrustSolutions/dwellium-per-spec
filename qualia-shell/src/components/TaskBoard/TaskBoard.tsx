@@ -46,6 +46,7 @@ const MAX_COL = 640;
 const URGENCY_NEXT: Record<string, Urgency> = { low: 'medium', medium: 'high', high: 'low' };
 const URGENCY_COLOR: Record<string, string> = { high: 'var(--danger)', medium: 'var(--warning)', low: 'var(--success)' };
 const KEY_RESIZE_STEP = 16;
+const KEY_RESIZE_IDLE_MS = 400;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function relTime(iso: string): string {
@@ -112,6 +113,7 @@ export default function TaskBoard() {
     const [showAudit, setShowAudit] = useState(false);
     const [copied, setCopied] = useState(false);
     const addRef = useRef<HTMLInputElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
     const renameRef = useRef<HTMLInputElement>(null);
     // Phase 2: project view + assignment/routing
     // Restored open card only counts while the card still exists on the board.
@@ -183,16 +185,23 @@ export default function TaskBoard() {
     } | null>(null);
 
     const colTitle = (id: string) => board.columns.find(c => c.id === id)?.title ?? id;
+    // After a committed move the old focus target (select, bulk bar, modal) is gone: land on the moved card.
+    const pendingFocus = useRef<string | null>(null);
     const commitMove = (cardId: string, toColumnId: string) => {
         const title = board.cards.find(c => c.id === cardId)?.title ?? 'card';
-        moveCard(cardId, toColumnId);
+        const before = taskBoardStore.getSnapshot();
+        if (moveCard(cardId, toColumnId) === before) return; // nothing changed (e.g. the card was removed meanwhile)
+        pendingFocus.current = cardId;
         announce(`Moved ${title} to ${colTitle(toColumnId)}`);
     };
     const commitMoves = (cardIds: string[], toColumnId: string) => {
-        const n = new Set(cardIds.filter(id => { const c = board.cards.find(x => x.id === id); return c && c.columnId !== toColumnId; })).size;
-        if (n === 0) return;
-        moveCards(cardIds, toColumnId);
-        announce(`Moved ${n} card${n === 1 ? '' : 's'} to ${colTitle(toColumnId)}`);
+        const before = taskBoardStore.getSnapshot();
+        const after = moveCards(cardIds, toColumnId);
+        if (after === before) return;
+        const moved = after.audit[after.audit.length - 1]?.cardIds ?? [];
+        clearSel(); // only a committed move consumes the selection; a cancelled dialog keeps it
+        pendingFocus.current = moved[0] ?? null;
+        announce(`Moved ${moved.length} card${moved.length === 1 ? '' : 's'} to ${colTitle(toColumnId)}`);
     };
     // Undo buttons: announce the entry the undo just appended (same snapshot = nothing to undo).
     const runAndAnnounce = (fn: () => BoardState) => {
@@ -303,6 +312,7 @@ export default function TaskBoard() {
 
     // ── column resize (live width via ref + forced re-render; persists on mouseup) ──
     const resize = useRef<{ colId: string; startX: number; w: number } | null>(null);
+    const keyTimer = useRef<number | undefined>(undefined);
     const [, force] = useReducer((x: number) => x + 1, 0);
     useEffect(() => {
         const move = (e: MouseEvent) => {
@@ -317,7 +327,10 @@ export default function TaskBoard() {
         };
         window.addEventListener('mousemove', move);
         window.addEventListener('mouseup', up);
-        return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        return () => {
+            window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+            window.clearTimeout(keyTimer.current); up(); // flush a pending keyboard resize
+        };
     }, []);
     const startResize = (e: React.MouseEvent, colId: string, width: number) => {
         e.preventDefault();
@@ -327,14 +340,30 @@ export default function TaskBoard() {
     };
     const widthOf = (colId: string, w: number) => (resize.current?.colId === colId ? resize.current.w : w);
 
+    // Arrow keys move the live width; ONE audited resizeColumn lands on blur or after the keys go idle.
+    const commitKeyResize = () => {
+        window.clearTimeout(keyTimer.current);
+        const r = resize.current;
+        if (r) { resizeColumn(r.colId, Math.round(r.w)); resize.current = null; force(); }
+    };
     const keyResize = (e: React.KeyboardEvent, col: BoardColumn) => {
         const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
         if (!dir) return;
         e.preventDefault();
-        resizeColumn(col.id, widthOf(col.id, col.width) + dir * KEY_RESIZE_STEP); // the model clamps to 200–640
+        const cur = resize.current?.colId === col.id ? resize.current.w : col.width;
+        resize.current = { colId: col.id, startX: 0, w: Math.max(MIN_COL, Math.min(MAX_COL, cur + dir * KEY_RESIZE_STEP)) };
+        force();
+        window.clearTimeout(keyTimer.current);
+        keyTimer.current = window.setTimeout(commitKeyResize, KEY_RESIZE_IDLE_MS);
     };
 
     useEffect(() => { if (addingTo && addRef.current) addRef.current.focus(); }, [addingTo]);
+    useEffect(() => {
+        const id = pendingFocus.current;
+        if (!id) return;
+        pendingFocus.current = null;
+        Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find(n => n.dataset.cardId === id)?.focus();
+    }, [board]);
     useEffect(() => { if (editingCol && renameRef.current) renameRef.current.focus(); }, [editingCol]);
 
     // Another board or account: transient UI state belongs to the one we left.
@@ -342,6 +371,7 @@ export default function TaskBoard() {
         setAddingTo(null); setNewTitle(''); setEditingCol(null); setEditColTitle('');
         setEditingLimitsCol(null); setShowPoliciesCol(null); setAssignFor(null); setRouteMsg(null);
         setWipAlert(null); setExitCriteriaCheck(null);
+        window.clearTimeout(keyTimer.current); resize.current = null;
         setSelected(prev => (prev.size ? new Set() : prev));
     }, [userId, activeProjectId]);
 
@@ -392,7 +422,6 @@ export default function TaskBoard() {
         // If the dragged card is part of a multi-selection, move the whole set.
         if (selected.has(id) && selected.size > 1) {
             initiateMoveCards([...selected], colId);
-            clearSel();
         } else {
             initiateMoveCard(id, colId);
         }
@@ -435,7 +464,7 @@ export default function TaskBoard() {
     };
 
     return (
-        <div className={`tb-board ${dragId ? 'tb-board--dragging' : ''}`}>
+        <div ref={rootRef} className={`tb-board ${dragId ? 'tb-board--dragging' : ''}`}>
             {/* ── Toolbar ── */}
             <div className="tb-toolbar">
                 <span className="tb-toolbar__title">Task Board</span>
@@ -479,7 +508,7 @@ export default function TaskBoard() {
                             className="tb-bulk__move"
                             aria-label="Move selected cards to column"
                             value=""
-                            onChange={e => { if (e.target.value) { initiateMoveCards([...selected], e.target.value); clearSel(); } }}
+                            onChange={e => { if (e.target.value) initiateMoveCards([...selected], e.target.value); }}
                         >
                             <option value="" disabled>Move to…</option>
                             {columns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -637,6 +666,7 @@ export default function TaskBoard() {
                                                     />
                                                     <span
                                                         className="tb-card__title tb-card__title--link"
+                                                        data-card-id={card.id}
                                                         onClick={() => setOpenCardId(card.id)}
                                                         style={{ cursor: 'pointer' }}
                                                         role="button"
@@ -751,6 +781,7 @@ export default function TaskBoard() {
                                     aria-valuemin={MIN_COL}
                                     aria-valuemax={MAX_COL}
                                     onKeyDown={e => keyResize(e, col)}
+                                    onBlur={commitKeyResize}
                                     onMouseDown={e => startResize(e, col.id, col.width)}
                                 />
                                 {/* eslint-enable jsx-a11y/no-noninteractive-tabindex, jsx-a11y/no-noninteractive-element-interactions */}
@@ -909,6 +940,13 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
 
     // Re-seed local fields when switching to a different card (e.g. into a sub-project)
     useEffect(() => { setTitle(card?.title ?? ''); setDesc(card?.description ?? ''); }, [cardId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // The button that opened the new card (sub-task / parent) unmounts with the old content: keep focus inside the dialog.
+    const shownId = useRef(cardId);
+    useEffect(() => {
+        if (shownId.current === cardId) return;
+        shownId.current = cardId;
+        dialogRef.current?.focus();
+    }, [cardId, dialogRef]);
 
     if (!card) return null;
     const subs = subtasksOf(board.cards, cardId);
@@ -950,7 +988,7 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                     <button className="tb-icon-btn" aria-label="Close project view" onClick={onClose}>×</button>
                 </div>
 
-                {card.parentId && (
+                {card.parentId && board.cards.some(c => c.id === card.parentId) && (
                     <button className="tb-pv__parent" onClick={() => onOpenCard(card.parentId!)}>↑ Parent project</button>
                 )}
 
@@ -1194,7 +1232,7 @@ const METRIC_TABS: { id: MetricsTab; label: string }[] = [
     { id: 'times', label: 'Cycle & Lead' },
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
-const inDays = (ms: number): number => parseFloat((Math.max(0, ms) / DAY_MS).toFixed(1));
+const inDays = (ms: number): number => (Number.isFinite(ms) ? parseFloat((Math.max(0, ms) / DAY_MS).toFixed(1)) : 0);
 const CHART_MUTED = 'var(--tb-muted, var(--text-secondary))';
 const CHART_TOOLTIP = { background: 'var(--bg-surface-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)', fontSize: '11px', borderRadius: '6px' };
 
@@ -1208,7 +1246,8 @@ function MetricsDashboard({ board, onClose }: { board: BoardState; onClose: () =
     const doneId = columns[columns.length - 1]?.id;
     const activeColumns = columns.filter(c => c.id !== firstId && c.id !== doneId);
     const activeCards = board.cards.filter(c => c.columnId !== firstId && c.columnId !== doneId);
-    const completedCards = board.cards.filter(c => c.columnId === doneId);
+    // A one-column board has no Done: first and last would be the same column.
+    const completedCards = columns.length < 2 ? [] : board.cards.filter(c => c.columnId === doneId);
     const countIn = (colId: string) => board.cards.filter(c => c.columnId === colId).length;
 
     // 1. WIP stats
@@ -1230,7 +1269,7 @@ function MetricsDashboard({ board, onClose }: { board: BoardState; onClose: () =
         const bucket = last7Days.find(d => d.dateKey === new Date(card.enteredColumnAt).toDateString());
         if (bucket) bucket.count++;
     });
-    const oldest = board.cards.reduce((m, c) => Math.min(m, new Date(c.createdAt).getTime()), Infinity);
+    const oldest = board.cards.reduce((m, c) => { const t = Date.parse(c.createdAt); return Number.isFinite(t) ? Math.min(m, t) : m; }, Infinity);
     const weeksOpen = Number.isFinite(oldest) ? (Date.now() - oldest) / WEEK_MS : 0;
     const avgPerWeek = (completedCards.length / Math.max(1, weeksOpen)).toFixed(1);
     const throughputLabel = `Daily throughput, last 7 days: ${last7Days.map(d => `${d.dateStr} ${d.count}`).join(', ')}. Average ${avgPerWeek} completed per week.`;
@@ -1249,7 +1288,8 @@ function MetricsDashboard({ board, onClose }: { board: BoardState; onClose: () =
         const created = new Date(card.createdAt).getTime();
         const start = board.audit.find(e => !e.reversed && (e.type === 'MOVE_CARD' || e.type === 'MOVE_CARDS')
             && !!e.cardIds?.includes(card.id) && e.to !== firstId);
-        const started = start ? new Date(start.ts).getTime() : created;
+        const startTs = start ? Date.parse(start.ts) : NaN;
+        const started = Number.isFinite(startTs) ? startTs : created; // unparsable ts: fall back to creation
         return { index: idx + 1, title: card.title, leadTime: inDays(completed - created), cycleTime: inDays(completed - started) };
     });
     const mean = (pick: (t: typeof timesData[number]) => number) =>

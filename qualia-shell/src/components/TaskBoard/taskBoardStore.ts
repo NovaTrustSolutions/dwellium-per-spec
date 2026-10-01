@@ -16,10 +16,10 @@
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
 import {
-    type BoardState, type BoardAction, type BoardColumn, type TaskCard, type Actor, type Urgency, type AuditEntry, type CardPatch,
+    type BoardState, type BoardAction, type BoardColumn, type Actor, type Urgency, type CardPatch,
     type Assignee, type Attachment,
     applyAction, undo as undoModel, undoLastAi as undoLastAiModel, generateReport,
-    createInitialBoard, defaultColumns, makeCard, type ActionContext,
+    createInitialBoard, makeCard, repairBoard, type ActionContext,
 } from './taskBoardModel';
 import { aiEndpoint, buildGmailComposeUrl, composeCardEmail, composeCardPrompt } from './taskRouting';
 
@@ -38,22 +38,10 @@ function resolveKey(): string {
     return pid && pid !== 'global' ? `taskboard:_anonymous:${pid}` : 'taskboard:_anonymous';
 }
 
-function isCard(c: any): c is TaskCard {
-    return c && typeof c.id === 'string' && typeof c.title === 'string' && typeof c.columnId === 'string'
-        && typeof c.createdAt === 'string' && typeof c.enteredColumnAt === 'string';
-}
-function isColumn(c: any): c is BoardColumn {
-    return c && typeof c.id === 'string' && typeof c.title === 'string' && typeof c.width === 'number';
-}
-
 function deserialize(raw: string | null): BoardState {
     if (!raw) return createInitialBoard();
     try {
-        const p = JSON.parse(raw);
-        const columns: BoardColumn[] = Array.isArray(p?.columns) && p.columns.every(isColumn) ? p.columns : defaultColumns();
-        const cards: TaskCard[] = Array.isArray(p?.cards) ? p.cards.filter(isCard) : [];
-        const audit: AuditEntry[] = Array.isArray(p?.audit) ? p.audit : [];
-        return { columns, cards, audit };
+        return repairBoard(JSON.parse(raw));
     } catch {
         return createInitialBoard();
     }
@@ -104,7 +92,7 @@ function orderInColumn(state: BoardState, columnId: string): number {
 
 export function addCard(fields: { title: string; description?: string; columnId?: string; urgency?: Urgency; assignee?: Assignee | null }, actor: Actor = { kind: 'user' }): BoardState {
     const state = taskBoardStore.getSnapshot();
-    const columnId = fields.columnId ?? state.columns.sort((a, b) => a.order - b.order)[0]?.id ?? 'backlog';
+    const columnId = fields.columnId ?? [...state.columns].sort((a, b) => a.order - b.order)[0]?.id ?? 'backlog';
     const card = makeCard(ctx, { ...fields, columnId }, orderInColumn(state, columnId));
     return dispatch({ type: 'ADD_CARD', card }, actor);
 }
@@ -154,14 +142,14 @@ export function updateColumnPolicies(columnId: string, policies: string[], actor
 
 // ── Undo / report ──────────────────────────────────────────────────
 export function undo(actor: Actor = { kind: 'user' }): BoardState {
-    const { state } = undoModel(taskBoardStore.getSnapshot(), ctx, actor);
-    persist(state);
+    const { state, undone } = undoModel(taskBoardStore.getSnapshot(), ctx, actor);
+    if (undone) persist(state);
     return state;
 }
 
 export function undoLastAi(actor: Actor = { kind: 'user' }): BoardState {
-    const { state } = undoLastAiModel(taskBoardStore.getSnapshot(), ctx, actor);
-    persist(state);
+    const { state, undone } = undoLastAiModel(taskBoardStore.getSnapshot(), ctx, actor);
+    if (undone) persist(state);
     return state;
 }
 

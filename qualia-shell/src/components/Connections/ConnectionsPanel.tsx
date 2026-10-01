@@ -42,7 +42,7 @@ export function buildMemoryRows(): Array<{ name: string; count: number; widget: 
         { name: 'ThoughtWeaver captures', count: safe(() => thoughtWeaverStore.getSnapshot().length), widget: 'thought-weaver' },
         { name: 'Goals (Mission Control)', count: safe(() => liveGoals(goalsStore.getSnapshot()).length), widget: 'mission-control' },
         { name: 'Artifacts', count: safe(() => artifactStore.getSnapshot().length), widget: 'artifact-gallery' },
-        { name: 'Tags', count: safe(() => tagStore.getSnapshot().length), widget: 'task-board' },
+        { name: 'Tags', count: safe(() => tagStore.getSnapshot().length), widget: 'tag-file' },
         { name: 'Morning briefs', count: safe(() => morningBriefStore.getSnapshot().length), widget: 'ara-console' },
     ];
 }

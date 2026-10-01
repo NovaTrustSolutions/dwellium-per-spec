@@ -73,8 +73,8 @@ export interface TaskCard {
 // ── Actions (discriminated union) ──────────────────────────────────
 export interface CardPosition { cardId: string; columnId: string; order: number; enteredColumnAt: string; }
 
-/** The mutable subset of a card editable via EDIT_CARD. */
-export type CardPatch = Partial<Pick<TaskCard, 'title' | 'description' | 'urgency' | 'assignee' | 'tags'>>;
+/** The mutable subset of a card editable via EDIT_CARD. `urgency: null` = unset. */
+export type CardPatch = Partial<Pick<TaskCard, 'title' | 'description' | 'assignee' | 'tags'>> & { urgency?: Urgency | null };
 
 export type BoardAction =
     | { type: 'ADD_CARD'; card: TaskCard }
@@ -106,6 +106,8 @@ export interface AuditEntry {
     inverse: BoardAction | null;           // null = not reversible
     reversed?: boolean;
     cardId?: string;                       // links the entry to a card (per-card timeline)
+    cardIds?: string[];                    // MOVE_CARD/MOVE_CARDS: cards actually moved; UNDO copies its target's
+    to?: string;                           // MOVE_CARD/MOVE_CARDS: destination column id as applied
 }
 
 export interface BoardState {
@@ -133,6 +135,108 @@ export function defaultColumns(): BoardColumn[] {
 
 export function createInitialBoard(): BoardState {
     return { columns: defaultColumns(), cards: [], audit: [] };
+}
+
+// ── repairBoard: tolerant loader for stored / remote payloads (pure, never throws) ──
+type Rec = Record<string, unknown>;
+const isRec = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isIso = (v: unknown): v is string => isStr(v) && !Number.isNaN(Date.parse(v));
+const strArray = (v: unknown): string[] | undefined => (Array.isArray(v) && v.every(isStr) ? v : undefined);
+
+function repairColumn(r: Rec, index: number): BoardColumn {
+    const col: BoardColumn = {
+        id: r.id as string,
+        title: isStr(r.title) ? r.title : 'Untitled column',
+        width: isNum(r.width) ? Math.min(640, Math.max(200, r.width)) : DEFAULT_COLUMN_WIDTH,
+        order: isNum(r.order) ? r.order : index,
+    };
+    if (isNum(r.minWip)) col.minWip = r.minWip;
+    if (isNum(r.maxWip)) col.maxWip = r.maxWip;
+    const policies = strArray(r.policies);
+    if (policies) col.policies = policies;
+    return col;
+}
+
+function repairAssignee(v: unknown): Assignee | null | undefined {
+    if (v === null) return null;
+    if (!isRec(v) || (v.kind !== 'ai' && v.kind !== 'person') || !isStr(v.id) || !isStr(v.label)) return undefined;
+    return { kind: v.kind, id: v.id, label: v.label, ...(isStr(v.email) ? { email: v.email } : {}) };
+}
+
+function repairAttachments(v: unknown): Attachment[] | undefined {
+    if (!Array.isArray(v)) return undefined;
+    return v.filter(isRec).filter(a => isStr(a.id) && isStr(a.name) && isNum(a.size) && isStr(a.type) && isStr(a.addedAt))
+        .map(a => ({ id: a.id as string, name: a.name as string, size: a.size as number, type: a.type as string, addedAt: a.addedAt as string, ...(isStr(a.dataUrl) ? { dataUrl: a.dataUrl } : {}) }));
+}
+
+function repairCard(r: Rec, firstColumnId: string, columnIds: Set<string>): TaskCard {
+    const fallbackTs = new Date().toISOString();
+    const created = isIso(r.createdAt) ? r.createdAt : isIso(r.enteredColumnAt) ? r.enteredColumnAt : fallbackTs;
+    const card: TaskCard = {
+        id: r.id as string,
+        title: isStr(r.title) && r.title.trim() ? r.title : 'Untitled task',
+        description: isStr(r.description) ? r.description : '',
+        columnId: isStr(r.columnId) && columnIds.has(r.columnId) ? r.columnId : firstColumnId,
+        order: isNum(r.order) ? r.order : 0,
+        createdAt: created,
+        enteredColumnAt: isIso(r.enteredColumnAt) ? r.enteredColumnAt : created,
+    };
+    if (r.urgency === 'high' || r.urgency === 'medium' || r.urgency === 'low') card.urgency = r.urgency;
+    const assignee = repairAssignee(r.assignee);
+    if (assignee !== undefined) card.assignee = assignee;
+    if (r.parentId === null || isStr(r.parentId)) card.parentId = r.parentId;
+    const attachments = repairAttachments(r.attachments);
+    if (attachments) card.attachments = attachments;
+    const tags = strArray(r.tags);
+    if (tags) card.tags = tags;
+    return card;
+}
+
+/** First entry per string `id` wins; entries without one are dropped. */
+function uniqueById(list: unknown): Rec[] {
+    const seen = new Set<string>();
+    return (Array.isArray(list) ? list : []).filter((e): e is Rec => {
+        if (!isRec(e) || !isStr(e.id) || seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+    });
+}
+
+/** Coerce any stored/remote payload into a valid board. A card is never dropped for a bad field. */
+export function repairBoard(raw: unknown): BoardState {
+    const src: Rec = isRec(raw) ? raw : {};
+    const usable = uniqueById(src.columns).map(repairColumn);
+    const columns = usable.length > 0 ? usable : defaultColumns();
+    const firstId = (firstColumn(columns) as BoardColumn).id;
+    const columnIds = new Set(columns.map(c => c.id));
+    const cards = uniqueById(src.cards).map(c => repairCard(c, firstId, columnIds));
+    const audit = (Array.isArray(src.audit) ? src.audit : [])
+        .filter((e): e is Rec => isRec(e) && isStr(e.id) && isStr(e.type) && isStr(e.summary))
+        .map(repairAuditEntry);
+    return { columns, cards, audit };
+}
+
+/** The UI reads actor/ts on every entry and `cardIds.includes` on timelines — keep those well-typed. */
+function repairAuditEntry(e: Rec): AuditEntry {
+    const a = e.actor;
+    const actor: Actor = isRec(a) && a.kind === 'ai' && isStr(a.agent) ? { kind: 'ai', agent: a.agent }
+        : isRec(a) && a.kind === 'user' ? { kind: 'user', ...(isStr(a.name) ? { name: a.name } : {}) }
+        : { kind: 'user' };
+    const cardIds = strArray(e.cardIds);
+    return {
+        id: e.id as string,
+        ts: isStr(e.ts) ? e.ts : '',
+        actor,
+        type: e.type as AuditEntry['type'],
+        summary: e.summary as string,
+        inverse: isRec(e.inverse) && isStr(e.inverse.type) ? e.inverse as unknown as BoardAction : null,
+        ...(e.reversed === true ? { reversed: true } : {}),
+        ...(isStr(e.cardId) ? { cardId: e.cardId } : {}),
+        ...(cardIds ? { cardIds } : {}),
+        ...(isStr(e.to) ? { to: e.to } : {}),
+    };
 }
 
 /** Build a fresh card. Caller supplies id/now via ctx; columnId defaults to first column. */
@@ -168,6 +272,15 @@ function nextOrder(cards: TaskCard[], columnId: string): number {
     return inCol.length === 0 ? 0 : Math.max(...inCol.map(c => c.order)) + 1;
 }
 
+function firstColumn(columns: BoardColumn[]): BoardColumn | undefined {
+    return columns.reduce<BoardColumn | undefined>((a, c) => (!a || c.order < a.order ? c : a), undefined);
+}
+
+/** `columnId` if that column exists, else the first column's id (else `columnId` untouched). */
+function landingColumnId(state: { columns: BoardColumn[] }, columnId: string): string {
+    return state.columns.some(c => c.id === columnId) ? columnId : (firstColumn(state.columns)?.id ?? columnId);
+}
+
 function colTitle(state: { columns: BoardColumn[] }, columnId: string): string {
     return state.columns.find(c => c.id === columnId)?.title ?? columnId;
 }
@@ -176,21 +289,53 @@ function cardTitle(state: { cards: TaskCard[] }, cardId: string): string {
     return state.cards.find(c => c.id === cardId)?.title ?? cardId;
 }
 
+// ── EDIT_CARD planning: whitelist keys, drop no-ops, record a JSON-safe inverse ──
+const same = (a: unknown, b: unknown): boolean => a === b || JSON.stringify(a) === JSON.stringify(b);
+
+function planEdit(card: TaskCard, patch: CardPatch): { card: TaskCard; inverse: CardPatch } | null {
+    const next: TaskCard = { ...card };
+    const inverse: CardPatch = {};
+    if (typeof patch.title === 'string' && patch.title.trim() && patch.title.trim() !== card.title) {
+        next.title = patch.title.trim(); inverse.title = card.title;
+    }
+    if (typeof patch.description === 'string' && patch.description !== card.description) {
+        next.description = patch.description; inverse.description = card.description;
+    }
+    const urgencyOk = patch.urgency === null || patch.urgency === 'high' || patch.urgency === 'medium' || patch.urgency === 'low';
+    if (urgencyOk && (patch.urgency ?? undefined) !== card.urgency) {
+        if (patch.urgency === null) delete next.urgency; else next.urgency = patch.urgency;
+        inverse.urgency = card.urgency ?? null;
+    }
+    if (patch.assignee !== undefined && !same(patch.assignee, card.assignee ?? null)) {
+        next.assignee = patch.assignee; inverse.assignee = card.assignee ?? null;
+    }
+    if (patch.tags !== undefined && !same(patch.tags, card.tags ?? [])) {
+        next.tags = patch.tags; inverse.tags = card.tags ?? [];
+    }
+    return Object.keys(inverse).length === 0 ? null : { card: next, inverse };
+}
+
 // ── Core reducer (data only — no audit). Returns next data + the inverse. ──
 interface BoardData { columns: BoardColumn[]; cards: TaskCard[]; }
 
 function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): { next: BoardData; inverse: BoardAction | null } {
+    // No-op contract: a reducer that changes nothing returns `state` itself (same object).
     switch (action.type) {
         case 'ADD_CARD': {
+            const columnId = landingColumnId(state, action.card.columnId);
+            const card = columnId === action.card.columnId ? action.card : { ...action.card, columnId, order: nextOrder(state.cards, columnId) };
             return {
-                next: { ...state, cards: [...state.cards, action.card] },
-                inverse: { type: 'REMOVE_CARD', cardId: action.card.id },
+                next: { ...state, cards: [...state.cards, card] },
+                inverse: { type: 'REMOVE_CARD', cardId: card.id },
             };
         }
         case 'RESTORE_CARD': {
+            const columnId = landingColumnId(state, action.card.columnId);
+            const card = columnId === action.card.columnId ? action.card
+                : { ...action.card, columnId, order: nextOrder(state.cards, columnId), enteredColumnAt: ctx.now() };
             return {
-                next: { ...state, cards: [...state.cards.filter(c => c.id !== action.card.id), action.card] },
-                inverse: { type: 'REMOVE_CARD', cardId: action.card.id },
+                next: { ...state, cards: [...state.cards.filter(c => c.id !== card.id), card] },
+                inverse: { type: 'REMOVE_CARD', cardId: card.id },
             };
         }
         case 'REMOVE_CARD': {
@@ -203,7 +348,7 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
         }
         case 'MOVE_CARD': {
             const card = state.cards.find(c => c.id === action.cardId);
-            if (!card) return { next: state, inverse: null };
+            if (!card || !state.columns.some(c => c.id === action.toColumnId)) return { next: state, inverse: null };
             const prior: CardPosition = { cardId: card.id, columnId: card.columnId, order: card.order, enteredColumnAt: card.enteredColumnAt };
             const columnChanged = card.columnId !== action.toColumnId;
             const toOrder = action.toOrder ?? nextOrder(state.cards, action.toColumnId);
@@ -220,10 +365,11 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
             };
         }
         case 'MOVE_CARDS': {
+            if (!state.columns.some(c => c.id === action.toColumnId)) return { next: state, inverse: null };
             const priors: CardPosition[] = [];
             let base = nextOrder(state.cards, action.toColumnId);
             const movedCards = state.cards.map(c => c); // shallow copy
-            for (const cardId of action.cardIds) {
+            for (const cardId of new Set(action.cardIds)) {
                 const idx = movedCards.findIndex(c => c.id === cardId);
                 if (idx < 0) continue;
                 const card = movedCards[idx];
@@ -245,31 +391,30 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
         case 'RESTORE_POSITIONS': {
             const before: CardPosition[] = [];
             const byId = new Map(action.positions.map(p => [p.cardId, p]));
-            const cards = state.cards.map(c => {
+            const cards = state.cards.map(c => c); // working copy: fallback orders see earlier restores
+            cards.forEach((c, i) => {
                 const p = byId.get(c.id);
-                if (!p) return c;
+                if (!p) return;
+                const columnId = landingColumnId(state, p.columnId);
+                // Old column gone and the card already sits in the fallback column: leave it alone
+                // (no fake "revert", and its time-in-column clock keeps running).
+                if (columnId !== p.columnId && columnId === c.columnId) return;
                 before.push({ cardId: c.id, columnId: c.columnId, order: c.order, enteredColumnAt: c.enteredColumnAt });
-                return { ...c, columnId: p.columnId, order: p.order, enteredColumnAt: p.enteredColumnAt };
+                cards[i] = columnId === p.columnId
+                    ? { ...c, columnId, order: p.order, enteredColumnAt: p.enteredColumnAt }
+                    : { ...c, columnId, order: nextOrder(cards, columnId), enteredColumnAt: ctx.now() };
             });
+            if (before.length === 0) return { next: state, inverse: null };
             return { next: { ...state, cards }, inverse: { type: 'RESTORE_POSITIONS', positions: before } };
         }
         case 'EDIT_CARD': {
             const card = state.cards.find(c => c.id === action.cardId);
             if (!card) return { next: state, inverse: null };
-            const oldPatch: BoardAction = {
-                type: 'EDIT_CARD',
-                cardId: card.id,
-                patch: {
-                    ...(('title' in action.patch) ? { title: card.title } : {}),
-                    ...(('description' in action.patch) ? { description: card.description } : {}),
-                    ...(('urgency' in action.patch) ? { urgency: card.urgency } : {}),
-                    ...(('assignee' in action.patch) ? { assignee: card.assignee } : {}),
-                    ...(('tags' in action.patch) ? { tags: card.tags } : {}),
-                },
-            };
+            const edit = planEdit(card, action.patch);
+            if (!edit) return { next: state, inverse: null };
             return {
-                next: { ...state, cards: state.cards.map(c => c.id === card.id ? { ...c, ...action.patch } : c) },
-                inverse: oldPatch,
+                next: { ...state, cards: state.cards.map(c => c.id === card.id ? edit.card : c) },
+                inverse: { type: 'EDIT_CARD', cardId: card.id, patch: edit.inverse },
             };
         }
         case 'ADD_COLUMN': {
@@ -280,7 +425,7 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
         }
         case 'REMOVE_COLUMN': {
             const column = state.columns.find(c => c.id === action.columnId);
-            if (!column) return { next: state, inverse: null };
+            if (!column || state.columns.length <= 1) return { next: state, inverse: null }; // never remove the last column
             const removedCards = state.cards.filter(c => c.columnId === action.columnId);
             return {
                 next: {
@@ -294,7 +439,8 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
             return {
                 next: {
                     columns: [...state.columns.filter(c => c.id !== action.column.id), action.column],
-                    cards: [...state.cards.filter(c => c.columnId !== action.column.id), ...action.cards],
+                    // Keep every card already on the board; add back only snapshot cards that are gone.
+                    cards: [...state.cards, ...action.cards.filter(c => !state.cards.some(x => x.id === c.id))],
                 },
                 inverse: { type: 'REMOVE_COLUMN', columnId: action.column.id },
             };
@@ -368,15 +514,18 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
 }
 
 // ── Summaries (human-readable audit text) ──────────────────────────
-function summarize(state: BoardData, action: BoardAction): string {
+function summarize(state: BoardData, action: BoardAction, inverse: BoardAction | null): string {
     switch (action.type) {
-        case 'ADD_CARD': return `Added "${action.card.title}" to ${colTitle(state, action.card.columnId)}`;
+        case 'ADD_CARD': return `Added "${action.card.title}" to ${colTitle(state, landingColumnId(state, action.card.columnId))}`;
         case 'RESTORE_CARD': return `Restored "${action.card.title}"`;
         case 'REMOVE_CARD': return `Removed "${cardTitle(state, action.cardId)}"`;
         case 'MOVE_CARD': return `Moved "${cardTitle(state, action.cardId)}" → ${colTitle(state, action.toColumnId)}`;
-        case 'MOVE_CARDS': return `Moved ${action.cardIds.length} card${action.cardIds.length === 1 ? '' : 's'} → ${colTitle(state, action.toColumnId)}`;
+        case 'MOVE_CARDS': {
+            const n = inverse?.type === 'RESTORE_POSITIONS' ? inverse.positions.length : 0; // cards actually moved
+            return `Moved ${n} card${n === 1 ? '' : 's'} → ${colTitle(state, action.toColumnId)}`;
+        }
         case 'RESTORE_POSITIONS': return `Restored position of ${action.positions.length} card${action.positions.length === 1 ? '' : 's'}`;
-        case 'EDIT_CARD': return `Edited "${cardTitle(state, action.cardId)}" (${Object.keys(action.patch).join(', ')})`;
+        case 'EDIT_CARD': return `Edited "${cardTitle(state, action.cardId)}" (${Object.keys(inverse?.type === 'EDIT_CARD' ? inverse.patch : action.patch).join(', ')})`;
         case 'ADD_COLUMN': return `Added column "${action.column.title}"`;
         case 'REMOVE_COLUMN': return `Removed column "${colTitle(state, action.columnId)}"`;
         case 'RESTORE_COLUMN': return `Restored column "${action.column.title}"`;
@@ -409,24 +558,34 @@ function actionCardId(action: BoardAction): string | undefined {
 }
 
 // ── Public: applyAction (the single mutation choke-point) ──────────
+/** Cards a MOVE_CARD/MOVE_CARDS actually moved, read off its RESTORE_POSITIONS inverse. */
+function movedIds(action: BoardAction, inverse: BoardAction | null): { cardIds: string[]; to: string } | null {
+    if ((action.type !== 'MOVE_CARD' && action.type !== 'MOVE_CARDS') || inverse?.type !== 'RESTORE_POSITIONS') return null;
+    return { cardIds: inverse.positions.map(p => p.cardId), to: action.toColumnId };
+}
+
 export function applyAction(state: BoardState, action: BoardAction, actor: Actor, ctx: ActionContext): BoardState {
-    const summary = summarize(state, action);
-    const { next, inverse } = reduceData({ columns: state.columns, cards: state.cards }, action, ctx);
+    const data: BoardData = { columns: state.columns, cards: state.cards };
+    const { next, inverse } = reduceData(data, action, ctx);
+    // No-op: same state object back, nothing logged (LOG_EVENT is audit-only, so it always logs).
+    if (next === data && action.type !== 'LOG_EVENT') return state;
+    const moved = movedIds(action, inverse);
     const entry: AuditEntry = {
         id: ctx.id(),
         ts: ctx.now(),
         actor,
         type: action.type,
-        summary,
+        summary: summarize(state, action, inverse),
         inverse,
         cardId: actionCardId(action),
+        ...(moved ?? {}),
     };
     return { columns: next.columns, cards: next.cards, audit: [...state.audit, entry] };
 }
 
 /** Audit entries for one card, oldest→newest — the per-card project timeline. */
 export function cardTimeline(state: BoardState, cardId: string): AuditEntry[] {
-    return state.audit.filter(e => e.cardId === cardId);
+    return state.audit.filter(e => e.cardId === cardId || e.cardIds?.includes(cardId));
 }
 
 /** Direct sub-tasks / sub-projects of a card. */
@@ -446,30 +605,50 @@ export function lastReversible(state: BoardState, filter?: (e: AuditEntry) => bo
     return null;
 }
 
+export interface UndoResult { state: BoardState; undone: AuditEntry | null; changed: boolean; }
+
+/** RESTORE_POSITIONS undo: skip cards that were moved again since (current column != entry.to). */
+function applicableInverse(state: BoardState, target: AuditEntry): { inverse: BoardAction; skipped: number } {
+    const inv = target.inverse as BoardAction;
+    if (inv.type !== 'RESTORE_POSITIONS' || !target.to) return { inverse: inv, skipped: 0 };
+    const col = new Map(state.cards.map(c => [c.id, c.columnId]));
+    const positions = inv.positions.filter(p => col.get(p.cardId) === target.to);
+    const skipped = inv.positions.filter(p => col.has(p.cardId) && col.get(p.cardId) !== target.to).length;
+    return { inverse: { type: 'RESTORE_POSITIONS', positions }, skipped };
+}
+
 /**
  * Undo the most recent reversible action (optionally only those matching a
  * filter — e.g. AI-authored). Applies the inverse, marks the original entry
  * reversed, and appends a truthful UNDO entry to the log. Returns the same
- * state when there is nothing to undo.
+ * state when there is nothing to undo. `changed` = the board data changed.
  */
-export function undo(state: BoardState, ctx: ActionContext, actor: Actor, filter?: (e: AuditEntry) => boolean): { state: BoardState; undone: AuditEntry | null } {
+export function undo(state: BoardState, ctx: ActionContext, actor: Actor, filter?: (e: AuditEntry) => boolean): UndoResult {
     const target = lastReversible(state, filter);
-    if (!target || !target.inverse) return { state, undone: null };
-    const { next } = reduceData({ columns: state.columns, cards: state.cards }, target.inverse, ctx);
+    if (!target || !target.inverse) return { state, undone: null, changed: false };
+    const data: BoardData = { columns: state.columns, cards: state.cards };
+    const { inverse, skipped } = applicableInverse(state, target);
+    const { next } = reduceData(data, inverse, ctx);
+    const changed = next !== data;
+    const summary = !changed ? `Nothing to revert: ${target.summary}`
+        : skipped > 0 ? `Reverted: ${target.summary} (skipped ${skipped} card(s) moved since)`
+        : `Reverted: ${target.summary}`;
     const undoEntry: AuditEntry = {
         id: ctx.id(),
         ts: ctx.now(),
         actor,
         type: 'UNDO',
-        summary: `Reverted: ${target.summary}`,
+        summary,
         inverse: null,
+        ...(target.cardId ? { cardId: target.cardId } : {}),
+        ...(target.cardIds ? { cardIds: target.cardIds } : {}),
     };
     const audit = state.audit.map(e => e.id === target.id ? { ...e, reversed: true } : e);
-    return { state: { columns: next.columns, cards: next.cards, audit: [...audit, undoEntry] }, undone: target };
+    return { state: { columns: next.columns, cards: next.cards, audit: [...audit, undoEntry] }, undone: target, changed };
 }
 
 /** Convenience: undo the last AI-authored action specifically. */
-export function undoLastAi(state: BoardState, ctx: ActionContext, actor: Actor): { state: BoardState; undone: AuditEntry | null } {
+export function undoLastAi(state: BoardState, ctx: ActionContext, actor: Actor): UndoResult {
     return undo(state, ctx, actor, e => e.actor.kind === 'ai');
 }
 

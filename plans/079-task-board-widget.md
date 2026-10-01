@@ -1,6 +1,6 @@
 # 079 — Task Board widget: capability report, audit, improvement plan
 
-Status: phases 1–3 DONE 2026-10-01 (branches feat/079-task-board-p1, -p2, -p3 stacked, unpushed); phase 4 in progress (feat/079-task-board-p4). Base: `origin/main` @ `fe281de`
+Status: phases 1–4 DONE 2026-10-01 (branches feat/079-task-board-p1…-p4 stacked, unpushed); phase 5 in progress (feat/079-task-board-p5). Base: `origin/main` @ `fe281de`
 (local `main` was level with it). Backend read at `origin/main` via `git show` (its working tree is on another branch).
 Swarm: ruflo `swarm-1790844744917-lsf0h7` (hierarchical). ruflo only *registered* the agents
 (`tb-m1-model`, `tb-m2-persistence`, `tb-m3-ui`, `tb-m4-integration`, `tb-r1-refuter`); the work ran as
@@ -391,6 +391,74 @@ at 680×460 every toolbar button is inside the window; opening both drawers neve
 board) reports 0 violations with a card view open and with the WIP modal open; every text node ≥ 4.5:1 (≥ 3:1 for ≥ 18.66 px
 bold / 24 px) in all 16 picker themes; keyboard-only: open a card, Escape closes it and focus returns to the opener, move a
 card via its select, attach a file via the input. Full vitest + tsc -b + both builds green.
+
+## 11. Phase 5 contract (P0 — make it more useful)
+
+Decision D1 taken (plan §4 recommendation): Task Menu keeps its own list; its Board tab is relabelled "Task Board" with a
+one-line note that it is a separate list, and rows get a one-way "Send to Task Board". No two-way sync, no merged models.
+
+Owner split: **A** = `taskBoardModel.ts`, `taskBoardStore.ts`, `lib/araDailyGlance.ts`, `lib/perUserIdentity.ts` (one getter);
+**B** = `TaskBoard.tsx` + `TaskBoard.css`; **C** = `lib/dwelliumCommands.ts`, `TagFile/TagFile.tsx`, `TaskMenu/TaskMenu.tsx`,
+`ThoughtWeaver/ThoughtWeaver.tsx`; **T** = new `src/test/taskBoard.p5.test.ts(x)`.
+
+### A — model / store (signatures are the contract)
+```ts
+// taskBoardModel.ts
+interface TaskCard { /* … */ dueAt?: string }                 // 'YYYY-MM-DD' (local calendar date)
+type CardPatch = … & { dueAt?: string | null }                // null = unset; invalid strings ignored
+export function isOverdue(card: TaskCard, columns: BoardColumn[], today: string): boolean; // dueAt < today AND not in the last column by order
+export function lastColumnId(columns: BoardColumn[]): string | undefined;               // highest order
+export function wipCount(cards: TaskCard[], columnId: string): number;                 // top-level cards only (parentId null/undefined)
+// MOVE_CARD with toOrder: the card is inserted at index toOrder among the destination column's cards (sorted by order),
+// and that column's cards are renumbered 0..n-1. The inverse restores the prior position of EVERY card whose order changed.
+// repairBoard keeps a valid dueAt, drops an invalid one. planEdit applies dueAt with the same rules (inverse: null when unset).
+
+// perUserIdentity.ts
+export function currentOwner(): string | null;                // the id setPerUserIdentity last set
+
+// taskBoardStore.ts
+export function sendToTaskBoard(userId: string, fields: { title: string; description?: string; urgency?: Urgency }): { board: 'Global' | string };
+//   If the board holders already belong to userId → add to the board currently selected (returns its project id or 'Global').
+//   Otherwise point the user holder at userId (the setter resets the project → Global) and add there. Goes through addCard
+//   (so it is audited, undoable, and synced). Title trimmed; empty → no card, returns { board: '' }.
+export function findCardBoard(userId: string, cardId: string): { projectId: string | null } | null;
+//   Scans this user's local boards (`taskboard:<uid>` and `taskboard:<uid>:<pid>`, through repairBoard) for the card.
+export function openTaskBoardCard(userId: string, cardId: string): boolean;
+//   findCardBoard → patchWidgetMemory('task-board', { activeProjectId: pid ?? 'global', openCardId: cardId }) →
+//   dispatch the same 'dwellium:open-widget' event `openWidget('task-board')` uses. false (and no open) when not found.
+export function findCardsByTitle(query: string): TaskCard[];  // current board; exact (case-insensitive) match wins, else substring matches
+```
+araDailyGlance: when any open card is overdue, the line becomes `N tasks not done — M high urgency — K overdue`.
+
+### B — TaskBoard.tsx / .css
+1. **Filter**: `<input type="search" aria-label="Filter cards">` in the toolbar; case-insensitive match on title, description,
+   tags and assignee label; non-matching cards hidden; the toolbar count reads `N of M cards` while filtering; Escape clears.
+   Remembered per board in widget memory is NOT required.
+2. **Due date**: card view `<input type="date" aria-label="Due date">` (empty clears → `dueAt: null`); card face shows
+   `Due <Mon D>` or, when `isOverdue`, `Overdue · <Mon D>` (text, not colour alone).
+3. **Order inside a column**: dropping a card ON another card inserts it before that card (`moveCard(id, col, index)`);
+   on the card title button, Alt+ArrowUp / Alt+ArrowDown move it one place within its column (announced).
+4. **WIP that means something**: WIP badges/limits use `wipCount` (sub-tasks excluded); adding a card to a column at its max
+   opens the WIP dialog ("Add anyway" / Cancel); "AI: file Backlog" routes through the same WIP + exit-policy checks as a bulk move.
+5. Keep every phase-4 accessible name unchanged.
+
+### C — integrations
+1. `dwelliumCommands.parseSingle` (before the bare-widget fallback; "add"/"create" are currently routed to chat):
+   `add task <title>` / `add card <title>` / `new task <title>` → `sendToTaskBoard(currentOwner(), { title })`, toast
+   "Added to Task Board (<board>)"; no owner → toast "Sign in to use the Task Board" and nothing written.
+   `open task <query>` → `findCardsByTitle` exactly one → `openTaskBoardCard`; none / several → toast saying so.
+   `move task <query> to <column>` → one card + a column whose title matches (case-insensitive) → `moveCard` (user actor),
+   toast; otherwise a toast explaining why nothing moved. Must not capture existing commands ("move strata to the left").
+2. Tag File: rows whose source is 'task-board' become buttons (accessible name = item title) that call `openTaskBoardCard`;
+   other sources unchanged.
+3. Task Menu: the Board tab label reads "Task Board" and its panel starts with the note
+   "This is your Task Board — a separate list from these tasks."; every list row gets a button "Send <title> to Task Board"
+   → `sendToTaskBoard(user.id, { title, description, urgency })` (urgency high/medium/low passes through) + a status message.
+4. ThoughtWeaver to-dos: each row gets a button "Send "<text>" to Task Board" (priority → urgency).
+
+Acceptance: commands + Tag File + Task Menu + ThoughtWeaver paths create/open/move cards on the right user's board and
+audit them; ordering survives undo; overdue appears in the glance; harness: filter, due date and drop-ordering work in a real
+browser at 680×460 with 0 axe violations; full vitest + tsc -b + both builds green.
 
 ## 6. What was and was not verified
 

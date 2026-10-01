@@ -20,6 +20,7 @@
 import type { IntegrationsBundle, LlmProvider } from '../types/integrations';
 import { recordAiFailure, recordAiSuccess } from './aiHealthStore';
 import { recordLlmUsage, currentUsageUserId } from './llmUsageStore';
+import { recordAgentActivity, currentAgentActivityUserId } from './agentActivityStore';
 import { DEFAULT_MODELS } from '../types/integrations';
 
 // ── Request / response types ─────────────────────────────────────────
@@ -32,6 +33,8 @@ export interface LlmRequest {
     responseFormat?: 'text' | 'json';   // hint for providers that support it
     /** Plan 068: which feature made the call ('ara' | 'persona' | 'honcho' | 'test' ...) — AI Spend "by feature". */
     source?: string;
+    /** Plan 070: abort the provider request (Cancel button / widget unmount). */
+    signal?: AbortSignal;
 }
 
 /** Plan 068: provider-reported token usage (measured, not estimated). */
@@ -48,6 +51,8 @@ export interface LlmResponse {
     model: string;
     /** Plan 068: real usage when the provider reported it. */
     usage?: LlmUsage;
+    /** Plan 070: the provider stopped at the token limit (answer may be cut off). */
+    truncated?: boolean;
     /**
      * Plan 068 (A5): internal retry-accounting hint, NOT for UI consumption.
      * Number of billed attempts folded into this response. >1 means a
@@ -91,6 +96,16 @@ export class LlmError extends Error {
     }
 }
 
+/** Plan 070: true for a fetch abort — either DOMException('AbortError') or a signal already tripped. */
+function isAbortError(err: unknown): boolean {
+    return (err instanceof DOMException && err.name === 'AbortError') || (err as { name?: string } | null)?.name === 'AbortError';
+}
+
+/** Plan 070: throw the same shape a fetch abort would, without making the network call. */
+function throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+}
+
 // ── Public API ────────────────────────────────────────────────────────
 
 /**
@@ -105,16 +120,29 @@ export async function callLlm(
     // logout or account switch mid-call must not land usage in the wrong
     // (or anonymous) ledger.
     const userId = currentUsageUserId();
+    const activityUid = currentAgentActivityUserId(); // own holder, captured before the await
     let res: LlmResponse | null;
     try {
         res = await dispatchLlm(req, llm);
     } catch (err) {
+        // Plan 070: a Cancel button / widget unmount is not a provider failure —
+        // it must not trip the AI-health signal or be recorded as spend. The
+        // provider may still bill a request it had already started; that's
+        // unmeasurable client-side, so we simply record nothing for it (no
+        // estimated-usage fallback either) rather than guess.
+        if (isAbortError(err)) throw err;
         // Assessment sweep (weakness #8): the SAME chokepoint that meters
         // spend also feeds the AI-health signal — every widget's
         // useAIAvailability() sees provider failures without tracking them
         // itself. Recording never swallows the error.
         if (err instanceof LlmError) recordAiFailure(err.provider, err.status);
         else recordAiFailure(llm.active ?? 'unknown', 0);
+        recordAgentActivity({
+            source: req.source,
+            ok: false,
+            error: err instanceof LlmError ? `${err.status}: ${err.message}` : err instanceof Error ? err.message : String(err),
+            userId: activityUid,
+        });
         throw err;
     }
     // P12-1 AI-spend ledger: one chokepoint records usage for every
@@ -135,6 +163,7 @@ export async function callLlm(
             source: req.source,
             userId,
         });
+        recordAgentActivity({ source: req.source, ok: true, text: res.text, userId: activityUid });
     }
     return res;
 }
@@ -486,6 +515,7 @@ export function parseAnthropicUsage(json: any): LlmUsage | undefined {
 // ── Provider implementations ──────────────────────────────────────────
 
 async function callAnthropic(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, forceNoSampling = false, priorUsage?: LlmUsage, priorAttempts = 0): Promise<LlmResponse> {
+    throwIfAborted(req.signal);
     const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -495,6 +525,7 @@ async function callAnthropic(req: LlmRequest, apiKey: string, model: string, max
             'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify(buildAnthropicBody(req, model, maxTokensOverride, forceNoSampling)),
+        signal: req.signal,
     });
     if (!res.ok) {
         const errText = await res.text().catch(() => '');
@@ -519,15 +550,17 @@ async function callAnthropic(req: LlmRequest, apiKey: string, model: string, max
     if (!text && truncated) {
         throw new LlmError('anthropic', 200, `${model} returned no text (token budget exhausted by thinking) — raise maxTokens`);
     }
-    return { text, provider: 'anthropic', model, usage, attempts: attempts > 1 ? attempts : undefined };
+    return { text, provider: 'anthropic', model, usage, truncated: text && truncated ? true : undefined, attempts: attempts > 1 ? attempts : undefined };
 }
 
 async function callOpenAI(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, priorUsage?: LlmUsage, priorAttempts = 0): Promise<LlmResponse> {
+    throwIfAborted(req.signal);
     const body = buildOpenAiBody(req, model, maxTokensOverride);
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify(body),
+        signal: req.signal,
     });
     if (!res.ok) {
         const errText = await res.text().catch(() => '');
@@ -544,10 +577,11 @@ async function callOpenAI(req: LlmRequest, apiKey: string, model: string, maxTok
     if (!text && truncated) {
         throw new LlmError('openai', 200, `${model} returned no text (token budget exhausted by reasoning) — raise maxTokens or pick a non-reasoning model`);
     }
-    return { text, provider: 'openai', model, usage, attempts: attempts > 1 ? attempts : undefined };
+    return { text, provider: 'openai', model, usage, truncated: text && truncated ? true : undefined, attempts: attempts > 1 ? attempts : undefined };
 }
 
 async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, priorUsage?: LlmUsage, priorAttempts = 0): Promise<LlmResponse> {
+    throwIfAborted(req.signal);
     // Gemini uses ?key=<apiKey> in URL. Combined system+user via instructions
     // field if systemPrompt provided.
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -566,6 +600,7 @@ async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTok
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: req.signal,
     });
     if (!res.ok) {
         const errText = await res.text().catch(() => '');
@@ -582,7 +617,7 @@ async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTok
     if (!text && truncated) {
         throw new LlmError('gemini', 200, `${model} returned no text (output budget consumed by thinking) — raise maxTokens`);
     }
-    return { text, provider: 'gemini', model, usage, attempts: attempts > 1 ? attempts : undefined };
+    return { text, provider: 'gemini', model, usage, truncated: text && truncated ? true : undefined, attempts: attempts > 1 ? attempts : undefined };
 }
 
 /**
@@ -592,6 +627,7 @@ async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTok
  * "http://localhost:11434" for Ollama → we append /v1/chat/completions).
  */
 async function callLocal(req: LlmRequest, baseUrl: string, model: string): Promise<LlmResponse> {
+    throwIfAborted(req.signal);
     const url = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
     const body: any = {
         model,
@@ -607,6 +643,7 @@ async function callLocal(req: LlmRequest, baseUrl: string, model: string): Promi
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: req.signal,
     });
     if (!res.ok) {
         const errText = await res.text().catch(() => '');
@@ -622,6 +659,7 @@ async function callLocal(req: LlmRequest, baseUrl: string, model: string): Promi
  * User supplies full base URL (we append /chat/completions if not present).
  */
 async function callCustom(req: LlmRequest, baseUrl: string, apiKey: string, model: string): Promise<LlmResponse> {
+    throwIfAborted(req.signal);
     const trimmed = baseUrl.replace(/\/$/, '');
     const url = trimmed.endsWith('/chat/completions') ? trimmed : `${trimmed}/chat/completions`;
     const body: any = {
@@ -638,6 +676,7 @@ async function callCustom(req: LlmRequest, baseUrl: string, apiKey: string, mode
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify(body),
+        signal: req.signal,
     });
     if (!res.ok) {
         const errText = await res.text().catch(() => '');

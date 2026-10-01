@@ -108,7 +108,7 @@ const HOLOCRONS: Holocron[] = [
         ),
     },
     {
-        fig: 'fig. IIX', name: 'Leviathan', faction: 'Sith',
+        fig: 'fig. VIII', name: 'Leviathan', faction: 'Sith',
         lore: 'A long bipyramid crystal, the largest in the index. Said to contain a fleet-doctrine — and the drowned voices of those who wrote it.',
         svg: (
             <svg viewBox="0 0 100 100" {...stroke}>
@@ -127,44 +127,45 @@ export default function HolocronLibrary() {
             <header className="holocron-lib__head">
                 <div className="holocron-lib__title">
                     <Sparkles size={16} aria-hidden="true" />
-                    <h1>Halocron Index</h1>
+                    <h2>Halocron Index</h2>
                 </div>
                 <p className="holocron-lib__sub">
                     The Old Republic archive — eight recovered holocrons. Select a figure to ignite it.
                 </p>
             </header>
 
-            <div className="holocron-lib__grid" role="list">
+            <ul className="holocron-lib__grid">
                 {HOLOCRONS.map((h, i) => (
-                    <button
-                        key={h.name}
-                        type="button"
-                        role="listitem"
-                        className={`holocron-card ${active === i ? 'is-ignited' : ''} faction-${h.faction.toLowerCase()}`}
-                        onClick={() => setActive(active === i ? null : i)}
-                        aria-pressed={active === i}
-                        aria-label={`${h.name} — ${h.faction} holocron`}
-                    >
-                        <span className="holocron-card__aura" aria-hidden="true" />
-                        <span className="holocron-card__art">{h.svg}</span>
-                        <span className="holocron-card__cap">
-                            <span className="holocron-card__fig">{h.fig}</span>
-                            <span className="holocron-card__name">“{h.name}”</span>
-                        </span>
-                        <span className="holocron-card__faction" aria-hidden="true">
-                            <ShieldHalf size={11} /> {h.faction}
-                        </span>
-                    </button>
+                    <li key={h.name} className="holocron-lib__cell">
+                        <button
+                            type="button"
+                            className={`holocron-card ${active === i ? 'is-ignited' : ''} faction-${h.faction.toLowerCase()}`}
+                            onClick={() => setActive(active === i ? null : i)}
+                            aria-pressed={active === i}
+                        >
+                            <span className="holocron-card__aura" aria-hidden="true" />
+                            <span className="holocron-card__art">{h.svg}</span>
+                            <span className="holocron-card__cap">
+                                <span className="holocron-card__fig">{h.fig}</span>
+                                <span className="holocron-card__name">“{h.name}”</span>
+                            </span>
+                            <span className="holocron-card__faction">
+                                <ShieldHalf size={11} aria-hidden="true" /> {h.faction}
+                            </span>
+                        </button>
+                    </li>
                 ))}
-            </div>
+            </ul>
 
-            {active !== null && (
-                <aside className="holocron-lib__lore" role="status">
-                    <span className="holocron-lib__lore-fig">{HOLOCRONS[active].fig}</span>
-                    <strong>“{HOLOCRONS[active].name}”</strong>
-                    <p>{HOLOCRONS[active].lore}</p>
-                </aside>
-            )}
+            <aside className="holocron-lib__lore" aria-live="polite">
+                {active !== null && (
+                    <>
+                        <span className="holocron-lib__lore-fig">{HOLOCRONS[active].fig}</span>
+                        <strong>“{HOLOCRONS[active].name}”</strong>
+                        <p>{HOLOCRONS[active].lore}</p>
+                    </>
+                )}
+            </aside>
         </div>
     );
 }

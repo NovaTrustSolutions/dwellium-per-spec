@@ -124,6 +124,8 @@ export const synthesisUserIdHolder: UserIdHolder = makeHolder();
 export const wikiUserIdHolder: UserIdHolder = makeHolder();
 export const foundryUserIdHolder: UserIdHolder = makeHolder();
 export const copawUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 071 phase 3 — per-user last run / status per agent (agentActivityStore). */
+export const agentActivityUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -168,6 +170,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     wikiUserIdHolder,
     foundryUserIdHolder,
     copawUserIdHolder,
+    agentActivityUserIdHolder,
 ];
 
 /**

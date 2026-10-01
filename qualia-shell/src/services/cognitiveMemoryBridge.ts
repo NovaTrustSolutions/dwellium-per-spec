@@ -20,6 +20,8 @@ import { tagStore } from '../lib/tagStore';
 import { foundryStore } from '../components/Foundry/foundryStore';
 import { synthesisStore } from '../components/Synthesis/synthesisStore';
 import { useScribeStore } from '../components/Scribe/scribeStore';
+import { wikiStore } from '../components/Wiki/wikiStore';
+import { copawStore } from '../components/Hive/copawStore';
 
 export const BRIDGE_DEBOUNCE_MS = 1500;
 
@@ -46,6 +48,8 @@ export function useCognitiveMemoryBridge(): void {
             foundryStore.subscribe(feed),
             synthesisStore.subscribe(feed),
             useScribeStore.subscribe(feed),
+            wikiStore.subscribe(feed),
+            copawStore.subscribe(feed),
         ];
         return () => { if (timer) clearTimeout(timer); offs.forEach((off) => off()); };
     }, [uid, llm]);

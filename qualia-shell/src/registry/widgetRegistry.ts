@@ -133,8 +133,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'synthesis': {
         id: 'synthesis',
         label: 'Synthesis Lab',
-        description: 'Ask a question across your documents, keep the answer, and build on it with a second pass.',
-        tip: { tryThis: 'Ask one question across your documents and keep the answer.', related: ['wiki', 'foundry'] },
+        description: 'Ask a question grounded in your notes, captures, wiki and memory, then build on the answer.',
+        tip: { tryThis: 'Ask a question, check which sources it will use, then capture the answer.', related: ['wiki', 'foundry'] },
         tier: 'labs',
         icon: 'sparkles',
         component: lazyWithReload(() => import('../components/Synthesis/Synthesis')),
@@ -197,7 +197,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'hive': {
         id: 'hive',
         label: 'The Hive',
-        description: 'Launch any built-in AI agent, see which are open, and browse or prune CoPaw memory.',
+        description: 'Launch built-in AI agents, see last run, errors and 7-day cost, and prune CoPaw memory.',
         tip: { tryThis: 'Run an agent, then check the CoPaw memory rail for what it captured.', related: ['agent-lab', 'ai-spend'] },
         tier: 'labs',
         icon: 'layout-grid',
@@ -756,7 +756,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         category: 'tools',
         tier: 'labs', // plan 046 D4: theme toy, no backend
     },
-    // Research Lab — sandboxed playground over the 31 free LLM providers from
+    // Research Lab — sandboxed playground over the 22 free LLM providers from
     // github.com/NovaTrustSolutions/awesome-freellm-apis. Hidden-door labs
     // widget (⌘K + "labs:" only — labs widgets get NO Tools-hub row and NO
     // dock entry). Structurally firewalled from all property/customer data:
@@ -764,7 +764,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'research-lab': {
         id: 'research-lab',
         label: 'Research Lab',
-        description: 'Try 31 free LLM APIs side-by-side in a sandbox that never touches property data.',
+        description: 'Try 22 free LLM APIs side-by-side in a sandbox that never touches property data.',
         tip: { tryThis: 'Add a Groq key (free, no card), then run one prompt on two providers side-by-side.', related: ['tools-hub', 'api-keys'] },
         tier: 'labs',
         icon: 'flask-conical',

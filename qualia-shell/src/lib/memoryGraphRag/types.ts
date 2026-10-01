@@ -47,7 +47,7 @@ export interface Fact {
 }
 
 // ── Passage layer ──────────────────────────────────────────────────
-export type SourceKind = 'scribe' | 'workspace' | 'tag' | 'upload' | 'transcript' | 'capture' | 'synthesis' | 'other';
+export type SourceKind = 'scribe' | 'workspace' | 'tag' | 'upload' | 'transcript' | 'capture' | 'synthesis' | 'wiki' | 'memory' | 'other';
 
 export interface Passage {
     id: string;

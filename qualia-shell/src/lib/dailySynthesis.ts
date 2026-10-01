@@ -56,7 +56,7 @@ export function buildDreamCorpus(): DreamCorpus {
     if (goals.length > 0) {
         parts.push(`## Active goals\n${goals.map(g => {
             const open = g.plan?.clarifyingQuestions?.length ?? 0;
-            return `- ${cap(g.title, 100)} — ${goalProgress(g)}% done${open ? `, ${open} open question${open === 1 ? '' : 's'}` : ''}`;
+            return `- ${cap(g.title, 100)} — ${Math.round(goalProgress(g) * 100)}% done${open ? `, ${open} open question${open === 1 ? '' : 's'}` : ''}`;
         }).join('\n')}`);
     }
 

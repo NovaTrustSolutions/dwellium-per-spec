@@ -3,6 +3,7 @@
  * Integrates Stella (Python/AgentScope) into the Qualia shell.
  */
 import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore, lazy, Suspense } from 'react';
+import { recordAgentActivity, currentAgentActivityUserId } from '../../lib/agentActivityStore';
 import {
     Search,
     Trash2,
@@ -761,6 +762,7 @@ export default function StellaAgent() {
                     prompt: humanizeEnabled ? HUMANIZE_PREFIX + text : text,
                     maxTokens: 1024,
                     temperature: 0.4,
+                    source: 'stella',
                 }, integrations.llm);
                 if (llmRes) {
                     setMessages(prev => [...prev, {
@@ -789,6 +791,7 @@ export default function StellaAgent() {
         }
 
         // ── 2) Fall back to backend (existing SSE-aware path) ──
+        const activityUid = currentAgentActivityUserId(); // before the await — Hive last-run status (plan 071)
         try {
             const resp = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
@@ -854,6 +857,7 @@ export default function StellaAgent() {
                     }
                 }
                 reader.releaseLock();
+                recordAgentActivity({ source: 'stella', ok: true, text: assistantContent, userId: activityUid });
             } else {
                 // Handle regular JSON response
                 const data = await resp.json();
@@ -875,8 +879,12 @@ export default function StellaAgent() {
                     content,
                     timestamp: Date.now(),
                 }]);
+                recordAgentActivity(data.success
+                    ? { source: 'stella', ok: true, text: content, userId: activityUid }
+                    : { source: 'stella', ok: false, error: String(data.error ?? 'Stella backend error'), userId: activityUid });
             }
         } catch (err) {
+            recordAgentActivity({ source: 'stella', ok: false, error: err instanceof Error ? err.message : 'Failed to reach Stella', userId: activityUid });
             setMessages(prev => [...prev, {
                 id: `error-${Date.now()}`,
                 role: 'system',
@@ -1472,6 +1480,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     responseFormat: 'json',
                     maxTokens: 400,
                     temperature: 0.7,
+                    source: 'stella',
                 }, integrations.llm);
                 if (res) {
                     try {

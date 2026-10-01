@@ -21,7 +21,7 @@ import {
     applyAction, undo as undoModel, undoLastAi as undoLastAiModel, generateReport,
     createInitialBoard, makeCard, repairBoard, type ActionContext,
 } from './taskBoardModel';
-import { aiEndpoint, aiRequestBody, buildGmailComposeUrl, composeCardEmail, isStellaNoKeyReply, readAgentReply } from './taskRouting';
+import { agentUnavailableReason, aiEndpoint, aiRequestBody, buildGmailComposeUrl, composeCardEmail, readAgentReply } from './taskRouting';
 
 // Module-level holder updated DURING render by the consuming component
 // (TaskBoard.tsx) before useSyncExternalStore fires — mirrors WindowContext's
@@ -303,7 +303,8 @@ export function removeAttachment(cardId: string, attachmentId: string, actor: Ac
 export interface RouteResult { status: 'sent' | 'failed' | 'drafted' | 'none'; detail: string; reply?: string; }
 
 /** Newlines collapsed, cut to 300 chars: one readable audit line. */
-const replyLine = (r: string) => r.replace(/\s+/g, ' ').trim().slice(0, 300);
+const oneLine = (r: string, n: number) => r.replace(/\s+/g, ' ').trim().slice(0, n).replace(/[\ud800-\udbff]$/, '');
+const replyLine = (r: string) => oneLine(r, 300);
 
 /**
  * Route a card to its assignee. AI targets POST to the agent endpoint; the outcome is
@@ -346,12 +347,13 @@ export async function routeCard(cardId: string): Promise<RouteResult> {
             return { status: 'failed', detail: `${a.label} refused the request (HTTP ${res.status}). Nothing was sent.` };
         }
         if (!reply) {
-            logEvent(`Sent "${card.title}" to AI · ${a.label} (no reply)`, cardId);
+            logEvent(`Sent "${oneLine(card.title, 120)}" to AI · ${a.label} (no reply)`, cardId);
             return { status: 'sent', detail: `Sent to ${a.label}.` };
         }
-        if (a.id === 'stella' && isStellaNoKeyReply(reply)) {
-            logEvent('Not handled: Stella has no LLM key configured', cardId);
-            return { status: 'failed', detail: 'Stella is online but has no LLM key, so she did not handle this card. Add a key in Settings → API Keys.' };
+        const unavailable = agentUnavailableReason(a.id, reply);
+        if (unavailable) {
+            logEvent(`Not handled: ${unavailable}`, cardId);
+            return { status: 'failed', detail: `${unavailable}, so this card was not handled.${a.id === 'stella' ? ' Add a key in Settings → API Keys.' : ''}` };
         }
         logEvent(`AI · ${a.label} replied: ${replyLine(reply)}`, cardId);
         return { status: 'sent', detail: `Sent to ${a.label}.`, reply };

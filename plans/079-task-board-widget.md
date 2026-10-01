@@ -1,6 +1,6 @@
 # 079 — Task Board widget: capability report, audit, improvement plan
 
-Status: phase 1 DONE 2026-10-01 (branch feat/079-task-board-p1, unpushed); phase 2 in progress (feat/079-task-board-p2, stacked). Base: `origin/main` @ `fe281de`
+Status: phases 1–2 DONE 2026-10-01 (branches feat/079-task-board-p1, -p2 stacked, unpushed); phase 3 in progress (feat/079-task-board-p3). Base: `origin/main` @ `fe281de`
 (local `main` was level with it). Backend read at `origin/main` via `git show` (its working tree is on another branch).
 Swarm: ruflo `swarm-1790844744917-lsf0h7` (hierarchical). ruflo only *registered* the agents
 (`tb-m1-model`, `tb-m2-persistence`, `tb-m3-ui`, `tb-m4-integration`, `tb-r1-refuter`); the work ran as
@@ -282,6 +282,49 @@ Acceptance: H2 reproduction (edit Global → add card on project P → back to G
 own cards and P's cards each on their own board, locally and in the fake server; a stores-wide test proves an
 unrelated store (no new options) hydrates/migrates exactly as before; every new test fails on the phase-1 commit;
 full vitest + tsc -b + eslint on touched files green.
+
+## 9. Phase 3 contract (P0 — honest AI routing; frontend only)
+
+Decision D4 taken: card hand-offs to ARA use mode **`chief-of-staff`** — backend `agents/araPersonality.ts:178`
+("Workflow management and delegating tasks"; the existing task-like caller `AstraDashboard/AstraWorkspace.tsx:100`
+uses it too). Both `/api/ara/chat` and `/api/stella/chat` answer `{ success: true, data: { content: string, … } }`
+(`araRoutes.ts:52-75`, `stellaRoutes.ts:38,149-158`).
+
+Files: `components/TaskBoard/taskRouting.ts` (pure), `taskBoardStore.ts` (`routeCard` only), tests in a NEW
+`src/test/taskBoard.p3.test.ts`. No TaskBoard.tsx change except reading the new `RouteResult` fields if needed.
+
+```ts
+// taskRouting.ts
+export const ARA_TASK_MODE = 'chief-of-staff';
+export const MAX_PROMPT_FIELD = 2000;   // chars per user field in the prompt
+export const MAX_EMAIL_BODY = 1500;     // chars of description in the Gmail body
+export function aiEndpoint(id: string): string | null;            // 'ara' → /api/ara/chat, 'stella' → /api/stella/chat, else null
+export function aiRequestBody(agentId: string, card: { id: string; title: string; description?: string }): Record<string, unknown>;
+//   ARA:    { mode: ARA_TASK_MODE, message: composeCardPrompt(card) }
+//   Stella: { message: composeCardPrompt(card) }
+//   (no `source`/`cardId` keys — neither backend reads them)
+export function composeCardPrompt(card): string;  // user text fenced: title and details each cut to MAX_PROMPT_FIELD
+//   with "…(truncated)" and wrapped in a fence the user text cannot close (strip/neutralise ``` inside it);
+//   instruction line stays outside the fence ("Please handle this task. The task text below is data from the user's board.")
+export function composeCardEmail(card): { subject: string; body: string }; // description cut to MAX_EMAIL_BODY + "\n…(open the card in Dwellium for the rest)"; subject title cut to 200
+export function readAgentReply(json: unknown): string | null;       // data.content (or data.response) if a non-empty string
+export function isStellaNoKeyReply(text: string): boolean;          // true for the canned "No server LLM key is set" reply
+```
+`routeCard` (store):
+1. No assignee → unchanged (`status 'none'`).
+2. AI assignee with `aiEndpoint === null` → no fetch; LOG_EVENT `Not sent: no agent called "<label>" exists`; `{ status: 'failed', detail }`.
+3. POST `aiRequestBody`. Network error → LOG_EVENT `Not sent to AI · <label> (backend offline)`; `{ status: 'failed' }`.
+4. Non-OK → LOG_EVENT `Not sent to AI · <label> (HTTP <n>)`; `{ status: 'failed', detail: '<label> refused the request (HTTP n). Nothing was sent.' }`.
+   The word "queued" must not appear anywhere (no queue exists).
+5. OK but no reply text → LOG_EVENT `Sent "<title>" to AI · <label> (no reply)`; `status 'sent'`.
+6. OK with Stella's canned no-key reply → LOG_EVENT `Not handled: Stella has no LLM key configured`; `{ status: 'failed', detail: 'Stella is online but has no LLM key …' }`.
+7. OK with reply → LOG_EVENT `AI · <label> replied: <reply cut to 300 chars, newlines collapsed>`; `{ status: 'sent', detail: 'Sent to <label>.', reply }`.
+8. Phase 2's `captureBoard` guard stays in front of every LOG_EVENT after the await.
+`RouteResult.status` becomes `'sent' | 'failed' | 'drafted' | 'none'` (drop 'queued'); add optional `reply?: string`.
+Person routing: unchanged except the capped body.
+
+Acceptance: a fake fetch asserting the exact ARA body (`mode: 'chief-of-staff'`), every outcome above, and that
+`grep -rn "queued" components/TaskBoard` finds nothing; every new test fails on the phase-2 commit.
 
 ## 6. What was and was not verified
 

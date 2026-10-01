@@ -26,8 +26,18 @@ import { aiEndpoint, buildGmailComposeUrl, composeCardEmail, composeCardPrompt }
 // Module-level holder updated DURING render by the consuming component
 // (TaskBoard.tsx) before useSyncExternalStore fires — mirrors WindowContext's
 // savedLayoutsUserIdHolder pattern. Exposed for test access.
-export const taskBoardUserIdHolder: { current: string | null } = { current: null };
 export const taskBoardProjectIdHolder: { current: string | null } = { current: null };
+let boardUserId: string | null = null;
+// A different account must never inherit the previous account's open project (it would
+// address `task-board_<newUser>__<oldProject>`): the project resets whenever the user changes.
+// TaskBoard.tsx sets the user first, then the project, during render.
+export const taskBoardUserIdHolder: { current: string | null } = {
+    get current(): string | null { return boardUserId; },
+    set current(next: string | null) {
+        if (next !== boardUserId) taskBoardProjectIdHolder.current = null;
+        boardUserId = next;
+    },
+};
 
 function resolveKey(): string {
     const uid = taskBoardUserIdHolder.current;
@@ -89,8 +99,16 @@ function acceptRemoteBoard(remote: unknown, local: BoardState): BoardState | nul
     const pid = taskBoardProjectIdHolder.current;
     const foreign = (!pid || pid === 'global') && legacyObjectIsForeign(local, r);
     // ponytail: a board emptied on purpose on another device is resurrected here; accepted over losing a board.
-    if ((r.cards.length === 0 && local.cards.length >= 1) || foreign) return null;
+    if (r.cards.length === 0 && local.cards.length >= 1) return null;
+    // The legacy object may hold another board: keep BOTH sides (union by id) rather than pushing
+    // local over it — a few foreign cards can be removed, a destroyed board cannot be recovered.
+    if (foreign) return repairBoard({ columns: unionById(r.columns, local.columns), cards: unionById(r.cards, local.cards), audit: unionById(r.audit, local.audit) });
     return r;
+}
+
+function unionById<T extends { id: string }>(primary: T[], extra: T[]): T[] {
+    const ids = new Set(primary.map(x => x.id));
+    return [...primary, ...extra.filter(x => !ids.has(x.id))];
 }
 
 export const taskBoardStore = withSync(

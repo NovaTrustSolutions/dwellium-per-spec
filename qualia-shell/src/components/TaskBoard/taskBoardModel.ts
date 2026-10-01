@@ -694,7 +694,9 @@ export function undo(state: BoardState, ctx: ActionContext, actor: Actor, filter
         ...(target.cardId ? { cardId: target.cardId } : {}),
         ...(target.cardIds ? { cardIds: target.cardIds } : {}),
     };
-    const audit = state.audit.map(e => e.id === target.id ? { ...e, reversed: true } : e);
+    // A reversed entry can never be undone again, so drop its inverse: a removal's inverse carries the
+    // removed card/attachment bytes, and keeping it would grow the board on every Remove → Undo cycle.
+    const audit = state.audit.map(e => e.id === target.id ? { ...e, reversed: true, inverse: null } : e);
     return { state: { columns: next.columns, cards: next.cards, audit: boundAudit([...audit, undoEntry]) }, undone: target, changed };
 }
 

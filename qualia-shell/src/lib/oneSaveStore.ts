@@ -384,10 +384,10 @@ function makeSynced<T>(
     // remote snapshot fetched BEFORE a local edit never overwrites that edit.
     let localWriteSeq = 0;
 
-    function scheduleWriteThrough(value: T): void {
+    function scheduleWriteThrough(value: T, objectIdOverride?: string): void {
         if (!ONE_SAVE_ENABLED) return;
         const scheduledOwnerId = ownerId();
-        const scheduledObjectId = objectId();
+        const scheduledObjectId = objectIdOverride ?? objectId();
         pending.add(scheduledObjectId);
         markDirty(scheduledObjectId);
         if (sharedSlot) setSlotOwner(objectType, scheduledOwnerId);
@@ -422,7 +422,14 @@ function makeSynced<T>(
                 // Merge stores replay the CURRENT local value: a hydrate may have merged
                 // remote into it since this write failed, and replaying the captured
                 // `value` would overwrite that merge with a stale copy (plan 070 P4).
-                failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId && objectId() === scheduledObjectId) scheduleWriteThrough(merge ? base.getSnapshot() : value); });
+                // Another object of this store is active now (objectSuffix moved on): replay the
+                // captured payload to ITS OWN object instead of dropping it (non-merge only — a
+                // merge store's replay reads the live snapshot, which now belongs to another object).
+                failed.set(scheduledObjectId, () => {
+                    if (ownerId() !== scheduledOwnerId) return;
+                    if (objectId() === scheduledObjectId) scheduleWriteThrough(merge ? base.getSnapshot() : value);
+                    else if (!merge) scheduleWriteThrough(value, scheduledObjectId);
+                });
                 emitSync();
             },
         });
@@ -446,6 +453,9 @@ function makeSynced<T>(
             const seqAtStart = localWriteSeq;
             const ownerAtStart = ownerId();
             const idAtStart = objectId();
+            // A write for this object was queued/unsaved when the GET left: if it lands while the GET
+            // is in flight it clears the marker, and the reply may predate it (stale) — see below.
+            const dirtyAtStart = !merge && !sharedSlot && isDirty(idAtStart);
             const remote = (prefetched !== undefined ? prefetched : await oneSaveClient.get<T>(idAtStart)) as DwelliumObject<T> | null;
             hydrateSeen.set(idAtStart, remote != null);
             // A local edit landed while the GET was in flight (e.g. typing in a
@@ -479,6 +489,9 @@ function makeSynced<T>(
                 scheduleWriteThrough(base.getSnapshot());
                 return;
             }
+            // Was unsaved at the start, saved by now: local IS what the server just stored, and the
+            // reply may be older than that save — applying it would roll the edit back.
+            if (dirtyAtStart) return;
             if (remote && remote.deletedAt == null) {
                 const remoteValue = remote.payload as T;
                 if (merge) {

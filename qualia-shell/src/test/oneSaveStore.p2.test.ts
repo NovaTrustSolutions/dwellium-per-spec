@@ -122,13 +122,14 @@ describe('oneSaveStore plan 079 p2 (objectSuffix / acceptRemote)', () => {
             expect(oneSaveClient.put).toHaveBeenCalledWith(expect.objectContaining({ id: ID_A, payload: 'A value' }));
         });
 
-        it('is dropped once the suffix changed (A\'s value never lands on B); the dirty marker stays', async () => {
+        it('review: replays the captured payload to ITS OWN object after the suffix changed (never onto B)', async () => {
             const { ref } = await failBoardAWrite();
             ref.suffix = '__b';
             backendStatusStore.markOnline();
             await vi.advanceTimersByTimeAsync(10 + 500);
-            expect(oneSaveClient.put).not.toHaveBeenCalled();
-            expect(dirty(ID_A)).toBe('1');
+            expect(oneSaveClient.put).toHaveBeenCalledWith(expect.objectContaining({ id: ID_A, payload: 'A value' }));
+            expect(oneSaveClient.put).not.toHaveBeenCalledWith(expect.objectContaining({ id: ID_B }));
+            expect(dirty(ID_A)).toBeNull(); // saved → marker cleared
             expect(dirty(ID_B)).toBeNull();
         });
     });
@@ -230,5 +231,30 @@ describe('oneSaveStore plan 079 p2 (objectSuffix / acceptRemote)', () => {
         await store.migrate();
         expect(oneSaveClient.get).not.toHaveBeenCalled();
         expect(oneSaveClient.put).not.toHaveBeenCalled();
+    });
+});
+
+describe('oneSaveStore plan 079 p2 review: a reply older than a save that landed mid-GET', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        vi.useFakeTimers();
+        for (const fn of [oneSaveClient.get, oneSaveClient.put, oneSaveClient.listAll]) vi.mocked(fn).mockReset();
+        vi.mocked(oneSaveClient.putBatch).mockReset().mockResolvedValue('unsupported');
+    });
+    afterEach(async () => { vi.useRealTimers(); await oneSaveSync.bootstrap(null); });
+
+    it('does not roll back an edit whose save landed while the GET was in flight', async () => {
+        const { store, setLocal } = makeBoardStore();
+        await oneSaveSync.bootstrap('user-1');
+        vi.mocked(oneSaveClient.put).mockImplementation(async (o) => obj(o.id, o.payload));
+        setLocal('NEW');                                   // unsaved: dirty marker set
+        let release!: (v: DwelliumObject | null) => void;
+        vi.mocked(oneSaveClient.get).mockImplementation(() => new Promise((r) => { release = r; }));
+        const hydrating = store.hydrate();                 // GET leaves while NEW is unsaved
+        await vi.advanceTimersByTimeAsync(10);             // NEW is saved; marker cleared
+        expect(dirty(ID_A)).toBeNull();
+        release(obj(ID_A, 'old'));                         // ...but the reply predates that save
+        await hydrating;
+        expect(store.getSnapshot()).toBe('NEW');
     });
 });

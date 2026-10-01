@@ -19,6 +19,7 @@ import {
     createInitialBoard, defaultColumns, makeCard, applyAction, undo,
     type ActionContext, type BoardState, type AuditEntry, type TaskCard, type Attachment,
 } from '../components/TaskBoard/taskBoardModel';
+import * as M from '../components/TaskBoard/taskBoardModel';
 
 // ── fake One Save server (plain functions: survive vi.restoreAllMocks / resetModules) ──
 const srv = vi.hoisted(() => ({
@@ -251,16 +252,16 @@ describe('B2 acceptRemote (through the real hydrate)', () => {
         expect(ids(serverBoard('task-board_u1__p1'))).toEqual(['L1']);
     });
 
-    it('legacy check (Global): keeps local when the remote shares no card id, sets the flag, and pushes local', async () => {
+    it('review: legacy check (Global) keeps BOTH boards (union) when the remote shares no card id, sets the flag, and never overwrites the server', async () => {
         seedLocal('taskboard:u1', mkBoard(mkCard('L1')));
         putServer('task-board_u1', mkBoard(mkCard('R1')));
         const a = await boot('u1', null);
 
         await a.tb.taskBoardStore.hydrate();
-        expect(ids(a.tb.taskBoardStore.getSnapshot())).toEqual(['L1']);
+        expect(ids(a.tb.taskBoardStore.getSnapshot()).sort()).toEqual(['L1', 'R1']);
         expect(localStorage.getItem('taskboard:legacy-checked:u1')).not.toBeNull();
         await flush();
-        expect(ids(serverBoard('task-board_u1'))).toEqual(['L1']);
+        expect(ids(serverBoard('task-board_u1'))).toEqual(['R1']); // the other device's board is not overwritten
     });
 
     it('legacy check is one-time: a SECOND hydrate with a disjoint remote now applies the remote', async () => {
@@ -269,8 +270,8 @@ describe('B2 acceptRemote (through the real hydrate)', () => {
         const a = await boot('u1', null);
 
         await a.tb.taskBoardStore.hydrate();
-        expect(ids(a.tb.taskBoardStore.getSnapshot())).toEqual(['L1']); // first hydrate: local kept
-        await flush(); // local pushed, dirty marker cleared
+        expect(ids(a.tb.taskBoardStore.getSnapshot()).sort()).toEqual(['L1', 'R1']); // first hydrate: union
+        await flush();
         putServer('task-board_u1', mkBoard(mkCard('R2')));
         await a.tb.taskBoardStore.hydrate();
         expect(ids(a.tb.taskBoardStore.getSnapshot())).toEqual(['R2']);
@@ -642,5 +643,38 @@ describe('B8 daily glance counts every local board', () => {
         seedLocal('taskboard:u8', mkBoard(mkCard('A', 'A', 'done', 'high')));
         expect(await runDailyGlance('u8', post)).toBe(false);
         expect(post).not.toHaveBeenCalled();
+    });
+});
+
+// ════════════════════════════════════════════════════════════════════
+describe('phase 2 review pins', () => {
+    it('Remove → Undo cycles do not grow the board (a reversed entry drops its heavy inverse)', () => {
+        let n = 0;
+        const ctx = { now: () => `t${++n}`, id: () => `e${++n}` };
+        const USER = { kind: 'user' } as const;
+        const bytes = 'data:text/plain;base64,' + 'A'.repeat(250_000);
+        let b = M.applyAction(M.createInitialBoard(), { type: 'ADD_CARD', card: M.makeCard(ctx, { title: 'c', columnId: 'todo' }, 0) }, USER, ctx);
+        const cardId = b.cards[0].id;
+        b = M.applyAction(b, { type: 'ADD_ATTACHMENT', cardId, attachment: { id: 'att', name: 'f', size: 1, type: 't', addedAt: 't', dataUrl: bytes } }, USER, ctx);
+        const sizes: number[] = [];
+        for (let i = 0; i < 4; i++) {
+            b = M.applyAction(b, { type: 'REMOVE_ATTACHMENT', cardId, attachmentId: 'att' }, USER, ctx);
+            b = M.undo(b, ctx, USER).state;
+            expect(b.cards[0].attachments?.[0]?.dataUrl).toBe(bytes); // the file is back each time
+            sizes.push(JSON.stringify(b).length);
+        }
+        expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThan(5_000); // flat, not +250 KB per cycle
+        expect(sizes[3]).toBeLessThan(2 * bytes.length);
+    });
+
+    it('a different user never inherits the previous user\'s open project', () => {
+        TB.taskBoardUserIdHolder.current = 'u1';
+        TB.taskBoardProjectIdHolder.current = 'projOfU1';
+        TB.taskBoardUserIdHolder.current = 'u2';
+        expect(TB.taskBoardProjectIdHolder.current).toBeNull();
+        TB.taskBoardUserIdHolder.current = 'u2';                // same user again: project kept
+        TB.taskBoardProjectIdHolder.current = 'p2';
+        TB.taskBoardUserIdHolder.current = 'u2';
+        expect(TB.taskBoardProjectIdHolder.current).toBe('p2');
     });
 });

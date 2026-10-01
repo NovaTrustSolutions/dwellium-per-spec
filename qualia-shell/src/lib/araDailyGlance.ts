@@ -11,10 +11,10 @@ import { withSync } from './oneSaveStore';
 import { araGlanceUserIdHolder } from './perUserIdentity';
 import { dayKey } from './dailySynthesis';
 import { strataGet } from '../components/StrataDashboard/strataApi';
-import { repairBoard } from '../components/TaskBoard/taskBoardModel';
-// Side-effect import: registers the board store with One Save at ARA load, so the Global
+import { isOverdue } from '../components/TaskBoard/taskBoardModel';
+// Also registers the board store with One Save at ARA load, so the Global
 // board is pulled from the server on login even if the Task Board is never opened here.
-import '../components/TaskBoard/taskBoardStore';
+import { listLocalBoards } from '../components/TaskBoard/taskBoardStore';
 import { goalsStore } from './goalsStore';
 import { todaysBrief } from './morningBriefStore';
 
@@ -62,19 +62,23 @@ async function tryLine(fn: () => Promise<string | null> | string | null): Promis
     try { return await fn(); } catch { return null; }
 }
 
-/** Open (not in 'done') and high-urgency cards across EVERY local board of this user: Global + each project. */
-function localBoardCounts(uid: string | null): { open: number; high: number } {
-    const base = `taskboard:${uid ?? '_anonymous'}`;
-    const counts = { open: 0, high: 0 };
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key || (key !== base && !key.startsWith(`${base}:`))) continue;
-        let raw: unknown = null;
-        try { raw = JSON.parse(localStorage.getItem(key) ?? 'null'); } catch { /* unreadable board → repairBoard(null) is empty */ }
-        for (const c of repairBoard(raw).cards) {
+/** Today's local calendar date as 'YYYY-MM-DD' (matches a card's dueAt). */
+function localToday(): string {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Open (not in the last column), high-urgency and overdue cards across EVERY local board of this user: Global + each project. */
+function localBoardCounts(uid: string | null): { open: number; high: number; overdue: number } {
+    const counts = { open: 0, high: 0, overdue: 0 };
+    const today = localToday();
+    for (const { board } of listLocalBoards(uid)) {
+        for (const c of board.cards) {
             if (c.columnId === 'done') continue;
             counts.open++;
             if (c.urgency === 'high') counts.high++;
+            if (isOverdue(c, board.columns, today)) counts.overdue++;
         }
     }
     return counts;
@@ -103,8 +107,8 @@ export async function assembleGlance(userId: string | null = araGlanceUserIdHold
             return pending > 0 ? `${plural(pending, 'inbox item')} waiting for approval` : null;
         }),
         tryLine(() => {
-            const { open, high } = localBoardCounts(userId);
-            return open ? `${plural(open, 'task')} not done — ${high} high urgency` : null;
+            const { open, high, overdue } = localBoardCounts(userId);
+            return open ? `${plural(open, 'task')} not done — ${high} high urgency${overdue ? ` — ${overdue} overdue` : ''}` : null;
         }),
         tryLine(() => {
             const goals = goalsStore.getSnapshot().filter(g => g.status !== 'done');

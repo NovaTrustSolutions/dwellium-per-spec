@@ -5,10 +5,12 @@
  * <TagInput>). Tag cloud with counts → click a tag to filter → see every item
  * carrying it, with where it came from. Read-only aggregation of tagStore.
  */
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { Tag } from 'lucide-react';
 import { useTaggedItems } from '../Tags/TagInput';
 import { tagCounts, itemsForTag } from '../../lib/tagStore';
+import { UserContext } from '../../context/UserContext';
+import { openTaskBoardCard } from '../TaskBoard/taskBoardStore';
 import './TagFile.css';
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -33,6 +35,9 @@ function rel(iso: string): string {
 export default function TagFile() {
     const items = useTaggedItems();
     const [sel, setSel] = useState<string | null>(null);
+    const [note, setNote] = useState('');
+    const userId = useContext(UserContext)?.user?.id ?? '_anonymous'; // raw context: no provider in tests/anon routes
+    const openCard = (id: string) => setNote(openTaskBoardCard(userId, id) ? '' : 'That card is no longer on your Task Board.');
     const counts = tagCounts(items);
     const shown = sel
         ? itemsForTag(items, sel)
@@ -61,13 +66,18 @@ export default function TagFile() {
                 ))}
             </div>
 
+            {/* Always-rendered live region so a failed open is announced. */}
+            <div className="tf__note" role="status" aria-live="polite">{note}</div>
+
             <div className="tf__list">
                 {shown.length === 0 && items.length > 0 && <span className="tf__empty">No items for #{sel}.</span>}
                 {shown.map(it => (
                     <div key={it.id} className="tf__item">
                         <div className="tf__item-row">
                             <span className="tf__src" title="Source widget">{srcLabel(it.source)}</span>
-                            <span className="tf__item-title">{it.title}</span>
+                            {it.source === 'task-board'
+                                ? <button className="tf__item-title tf__item-title--open" onClick={() => openCard(it.sourceId)}>{it.title}</button>
+                                : <span className="tf__item-title">{it.title}</span>}
                             <span className="tf__when">{rel(it.updatedAt)}</span>
                         </div>
                         <div className="tf__item-tags">

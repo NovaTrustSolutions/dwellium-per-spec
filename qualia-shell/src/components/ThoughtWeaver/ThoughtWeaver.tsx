@@ -18,6 +18,7 @@ import {
     Pin,
     Save,
     Satellite,
+    Send,
     Sparkles,
     Trash2,
     TrendingUp,
@@ -33,6 +34,7 @@ import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
 import { twSyncConfig, pullCaptures, planImport } from './thoughtWeaverSync';
 import { pullInbox } from './twInbox';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { sendToTaskBoard } from '../TaskBoard/taskBoardStore';
 import { logActivity } from '../../lib/activityLogStore';
 import {
     thoughtWeaverStore,
@@ -888,6 +890,17 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                             {t.sourceCaptureId && (
                                                 <span className="tw-todo__source" title="From a capture"><Pencil size={14} /></span>
                                             )}
+                                            <button
+                                                className="tw-delete-btn tw-todo__send"
+                                                onClick={() => {
+                                                    const { board } = sendToTaskBoard(userId, { title: t.text, urgency: t.priority });
+                                                    setSyncMsg(board ? `Sent "${t.text}" to Task Board (${board})` : 'Nothing to send');
+                                                }}
+                                                title="Send to Task Board"
+                                                aria-label={`Send "${t.text}" to Task Board`}
+                                            >
+                                                <Send size={14} aria-hidden />
+                                            </button>
                                             <button
                                                 className="tw-delete-btn"
                                                 onClick={() => deleteTodo(t.id)}

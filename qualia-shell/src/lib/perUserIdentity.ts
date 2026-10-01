@@ -207,6 +207,9 @@ export function captureOwner(): () => boolean {
     return () => currentOwnerId === atStart;
 }
 
+/** The user id `setPerUserIdentity` last set (null = signed out). */
+export function currentOwner(): string | null { return currentOwnerId; }
+
 /**
  * Single-writer hook. Call once at the top of any component/hook that reads a
  * per-user store, BEFORE the store's `useSyncExternalStore` runs, so every

@@ -769,6 +769,8 @@
 
 .tw-todo__text { flex: 1; min-width: 0; color: var(--text-primary); font-size: 13px; }
 
+.tw-todo__send:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); color: var(--accent); }
+
 .tw-todo__source {
     display: flex;
     opacity: 0.6;

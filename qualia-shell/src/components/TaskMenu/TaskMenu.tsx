@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useContext, lazy, Suspense } from 'react';
 import {
     BarChart3, Brain, Check, Circle, DollarSign, Hand, Hexagon, Inbox, List, Lock, Package,
-    Palette, Scroll, Settings, type LucideIcon,
+    Palette, Scroll, Send, Settings, type LucideIcon,
 } from 'lucide-react';
+import { UserContext } from '../../context/UserContext';
+import { sendToTaskBoard } from '../TaskBoard/taskBoardStore';
 import './TaskMenu.css';
 
 // The Kanban subview reuses the existing Task Board. Lazy at sub-component
@@ -83,6 +85,14 @@ export default function TaskMenu() {
         setView(v);
         try { localStorage.setItem('dwellium:taskmenu-view', v); } catch { /* sandboxed */ }
     }, []);
+    // One-way "Send to Task Board" (plan 079 D1): raw context so a missing provider degrades to a sign-in note.
+    const userId = useContext(UserContext)?.user?.id;
+    const [sendMsg, setSendMsg] = useState('');
+    const sendToBoard = (task: Task) => {
+        if (!userId) { setSendMsg('Sign in to use the Task Board'); return; }
+        const { board } = sendToTaskBoard(userId, { title: task.title, description: task.description, urgency: task.urgency });
+        setSendMsg(board ? `Sent "${task.title}" to Task Board (${board})` : 'Nothing to send');
+    };
     const [sortBy, setSortBy] = useState<'urgency' | 'date' | 'ai'>('urgency');
     const [filterUrgency, setFilterUrgency] = useState<string>('all');
     const [loading, setLoading] = useState(true);
@@ -369,6 +379,14 @@ export default function TaskMenu() {
                 </span>
 
                 <div className="task-status-btns">
+                    <button
+                        className="status-btn task-send-btn"
+                        title="Send to Task Board"
+                        aria-label={`Send ${task.title} to Task Board`}
+                        onClick={(e) => { e.stopPropagation(); sendToBoard(task); }}
+                    >
+                        <Send size={12} aria-hidden />
+                    </button>
                     {(['open', 'in_progress', 'done'] as const).map(s => (
                         <button
                             key={s}
@@ -411,11 +429,12 @@ export default function TaskMenu() {
             {/* View toggle: List ⇄ Board (Kanban subview, reuses Task Board) */}
             <div className="task-viewtoggle" role="tablist" aria-label="Task view">
                 <button role="tab" aria-selected={view === 'list'} className={`task-viewtoggle__btn ${view === 'list' ? 'is-active' : ''}`} onClick={() => chooseView('list')}><List size={14} aria-hidden /> List</button>
-                <button role="tab" aria-selected={view === 'board'} className={`task-viewtoggle__btn ${view === 'board' ? 'is-active' : ''}`} onClick={() => chooseView('board')}>▤ Board</button>
+                <button role="tab" aria-selected={view === 'board'} className={`task-viewtoggle__btn ${view === 'board' ? 'is-active' : ''}`} onClick={() => chooseView('board')}>▤ Task Board</button>
             </div>
 
             {view === 'board' ? (
                 <div className="task-board-host">
+                    <p className="task-board-note">This is your Task Board — a separate list from these tasks.</p>
                     <Suspense fallback={<div className="task-loading">Loading board…</div>}>
                         <TaskBoardView />
                     </Suspense>
@@ -501,6 +520,9 @@ export default function TaskMenu() {
                     ))}
                 </div>
             </div>
+
+            {/* Always-rendered live region so the "Send to Task Board" result is announced. */}
+            <div className="task-send-status" role="status" aria-live="polite">{sendMsg}</div>
 
             {loading && <div className="task-loading">Loading tasks...</div>}
 

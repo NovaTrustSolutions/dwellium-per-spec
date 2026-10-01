@@ -19,8 +19,9 @@ import {
     type BoardState, type BoardAction, type BoardColumn, type Actor, type Urgency, type CardPatch,
     type Assignee, type Attachment,
     applyAction, undo as undoModel, undoLastAi as undoLastAiModel, generateReport,
-    createInitialBoard, makeCard, repairBoard, type ActionContext,
+    createInitialBoard, makeCard, repairBoard, type ActionContext, type TaskCard,
 } from './taskBoardModel';
+import { patchWidgetMemory } from '../../lib/widgetMemory';
 import { agentUnavailableReason, aiEndpoint, aiRequestBody, buildGmailComposeUrl, composeCardEmail, readAgentReply } from './taskRouting';
 
 // Module-level holder updated DURING render by the consuming component
@@ -198,6 +199,65 @@ export function moveCards(cardIds: string[], toColumnId: string, actor: Actor = 
 
 export function editCard(cardId: string, patch: CardPatch, actor: Actor = { kind: 'user' }): BoardState {
     return dispatch({ type: 'EDIT_CARD', cardId, patch }, actor);
+}
+
+const isUrgency = (u: unknown): u is Urgency => u === 'high' || u === 'medium' || u === 'low';
+
+/**
+ * One-way hand-off from other widgets/commands (plan 079 phase 5). Lands on the board currently selected if the
+ * holders already belong to `userId`; otherwise points the user holder at `userId` (the setter resets the project → Global).
+ * Goes through addCard, so it is audited, undoable and synced. ponytail: when no Task Board is mounted the holder stays on
+ * `userId`; TaskBoard.tsx rewrites it from the signed-in user on its next render.
+ */
+export function sendToTaskBoard(userId: string, fields: { title: string; description?: string; urgency?: Urgency }): { board: 'Global' | string } {
+    const title = fields.title.trim();
+    if (!title) return { board: '' };
+    if (taskBoardUserIdHolder.current !== userId) taskBoardUserIdHolder.current = userId;
+    addCard({ title, description: fields.description, urgency: isUrgency(fields.urgency) ? fields.urgency : undefined });
+    const pid = taskBoardProjectIdHolder.current;
+    return { board: pid && pid !== 'global' ? pid : 'Global' };
+}
+
+/** This user's local boards: `taskboard:<uid>` (Global) and `taskboard:<uid>:<pid>`, each through repairBoard. Exact-prefix match, so 'u1' never reads 'u10'. */
+export function listLocalBoards(userId: string | null): Array<{ projectId: string | null; board: BoardState }> {
+    const base = `taskboard:${userId ?? '_anonymous'}`;
+    const boards: Array<{ projectId: string | null; board: BoardState }> = [];
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || (key !== base && !key.startsWith(`${base}:`))) continue;
+            let raw: unknown = null;
+            try { raw = JSON.parse(localStorage.getItem(key) ?? 'null'); } catch { /* unreadable board → repairBoard(null) is empty */ }
+            boards.push({ projectId: key === base ? null : key.slice(base.length + 1), board: repairBoard(raw) });
+        }
+    } catch { /* sandboxed storage */ }
+    return boards;
+}
+
+export function findCardBoard(userId: string, cardId: string): { projectId: string | null } | null {
+    const hit = listLocalBoards(userId).find(b => b.board.cards.some(c => c.id === cardId));
+    return hit ? { projectId: hit.projectId } : null;
+}
+
+/** Remember the board + card in widget memory, then open the Task Board window. false (nothing opened) when the card is not found. */
+export function openTaskBoardCard(userId: string, cardId: string): boolean {
+    const where = findCardBoard(userId, cardId);
+    if (!where) return false;
+    patchWidgetMemory('task-board', { activeProjectId: where.projectId ?? 'global', openCardId: cardId });
+    try {
+        // Same event + detail as dwelliumCommands.openWidget('task-board') (label/icon from the registry; not imported: that module imports this store).
+        window.dispatchEvent(new CustomEvent('dwellium:open-widget', { detail: { widgetId: 'task-board', label: 'Task Board', icon: 'layout-grid' } }));
+    } catch { /* SSR / sandbox */ }
+    return true;
+}
+
+/** Cards on the current board whose title matches: an exact (case-insensitive) match wins, else every substring match. */
+export function findCardsByTitle(query: string): TaskCard[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const cards = taskBoardStore.getSnapshot().cards;
+    const exact = cards.filter(c => c.title.trim().toLowerCase() === q);
+    return exact.length ? exact : cards.filter(c => c.title.toLowerCase().includes(q));
 }
 
 export function removeCard(cardId: string, actor: Actor = { kind: 'user' }): BoardState {

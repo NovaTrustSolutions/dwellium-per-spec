@@ -203,16 +203,36 @@ export function editCard(cardId: string, patch: CardPatch, actor: Actor = { kind
 
 const isUrgency = (u: unknown): u is Urgency => u === 'high' || u === 'medium' || u === 'low';
 
+/** What to call the board `sendToTaskBoard` landed on in a message: never the raw project id. */
+export const boardLabel = (board: string): string => (board === 'Global' ? 'Global board' : 'a project board');
+
+/** Object ids (`task-board_<uid><suffix>`) whose server copy sendToTaskBoard already pulled this session. */
+const hydratedForSend = new Set<string>();
+
 /**
  * One-way hand-off from other widgets/commands (plan 079 phase 5). Lands on the board currently selected if the
  * holders already belong to `userId`; otherwise points the user holder at `userId` (the setter resets the project → Global).
  * Goes through addCard, so it is audited, undoable and synced. ponytail: when no Task Board is mounted the holder stays on
  * `userId`; TaskBoard.tsx rewrites it from the signed-in user on its next render.
+ *
+ * Async because the first send to a board in a session must see the server's cards first: a write that lands while the
+ * bootstrap hydrate is still in flight would make that hydrate bail and push a stale (empty) board over the server's.
+ * `hydrate()` is idempotent and a later bootstrap hydrate then bails harmlessly (local already holds the remote cards).
+ * ponytail: offline, hydrate() cannot tell us the GET failed, so the board is marked hydrated anyway.
+ * Returns { board: '' } when nothing was written (blank title, or the board changed while hydrating).
  */
-export function sendToTaskBoard(userId: string, fields: { title: string; description?: string; urgency?: Urgency }): { board: 'Global' | string } {
+export async function sendToTaskBoard(userId: string, fields: { title: string; description?: string; urgency?: Urgency }): Promise<{ board: 'Global' | string }> {
     const title = fields.title.trim();
     if (!title) return { board: '' };
     if (taskBoardUserIdHolder.current !== userId) taskBoardUserIdHolder.current = userId;
+    const stillHere = captureBoard();
+    const objectId = `task-board_${userId}${boardObjectSuffix(taskBoardProjectIdHolder.current)}`;
+    if (!hydratedForSend.has(objectId)) {
+        let hydrated = true;
+        try { await taskBoardStore.hydrate(); } catch { hydrated = false; } // a rejected hydrate must not eat the card: write, retry the hydrate next send
+        if (!stillHere()) return { board: '' };
+        if (hydrated) hydratedForSend.add(objectId);
+    }
     addCard({ title, description: fields.description, urgency: isUrgency(fields.urgency) ? fields.urgency : undefined });
     const pid = taskBoardProjectIdHolder.current;
     return { board: pid && pid !== 'global' ? pid : 'Global' };

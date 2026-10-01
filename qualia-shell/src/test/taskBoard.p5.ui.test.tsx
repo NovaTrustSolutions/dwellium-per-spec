@@ -532,6 +532,21 @@ describe('[C3] Task Menu', () => {
         expect(audit[audit.length - 1]).toMatchObject({ type: 'ADD_CARD', actor: { kind: 'user' } });
     });
 
+    it('the status message names the Global board', async () => {
+        render(withUser('u1', <TaskMenu />));
+        await userEvent.setup().click(await screen.findByRole('button', { name: 'Send Fix gutter to Task Board' }));
+        await waitFor(() => expect(document.querySelector('.task-send-status')?.textContent).toBe('Sent "Fix gutter" to Task Board (Global board)'));
+    });
+
+    it('on a project board the message says "a project board", never the raw project id', async () => {
+        taskBoardUserIdHolder.current = 'u1';
+        taskBoardProjectIdHolder.current = 'proj-secret-42';
+        render(withUser('u1', <TaskMenu />));
+        await userEvent.setup().click(await screen.findByRole('button', { name: 'Send Fix gutter to Task Board' }));
+        await waitFor(() => expect(document.querySelector('.task-send-status')?.textContent).toBe('Sent "Fix gutter" to Task Board (a project board)'));
+        expect(storedBoard('taskboard:u1:proj-secret-42').cards).toHaveLength(1);
+    });
+
     it('shows a status message that mentions the Task Board after sending', async () => {
         render(withUser('u1', <TaskMenu />));
         const leaves = (): HTMLElement[] => Array.from(document.body.querySelectorAll<HTMLElement>('*'))
@@ -575,6 +590,19 @@ describe('[C4] ThoughtWeaver to-dos', () => {
             await waitFor(() => expect(storedBoard('taskboard:u1').cards).toHaveLength(1));
             expect(storedBoard('taskboard:u1').cards[0]).toMatchObject({ title: text, urgency });
         });
+
+    it('the confirmation names the Global board, or "a project board" instead of the project id', async () => {
+        await openToday();
+        await act(async () => { (await screen.findByRole('button', { name: 'Send "Call the plumber" to Task Board' })).click(); });
+        expect(await screen.findByText('Sent "Call the plumber" to Task Board (Global board)')).toBeTruthy();
+        cleanup();
+        taskBoardUserIdHolder.current = 'u1';
+        taskBoardProjectIdHolder.current = 'proj-secret-42';
+        await openToday();
+        await act(async () => { (await screen.findByRole('button', { name: 'Send "Water the plants" to Task Board' })).click(); });
+        expect(await screen.findByText('Sent "Water the plants" to Task Board (a project board)')).toBeTruthy();
+        expect(document.body.textContent).not.toContain('proj-secret-42');
+    });
 
     it('guard: sending does not remove or complete the to-do', async () => {
         await openToday();

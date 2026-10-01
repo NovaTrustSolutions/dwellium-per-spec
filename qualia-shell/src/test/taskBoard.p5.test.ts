@@ -35,7 +35,7 @@ function fn<T extends (...a: any[]) => any>(ns: unknown, name: string): T {
 const isOverdue = (c: TaskCard, cols: BoardColumn[], today: string): boolean => fn<any>(M, 'isOverdue')(c, cols, today);
 const lastColumnId = (cols: BoardColumn[]): string | undefined => fn<any>(M, 'lastColumnId')(cols);
 const wipCount = (cards: TaskCard[], id: string): number => fn<any>(M, 'wipCount')(cards, id);
-const sendToTaskBoard = (uid: string, f: { title: string; description?: string; urgency?: 'high' | 'medium' | 'low' }): { board: string } =>
+const sendToTaskBoard = (uid: string, f: { title: string; description?: string; urgency?: 'high' | 'medium' | 'low' }): Promise<{ board: string }> =>
     fn<any>(TB, 'sendToTaskBoard')(uid, f);
 const findCardBoard = (uid: string, id: string): { projectId: string | null } | null => fn<any>(TB, 'findCardBoard')(uid, id);
 const openTaskBoardCard = (uid: string, id: string): boolean => fn<any>(TB, 'openTaskBoardCard')(uid, id);
@@ -331,27 +331,27 @@ describe('store: phase-5 helpers', () => {
     });
 
     describe('[A4] sendToTaskBoard', () => {
-        it('adds to the board the holders already point at when they belong to that user (Global)', () => {
+        it('adds to the board the holders already point at when they belong to that user (Global)', async () => {
             TB.taskBoardUserIdHolder.current = 'u1';
-            const r = sendToTaskBoard('u1', { title: 'Buy filters' });
+            const r = await sendToTaskBoard('u1', { title: 'Buy filters' });
             expect(r.board).toBe('Global');
             expect(lsBoard('taskboard:u1').cards.map(c => c.title)).toEqual(['Buy filters']);
         });
 
-        it('adds to the currently selected PROJECT board when the holders belong to that user', () => {
+        it('adds to the currently selected PROJECT board when the holders belong to that user', async () => {
             TB.taskBoardUserIdHolder.current = 'u1';
             TB.taskBoardProjectIdHolder.current = 'p1';
-            const r = sendToTaskBoard('u1', { title: 'Project job' });
+            const r = await sendToTaskBoard('u1', { title: 'Project job' });
             expect(r.board).toBe('p1');
             expect(lsBoard('taskboard:u1:p1').cards.map(c => c.title)).toEqual(['Project job']);
             expect(lsBoard('taskboard:u1').cards).toHaveLength(0);
             expect(TB.taskBoardProjectIdHolder.current).toBe('p1');
         });
 
-        it('points the user holder at a DIFFERENT user and falls back to that user\'s Global board', () => {
+        it('points the user holder at a DIFFERENT user and falls back to that user\'s Global board', async () => {
             TB.taskBoardUserIdHolder.current = 'u1';
             TB.taskBoardProjectIdHolder.current = 'p1';
-            const r = sendToTaskBoard('u2', { title: 'For u2' });
+            const r = await sendToTaskBoard('u2', { title: 'For u2' });
             expect(r.board).toBe('Global');
             expect(TB.taskBoardUserIdHolder.current).toBe('u2');
             expect(TB.taskBoardProjectIdHolder.current).toBeNull();
@@ -359,30 +359,30 @@ describe('store: phase-5 helpers', () => {
             expect(lsBoard('taskboard:u1:p1').cards).toHaveLength(0);
         });
 
-        it('works when no user is selected yet (holders null)', () => {
-            const r = sendToTaskBoard('u3', { title: 'First' });
+        it('works when no user is selected yet (holders null)', async () => {
+            const r = await sendToTaskBoard('u3', { title: 'First' });
             expect(r.board).toBe('Global');
             expect(TB.taskBoardUserIdHolder.current).toBe('u3');
             expect(lsBoard('taskboard:u3').cards.map(c => c.title)).toEqual(['First']);
         });
 
-        it('trims the title and passes description and urgency through', () => {
-            sendToTaskBoard('u1', { title: '  Fix boiler  ', description: 'Basement unit', urgency: 'high' });
+        it('trims the title and passes description and urgency through', async () => {
+            await sendToTaskBoard('u1', { title: '  Fix boiler  ', description: 'Basement unit', urgency: 'high' });
             const card = lsBoard('taskboard:u1').cards[0];
             expect(card.title).toBe('Fix boiler');
             expect(card.description).toBe('Basement unit');
             expect(card.urgency).toBe('high');
         });
 
-        it('a blank title creates no card and returns { board: "" }', () => {
-            const r = sendToTaskBoard('u1', { title: '   ' });
+        it('a blank title creates no card and returns { board: "" }', async () => {
+            const r = await sendToTaskBoard('u1', { title: '   ' });
             expect(r).toEqual({ board: '' });
             expect(lsBoard('taskboard:u1').cards).toHaveLength(0);
             expect(TB.taskBoardStore.getSnapshot().cards).toHaveLength(0);
         });
 
-        it('goes through addCard: audited as a user ADD_CARD and undoable', () => {
-            sendToTaskBoard('u1', { title: 'Audited' });
+        it('goes through addCard: audited as a user ADD_CARD and undoable', async () => {
+            await sendToTaskBoard('u1', { title: 'Audited' });
             const snap = TB.taskBoardStore.getSnapshot();
             expect(snap.audit[snap.audit.length - 1]).toMatchObject({ type: 'ADD_CARD', actor: { kind: 'user' } });
             TB.undo();
@@ -534,10 +534,11 @@ describe('[C1] assistant commands (parseCommand)', () => {
     const onOpen = (e: Event): void => { opened.push((e as CustomEvent).detail); };
     const onPlace = (e: Event): void => { placed.push((e as CustomEvent).detail); };
 
-    const run = (said: string): boolean => {
+    // async so the add-task tests can await the hydrate-first send; every other command still runs synchronously inside the call.
+    const run = async (said: string): Promise<boolean> => {
         const cmd = parseCommand(said);
         if (!cmd) return false;
-        cmd.run();
+        await cmd.run();
         return true;
     };
     const boardCards = (key = 'taskboard:u1'): TaskCard[] => lsBoard(key).cards;
@@ -565,21 +566,22 @@ describe('[C1] assistant commands (parseCommand)', () => {
     });
 
     describe('add task / add card / new task', () => {
-        it.each(['add task Buy filters', 'add card Buy filters', 'new task Buy filters'])('"%s" parses and adds the card with its original casing', (said) => {
+        it.each(['add task Buy filters', 'add card Buy filters', 'new task Buy filters'])('"%s" parses and adds the card with its original casing', async (said) => {
             expect(parseCommand(said), said).not.toBeNull();
-            run(said);
+            await run(said);
             expect(boardCards().map(c => c.title)).toEqual(['Buy filters']);
         });
 
-        it('toasts "Added to Task Board (<board>)" naming the Global board', () => {
-            run('add task Buy filters');
-            expect(toasts).toContain('Added to Task Board (Global)');
+        it('toasts "Added to Task Board (Global board)"', async () => {
+            await run('add task Buy filters');
+            expect(toasts).toContain('Added to Task Board (Global board)');
         });
 
-        it('names the project board when one is selected', () => {
+        it('says "a project board" (never the raw project id) when one is selected', async () => {
             TB.taskBoardProjectIdHolder.current = 'proj-9';
-            run('add task Paint hallway');
-            expect(toasts).toContain('Added to Task Board (proj-9)');
+            await run('add task Paint hallway');
+            expect(toasts).toContain('Added to Task Board (a project board)');
+            expect(toasts.some(t => t.includes('proj-9'))).toBe(false);
             expect(boardCards('taskboard:u1:proj-9').map(c => c.title)).toEqual(['Paint hallway']);
         });
 
@@ -587,11 +589,21 @@ describe('[C1] assistant commands (parseCommand)', () => {
             expect(parseCommand('Hey ARA, please add task Buy filters')).not.toBeNull();
         });
 
-        it('with no signed-in owner nothing is written and the user is told to sign in', () => {
+        it.each([
+            ['please add task buy milk and eggs', 'buy milk and eggs'],
+            ['Hey ARA, please add task Buy milk and eggs', 'Buy milk and eggs'],
+            ['could you add task call Bob, then Sue', 'call Bob, then Sue'],
+            ['can you please add card fix door; paint wall', 'fix door; paint wall'],
+        ])('polite "%s" keeps the whole title (never split on and / , / then)', async (said, title) => {
+            await run(said);
+            expect(boardCards().map(c => c.title)).toEqual([title]);
+        });
+
+        it('with no signed-in owner nothing is written and the user is told to sign in', async () => {
             setPerUserIdentity(null);
             TB.taskBoardUserIdHolder.current = null;
             expect(parseCommand('add task Buy filters')).not.toBeNull();
-            run('add task Buy filters');
+            await run('add task Buy filters');
             expect(toasts).toContain('Sign in to use the Task Board');
             const written = Object.keys(localStorage).filter(k => k.startsWith('taskboard:')).flatMap(k => boardCards(k));
             expect(written).toHaveLength(0);
@@ -637,6 +649,19 @@ describe('[C1] assistant commands (parseCommand)', () => {
             expect(toasts.length).toBeGreaterThan(0);
             expect(opened).toHaveLength(0);
             expect(readWidgetMemory<Record<string, unknown>>('task-board', {}).openCardId).toBeUndefined();
+        });
+
+        it('"open task buy milk and eggs" looks up the whole phrase (not split on "and")', async () => {
+            TB.addCard({ title: 'Buy milk and eggs' });
+            TB.addCard({ title: 'Buy milk' }); // a split on "and" would open this exact match instead
+            await run('open task buy milk and eggs');
+            expect(readWidgetMemory<Record<string, unknown>>('task-board', {}).openCardId).toBe(byTitle('Buy milk and eggs').id);
+            expect(toasts.some(t => /No Task Board card/.test(t))).toBe(false);
+        });
+
+        it('guard: "open task board and open inbox" is still chained as two widget opens', async () => {
+            await run('open task board and open inbox');
+            expect(opened.map(o => o.widgetId)).toEqual(['task-board', 'inbox']);
         });
 
         it('an exact title wins over substring matches', () => {
@@ -690,6 +715,61 @@ describe('[C1] assistant commands (parseCommand)', () => {
             expect(TB.taskBoardStore.getSnapshot().cards.every(c => c.columnId === 'todo')).toBe(true);
             expect(toasts.length).toBeGreaterThan(0);
         });
+
+        it('a column query matching several columns toasts the count and moves nothing', () => {
+            run('move task boiler to o'); // "o" is in Backlog, To Do, In Progress and Done
+            const n = TB.taskBoardStore.getSnapshot().columns.filter(c => c.title.toLowerCase().includes('o')).length;
+            expect(n).toBeGreaterThan(1);
+            expect(toasts).toContain(`${n} columns match "o"`);
+            expect(byTitle('Fix boiler').columnId).toBe('todo');
+        });
+
+        describe('limits the board UI enforces', () => {
+            it('refuses when the target column is at its WIP max (no move, toast says why)', () => {
+                TB.updateColumnLimits('in-progress', undefined, 1);
+                TB.moveCard(byTitle('Fix door').id, 'in-progress');
+                toasts.length = 0;
+                run('move task boiler to in progress');
+                expect(byTitle('Fix boiler').columnId).toBe('todo');
+                expect(toasts).toEqual([expect.stringMatching(/In Progress.*limit/i)]);
+            });
+
+            it('refuses when the target column is over its WIP max', () => {
+                TB.moveCard(byTitle('Fix door').id, 'in-progress');
+                TB.moveCard(byTitle('Buy filters').id, 'in-progress');
+                TB.updateColumnLimits('in-progress', undefined, 1);
+                run('move task boiler to in progress');
+                expect(byTitle('Fix boiler').columnId).toBe('todo');
+            });
+
+            it('moves when the target column still has room', () => {
+                TB.updateColumnLimits('in-progress', undefined, 2);
+                TB.moveCard(byTitle('Fix door').id, 'in-progress');
+                run('move task boiler to in progress');
+                expect(byTitle('Fix boiler').columnId).toBe('in-progress');
+            });
+
+            it('sub-tasks do not count against, and are not blocked by, the limit', () => {
+                TB.updateColumnLimits('in-progress', undefined, 1);
+                TB.moveCard(byTitle('Fix door').id, 'in-progress');
+                TB.addSubtask(byTitle('Buy filters').id, 'sub of filters'); // lands in To Do under its parent
+                run('move task sub of filters to in progress');            // In Progress is full for top-level cards only
+                expect(byTitle('sub of filters').columnId).toBe('in-progress');
+            });
+
+            it('refuses when the SOURCE column has exit criteria, naming the board as the place to confirm them', () => {
+                TB.updateColumnPolicies('todo', ['Reviewed by Andy']);
+                run('move task boiler to done');
+                expect(byTitle('Fix boiler').columnId).toBe('todo');
+                expect(toasts).toEqual([expect.stringMatching(/To Do has exit criteria — move it on the board so you can confirm them/)]);
+            });
+
+            it('exit criteria on the TARGET column do not block the move', () => {
+                TB.updateColumnPolicies('done', ['Signed off']);
+                run('move task boiler to done');
+                expect(byTitle('Fix boiler').columnId).toBe('done');
+            });
+        });
     });
 
     describe('guards: existing commands are not captured', () => {
@@ -719,5 +799,43 @@ describe('[C1] assistant commands (parseCommand)', () => {
             run('tasks');
             expect(opened).toEqual([expect.objectContaining({ widgetId: 'task-board' })]);
         });
+    });
+});
+
+// ════════════════════════════════════════════════════════════════════
+describe('phase-5 review fixes (model)', () => {
+    const cols: BoardColumn[] = [...defaultColumns(), col('archive', 9)];
+
+    it('isOverdue is false for a card in Done even when another column follows Done', () => {
+        expect(isOverdue(mkCard('A', 'A', 'done', { dueAt: PAST } as any), cols, '2026-10-01')).toBe(false);
+    });
+    it('guard: isOverdue still true in an ordinary column, and for the last column unchanged', () => {
+        expect(isOverdue(mkCard('A', 'A', 'todo', { dueAt: PAST } as any), cols, '2026-10-01')).toBe(true);
+        expect(isOverdue(mkCard('B', 'B', 'archive', { dueAt: PAST } as any), cols, '2026-10-01')).toBe(false);
+        expect(isOverdue(mkCard('C', 'C', 'done', { dueAt: PAST } as any), defaultColumns(), '2026-10-01')).toBe(false);
+    });
+    it('the daily glance and the card face agree: a Done card is not counted when a column follows Done', async () => {
+        vi.stubGlobal('fetch', () => Promise.reject(new Error('offline')));
+        localStorage.clear();
+        araGlanceStore.reset();
+        araGlanceUserIdHolder.current = 'g2';
+        TB.taskBoardUserIdHolder.current = null; TB.taskBoardProjectIdHolder.current = null; TB.taskBoardStore.reset();
+        seedLocal('taskboard:g2', { columns: cols, cards: [mkCard('A', 'A', 'todo'), mkCard('B', 'B', 'done', { dueAt: PAST } as any)], audit: [] });
+        expect((await assembleGlance('g2')) ?? '').not.toMatch(/overdue/i);
+        vi.unstubAllGlobals(); araGlanceUserIdHolder.current = null;
+    });
+
+    it('makeCard trims, then caps the title at 500 characters', () => {
+        const c = makeCard(det(), { title: `  ${'x'.repeat(700)}  `, columnId: 'todo' }, 0);
+        expect(c.title).toBe('x'.repeat(500));
+    });
+    it('guard: a 500-character title and a short title are untouched; blank is still "Untitled task"', () => {
+        expect(makeCard(det(), { title: 'y'.repeat(500), columnId: 'todo' }, 0).title).toHaveLength(500);
+        expect(makeCard(det(), { title: ' Fix door ', columnId: 'todo' }, 0).title).toBe('Fix door');
+        expect(makeCard(det(), { title: '   ', columnId: 'todo' }, 0).title).toBe('Untitled task');
+    });
+    it('a cap that would split a surrogate pair drops the half pair', () => {
+        const t = makeCard(det(), { title: `${'a'.repeat(499)}\u{1F600}tail`, columnId: 'todo' }, 0).title;
+        expect(t).toBe('a'.repeat(499));
     });
 });

@@ -248,6 +248,9 @@ function repairAuditEntry(e: Rec): AuditEntry {
     };
 }
 
+/** A new card's title is cut to this many characters (trimmed first). */
+export const MAX_TITLE = 500;
+
 /** Build a fresh card. Caller supplies id/now via ctx; columnId defaults to first column. */
 export function makeCard(
     ctx: ActionContext,
@@ -257,7 +260,7 @@ export function makeCard(
     const ts = ctx.now();
     return {
         id: ctx.id(),
-        title: fields.title.trim() || 'Untitled task',
+        title: fields.title.trim().slice(0, MAX_TITLE).replace(/[\ud800-\udbff]$/, '').trimEnd() || 'Untitled task',
         description: fields.description?.trim() ?? '',
         columnId: fields.columnId,
         order: orderInColumn,
@@ -281,9 +284,9 @@ export function lastColumnId(columns: BoardColumn[]): string | undefined {
     return columns.reduce<BoardColumn | undefined>((a, c) => (!a || c.order > a.order ? c : a), undefined)?.id;
 }
 
-/** Overdue = has a due date before `today` ('YYYY-MM-DD') and is not in the last column. */
+/** Overdue = has a due date before `today` ('YYYY-MM-DD') and is in neither the last column nor Done (a column may follow Done). */
 export function isOverdue(card: TaskCard, columns: BoardColumn[], today: string): boolean {
-    return !!card.dueAt && card.dueAt < today && card.columnId !== lastColumnId(columns);
+    return !!card.dueAt && card.dueAt < today && card.columnId !== 'done' && card.columnId !== lastColumnId(columns);
 }
 
 /** WIP counts top-level cards only; sub-tasks do not fill a column. */

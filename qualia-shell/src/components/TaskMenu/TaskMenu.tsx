@@ -4,7 +4,7 @@ import {
     Palette, Scroll, Send, Settings, type LucideIcon,
 } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
-import { sendToTaskBoard } from '../TaskBoard/taskBoardStore';
+import { sendToTaskBoard, boardLabel } from '../TaskBoard/taskBoardStore';
 import './TaskMenu.css';
 
 // The Kanban subview reuses the existing Task Board. Lazy at sub-component
@@ -88,10 +88,10 @@ export default function TaskMenu() {
     // One-way "Send to Task Board" (plan 079 D1): raw context so a missing provider degrades to a sign-in note.
     const userId = useContext(UserContext)?.user?.id;
     const [sendMsg, setSendMsg] = useState('');
-    const sendToBoard = (task: Task) => {
+    const sendToBoard = async (task: Task) => {
         if (!userId) { setSendMsg('Sign in to use the Task Board'); return; }
-        const { board } = sendToTaskBoard(userId, { title: task.title, description: task.description, urgency: task.urgency });
-        setSendMsg(board ? `Sent "${task.title}" to Task Board (${board})` : 'Nothing to send');
+        const { board } = await sendToTaskBoard(userId, { title: task.title, description: task.description, urgency: task.urgency });
+        setSendMsg(board ? `Sent "${task.title}" to Task Board (${boardLabel(board)})` : 'Nothing to send');
     };
     const [sortBy, setSortBy] = useState<'urgency' | 'date' | 'ai'>('urgency');
     const [filterUrgency, setFilterUrgency] = useState<string>('all');
@@ -383,7 +383,7 @@ export default function TaskMenu() {
                         className="status-btn task-send-btn"
                         title="Send to Task Board"
                         aria-label={`Send ${task.title} to Task Board`}
-                        onClick={(e) => { e.stopPropagation(); sendToBoard(task); }}
+                        onClick={(e) => { e.stopPropagation(); void sendToBoard(task); }}
                     >
                         <Send size={12} aria-hidden />
                     </button>

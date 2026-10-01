@@ -64,6 +64,14 @@ function matchesFilter(card: TaskCard, q: string): boolean {
     return hay.some(h => h.toLowerCase().includes(q));
 }
 
+/** Selected ids whose cards exist and pass the filter. */
+function shownSelection(selected: Set<string>, cards: TaskCard[], q: string): string[] {
+    return [...selected].filter(id => {
+        const c = cards.find(card => card.id === id);
+        return c && (!q || matchesFilter(c, q));
+    });
+}
+
 function relTime(iso: string): string {
     const t = new Date(iso).getTime();
     if (isNaN(t)) return '';
@@ -297,7 +305,10 @@ export default function TaskBoard() {
 
     /** Alt+ArrowUp/Down on a card title: one place within its column. */
     const nudgeCard = (card: TaskCard, colCards: TaskCard[], dir: -1 | 1) => {
-        const to = colCards.findIndex(c => c.id === card.id) + dir;
+        const from = colCards.findIndex(c => c.id === card.id);
+        // Step to the next VISIBLE neighbour (index math on the full column); no visible neighbour = no-op.
+        let to = from + dir;
+        while (query && colCards[to] && !matchesFilter(colCards[to], query)) to += dir;
         if (to < 0 || to >= colCards.length) return;
         commitMove(card.id, card.columnId, to, `Moved ${card.title} ${dir < 0 ? 'up' : 'down'}`);
     };
@@ -375,6 +386,12 @@ export default function TaskBoard() {
     }, [userId, activeProjectId]);
 
     // ── selection helpers ──
+    const query = filter.trim().toLowerCase();
+    // Only cards the filter shows can be acted on in bulk; `selected` is pruned to match whenever the filter or cards change.
+    const selIds = shownSelection(selected, board.cards, query);
+    useEffect(() => {
+        setSelected(prev => { const shown = shownSelection(prev, board.cards, query); return shown.length === prev.size ? prev : new Set(shown); });
+    }, [query, board.cards]);
     const toggleSel = (id: string) => setSelected(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id); else next.add(id);
@@ -419,8 +436,8 @@ export default function TaskBoard() {
         dragCounter.current = {};
         if (!id) return;
         // If the dragged card is part of a multi-selection, move the whole set.
-        if (selected.has(id) && selected.size > 1) {
-            initiateMoveCards([...selected], colId);
+        if (selIds.includes(id) && selIds.length > 1) {
+            initiateMoveCards(selIds, colId);
         } else {
             initiateMoveCard(id, colId);
         }
@@ -435,7 +452,7 @@ export default function TaskBoard() {
         setDragOverCol(null);
         dragCounter.current = {};
         if (!id || id === target.id) return;
-        if (selected.has(id) && selected.size > 1) { initiateMoveCards([...selected], target.columnId); return; }
+        if (selIds.includes(id) && selIds.length > 1) { initiateMoveCards(selIds, target.columnId); return; }
         const idx = cardsInColumn(board.cards, target.columnId).filter(c => c.id !== id).findIndex(c => c.id === target.id);
         const title = board.cards.find(c => c.id === id)?.title ?? 'card';
         initiateMoveCard(id, target.columnId, Math.max(0, idx), `Moved ${title} before ${target.title}`);
@@ -464,7 +481,6 @@ export default function TaskBoard() {
         setTimeout(() => setCopied(false), 1800);
     };
 
-    const query = filter.trim().toLowerCase();
     const shownCount = query ? board.cards.filter(c => matchesFilter(c, query)).length : board.cards.length;
     const today = localYmd(); // once per render: every card's overdue check shares one "today"
     const aiActionCount = board.audit.filter(e => e.actor.kind === 'ai' && !e.reversed && e.type !== 'UNDO').length;
@@ -530,14 +546,14 @@ export default function TaskBoard() {
                     onChange={handleLoadBoard}
                 />
 
-                {selected.size > 0 && (
+                {selIds.length > 0 && (
                     <div className="tb-bulk">
-                        <span className="tb-bulk__count">{selected.size} selected</span>
+                        <span className="tb-bulk__count">{selIds.length} selected</span>
                         <select
                             className="tb-bulk__move"
                             aria-label="Move selected cards to column"
                             value=""
-                            onChange={e => { if (e.target.value) initiateMoveCards([...selected], e.target.value); }}
+                            onChange={e => { if (e.target.value) initiateMoveCards(selIds, e.target.value); }}
                         >
                             <option value="" disabled>Move to…</option>
                             {columns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -1024,15 +1040,18 @@ function ProjectView({ board, cardId, onOpenCard, onAddCard, onClose }: {
     const doRoute = async () => { const r = await routeCard(cardId); announce(r.detail); setRouteMsg(r.detail); setTimeout(() => setRouteMsg(null), 4000); };
     const commitTitle = () => { const t = title.trim(); if (t && t !== card.title) editCard(cardId, { title: t }); };
     const commitDesc = () => { if (desc !== card.description) editCard(cardId, { description: desc }); };
-    const onKey = onDialogKey(() => { commitTitle(); commitDesc(); onClose(); }); // Escape must not lose a half-typed edit
+    // Typing a year steps through valid dates: commit once (blur / Enter / close), not per keystroke.
+    const commitDue = () => { if (due !== (card.dueAt ?? '')) editCard(cardId, { dueAt: due || null }); };
+    const closeCommitting = () => { commitTitle(); commitDesc(); commitDue(); onClose(); };
+    const onKey = onDialogKey(closeCommitting); // Escape must not lose a half-typed edit
 
     return (
-        <div className="tb-pv-overlay" role="presentation" onClick={onBackdrop(onClose)} onKeyDown={onKey}>
+        <div className="tb-pv-overlay" role="presentation" onClick={onBackdrop(closeCommitting)} onKeyDown={onKey}>
             <div ref={dialogRef} className="tb-pv" role="dialog" aria-modal="true" aria-label={`Card: ${card.title}`} tabIndex={-1}>
                 <div className="tb-pv__head">
                     <input className="tb-pv__title" value={title} onChange={e => setTitle(e.target.value)} onBlur={commitTitle} aria-label="Task title" />
                     <span className="tb-pv__col" title="Current column">{colName}</span>
-                    <button className="tb-icon-btn" aria-label="Close project view" onClick={onClose}>×</button>
+                    <button className="tb-icon-btn" aria-label="Close project view" onClick={closeCommitting}>×</button>
                 </div>
 
                 {card.parentId && board.cards.some(c => c.id === card.parentId) && (
@@ -1057,10 +1076,9 @@ function ProjectView({ board, cardId, onOpenCard, onAddCard, onClose }: {
                         className="tb-pv__due-input"
                         aria-label="Due date"
                         value={due}
-                        onChange={e => {
-                            setDue(e.target.value);
-                            if (e.target.value !== (card.dueAt ?? '')) editCard(cardId, { dueAt: e.target.value || null });
-                        }}
+                        onChange={e => setDue(e.target.value)}
+                        onBlur={commitDue}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitDue(); } }}
                     />
                 </div>
 

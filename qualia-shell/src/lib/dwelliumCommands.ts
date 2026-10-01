@@ -17,8 +17,9 @@ import { parseSpawn, requestSpawn } from './agents/spawn';
 import { lastOpenedWidgetHolder } from './widgetActions';
 import { currentOwner } from './perUserIdentity';
 import {
-    taskBoardStore, moveCard, sendToTaskBoard, openTaskBoardCard, findCardsByTitle,
+    taskBoardStore, moveCard, sendToTaskBoard, openTaskBoardCard, findCardsByTitle, boardLabel,
 } from '../components/TaskBoard/taskBoardStore';
+import { wipCount } from '../components/TaskBoard/taskBoardModel';
 
 const VALID_THEMES: Theme[] = ['dark', 'light', 'trust', 'vibrant', 'luxury', 'healthcare', 'creative', 'dark-excellence', 'terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
 
@@ -248,17 +249,26 @@ function oneCard(query: string) {
     toast(hits.length === 0 ? `No Task Board card matches "${query}"` : `${hits.length} cards match "${query}" — be more specific`);
     return null;
 }
-export function addTaskBoardCard(title: string): void {
+export async function addTaskBoardCard(title: string): Promise<void> {
     const owner = currentOwner();
     if (!owner) { toast('Sign in to use the Task Board'); return; }
-    const { board } = sendToTaskBoard(owner, { title });
-    if (board) toast(`Added to Task Board (${board})`);
+    const { board } = await sendToTaskBoard(owner, { title });
+    if (board) toast(`Added to Task Board (${boardLabel(board)})`);
 }
 export function openTaskBoardCardByTitle(query: string): void {
     const owner = currentOwner();
     if (!owner) { toast('Sign in to use the Task Board'); return; }
     const card = oneCard(query);
     if (card && !openTaskBoardCard(owner, card.id)) toast(`Could not open "${card.title}"`);
+}
+/** Why the board UI would stop or ask about this move (exit criteria on the source column, a full target column); null = go. */
+function moveRefusal(card: { columnId: string; parentId?: string | null }, to: { id: string; title: string; maxWip?: number }, cols: Array<{ id: string; title: string; policies?: string[] }>): string | null {
+    if (card.columnId === to.id) return null; // a pure reorder: no checks, like the board
+    const from = cols.find(c => c.id === card.columnId);
+    if (from?.policies?.length) return `${from.title} has exit criteria — move it on the board so you can confirm them`;
+    const count = wipCount(taskBoardStore.getSnapshot().cards, to.id);
+    return !card.parentId && to.maxWip !== undefined && to.maxWip > 0 && count >= to.maxWip
+        ? `${to.title} is at its limit (${count}/${to.maxWip}) — move it on the board to override` : null;
 }
 export function moveTaskBoardCardByTitle(query: string, column: string): void {
     if (!currentOwner()) { toast('Sign in to use the Task Board'); return; }
@@ -268,7 +278,10 @@ export function moveTaskBoardCardByTitle(query: string, column: string): void {
     const cols = taskBoardStore.getSnapshot().columns;
     const partial = cols.filter(c => c.title.toLowerCase().includes(q));
     const hit = cols.find(c => c.title.toLowerCase() === q) ?? (partial.length === 1 ? partial[0] : undefined);
+    if (!hit && partial.length > 1) { toast(`${partial.length} columns match "${column}"`); return; }
     if (!hit) { toast(`No column matches "${column}" — "${card.title}" was not moved`); return; }
+    const refusal = moveRefusal(card, hit, cols);
+    if (refusal) { toast(refusal); return; }
     moveCard(card.id, hit.id);
     const moved = taskBoardStore.getSnapshot().cards.find(c => c.id === card.id)?.columnId === hit.id;
     toast(moved ? `Moved "${card.title}" to ${hit.title}` : `Could not move "${card.title}" to ${hit.title}`);
@@ -277,7 +290,7 @@ export function moveTaskBoardCardByTitle(query: string, column: string): void {
 // ── intent parser ──
 export interface ParsedCommand {
     label: string;
-    run: () => void;
+    run: () => unknown; // some commands return a boolean or a Promise (add task); callers only need to call it
 }
 
 const REGION_WORDS = 'top left|top right|bottom left|bottom right|top-left|top-right|bottom-left|bottom-right|top|bottom|left|right|center|middle';
@@ -431,7 +444,11 @@ export function parseCommand(input: string): ParsedCommand | null {
 
     // Verbs whose argument legitimately contains "and" / commas — parse whole,
     // never split (group lists, free-text memory, space names, multi-placement).
-    if (/^(?:group|tab|stack|remember|save|put|place|move|dock|send)\b/i.test(s) || /^(?:add|new)\s+(?:task|card)\b/i.test(s)) {
+    // Checked on the politeness-stripped text: "please add task buy milk and eggs" must stay whole too.
+    // "open task|card <title>" too, except "open task board/menu", which may be chained ("open task board and open inbox").
+    const l = stripPoliteness(s);
+    if (/^(?:group|tab|stack|remember|save|put|place|move|dock|send)\b/i.test(l) || /^(?:add|new)\s+(?:task|card)\b/i.test(l)
+        || /^open\s+(?:task|card)(?!\s+(?:board|menu)\b)\b/i.test(l)) {
         return parseSingle(s);
     }
 

@@ -1,0 +1,598 @@
+/* Synthesis Lab — plan 070 phase 3. CONTRACT (P0): class names below are shared by
+   the CSS agent (owns this file) and the integrator (owns Synthesis.tsx).
+   Theme tokens only — no hardcoded hex (see Wiki.css header for the verified list).
+
+   .syn-host (container-type: inline-size)   .syn-root
+   .syn-header .syn-title .syn-layer .syn-steps .syn-step .syn-step--done
+   .syn-body .syn-main .syn-side
+   .syn-query  .syn-focus (second-pass focus input)
+   .syn-actions .syn-btn .syn-btn--primary .syn-btn--accent .syn-btn--ghost .syn-icon-btn
+   .syn-hint (muted helper text)  .syn-spin (spinner icon)  .syn-sr-only
+   .syn-sources .syn-sources__head .syn-sources__item .syn-sources__empty
+   .syn-error (role=alert)  .syn-notice (role=status, e.g. cut-off)
+   .syn-answer .syn-answer__head .syn-answer__label .syn-answer__body (rendered Markdown)
+   .syn-answer__sources .syn-answer__foot .syn-cite (inline [n] button) .syn-lineage
+   .syn-side__head .syn-side__search .syn-side__list .syn-side__empty
+   .syn-hist .syn-hist__open .syn-hist__title .syn-hist__meta .syn-hist__del
+
+   Tokens used (verified via `grep -rn -- '--token:' src/styles/themes-master.css`):
+   --bg-desktop --bg-surface --bg-surface-elevated --bg-surface-hover
+   --border-default --border-subtle --text-primary --text-secondary --text-tertiary
+   --accent --accent-text --accent-subtle --danger --success --text-inverse
+   Container query (not @media): the widget window resizes independently of viewport.
+   Muted-text rule (Docs/code.md): --text-tertiary/--text-secondary fail AA (~4.31:1) in
+   latte, so muted copy here uses color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)).
+   Accent-as-text uses --accent-text (raw --accent is unreadable on light surfaces).
+*/
+
+.syn-host {
+    height: 100%;
+    width: 100%;
+    container-type: inline-size;
+}
+
+.syn-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: var(--bg-desktop);
+    color: var(--text-primary);
+    overflow: hidden;
+    font-size: 13px;
+}
+
+/* Header + pipeline */
+.syn-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+
+.syn-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+.syn-title svg { color: var(--accent-text); }
+
+.syn-layer {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--accent-text);
+    font-family: var(--font-mono, monospace);
+}
+
+.syn-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.syn-step {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    border: 1px solid var(--border-default);
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    letter-spacing: 0.04em;
+}
+
+.syn-step--done {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+/* Body: main column + side history panel */
+.syn-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.syn-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 16px;
+    gap: 10px;
+    overflow-y: auto;
+}
+
+/* The column scrolls, its sections never shrink (Docs/code.md, AI Spend 2026-09-26):
+   otherwise the answer squashes into a tiny inner scroller once content overflows. */
+.syn-main > * { flex-shrink: 0; }
+
+.syn-side {
+    width: 240px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+@container (max-width: 560px) {
+    .syn-body { flex-direction: column; }
+
+    .syn-side {
+        width: 100%;
+        max-height: 40%;
+        border-left: none;
+        border-top: 1px solid var(--border-default);
+    }
+}
+
+/* Query + focus inputs */
+.syn-query,
+.syn-focus {
+    box-sizing: border-box;
+    width: 100%;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    padding: 10px 12px;
+    outline: none;
+}
+
+.syn-query { resize: vertical; }
+
+.syn-focus {
+    width: 160px;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.syn-query:focus-visible,
+.syn-focus:focus-visible,
+.syn-side__search:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Buttons */
+.syn-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.syn-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.syn-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.syn-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.syn-btn--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-inverse);
+}
+
+.syn-btn--primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 85%, var(--text-primary));
+}
+
+.syn-btn--accent {
+    background: transparent;
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.syn-btn--accent:hover:not(:disabled) {
+    background: var(--accent-subtle);
+}
+
+.syn-btn--ghost {
+    background: transparent;
+    border-color: var(--border-default);
+    color: var(--text-primary);
+}
+
+.syn-btn--ghost:hover:not(:disabled) {
+    background: var(--bg-surface-hover);
+}
+
+.syn-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 4px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    cursor: pointer;
+}
+
+.syn-icon-btn:hover:not(:disabled) {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.syn-icon-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.syn-icon-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Helper text, spinner, sr-only */
+.syn-hint {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+.syn-spin { animation: syn-spin 0.8s linear infinite; }
+
+@keyframes syn-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .syn-spin { animation: none; }
+}
+
+.syn-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Source preview */
+.syn-sources { margin-top: 2px; }
+
+.syn-sources__head {
+    cursor: pointer;
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+.syn-sources__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    cursor: pointer;
+    padding: 2px 0;
+}
+
+.syn-sources__empty {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+/* Error / notice banners */
+.syn-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+    color: color-mix(in srgb, var(--danger) 60%, var(--text-primary));
+    font-size: 12px;
+}
+
+.syn-notice {
+    padding: 6px 14px;
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    border-bottom: 1px solid var(--border-default);
+}
+
+/* Answer card */
+.syn-answer {
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.syn-answer__head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.syn-answer__label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-text);
+}
+
+.syn-answer__body {
+    padding: 12px 14px;
+    overflow-y: auto;
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.syn-answer__body h1,
+.syn-answer__body h2,
+.syn-answer__body h3 {
+    margin: 1em 0 0.5em;
+    line-height: 1.3;
+    color: var(--text-primary);
+}
+
+.syn-answer__body h1 { font-size: 1.3em; }
+.syn-answer__body h2 { font-size: 1.15em; }
+.syn-answer__body h3 { font-size: 1.05em; }
+
+.syn-answer__body p,
+.syn-answer__body ul,
+.syn-answer__body ol,
+.syn-answer__body blockquote,
+.syn-answer__body table {
+    margin: 0 0 0.75em;
+}
+
+.syn-answer__body ul,
+.syn-answer__body ol {
+    padding-left: 1.4em;
+}
+
+.syn-answer__body li { margin: 0.2em 0; }
+
+.syn-answer__body code {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9em;
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    border-radius: 4px;
+    padding: 0.1em 0.35em;
+}
+
+.syn-answer__body pre {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9em;
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    margin: 0 0 0.75em;
+}
+
+.syn-answer__body pre code {
+    background: none;
+    padding: 0;
+}
+
+.syn-answer__body blockquote {
+    border-left: 3px solid var(--border-default);
+    padding-left: 0.9em;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+.syn-answer__body table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.95em;
+}
+
+.syn-answer__body th,
+.syn-answer__body td {
+    border: 1px solid var(--border-default);
+    padding: 4px 8px;
+    text-align: left;
+}
+
+.syn-answer__body a {
+    color: var(--accent-text);
+}
+
+.syn-answer__sources {
+    padding: 6px 14px;
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    border-top: 1px solid var(--border-default);
+}
+
+.syn-answer__foot {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-default);
+}
+
+/* Inline [n] citation buttons */
+.syn-cite {
+    display: inline;
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    text-decoration: underline dotted;
+    color: var(--accent-text);
+    cursor: pointer;
+}
+
+.syn-cite:disabled {
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    text-decoration: none;
+    cursor: default;
+}
+
+.syn-cite:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.syn-lineage {
+    font-size: 10px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+/* Captured-corpus side panel */
+.syn-side__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+}
+
+.syn-side__search {
+    margin: 8px 10px 4px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    background: var(--bg-surface-elevated);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12px;
+}
+
+.syn-side__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+    min-height: 0;
+}
+
+.syn-side__empty {
+    padding: 12px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+/* History entries */
+.syn-hist {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.syn-hist__open {
+    flex: 1;
+    min-width: 0;
+    display: block;
+    text-align: left;
+    padding: 7px 9px;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    cursor: pointer;
+    font: inherit;
+}
+
+.syn-hist__open:hover,
+.syn-hist__open:focus-visible {
+    background: var(--bg-surface-hover);
+}
+
+.syn-hist__open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.syn-hist__title {
+    font-size: 11px;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.syn-hist__meta {
+    font-size: 9px;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    margin-top: 2px;
+}
+
+.syn-hist__del {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary));
+    cursor: pointer;
+    display: flex;
+    padding: 4px;
+    min-width: 24px;
+    min-height: 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.syn-hist__del:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.syn-hist__del:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Pushes trailing header controls (Copy, clear-all) to the row end. */
+.syn-push { margin-left: auto; }
+
+/* Placeholders: browser default grey measured 4.3:1 on the dark surface. */
+.syn-query::placeholder,
+.syn-focus::placeholder,
+.syn-side__search::placeholder { color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-primary)); opacity: 1; }

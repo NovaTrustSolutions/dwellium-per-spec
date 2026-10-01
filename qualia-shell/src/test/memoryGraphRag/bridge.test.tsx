@@ -14,6 +14,8 @@ import { UserContext } from '../../context/UserContext';
 import { useScribeStore } from '../../components/Scribe/scribeStore';
 import { getCmn, resetCmnForTests } from '../../lib/memoryGraphRag/shared';
 import { useCognitiveMemoryBridge } from '../../services/cognitiveMemoryBridge';
+import { wikiStore, wikiUserIdHolder, setWikiPage } from '../../components/Wiki/wikiStore';
+import { copawStore, copawUserIdHolder, captureFacts } from '../../components/Hive/copawStore';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
     <UserContext.Provider value={{ user: { id: 'andy' } } as never}>{children}</UserContext.Provider>
@@ -24,6 +26,10 @@ beforeEach(() => {
     resetCmnForTests();
     callLlm.mockReset();
     useScribeStore.setState({ openFiles: [] } as never);
+    wikiStore.reset();
+    wikiUserIdHolder.current = null;
+    copawStore.reset();
+    copawUserIdHolder.current = null;
 });
 
 describe('useCognitiveMemoryBridge', () => {
@@ -42,6 +48,27 @@ describe('useCognitiveMemoryBridge', () => {
                 { filepath: '/notes/boiler.md', content: 'Acme Heating serviced the boiler and recommends a new valve.' },
             ],
         } as never);
+        await waitFor(() => expect(getCmn('andy').metrics().documents).toBe(2), { timeout: 5000 });
+        expect(callLlm).not.toHaveBeenCalled();
+    });
+
+    it('feeds a Wiki page edit and a CoPaw memory capture into the shared network', async () => {
+        renderHook(() => useCognitiveMemoryBridge(), { wrapper });
+        await waitFor(() => expect(getCmn('andy').metrics().documents).toBe(0), { timeout: 5000 });
+        // Let the mount-time feed (1.5 s debounce) finish first, so only the Wiki
+        // subscription can deliver the page below — otherwise the initial feed would.
+        await new Promise((r) => setTimeout(r, 1700));
+
+        wikiUserIdHolder.current = 'andy';
+        setWikiPage({
+            path: 'Acme/Renovation', tier: 'project', name: 'Renovation',
+            overview: 'Tracks the kitchen remodel.', concepts: [], openQuestions: [],
+            sources: [], compiledAt: new Date().toISOString(), compiledBy: 'outline',
+        });
+        await waitFor(() => expect(getCmn('andy').metrics().documents).toBe(1), { timeout: 5000 });
+
+        copawUserIdHolder.current = 'andy';
+        captureFacts('Hermes', 'A declarative fact long enough to survive the extractor heuristics.', copawUserIdHolder.current, new Date());
         await waitFor(() => expect(getCmn('andy').metrics().documents).toBe(2), { timeout: 5000 });
         expect(callLlm).not.toHaveBeenCalled();
     });

@@ -198,9 +198,12 @@ export class CognitiveMemoryNetwork {
     }
 
     /** Retrieval only (no LLM, no spend) — what other widgets/agents call for context. */
-    recall(query: string, limit = 5): RetrievalResult {
+    recall(query: string, limit = 5, opts: { silent?: boolean } = {}): RetrievalResult {
         const t0 = now();
         const r = this.engine.retrieve(query, limit);
+        // silent: live UI previews (Synthesis Lab source preview while typing) must not
+        // count as queries or flood the activity log the Cognitive Harness shows.
+        if (opts.silent) return r;
         this.lastQueryMs = Math.round(now() - t0);
         this.queries++;
         this.log('query', `recall "${query.slice(0, 60)}" → ${r.rankedPassages.length} passage(s)`, { ms: this.lastQueryMs });

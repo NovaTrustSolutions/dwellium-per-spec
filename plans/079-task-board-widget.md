@@ -1,6 +1,6 @@
 # 079 — Task Board widget: capability report, audit, improvement plan
 
-Status: AUDIT ONLY (read-only, 2026-10-01). Nothing was changed, committed or pushed. Base: `origin/main` @ `fe281de`
+Status: phase 1 DONE 2026-10-01 (branch feat/079-task-board-p1, unpushed); phase 2 in progress (feat/079-task-board-p2, stacked). Base: `origin/main` @ `fe281de`
 (local `main` was level with it). Backend read at `origin/main` via `git show` (its working tree is on another branch).
 Swarm: ruflo `swarm-1790844744917-lsf0h7` (hierarchical). ruflo only *registered* the agents
 (`tb-m1-model`, `tb-m2-persistence`, `tb-m3-ui`, `tb-m4-integration`, `tb-r1-refuter`); the work ran as
@@ -218,6 +218,70 @@ Outside the model (orchestrator edits): `Connections/ConnectionsPanel.tsx` Tags 
 Acceptance: the H1 sequence (2 Backlog cards → AI file Backlog → remove Backlog → Undo last AI → Undo) ends with
 2 cards stored AND 2 visible at every step; every new test fails on `origin/main` @ `fe281de` (except pure
 regression guards, marked as such); full vitest + `tsc --noEmit` + eslint on touched files green.
+
+## 8. Phase 2 contract (P0 — sync that cannot eat a board)
+
+Owner split: **A** = `qualia-shell/src/lib/oneSaveStore.ts` (shared by ~50 stores) + its new test file.
+**B** = `components/TaskBoard/taskBoardModel.ts`, `taskBoardStore.ts`, `TaskBoard.tsx`, `lib/araDailyGlance.ts`.
+**T** = new test file `src/test/taskBoard.p2.test.ts` (writes from this contract).
+Decision D2 taken: whole-board last-writer-wins stays (no per-card merge).
+
+### A — oneSaveStore.ts (generic; every store NOT passing the new options must behave byte-identically)
+```ts
+interface SyncOptions<T> {
+  /* existing */
+  /** Appended to the object id: `${objectType}_${ownerId()}${objectSuffix()}`. Must only yield [A-Za-z0-9_.-]. */
+  objectSuffix?: () => string;
+  /** Non-merge stores only. Runs on a remote payload AFTER the dirty-marker check and before it is applied.
+   *  Return the value to apply, or null to keep local AND schedule a write-through of local. */
+  acceptRemote?: (remote: unknown, local: T) => T | null;
+}
+```
+A1. `objectId()` uses the suffix (also what the registry/bootstrap match on).
+A2. `hydrate`: capture `objectId()` at start; after the await, if `objectId()` changed → return without applying
+    (replaces/extends the owner check — for a store without a suffix this is exactly the owner check).
+A3. Failed-write replay re-schedules only while `objectId() === scheduledObjectId` (not just the owner).
+A4. "Did hydrate see this object?" (`lastHydrateSeen`) is tracked PER objectId (Map), so `migrate()` for board B
+    never trusts a hydrate answer that was about board A.
+A5. `acceptRemote` as typed above; absent → current behaviour.
+
+### B — Task Board
+B1. **Per-board server object.** `objectSuffix` = '' for the Global board, `__<boardSlug>` for a project board.
+    boardSlug = project id with every char outside [A-Za-z0-9_.-] replaced by '_', cut to 60 chars, plus
+    `_<hash>` (8 hex, any stable string hash of the ORIGINAL id) whenever the id was changed by that rule.
+    Global keeps the legacy id `task-board_<uid>` (no migration for single-board users).
+B2. **acceptRemote(remote, local)** for the task board:
+    - `r = repairBoard(remote)` (remote payloads are now validated — closes C11).
+    - Remote has 0 cards and local has ≥1 → null (keep + push local). `ponytail:` comment: a board emptied on
+      purpose on another device is resurrected here; accepted over losing a board.
+    - **One-time legacy check, Global board only**: until localStorage flag `taskboard:legacy-checked:<uid>` is set,
+      if local has ≥1 card and `r` shares NO card id with local → null (the legacy object holds another board).
+      Set the flag after this check whatever the outcome.
+    - otherwise → r.
+B3. **TaskBoard.tsx**: when the active board changes (project picker, and on mount), call
+    `taskBoardStore.hydrate().then(() => taskBoardStore.migrate())` (fire-and-forget, errors swallowed). Do this in
+    an effect keyed on user id + active project id.
+B4. **Bound the log** (model): `AUDIT_LIMIT = 500` newest entries kept by `applyAction` and `undo`.
+    Entries older than the newest `HEAVY_INVERSE_WINDOW = 50` lose a heavy inverse (set `inverse: null`):
+    heavy = REPLACE_BOARD, or any inverse whose JSON contains `"dataUrl"`. Light inverses keep working past 50.
+B5. **Attachment size guard** (store `attachToCard`): if `JSON.stringify(board).length + dataUrl.length > 700_000`
+    store metadata only (drop dataUrl). Return value unchanged (BoardState).
+B6. **Board-scoped async guard**: export `captureBoard(): () => boolean` (true while `resolveKey()` is unchanged).
+    `routeCard` captures before its fetch; if the board changed when it resolves → no logEvent, return
+    `{ status: 'none', detail: 'The board changed while sending; the result was not logged.' }`.
+    `TaskBoard.tsx` attachment reader: capture before reading files; skip attaching if the board changed.
+B7. **Quota**: `persist()` catches a failed localStorage write; expose `taskBoardSaveError` as a tiny store
+    (`subscribe/getSnapshot`, value `string | null`), set to a human message on failure, cleared on the next
+    successful write. TaskBoard.tsx shows it in the toolbar with `role="alert"`.
+    (Sync failures are already shown app-wide by `Shell/SyncStatusPill.tsx` — no duplicate chip.)
+B8. **Daily glance**: count open (non-done-column) and high-urgency cards across ALL of the user's local boards
+    (`taskboard:<uid>` and every `taskboard:<uid>:<pid>` key, each through repairBoard), and stop writing
+    `taskBoardUserIdHolder` from the glance. Line text unchanged.
+
+Acceptance: H2 reproduction (edit Global → add card on project P → back to Global → reload → hydrate) leaves Global's
+own cards and P's cards each on their own board, locally and in the fake server; a stores-wide test proves an
+unrelated store (no new options) hydrates/migrates exactly as before; every new test fails on the phase-1 commit;
+full vitest + tsc -b + eslint on touched files green.
 
 ## 6. What was and was not verified
 

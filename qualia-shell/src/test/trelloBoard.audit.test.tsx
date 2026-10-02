@@ -127,6 +127,15 @@ describe('Trello Board — plan 078 audit (ported to /full)', () => {
         expect(calls(fetchMock, u => /\/lists\//.test(u))).toBe(0);
     });
 
+    it('FE12: Refresh refetches the board list with fresh=1 and the current board again', async () => {
+        const fetchMock = mockFetch(url => (url.endsWith('/api/trello/boards?fresh=1') ? res({ success: true, data: BOARDS }) : undefined));
+        await renderBoard();
+        fireEvent.click(screen.getByRole('button', { name: TRELLO_A11Y.refresh }));
+        await waitFor(() => expect(calls(fetchMock, u => u.endsWith('/api/trello/boards?fresh=1'))).toBe(1));
+        await waitFor(() => expect(calls(fetchMock, u => /\/boards\/board-1\/full$/.test(u))).toBe(2));
+        expect(screen.queryByText('Fix sink')).not.toBeNull(); // the board stays on screen while refreshing
+    });
+
     it('FE1: a move the backend rejects (HTTP 500) is rolled back and reported', async () => {
         const fetchMock = mockFetch((_u, init) => init?.method === 'PUT' ? fail('RATE_LIMITED', 'Trello is rate-limiting requests — try again in a few seconds.', 429) : undefined);
         await renderBoard();

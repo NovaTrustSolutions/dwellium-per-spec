@@ -71,11 +71,11 @@ function useBoardData() {
     const { begin: beginBoards, cancel: cancelBoards } = useLatest();
     const { begin: beginBoard, cancel: cancelBoard } = useLatest();
 
-    const loadBoards = useCallback(async () => {
+    const loadBoards = useCallback(async (fresh = false) => {
         const req = beginBoards();
         setBoardsLoading(true);
         try {
-            const list = await trelloApi.boards(req.signal);
+            const list = await trelloApi.boards(req.signal, { fresh });
             if (!req.current()) return;
             setBoards(list);
             setBoardsError(null);
@@ -109,7 +109,7 @@ function useBoardData() {
         setData(d => (d && d.boardId === boardId ? { ...d, cards: fn(d.cards) } : d));
     }, []);
 
-    useEffect(() => { void loadBoards(); return cancelBoards; }, [loadBoards, cancelBoards]);
+    useEffect(() => { void loadBoards(false); return cancelBoards; }, [loadBoards, cancelBoards]);
     useEffect(() => { void loadBoard(selected, false); return cancelBoard; }, [selected, loadBoard, cancelBoard]);
     useEffect(() => {
         if (!selected) return;
@@ -118,7 +118,7 @@ function useBoardData() {
         return () => window.removeEventListener('focus', onFocus);
     }, [selected, loadBoard]);
 
-    const refresh = useCallback(() => { void loadBoards(); void loadBoard(selected, true); }, [loadBoards, loadBoard, selected]);
+    const refresh = useCallback(() => { void loadBoards(true); void loadBoard(selected, true); }, [loadBoards, loadBoard, selected]);
     const retryBoard = useCallback(() => { void loadBoard(selected, false); }, [loadBoard, selected]);
     // Data from the board that was selected before a switch stays in state but is never shown.
     const visible = data && data.boardId === selected ? data : null;
@@ -493,7 +493,7 @@ function TrelloBoardView({ isAdmin }: { isAdmin: boolean }) {
         return (
             <div className="trello-board">
                 {b.boardsError != null
-                    ? <Failure error={b.boardsError} isAdmin={isAdmin} onRetry={() => void b.loadBoards()} />
+                    ? <Failure error={b.boardsError} isAdmin={isAdmin} onRetry={() => void b.loadBoards(false)} />
                     : <div className="trello-empty-state"><p>No Trello boards are available to this account.</p></div>}
             </div>
         );

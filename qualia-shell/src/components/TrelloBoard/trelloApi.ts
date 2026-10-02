@@ -142,7 +142,8 @@ export function describeTrelloError(err: unknown, opts: { isAdmin?: boolean } = 
 // ── Typed calls ────────────────────────────────────────────────────────────
 
 export const trelloApi = {
-    boards: (signal?: AbortSignal) => trelloFetch<TrelloBoard[]>('/boards', { signal }),
+    /** `fresh` bypasses the backend's 60 s boards cache (the Refresh button). */
+    boards: (signal?: AbortSignal, opts: { fresh?: boolean } = {}) => trelloFetch<TrelloBoard[]>(opts.fresh ? '/boards?fresh=1' : '/boards', { signal }),
     boardFull: (boardId: string, signal?: AbortSignal) => trelloFetch<TrelloBoardFull>(`/boards/${encodeURIComponent(boardId)}/full`, { signal }),
     card: (cardId: string, signal?: AbortSignal) => trelloFetch<CardDetail>(`/cards/${encodeURIComponent(cardId)}`, { signal }),
     activity: (cardId: string, signal?: AbortSignal) => trelloFetch<Activity[]>(`/cards/${encodeURIComponent(cardId)}/activity`, { signal }),

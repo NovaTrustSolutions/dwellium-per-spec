@@ -5,9 +5,9 @@
  * edit the unit roster, choose a destination pattern with a {unit} placeholder
  * (default: maintenance request with ?unit=), then Generate → a print-CSS
  * grid of labelled QR codes, one per unit. QR encoding is fully client-side
- * via the repo's zero-dep encoder (Scribe idocs qrSvg) — it works even before
- * Dub is configured. When Dub IS configured, "Mint short links" bulk-creates
- * tagged short links for the same units through POST /api/links/bulk.
+ * via the repo's zero-dep encoder (Scribe idocs qrSvg) — it works with no
+ * shortener at all. In Dub mode, "Mint short links" bulk-creates tagged short
+ * links for the same units through POST /api/links/bulk.
  */
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Printer, QrCode } from 'lucide-react';
@@ -35,7 +35,7 @@ export function unitUrl(pattern: string, unit: string): string {
 }
 
 interface QrDoorSheetProps {
-    /** Dub proxy configured → offers the bulk "Mint short links" action. */
+    /** Dub mode only → offers the bulk "Mint short links" action (built-in mode answers /bulk with 501). */
     configured: boolean;
     onBack: () => void;
 }

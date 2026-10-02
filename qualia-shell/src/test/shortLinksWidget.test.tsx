@@ -1,18 +1,20 @@
 /**
  * ShortLinks ("Links & QR") widget + shortLinksApi client
- * (plan 047 phase 2, extended for plan 053).
+ * (plan 047 phase 2, extended for plan 053; plan 077 phase 1).
  *
- * Backend 503 (DUB_API_KEY unset) → typed needs-setup result and an honest
- * 'QR codes work now — no account needed' card (no free plan claimed) whose button opens the Tools hub;
+ * Backend 503 with `needsSetup:true` (OLD backend) → typed needs-setup result
+ * and a card whose button opens the Tools hub; any other 503 → ordinary error.
  * 200 → link table with click counts, tags, clicks sparkline (/analytics
- * timeseries), QR toggle, inline edit (PATCH), confirm-gated archive, tag
- * filter; Andy presets POST tagged links; the QR door sheet renders one cell
- * per unit entirely client-side; network failure → error state with Retry.
+ * timeseries), QR toggle, inline edit (PATCH, changed fields only),
+ * confirm-gated archive, tag filter; link presets POST tagged links; the QR
+ * door sheet renders one cell per unit entirely client-side; network failure →
+ * error state with Retry. `mode:'builtin'` (default backend) hides every
+ * Dub-only control and folds UTM params into the destination URL.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetWidgetMemory } from '../lib/widgetMemory';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import ShortLinks from '../components/ShortLinks/ShortLinks';
+import ShortLinks, { isoToLocalInput } from '../components/ShortLinks/ShortLinks';
 import { unitUrl } from '../components/ShortLinks/QrDoorSheet';
 import { ANDY_PROPERTIES, presetKey, ANDY_LINK_PRESETS } from '../components/ShortLinks/andyLinkPresets';
 import {
@@ -57,6 +59,20 @@ const LINK_2 = {
     tags: [{ id: 'tag_2', name: 'riverwood-club', color: 'blue' }],
 };
 
+/** A built-in-mode row: no hosted QR, no tags, no expiry. */
+const BUILTIN_LINK = {
+    id: 'b_1',
+    shortLink: 'https://go.dwellium.test/abc',
+    url: 'https://example.com/a',
+    key: 'abc',
+    clicks: 0,
+    qrCode: '',
+    archived: false,
+    expiresAt: null,
+    tags: [],
+};
+const EXPIRY_ISO = '2026-08-15T14:30:00.000Z';
+
 const TAGS = [
     { id: 'tag_1', name: 'woodland-parc', color: 'green' },
     { id: 'tag_2', name: 'riverwood-club', color: 'blue' },
@@ -72,8 +88,19 @@ const TIMESERIES = [
 type JsonObject = Record<string, unknown>;
 interface Recorded { url: string; method: string; body?: JsonObject }
 
+interface StubOpts {
+    /** 'builtin' = the default SQLite shortener: `mode` on every body, no tags, /bulk 501. */
+    mode?: 'builtin';
+    /** Status for POST /api/links (create); default 201. */
+    postStatus?: number;
+}
+
+const isListGet = (c: Recorded): boolean => c.method === 'GET' && /\/api\/links(\?|$)/.test(c.url);
+
 /** Route the widget's fetches by path; records every write for assertion. */
-function stubBackend(links: JsonObject[], overrides: JsonObject = {}) {
+function stubBackend(links: JsonObject[], overrides: JsonObject = {}, opts: StubOpts = {}) {
+    const builtin = opts.mode === 'builtin';
+    const modeTag = builtin ? { mode: 'builtin' } : {};
     const calls: Recorded[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
         const u = String(url);
@@ -81,6 +108,7 @@ function stubBackend(links: JsonObject[], overrides: JsonObject = {}) {
         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
         calls.push({ url: u, method, body });
         if (u.includes('/api/links/tags')) {
+            if (builtin) return jsonResponse({ success: true, ...modeTag, data: [] });
             return method === 'POST'
                 ? jsonResponse({ success: true, data: { id: 'tag_new', name: body?.name, color: '' } }, 201)
                 : jsonResponse({ success: true, data: TAGS });
@@ -88,12 +116,16 @@ function stubBackend(links: JsonObject[], overrides: JsonObject = {}) {
         if (u.includes('/api/links/domains')) return jsonResponse({ success: true, data: DOMAINS, defaultDomain: 'go.dwellium.com' });
         if (u.includes('/api/links/analytics')) return jsonResponse({ success: true, groupBy: 'timeseries', data: TIMESERIES });
         if (u.includes('/api/links/bulk')) {
+            if (builtin) return jsonResponse({ success: false, ...modeTag, error: 'Bulk create needs Dub' }, 501);
             const sent = (body?.links ?? []) as JsonObject[];
             return jsonResponse({ success: true, data: sent.map((l, i) => ({ ...LINK, id: `blk_${i}`, url: l.url, key: l.key })) }, 201);
         }
         if (method === 'PATCH') return jsonResponse({ success: true, data: { ...LINK, ...overrides, ...body } });
-        if (method === 'POST') return jsonResponse({ success: true, data: { ...LINK, id: 'link_new', ...body } }, 201);
-        return jsonResponse({ success: true, data: links });
+        if (method === 'POST') {
+            if (opts.postStatus && opts.postStatus >= 400) return jsonResponse({ success: false, error: 'Create refused' }, opts.postStatus);
+            return jsonResponse({ success: true, ...modeTag, data: { ...LINK, id: 'link_new', ...body } }, 201);
+        }
+        return jsonResponse({ success: true, ...modeTag, data: links });
     }));
     return calls;
 }
@@ -125,9 +157,27 @@ describe('shortLinksApi', () => {
         expect(await bulkCreateShortLinks([{ url: 'https://example.com' }])).toEqual({ kind: 'needs-setup' });
     });
 
+    it('503 is needs-setup ONLY with the old backend\'s needsSetup marker; any other 503 is a plain error', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(null, 503)));
+        expect(await listShortLinks()).toEqual({ kind: 'error', message: 'Backend answered 503' });
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, error: 'Service overloaded' }, 503)));
+        expect(await createShortLink({ url: 'https://example.com' })).toEqual({ kind: 'error', message: 'Service overloaded' });
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, needsSetup: false }, 503)));
+        expect(await listShortLinks()).toMatchObject({ kind: 'error' });
+    });
+
+    it('listShortLinks reports mode: builtin only when the body says so, else dub', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, mode: 'builtin', data: [BUILTIN_LINK] })));
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [BUILTIN_LINK], mode: 'builtin' } });
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, data: [LINK] })));
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [LINK], mode: 'dub' } });
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, mode: 'something-else', data: [] })));
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [], mode: 'dub' } });
+    });
+
     it('200 → data; non-ok surfaces the backend error; network failure → Backend unreachable', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, data: [LINK] })));
-        expect(await listShortLinks()).toEqual({ kind: 'ok', data: [LINK] });
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [LINK], mode: 'dub' } });
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, error: 'A valid http(s) url is required' }, 400)));
         expect(await createShortLink({ url: 'nope' })).toEqual({ kind: 'error', message: 'A valid http(s) url is required' });
         vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
@@ -155,13 +205,12 @@ describe('shortLinksApi', () => {
 });
 
 describe('ShortLinks widget — unconfigured and error states', () => {
-    it('renders an HONEST needs-setup card (no free-plan claim); its button opens the Tools hub', async () => {
+    it('renders an honest needs-setup card (backend update needed, door sheet works now); its button opens the Tools hub', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, needsSetup: true }, 503)));
         render(<ShortLinks />);
         await waitFor(() => expect(screen.getByText('QR codes work now — no account needed')).toBeInTheDocument());
-        expect(screen.getByText(/DUB_API_KEY/)).toBeInTheDocument();
-        expect(screen.getByText(/no free plan/i)).toBeInTheDocument();
-        expect(screen.getByText(/lists no free plan/i)).toBeInTheDocument();
+        expect(screen.getByText(/need a backend update/i)).toBeInTheDocument();
+        expect(screen.queryByText(/DUB_API_KEY|free plan|next backend deploy/i)).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Tools hub' }));
         expect(opened).toEqual(['tools-hub']);
     });
@@ -181,9 +230,16 @@ describe('ShortLinks widget — unconfigured and error states', () => {
         expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     });
 
-    it('"Open in Dub ↗" deep-links to the workspace when VITE_DUB_WORKSPACE is set', async () => {
+    it('a bare 503 (cold start, no needsSetup marker) shows the retryable error card, not the setup card', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(null, 503)));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText('Backend unavailable')).toBeInTheDocument());
+        expect(screen.queryByText('QR codes work now — no account needed')).not.toBeInTheDocument();
+    });
+
+    it('"Open in Dub ↗" deep-links to the workspace when VITE_DUB_WORKSPACE is set (Dub mode)', async () => {
         vi.stubEnv('VITE_DUB_WORKSPACE', 'dwellium');
-        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, needsSetup: true }, 503)));
+        stubBackend([LINK]);
         render(<ShortLinks />);
         const link = await screen.findByRole('link', { name: /Open in Dub/i });
         expect(link).toHaveAttribute('href', 'https://app.dub.co/dwellium');
@@ -246,7 +302,7 @@ describe('ShortLinks widget — daily workflow', () => {
         await waitFor(() => expect(calls.some(c => c.method === 'PATCH')).toBe(true));
         const patch = calls.find(c => c.method === 'PATCH')!;
         expect(patch.url).toMatch(/\/api\/links\/link_1$/);
-        expect(patch.body).toMatchObject({ url: 'https://example.com/updated', expiresAt: null });
+        expect(patch.body).toEqual({ url: 'https://example.com/updated' }); // changed fields only
     });
 
     it('archive is confirm-gated: first click asks, confirm PATCHes archived:true', async () => {
@@ -359,5 +415,300 @@ describe('QR door sheet', () => {
         fireEvent.change(screen.getByLabelText('Destination pattern'), { target: { value: 'https://x.test/maint' } });
         expect(screen.getByRole('button', { name: /Generate sheet/i })).toBeDisabled();
         expect(screen.queryByTestId('qr-door-sheet-print')).not.toBeInTheDocument();
+    });
+});
+
+/** Run `fn` with the process timezone forced (restores it after) — makes TZ-dependent bugs bite on any machine. */
+async function withTz(zone: string, fn: () => void | Promise<void>): Promise<void> {
+    const prev = process.env.TZ;
+    process.env.TZ = zone;
+    try { await fn(); } finally {
+        if (prev === undefined) delete process.env.TZ; else process.env.TZ = prev;
+    }
+}
+
+describe('isoToLocalInput', () => {
+    it('round-trips to the same instant (to the minute) in every timezone', async () => {
+        const instants = ['2026-08-15T14:30:00.000Z', '2026-01-10T03:05:00.000Z', '2026-12-31T23:59:00.000Z'];
+        for (const zone of ['UTC', 'America/New_York', 'Asia/Kolkata', 'Pacific/Auckland']) {
+            await withTz(zone, () => {
+                for (const iso of instants) {
+                    expect(new Date(isoToLocalInput(iso)).toISOString()).toBe(`${iso.slice(0, 16)}:00.000Z`);
+                }
+            });
+        }
+    });
+
+    it('formats local wall-clock time (not the UTC digits) and tolerates junk', async () => {
+        await withTz('America/New_York', () => {
+            expect(isoToLocalInput('2026-08-15T14:30:00.000Z')).toBe('2026-08-15T10:30'); // EDT = UTC-4
+        });
+        expect(isoToLocalInput('not-a-date')).toBe('');
+    });
+});
+
+describe('ShortLinks widget — built-in mode (default backend)', () => {
+    it('hides every Dub-only control and never fetches tags or domains', async () => {
+        vi.stubEnv('VITE_DUB_WORKSPACE', 'dwellium');
+        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+
+        expect(screen.queryByLabelText('Domain')).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Tags/, { selector: 'summary' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('New tag name')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Filter by tag')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Expires at')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Open in Dub/i })).not.toBeInTheDocument();
+        expect(screen.getByText('UTM builder')).toBeInTheDocument(); // stays — folded into the URL
+        expect(screen.getByLabelText('Link presets')).toBeInTheDocument();
+        expect(calls.some(c => /\/api\/links\/(tags|domains)/.test(c.url))).toBe(false);
+    });
+
+    it('shows no Tags column, asks for no sparkline, and presets send no tagNames', async () => {
+        const calls = stubBackend([{ ...BUILTIN_LINK, clicks: 7 }], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        expect(screen.queryByRole('columnheader', { name: 'Tags' })).not.toBeInTheDocument();
+        expect(screen.getAllByRole('row')[1].querySelectorAll('td')).toHaveLength(4);
+
+        fireEvent.click(screen.getByRole('button', { name: '+ Maintenance request' }));
+        await waitFor(() => expect(calls.some(c => c.method === 'POST')).toBe(true));
+        expect(calls.find(c => c.method === 'POST')?.body).not.toHaveProperty('tagNames');
+        expect(calls.some(c => c.url.includes('/api/links/analytics'))).toBe(false);
+    });
+
+    it('QR for a row with no hosted qrCode is a client-side data: URI image', async () => {
+        stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Show QR for ${BUILTIN_LINK.shortLink}` }));
+        const qr = screen.getByAltText(`QR code for ${BUILTIN_LINK.shortLink}`) as HTMLImageElement;
+        expect(qr.src.startsWith('data:image/svg+xml')).toBe(true);
+    });
+
+    it('create folds UTM params into the destination URL and sends only {url, key?}', async () => {
+        const calls = stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/notice?ref=door' } });
+        fireEvent.change(screen.getByLabelText('Custom key'), { target: { value: 'notice1' } });
+        fireEvent.change(screen.getByLabelText('utm_source'), { target: { value: 'door-qr' } });
+        fireEvent.change(screen.getByLabelText('utm_campaign'), { target: { value: 'spring sale' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+
+        await waitFor(() => expect(calls.some(c => c.method === 'POST')).toBe(true));
+        const body = calls.find(c => c.method === 'POST')!.body!;
+        expect(body).toEqual({
+            url: 'https://example.com/notice?ref=door&utm_source=door-qr&utm_campaign=spring+sale',
+            key: 'notice1',
+        });
+        for (const k of ['utm_source', 'tagNames', 'expiresAt', 'domain']) expect(body).not.toHaveProperty(k);
+    });
+
+    it('create without UTM leaves the destination untouched (no URL normalisation)', async () => {
+        const calls = stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(calls.some(c => c.method === 'POST')).toBe(true));
+        expect(calls.find(c => c.method === 'POST')!.body).toEqual({ url: 'https://example.com' });
+    });
+
+    it('the door sheet offers no "Mint short links" (bulk answers 501 in this mode)', async () => {
+        stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: /Door sheet/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        expect(screen.getByTestId('qr-door-sheet-print')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Mint short links/i })).not.toBeInTheDocument();
+    });
+
+    it('edit offers the destination URL only and saves {url}', async () => {
+        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+        expect(screen.queryByLabelText('Edit key')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Edit expiry')).not.toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Edit destination URL'), { target: { value: 'https://example.com/b' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(calls.some(c => c.method === 'PATCH')).toBe(true));
+        expect(calls.find(c => c.method === 'PATCH')!.body).toEqual({ url: 'https://example.com/b' });
+    });
+});
+
+describe('ShortLinks widget — Dub-mode edit sends only what changed', () => {
+    const WITH_EXPIRY = { ...LINK, expiresAt: EXPIRY_ISO };
+    const openEdit = async () => {
+        const calls = stubBackend([WITH_EXPIRY]);
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${LINK.shortLink}` }));
+        return calls;
+    };
+    const patches = (calls: Recorded[]) => calls.filter(c => c.method === 'PATCH');
+
+    it('the expiry field opens on the local wall-clock time of the stored instant', async () => {
+        await withTz('America/New_York', async () => {
+            await openEdit();
+            expect((screen.getByLabelText('Edit expiry') as HTMLInputElement).value).toBe('2026-08-15T10:30');
+        });
+    });
+
+    it('editing only the URL leaves expiresAt and tagNames out of the PATCH', async () => {
+        const calls = await openEdit();
+        fireEvent.change(screen.getByLabelText('Edit destination URL'), { target: { value: 'https://example.com/moved' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(patches(calls)).toHaveLength(1));
+        expect(patches(calls)[0].body).toEqual({ url: 'https://example.com/moved' });
+    });
+
+    it('changing the expiry sends that local time as the right ISO instant', async () => {
+        await withTz('America/New_York', async () => {
+            const calls = await openEdit();
+            fireEvent.change(screen.getByLabelText('Edit expiry'), { target: { value: '2026-09-01T09:15' } });
+            fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+            await waitFor(() => expect(patches(calls)).toHaveLength(1));
+            expect(patches(calls)[0].body).toEqual({ expiresAt: '2026-09-01T13:15:00.000Z' }); // EDT = UTC-4
+        });
+    });
+
+    it('clearing the expiry sends expiresAt: null and nothing else', async () => {
+        const calls = await openEdit();
+        fireEvent.change(screen.getByLabelText('Edit expiry'), { target: { value: '' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(patches(calls)).toHaveLength(1));
+        expect(patches(calls)[0].body).toEqual({ expiresAt: null });
+    });
+
+    it('changing the tag set sends tagNames; the URL and expiry stay out', async () => {
+        const calls = await openEdit();
+        const editForm = screen.getByLabelText(`Edit form for ${LINK.shortLink}`);
+        fireEvent.click(within(editForm).getByLabelText('riverwood-club'));
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(patches(calls)).toHaveLength(1));
+        expect(patches(calls)[0].body).toEqual({ tagNames: ['woodland-parc', 'riverwood-club'] });
+    });
+
+    it('saving with nothing changed sends no request and closes the editor', async () => {
+        const calls = await openEdit();
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(screen.queryByLabelText('Edit destination URL')).not.toBeInTheDocument());
+        expect(patches(calls)).toHaveLength(0);
+    });
+});
+
+describe('ShortLinks widget — refresh never throws away work in progress', () => {
+    /** Wait until `n` list GETs have happened and the render settled after the last one. */
+    const listGets = (calls: Recorded[]) => calls.filter(isListGet).length;
+
+    it('an open inline edit with typed text survives a preset click (create + refresh)', async () => {
+        const calls = stubBackend([LINK]);
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${LINK.shortLink}` }));
+        fireEvent.change(screen.getByLabelText('Edit destination URL'), { target: { value: 'https://example.com/typing' } });
+
+        fireEvent.click(screen.getByRole('button', { name: '+ Maintenance request' }));
+        await waitFor(() => expect(screen.getByText(/^Created /)).toBeInTheDocument());
+        await waitFor(() => expect(listGets(calls)).toBeGreaterThanOrEqual(2));
+        await waitFor(() => expect(screen.getByText(LINK.shortLink)).toBeInTheDocument());
+
+        expect((screen.getByLabelText('Edit destination URL') as HTMLInputElement).value).toBe('https://example.com/typing');
+    });
+
+    it('the list stays on screen while "Show archived" re-fetches', async () => {
+        let release: (r: Response) => void = () => {};
+        const calls: Recorded[] = [];
+        let listCount = 0;
+        vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+            const rec = { url: String(url), method: init?.method ?? 'GET' };
+            calls.push(rec);
+            if (isListGet(rec)) {
+                listCount += 1;
+                if (listCount === 2) return new Promise<Response>(res => { release = res; });
+                return jsonResponse({ success: true, data: [LINK] });
+            }
+            if (rec.url.includes('/api/links/tags')) return jsonResponse({ success: true, data: TAGS });
+            if (rec.url.includes('/api/links/domains')) return jsonResponse({ success: true, data: DOMAINS, defaultDomain: null });
+            return jsonResponse({ success: true, data: TIMESERIES });
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(LINK.shortLink)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/draft' } });
+
+        fireEvent.click(screen.getByLabelText('Show archived'));
+        await waitFor(() => expect(listCount).toBe(2));
+        expect(screen.getByText(LINK.shortLink)).toBeInTheDocument(); // old rows still shown
+        expect(screen.queryByText('Loading links…')).not.toBeInTheDocument();
+        expect((screen.getByLabelText('Destination URL') as HTMLInputElement).value).toBe('https://example.com/draft');
+        release(jsonResponse({ success: true, data: [LINK] }));
+        await waitFor(() => expect(screen.getByText(LINK.shortLink)).toBeInTheDocument());
+    });
+
+    it('a successful preset click leaves text typed in the composer untouched', async () => {
+        const calls = stubBackend([]);
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByLabelText('Preset property')).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/half-typed' } });
+        fireEvent.change(screen.getByLabelText('Custom key'), { target: { value: 'half' } });
+        fireEvent.change(screen.getByLabelText('utm_source'), { target: { value: 'flyer' } });
+
+        fireEvent.click(screen.getByRole('button', { name: '+ Resident portal' }));
+        await waitFor(() => expect(screen.getByText(/^Created /)).toBeInTheDocument());
+        await waitFor(() => expect(listGets(calls)).toBeGreaterThanOrEqual(2));
+
+        expect((screen.getByLabelText('Destination URL') as HTMLInputElement).value).toBe('https://example.com/half-typed');
+        expect((screen.getByLabelText('Custom key') as HTMLInputElement).value).toBe('half');
+        expect((screen.getByLabelText('utm_source') as HTMLInputElement).value).toBe('flyer');
+    });
+
+    it('a successful composer submit clears the composer; a refused one keeps it', async () => {
+        const calls = stubBackend([]);
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/ok' } });
+        fireEvent.change(screen.getByLabelText('Custom key'), { target: { value: 'ok' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(screen.getByText(/^Created /)).toBeInTheDocument());
+        expect((screen.getByLabelText('Destination URL') as HTMLInputElement).value).toBe('');
+        expect((screen.getByLabelText('Custom key') as HTMLInputElement).value).toBe('');
+        expect(calls.filter(c => c.method === 'POST')).toHaveLength(1);
+    });
+
+    it('a refused composer submit keeps what was typed', async () => {
+        stubBackend([], {}, { postStatus: 400 });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/nope' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(screen.getByText('Create refused')).toBeInTheDocument());
+        expect((screen.getByLabelText('Destination URL') as HTMLInputElement).value).toBe('https://example.com/nope');
+    });
+
+    it('overlapping list responses resolved out of order leave the NEWER one on screen', async () => {
+        const pending: Array<(r: Response) => void> = [];
+        vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+            const rec = { url: String(url), method: init?.method ?? 'GET' };
+            if (isListGet(rec)) return new Promise<Response>(res => { pending.push(res); });
+            if (rec.url.includes('/api/links/tags')) return jsonResponse({ success: true, data: TAGS });
+            if (rec.url.includes('/api/links/domains')) return jsonResponse({ success: true, data: DOMAINS, defaultDomain: null });
+            return jsonResponse({ success: true, data: [] });
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(pending).toHaveLength(1)); // mount refresh (older)
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh short links' }));
+        await waitFor(() => expect(pending).toHaveLength(2)); // manual refresh (newer)
+
+        pending[1](jsonResponse({ success: true, data: [LINK_2] })); // newer lands first
+        await waitFor(() => expect(screen.getByText(LINK_2.shortLink)).toBeInTheDocument());
+        pending[0](jsonResponse({ success: true, data: [LINK] })); // stale one lands late
+        await new Promise(r => setTimeout(r, 30));
+        expect(screen.getByText(LINK_2.shortLink)).toBeInTheDocument();
+        expect(screen.queryByText(LINK.shortLink)).not.toBeInTheDocument();
     });
 });

@@ -1,13 +1,15 @@
 /**
- * shortLinksApi — thin client for the Dub backend proxy (/api/links).
+ * shortLinksApi — thin client for the link-shortener proxy (/api/links).
  *
  * Plan 047 phase 2, extended for plan 053: update/archive, tags, domains,
- * clicks analytics (timeseries + totals) and bulk create. The backend answers
- * 503 while DUB_API_KEY is unset, so callers key a "needs setup" UI on the
- * typed result. NOTE: dub.co's pricing page currently lists NO free plan —
- * check current pricing before assuming a $0 workspace. Same authFetch shape
- * as esignApi.ts; the Dub key never reaches the browser. QR PNGs come straight
- * from Dub's unauthenticated qr endpoint (the `qrCode` field on each link).
+ * clicks analytics (timeseries + totals) and bulk create. The backend runs in
+ * one of two modes and says which on the list response (`mode: 'builtin'`):
+ * the built-in SQLite shortener (default, no setup — stores only url, key and
+ * title) or Dub when DUB_API_KEY is set (Dub responses carry no `mode`). Only
+ * an OLD backend answered `503 {needsSetup:true}`, which callers still map to
+ * a typed needs-setup result; any other 503 is an ordinary error. Same
+ * authFetch shape as esignApi.ts; the Dub key never reaches the browser.
+ * Dub rows carry a hosted `qrCode` URL; built-in rows carry '' (client-side QR).
  */
 import { getAuthToken } from '../../context/UserContext';
 import { API_BASE } from '../../config';
@@ -71,6 +73,9 @@ export interface UpdateShortLinkInput {
     utm_campaign?: string;
 }
 
+/** Which backend mode answered the list: built-in shortener or Dub. */
+export type LinksMode = 'dub' | 'builtin';
+
 export type ShortLinksResult<T> =
     | { kind: 'ok'; data: T }
     | { kind: 'needs-setup' }
@@ -88,12 +93,13 @@ function authFetch(url: string, init?: RequestInit): Promise<Response> {
 /** Parsed JSON body of a proxy response — always an object envelope or null. */
 type Envelope = Record<string, unknown> | null;
 
-/** Shared response mapping: 503 → needs-setup, non-ok → backend error text, throw → unreachable. */
+/** Shared response mapping: 503 + needsSetup body → needs-setup, other non-ok → backend error text, throw → unreachable. */
 async function requestJson<T>(path: string, init: RequestInit | undefined, pick: (body: Envelope) => T): Promise<ShortLinksResult<T>> {
     try {
         const res = await authFetch(`${API_BASE}${path}`, init);
-        if (res.status === 503) return { kind: 'needs-setup' };
         const body = (await res.json().catch(() => null)) as Envelope;
+        // Only the old backend's explicit marker — a bare 503 is a cold start/overload, not "unconfigured".
+        if (res.status === 503 && body?.needsSetup === true) return { kind: 'needs-setup' };
         if (!res.ok) {
             const message = typeof body?.error === 'string' ? body.error : `Backend answered ${res.status}`;
             return { kind: 'error', message };
@@ -113,8 +119,11 @@ function dataOne<T>(body: Envelope): T {
     return (body?.data ?? null) as T;
 }
 
-export function listShortLinks(showArchived = false): Promise<ShortLinksResult<ShortLink[]>> {
-    return requestJson(`/api/links${showArchived ? '?showArchived=true' : ''}`, undefined, dataList<ShortLink>);
+export function listShortLinks(showArchived = false): Promise<ShortLinksResult<{ links: ShortLink[]; mode: LinksMode }>> {
+    return requestJson(`/api/links${showArchived ? '?showArchived=true' : ''}`, undefined, body => ({
+        links: dataList<ShortLink>(body),
+        mode: body?.mode === 'builtin' ? 'builtin' : 'dub',
+    }));
 }
 
 export function createShortLink(input: CreateShortLinkInput): Promise<ShortLinksResult<ShortLink>> {

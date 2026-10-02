@@ -904,12 +904,12 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 560,
         category: 'tools',
     },
-    // Links & QR (Dub hosted API, free plan). Same flip: `needs-setup` on
-    // registration, `ready` once VITE_DUB_URL is set (data/toolsHub.ts).
+    // Links & QR — built-in Dwellium shortener (Dub optional via DUB_API_KEY on
+    // the backend); ready with no setup, no env var (data/toolsHub.ts).
     'short-links': {
         id: 'short-links',
         label: 'Links & QR',
-        description: 'Branded short links and QR codes with click counts, minted through the Dub API.',
+        description: 'Short links and QR codes with click counts, from the built-in Dwellium shortener (Dub optional).',
         tip: { tryThis: 'Shorten a Tenant Portal URL, then print its QR for a unit door.', related: ['broadcasts', 'tools-hub'] },
         tier: 'tools',
         icon: 'qr-code',

@@ -19,10 +19,24 @@ vi.mock('../components/TaskBoard/TaskBoard', () => ({ default: () => <div data-t
 
 import ConnectionsPanel from '../components/Connections/ConnectionsPanel';
 import TaskMenu from '../components/TaskMenu/TaskMenu';
+import { agentContextStore } from '../lib/agentContextStore';
+import { memoryStore } from '../components/HonchoHermesPanel/honchoMemoryStore';
+import { dreamStore } from '../components/StellaAgent/honchoDreamStore';
+import { hermesLearningStore } from '../components/HonchoHermesPanel/hermesLearningStore';
+import { thoughtWeaverStore } from '../components/ThoughtWeaver/thoughtWeaverStore';
+import { goalsStore } from '../lib/goalsStore';
+import { artifactStore } from '../lib/artifactStore';
+import { tagStore } from '../lib/tagStore';
+import { morningBriefStore } from '../lib/morningBriefStore';
+
+// Every createLocalStorageStore-backed store ConnectionsPanel reads: localStorage.clear() does not drop
+// their cached snapshots, so reset each one (repo convention) to keep tests independent.
+const PANEL_STORES = [agentContextStore, memoryStore, dreamStore, hermesLearningStore, thoughtWeaverStore, goalsStore, artifactStore, tagStore, morningBriefStore];
 
 beforeEach(() => {
     openWindow.mockReset();
     try { localStorage.clear(); } catch { /* ignore */ }
+    PANEL_STORES.forEach(store => store.reset());
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ success: true, data: [] }) })));
 });
 afterEach(() => {

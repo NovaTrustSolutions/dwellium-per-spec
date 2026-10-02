@@ -107,7 +107,7 @@ Owner files: `taskBoardModel.ts`, `taskBoardStore.ts` (deserialize only), `test/
 5. `EDIT_CARD`: pick only the five `CardPatch` keys; trim title, keep it non-empty. (Low)
 6. Audit entries gain `cardIds?: string[]` and `to?: columnId` for moves. (feeds M11 in phase 4)
 7. `deserialize`: repair a bad column (default width) instead of resetting all; never drop a card for a missing timestamp (stamp it); cards in unknown columns go to the first column. (Low)
-8. One-liners in other files: Connections "Tags" → `tag-file`; Task Menu focus listener calls `chooseView('list')` first.
+8. One-liners in other files: Connections "Tags" → `tag-file`; Task Menu focus listener calls `setView('list')` first (not `chooseView`, which would also overwrite the saved tab preference).
 Tests first, each run against the old code to prove it fails there: the H1 sequence (stored = visible = 2 at every step), M1, no-op audit, bulk inverse applied, duplicate ids.
 
 ### Phase 2 — sync that cannot eat a board (~3 h)
@@ -213,7 +213,7 @@ Behaviour:
 10. Store: `addCard` must not sort the live snapshot in place. Store `undo()` / `undoLastAi()` keep returning `BoardState`.
 
 Outside the model (orchestrator edits): `Connections/ConnectionsPanel.tsx` Tags row → `widget: 'tag-file'`;
-`TaskMenu/TaskMenu.tsx` focus listener calls `chooseView('list')` before focusing.
+`TaskMenu/TaskMenu.tsx` focus listener calls `setView('list')` before focusing (the saved 'board' preference must stay unchanged).
 
 Acceptance: the H1 sequence (2 Backlog cards → AI file Backlog → remove Backlog → Undo last AI → Undo) ends with
 2 cards stored AND 2 visible at every step; every new test fails on `origin/main` @ `fe281de` (except pure

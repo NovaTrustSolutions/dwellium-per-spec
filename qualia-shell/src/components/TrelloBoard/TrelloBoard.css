@@ -59,8 +59,12 @@
 }
 
 /* role="alert" boxes: tinted + bordered with --danger, text stays --text-primary for contrast */
-.trello-alert,
-.trello-inline-error {
+.trello-alert {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    overflow-wrap: anywhere;
     padding: var(--sp-2) var(--sp-3);
     background: color-mix(in srgb, var(--danger) 12%, transparent);
     color: var(--text-primary);
@@ -71,6 +75,22 @@
 
 .trello-alert {
     border-radius: var(--radius-md);
+}
+
+.trello-alert__dismiss {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.trello-board--error p {
+    overflow-wrap: anywhere;
 }
 
 .trello-banner--truncated {
@@ -134,7 +154,7 @@
     padding: var(--sp-2) var(--sp-3);
     border: 1px solid var(--border-subtle);
     background: var(--bg-surface-hover);
-    color: var(--text-secondary);
+    color: var(--text-primary);
     border-radius: var(--radius-md);
     font-size: var(--fs-xs);
     font-family: var(--font-primary);
@@ -170,12 +190,12 @@
     font-weight: var(--fw-semibold);
 }
 
-/* brightness, not --accent-hover: on some themes (corporate) the hover colour fails against --text-inverse */
+/* a ring, not --accent-hover or brightness: either one drops --text-inverse below AA on some themes (corporate) */
 .trello-btn--primary:hover {
     background: var(--accent);
     color: var(--text-inverse);
     border-color: var(--accent);
-    filter: brightness(1.08);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-primary) 40%, transparent);
 }
 
 /* ── Columns Container ────────────────────────── */
@@ -241,7 +261,7 @@
 
 .trello-column__count {
     font-size: 11px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     background: var(--bg-surface);
     padding: 1px 6px;
     border-radius: var(--radius-sm);
@@ -339,8 +359,16 @@
 .trello-card__due {
     align-self: flex-start;
     font-size: 11px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     margin-top: 2px;
+}
+
+.trello-card__badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-primary);
 }
 
 .trello-card--overdue .trello-card__due {
@@ -379,8 +407,7 @@
     gap: var(--sp-2);
 }
 
-.trello-add-card-input,
-.trello-add-card-textarea {
+.trello-add-card-input {
     padding: var(--sp-2) var(--sp-3);
     background: var(--bg-surface-elevated);
     color: var(--text-primary);
@@ -394,13 +421,7 @@
     border-color: var(--accent);
 }
 
-.trello-add-card-textarea {
-    min-height: 72px;
-    resize: vertical;
-}
-
-.trello-add-card-input::placeholder,
-.trello-add-card-textarea::placeholder {
+.trello-add-card-input::placeholder {
     color: var(--text-tertiary);
 }
 
@@ -494,10 +515,9 @@
     flex-wrap: wrap;
 }
 
-.trello-detail__list-badge,
 .trello-detail__due-badge {
     font-size: 11px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     background: var(--bg-surface-hover);
     padding: 2px 8px;
     border-radius: var(--radius-sm);
@@ -517,15 +537,6 @@
 .trello-move select {
     flex: 1;
     min-width: 0;
-}
-
-/* ── Labels row ────────────────────────────────── */
-
-.trello-detail__labels {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 0 var(--sp-4) var(--sp-3);
 }
 
 /* colour + background are set inline from labelStyle() */
@@ -723,7 +734,7 @@
 }
 
 .trello-detail__activity-date {
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 11px;
     margin-top: 2px;
 }
@@ -761,7 +772,6 @@
 .trello-btn:focus-visible,
 .trello-board-select:focus-visible,
 .trello-add-card-input:focus-visible,
-.trello-add-card-textarea:focus-visible,
 .trello-add-card-btn:focus-visible,
 .trello-detail__close:focus-visible,
 .trello-detail__attachment:focus-visible,

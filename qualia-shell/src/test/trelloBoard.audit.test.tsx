@@ -2,7 +2,7 @@
 // Each "BUG" test asserts the CORRECT behaviour; on origin/main (fe281de) they fail and the two controls pass.
 // Constraints these tests impose on the component are listed in plans/078-trello-board-widget.md, Phase 1.
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import TrelloBoard from '../components/TrelloBoard/TrelloBoard';
 import { TRELLO_A11Y } from '../components/TrelloBoard/a11yContract';
 
@@ -97,12 +97,6 @@ const calls = (fn: ReturnType<typeof mockFetch>, test: (url: string, init?: Requ
 const settle = () => act(async () => { await new Promise(r => setTimeout(r, 30)); });
 
 describe('Trello Board — plan 078 audit (ported to /full)', () => {
-    beforeEach(() => {
-        const w = window as unknown as Record<string, unknown>;
-        delete w.__DWELLIUM_C9_SUGGEST_ENABLED__;
-        delete w.__DWELLIUM_C9_BLAST_ENABLED__;
-    });
-
     it('control: a successful drag sends PUT /move with the target list and shows the card there', async () => {
         const fetchMock = mockFetch();
         await renderBoard();
@@ -110,7 +104,7 @@ describe('Trello Board — plan 078 audit (ported to /full)', () => {
         await waitFor(() => expect(within(columnOf('Done')).queryByText('Fix sink')).not.toBeNull());
         const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
         expect(String(put![0])).toMatch(/\/cards\/card-1\/move$/);
-        expect(JSON.parse(String(put![1]?.body))).toEqual({ listId: 'list-2' });
+        expect(JSON.parse(String(put![1]?.body))).toEqual({ listId: 'list-2', pos: 'bottom' });
     });
 
     it('control: clicking a card (no drag before) opens its detail', async () => {
@@ -269,5 +263,89 @@ describe('Trello Board — plan 078 audit (ported to /full)', () => {
         mockFetch(url => (url.endsWith('/api/trello/boards') ? fail('NOT_CONFIGURED', 'Trello not configured — set TRELLO_API_KEY and TRELLO_TOKEN on the backend.', 503) : undefined));
         render(<TrelloBoard />);
         expect((await screen.findAllByText(/ask an administrator/i)).length).toBeGreaterThan(0);
+    });
+
+    it('RACE(a): a window-focus refetch while a move is in flight does not undo the move', async () => {
+        const put = deferred<Response>();
+        mockFetch((_u, init) => (init?.method === 'PUT' ? put.promise : undefined));
+        await renderBoard();
+        drag('Fix sink', 'Done');
+        await settle();
+        window.dispatchEvent(new Event('focus')); // refetch still says "Incoming": the PUT has not landed yet
+        await settle();
+        await act(async () => { put.resolve(res({ success: true, data: { id: 'card-1' } })); await new Promise(r => setTimeout(r, 30)); });
+        expect(within(columnOf('Done')).queryByText('Fix sink')).not.toBeNull();
+        expect(within(columnOf('Incoming')).queryByText('Fix sink')).toBeNull();
+    });
+
+    it('RACE(b): a move that times out after a refetch already showed it moved is not rolled back', async () => {
+        const put = deferred<Response>();
+        const fb = FULL['board-1'] as { cards: Array<{ id: string }> };
+        const moved = { ...FULL['board-1'] as object, cards: [{ ...fb.cards[0], idList: 'list-2' }, fb.cards[1]] };
+        let fullCalls = 0;
+        mockFetch((url, init) => {
+            if (init?.method === 'PUT') return put.promise;
+            if (/\/boards\/board-1\/full$/.test(url) && ++fullCalls > 1) return res({ success: true, data: moved });
+            return undefined;
+        });
+        await renderBoard();
+        drag('Fix sink', 'Done');
+        await settle();
+        window.dispatchEvent(new Event('focus'));
+        await settle();
+        await act(async () => { put.resolve(fail('TIMEOUT', 'Trello took too long to answer — try again.', 504)); await new Promise(r => setTimeout(r, 30)); });
+        expect(within(columnOf('Done')).queryByText('Fix sink')).not.toBeNull();
+        expect(within(columnOf('Incoming')).queryByText('Fix sink')).toBeNull();
+    });
+
+    it('RACE(c): a refetch that already contains the card being created does not duplicate it', async () => {
+        const post = deferred<Response>();
+        const fb = FULL['board-1'] as { cards: unknown[] };
+        const created = { id: 'card-new', idList: 'list-1', name: 'New card', url: 'u', pos: 99 };
+        let fullCalls = 0;
+        mockFetch((url, init) => {
+            if (init?.method === 'POST') return post.promise;
+            if (/\/boards\/board-1\/full$/.test(url) && ++fullCalls > 1) return res({ success: true, data: { ...FULL['board-1'] as object, cards: [...fb.cards, created] } });
+            return undefined;
+        });
+        const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        await renderBoard();
+        fireEvent.click(within(columnOf('Incoming')).getByText(TRELLO_A11Y.addCardOpen));
+        fireEvent.change(screen.getByPlaceholderText('Enter card title…'), { target: { value: 'New card' } });
+        fireEvent.click(screen.getByRole('button', { name: TRELLO_A11Y.addCard }));
+        await settle();
+        window.dispatchEvent(new Event('focus'));
+        await settle();
+        await act(async () => { post.resolve(res({ success: true, data: created }, 201)); await new Promise(r => setTimeout(r, 30)); });
+        expect(screen.getAllByText('New card')).toHaveLength(1);
+        expect(errors.mock.calls.some(c => String(c[0]).includes('same key'))).toBe(false);
+        errors.mockRestore();
+    });
+
+    it('a failed move made from the dialog reports its error inside the dialog', async () => {
+        mockFetch((_u, init) => (init?.method === 'PUT' ? fail('RATE_LIMITED', 'x', 429) : undefined));
+        await renderBoard();
+        fireEvent.click(cardEl('Call vendor'));
+        await screen.findByText('Detail of card-2');
+        const dialog = screen.getByRole('dialog');
+        fireEvent.change(within(dialog).getByRole('combobox', { name: TRELLO_A11Y.moveTo }), { target: { value: 'list-2' } });
+        expect(await within(dialog).findByText(/rate-limiting/i)).toBeInTheDocument();
+    });
+
+    it('the action error can be dismissed and clears on Refresh', async () => {
+        mockFetch((_u, init) => (init?.method === 'PUT' ? fail('RATE_LIMITED', 'x', 429) : undefined));
+        await renderBoard();
+        drag('Fix sink', 'Done');
+        await screen.findByText(/rate-limiting/i);
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+        expect(screen.queryByText(/rate-limiting/i)).toBeNull();
+    });
+
+    it('closing the add-card form returns focus to its opener', async () => {
+        mockFetch();
+        await renderBoard();
+        fireEvent.click(within(columnOf('Incoming')).getByText(TRELLO_A11Y.addCardOpen));
+        fireEvent.keyDown(screen.getByPlaceholderText('Enter card title…'), { key: 'Escape' });
+        expect(document.activeElement).toBe(within(columnOf('Incoming')).getByText(TRELLO_A11Y.addCardOpen));
     });
 });

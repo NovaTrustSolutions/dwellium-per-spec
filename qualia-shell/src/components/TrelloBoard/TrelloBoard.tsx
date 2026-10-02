@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react';
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import { ClipboardList, Clock, FileText, ListChecks, MessageSquare, Paperclip, RefreshCw, Square, SquareCheck, TriangleAlert, X } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import {
@@ -11,12 +11,12 @@ import './TrelloBoard.css';
 
 interface BoardData { boardId: string; lists: TrelloList[]; cards: TrelloCard[]; truncated: boolean }
 interface DetailData { card: CardDetail; activity: Activity[] }
+/** A move whose PUT is in flight; `loadBoard` overlays it so a refetch cannot undo it. */
+interface PendingMove { listId: string; pos: number }
 
 const NO_LISTS: TrelloList[] = [];
 const NO_CARDS: TrelloCard[] = [];
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-const SR_ONLY: CSSProperties = { position: 'absolute', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 };
-const BADGES_STYLE: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: 'var(--text-secondary)' };
 
 const formatDate = (iso: string): string => new Date(iso).toLocaleDateString();
 const isOverdue = (c: TrelloCard): boolean => !!c.due && !c.dueComplete && Date.parse(c.due) < Date.now();
@@ -68,6 +68,8 @@ function useBoardData() {
     const [data, setData] = useState<BoardData | null>(null);
     const [boardLoading, setBoardLoading] = useState(false);
     const [boardError, setBoardError] = useState<unknown>(null);
+    const [actionError, setActionError] = useState<unknown>(null);
+    const pendingMoves = useRef(new Map<string, PendingMove>());
     const { begin: beginBoards, cancel: cancelBoards } = useLatest();
     const { begin: beginBoard, cancel: cancelBoard } = useLatest();
 
@@ -96,8 +98,14 @@ function useBoardData() {
         try {
             const full = await trelloApi.boardFull(id, req.signal);
             if (!req.current()) return;
-            setData({ boardId: id, lists: full.lists, cards: full.cards, truncated: full.truncated });
+            // Overlay moves still in flight: the server may not have applied them when it answered.
+            const cards = full.cards.map(c => {
+                const p = pendingMoves.current.get(c.id);
+                return p ? { ...c, idList: p.listId, pos: p.pos } : c;
+            });
+            setData({ boardId: id, lists: full.lists, cards, truncated: full.truncated });
             setBoardError(null);
+            if (!silent) setActionError(null); // a focus refetch must not wipe an error the user has not read yet
         } catch (e) {
             if (req.current()) setBoardError(e);
         } finally {
@@ -118,12 +126,14 @@ function useBoardData() {
         return () => window.removeEventListener('focus', onFocus);
     }, [selected, loadBoard]);
 
-    const refresh = useCallback(() => { void loadBoards(true); void loadBoard(selected, true); }, [loadBoards, loadBoard, selected]);
+    const refresh = useCallback(() => { setActionError(null); void loadBoards(true); void loadBoard(selected, true); }, [loadBoards, loadBoard, selected]);
+    const refetchBoard = useCallback(() => { void loadBoard(selected, true); }, [loadBoard, selected]);
+    const dismissErrors = useCallback(() => { setActionError(null); setBoardError(null); setBoardsError(null); }, []);
     const retryBoard = useCallback(() => { void loadBoard(selected, false); }, [loadBoard, selected]);
     // Data from the board that was selected before a switch stays in state but is never shown.
     const visible = data && data.boardId === selected ? data : null;
 
-    return { boards, boardsLoading, boardsError, selected, setSelected, visible, boardLoading, boardError, updateCards, loadBoards, refresh, retryBoard };
+    return { boards, boardsLoading, boardsError, selected, setSelected, visible, boardLoading, boardError, actionError, setActionError, pendingMoves, updateCards, loadBoards, refresh, refetchBoard, retryBoard, dismissErrors };
 }
 
 function useCardDetail() {
@@ -160,8 +170,8 @@ function useCardDetail() {
 function Failure({ error, isAdmin, onRetry }: { error: unknown; isAdmin: boolean; onRetry: () => void }) {
     const message = describeTrelloError(error, { isAdmin });
     const code = error instanceof TrelloApiError ? error.code : null;
-    if (code === 'FORBIDDEN') return <div className="trello-noaccess"><p>{message}</p></div>;
-    if (code === 'NOT_CONFIGURED') return <div className="trello-empty-state"><p>{message}</p></div>;
+    if (code === 'FORBIDDEN') return <div className="trello-noaccess" role="status"><p>{message}</p></div>;
+    if (code === 'NOT_CONFIGURED') return <div className="trello-empty-state" role="status"><p>{message}</p></div>;
     return (
         <div className="trello-board--error">
             <span className="trello-error-icon"><TriangleAlert size={20} aria-hidden /></span>
@@ -176,7 +186,7 @@ function CardBadges({ badges }: { badges: TrelloCard['badges'] }) {
     const { comments, attachments, checkItems, checkItemsChecked } = badges;
     if (!comments && !attachments && !checkItems) return null;
     return (
-        <span style={BADGES_STYLE} aria-hidden="true">
+        <span className="trello-card__badges" aria-hidden="true">
             {!!comments && <span><MessageSquare size={12} /> {comments}</span>}
             {!!attachments && <span><Paperclip size={12} /> {attachments}</span>}
             {!!checkItems && <span><SquareCheck size={12} /> {checkItemsChecked ?? 0}/{checkItems}</span>}
@@ -246,6 +256,7 @@ function AddCard({ onCreate, onClose }: AddCardProps) {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Enter card title…"
+                maxLength={512}
                 aria-label="Card title"
                 onKeyDown={e => {
                     if (e.key === 'Enter') void submit();
@@ -253,7 +264,7 @@ function AddCard({ onCreate, onClose }: AddCardProps) {
                 }}
             />
             <div className="trello-add-card-actions">
-                <button type="button" className="trello-btn trello-btn--primary" onClick={() => void submit()}>{TRELLO_A11Y.addCard}</button>
+                <button type="button" className="trello-btn trello-btn--primary" disabled={!name.trim()} onClick={() => void submit()}>{TRELLO_A11Y.addCard}</button>
                 <button type="button" className="trello-btn" onClick={onClose} aria-label={TRELLO_A11Y.cancelAdd}><X size={14} aria-hidden /></button>
             </div>
         </div>
@@ -408,46 +419,66 @@ function DetailDialog({ title, loading, error, isAdmin, detail, lists, listId, o
 function TrelloBoardView({ isAdmin }: { isAdmin: boolean }) {
     const b = useBoardData();
     const d = useCardDetail();
-    const { updateCards, selected } = b;
+    const { updateCards, selected, setActionError, pendingMoves, refetchBoard } = b;
+    const actionError = b.actionError;
     const rootRef = useRef<HTMLDivElement>(null);
-    const [actionError, setActionError] = useState<unknown>(null);
     const [dragId, setDragId] = useState<string | null>(null);
     const [overId, setOverId] = useState<string | null>(null);
     const [addingTo, setAddingTo] = useState<string | null>(null);
+    const refocusAdd = useRef<string | null>(null);
+
+    // Closing the form unmounts the focused input; once the opener is back, hand focus to it.
+    useEffect(() => {
+        if (addingTo !== null || !refocusAdd.current) return;
+        const id = refocusAdd.current;
+        refocusAdd.current = null;
+        Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-add-for]') ?? []).find(el => el.dataset.addFor === id)?.focus();
+    }, [addingTo]);
+    const closeAdd = (listId: string) => { refocusAdd.current = listId; setAddingTo(null); };
 
     const lists = b.visible?.lists ?? NO_LISTS;
     const cards = b.visible?.cards ?? NO_CARDS;
     const byList = useMemo(() => {
         const map = new Map<string, TrelloCard[]>();
-        for (const c of [...cards].sort((x, y) => x.pos - y.pos)) map.set(c.idList, [...(map.get(c.idList) ?? []), c]);
+        for (const c of [...cards].sort((x, y) => (x.pos ?? 0) - (y.pos ?? 0))) map.set(c.idList, [...(map.get(c.idList) ?? []), c]);
         return map;
     }, [cards]);
 
     const moveCard = useCallback(async (card: TrelloCard, toList: string) => {
         if (card.idList === toList) return;
-        const from = card.idList; // the list at drop time
+        const { idList: from, pos: fromPos } = card; // where the card was at drop time
+        const entry: PendingMove = { listId: toList, pos: Math.max(0, ...cards.filter(c => c.idList === toList).map(c => c.pos ?? 0)) + 1 };
+        pendingMoves.current.set(card.id, entry);
         setActionError(null);
-        updateCards(selected, cs => cs.map(c => (c.id === card.id ? { ...c, idList: toList } : c)));
+        updateCards(selected, cs => cs.map(c => (c.id === card.id ? { ...c, idList: toList, pos: entry.pos } : c)));
         try {
-            await trelloApi.moveCard(card.id, toList);
+            await trelloApi.moveCard(card.id, toList, 'bottom');
         } catch (e) {
-            // Roll back only if the card is still where we put it; a refetch may have moved it since.
-            updateCards(selected, cs => cs.map(c => (c.id === card.id && c.idList === toList ? { ...c, idList: from } : c)));
+            // TIMEOUT / NETWORK: the PUT may have been applied upstream, so the outcome is unknown. Show the server's truth, don't revert it.
+            const unknown = e instanceof TrelloApiError && (e.code === 'TIMEOUT' || e.code === 'NETWORK');
+            if (unknown) refetchBoard();
+            // A definite failure: roll back only if this move is still the latest one for the card.
+            else if (pendingMoves.current.get(card.id) === entry) {
+                updateCards(selected, cs => cs.map(c => (c.id === card.id && c.idList === toList ? { ...c, idList: from, pos: fromPos } : c)));
+            }
             setActionError(e);
+        } finally {
+            if (pendingMoves.current.get(card.id) === entry) pendingMoves.current.delete(card.id);
         }
-    }, [updateCards, selected]);
+    }, [cards, updateCards, selected, pendingMoves, refetchBoard, setActionError]);
 
     const createCard = useCallback(async (listId: string, name: string) => {
         setActionError(null);
         try {
             const card = await trelloApi.createCard({ name, listId });
-            updateCards(selected, cs => [...cs, card]);
+            // A refetch that landed while the POST was in flight may already contain the card.
+            updateCards(selected, cs => (cs.some(c => c.id === card.id) ? cs : [...cs, card]));
             return true;
         } catch (e) {
             setActionError(e);
             return false;
         }
-    }, [updateCards, selected]);
+    }, [updateCards, selected, setActionError]);
 
     const closeDetail = () => {
         const id = d.openId;
@@ -458,9 +489,11 @@ function TrelloBoardView({ isAdmin }: { isAdmin: boolean }) {
     };
 
     const onDragStart = (e: DragEvent<HTMLButtonElement>, id: string) => {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', id);
         setDragId(id);
+        try {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', id); // Firefox needs data to start a drag; some browsers/embedders throw
+        } catch { /* the drag still works from dragId */ }
     };
     const onDragEnd = () => { setDragId(null); setOverId(null); };
     const onDragOver = (e: DragEvent, listId: string) => {
@@ -511,14 +544,19 @@ function TrelloBoardView({ isAdmin }: { isAdmin: boolean }) {
                     <option value="" disabled>Select a board</option>
                     {b.boards.map(board => <option key={board.id} value={board.id}>{board.name}</option>)}
                 </select>
-                <button type="button" className="trello-btn trello-btn--icon" onClick={b.refresh} title="Refresh" aria-label={TRELLO_A11Y.refresh}>
+                <button type="button" className="trello-btn trello-btn--icon" onClick={b.refresh} aria-label={TRELLO_A11Y.refresh}>
                     <RefreshCw size={16} aria-hidden />
                 </button>
                 <span className="trello-status" role="status">
-                    {refreshing && <><span className="trello-loading-dot" aria-hidden="true" /><span style={SR_ONLY}>Refreshing…</span></>}
+                    {refreshing && <><span className="trello-loading-dot" aria-hidden="true" /><span className="sr-only">Refreshing…</span></>}
                 </span>
             </div>
-            {alertError != null && <div className="trello-alert" role="alert">{describeTrelloError(alertError, { isAdmin })}</div>}
+            {alertError != null && !d.openId && (
+                <div className="trello-alert" role="alert">
+                    <span>{describeTrelloError(alertError, { isAdmin })}</span>
+                    <button type="button" className="trello-alert__dismiss" aria-label="Dismiss" onClick={b.dismissErrors}><X size={14} aria-hidden /></button>
+                </div>
+            )}
             {b.visible?.truncated && <div className="trello-banner--truncated">Showing the first 1,000 cards of this board.</div>}
 
             {!b.visible && b.boardError != null && <Failure error={b.boardError} isAdmin={isAdmin} onRetry={b.retryBoard} />}
@@ -550,8 +588,8 @@ function TrelloBoardView({ isAdmin }: { isAdmin: boolean }) {
                                         <CardButton key={card.id} card={card} dragging={dragId === card.id} onOpen={id => void d.open(id)} onDragStart={onDragStart} onDragEnd={onDragEnd} />
                                     ))}
                                     {addingTo === list.id
-                                        ? <AddCard onCreate={name => createCard(list.id, name)} onClose={() => setAddingTo(null)} />
-                                        : <button type="button" className="trello-add-card-btn" onClick={() => setAddingTo(list.id)}>{TRELLO_A11Y.addCardOpen}</button>}
+                                        ? <AddCard onCreate={name => createCard(list.id, name)} onClose={() => closeAdd(list.id)} />
+                                        : <button type="button" className="trello-add-card-btn" data-add-for={list.id} onClick={() => setAddingTo(list.id)}>{TRELLO_A11Y.addCardOpen}</button>}
                                 </div>
                             </div>
                         );
@@ -562,8 +600,8 @@ function TrelloBoardView({ isAdmin }: { isAdmin: boolean }) {
             {d.openId && (
                 <DetailDialog
                     title={openCard?.name ?? ''}
+                    error={d.error ?? actionError}
                     loading={!d.detail && d.error == null}
-                    error={d.error}
                     isAdmin={isAdmin}
                     detail={d.detail}
                     lists={lists}

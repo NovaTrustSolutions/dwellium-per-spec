@@ -14,9 +14,10 @@
  */
 import { getAuthToken } from '../../context/UserContext';
 import { API_BASE } from '../../config';
+import { backendStatusStore } from '../../lib/backendStatusStore';
 
 export type TrelloErrorCode =
-    | 'NOT_CONFIGURED' | 'BAD_ID' | 'NOT_FOUND' | 'RATE_LIMITED' | 'UPSTREAM_AUTH' | 'TIMEOUT' | 'UPSTREAM'
+    | 'NOT_CONFIGURED' | 'BAD_ID' | 'BAD_REQUEST' | 'NOT_FOUND' | 'RATE_LIMITED' | 'UPSTREAM_AUTH' | 'TIMEOUT' | 'UPSTREAM'
     | 'FORBIDDEN'        // the permission gate (403 without a `code`)
     | 'UNAUTHENTICATED'  // 401 without a `code`
     | 'BAD_RESPONSE'     // non-JSON or unexpected body
@@ -45,7 +46,7 @@ export interface TrelloCard {
     desc?: string;
     url: string;
     idList: string;
-    pos: number;
+    pos?: number;
     due?: string | null;
     dueComplete?: boolean;
     labels?: TrelloLabel[];
@@ -86,8 +87,11 @@ export async function trelloFetch<T>(path: string, init?: RequestInit): Promise<
         res = await fetch(`${BASE}${path}`, { ...init, headers });
     } catch (e) {
         if ((e as Error)?.name === 'AbortError') throw e; // a cancelled request is not an error to report
+        // A failed fetch never logs the user out; it only raises the global "reconnect" banner.
+        backendStatusStore.markOffline("Can't reach the Dwellium server.");
         throw new TrelloApiError('NETWORK', 0, "Can't reach the Dwellium server.");
     }
+    backendStatusStore.markOnline(); // any HTTP answer, even an error status, proves the backend is reachable
 
     let body: unknown = null;
     try {
@@ -110,7 +114,7 @@ export async function trelloFetch<T>(path: string, init?: RequestInit): Promise<
     return b.data as T;
 }
 
-const CODES: ReadonlySet<string> = new Set(['NOT_CONFIGURED', 'BAD_ID', 'NOT_FOUND', 'RATE_LIMITED', 'UPSTREAM_AUTH', 'TIMEOUT', 'UPSTREAM']);
+const CODES: ReadonlySet<string> = new Set(['NOT_CONFIGURED', 'BAD_ID', 'BAD_REQUEST', 'NOT_FOUND', 'RATE_LIMITED', 'UPSTREAM_AUTH', 'TIMEOUT', 'UPSTREAM']);
 function isTrelloErrorCode(v: unknown): v is TrelloErrorCode { return typeof v === 'string' && CODES.has(v); }
 
 function defaultMessage(code: TrelloErrorCode, status: number): string {
@@ -121,8 +125,15 @@ function defaultMessage(code: TrelloErrorCode, status: number): string {
     }
 }
 
-/** Message for a toast / inline alert. `isAdmin` adds where the setting lives. */
+const MAX_MESSAGE = 300;
+const clamp = (s: string): string => (s.length > MAX_MESSAGE ? `${s.slice(0, MAX_MESSAGE - 1)}…` : s);
+
+/** Message for a toast / inline alert (clamped to 300 chars). `isAdmin` adds where the setting lives. */
 export function describeTrelloError(err: unknown, opts: { isAdmin?: boolean } = {}): string {
+    return clamp(describeRaw(err, opts));
+}
+
+function describeRaw(err: unknown, opts: { isAdmin?: boolean }): string {
     if (err instanceof TrelloApiError) {
         switch (err.code) {
             case 'NOT_CONFIGURED':
@@ -147,8 +158,11 @@ export const trelloApi = {
     boardFull: (boardId: string, signal?: AbortSignal) => trelloFetch<TrelloBoardFull>(`/boards/${encodeURIComponent(boardId)}/full`, { signal }),
     card: (cardId: string, signal?: AbortSignal) => trelloFetch<CardDetail>(`/cards/${encodeURIComponent(cardId)}`, { signal }),
     activity: (cardId: string, signal?: AbortSignal) => trelloFetch<Activity[]>(`/cards/${encodeURIComponent(cardId)}/activity`, { signal }),
-    moveCard: (cardId: string, listId: string) =>
-        trelloFetch<TrelloCard>(`/cards/${encodeURIComponent(cardId)}/move`, { method: 'PUT', body: JSON.stringify({ listId }) }),
+    moveCard: (cardId: string, listId: string, pos?: 'top' | 'bottom' | number) =>
+        trelloFetch<TrelloCard>(`/cards/${encodeURIComponent(cardId)}/move`, {
+            method: 'PUT',
+            body: JSON.stringify(pos === undefined ? { listId } : { listId, pos }),
+        }),
     createCard: (input: { name: string; desc?: string; listId: string }) =>
         trelloFetch<TrelloCard>('/cards', { method: 'POST', body: JSON.stringify(input) }),
 };

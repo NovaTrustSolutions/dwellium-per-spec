@@ -118,7 +118,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
     const attachments = (trelloCard?.attachments || []) as TrelloAttachment[];
     const checklists = trelloCard?.checklists || [];
     const cardDesc = trelloCard?.desc || workitem.description || '';
-    const labels: RawLabel[] = trelloCard?.labels || meta.trelloLabels || [];
+    const labels: RawLabel[] = [trelloCard?.labels, meta.trelloLabels].find(Array.isArray) ?? [];
     const members = (trelloCard?.members || []).map(m => m.fullName).filter(Boolean);
     const due = trelloCard?.due || meta.trelloDue;
     const boardName = meta.trelloBoardName || '';

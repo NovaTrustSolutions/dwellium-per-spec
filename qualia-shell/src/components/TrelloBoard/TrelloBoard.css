@@ -8,6 +8,9 @@
    ================================================ */
 
 .trello-board {
+    /* Muted text derived from the theme's own text colour: --text-secondary (the theme's --muted) fails AA
+       on 11 of the 16 themes (plan 078 harness), so this widget never uses it directly. */
+    --trello-muted: color-mix(in srgb, var(--text-primary) 84%, var(--bg-surface));
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -30,7 +33,7 @@
     gap: var(--sp-3);
     height: 100%;
     padding: var(--sp-4);
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     text-align: center;
 }
 
@@ -43,7 +46,7 @@
 .trello-status {
     margin: 0;
     font-size: var(--fs-sm);
-    color: var(--text-secondary);
+    color: var(--trello-muted);
 }
 
 .trello-spinner {
@@ -98,7 +101,7 @@
     padding: var(--sp-1) var(--sp-3);
     background: var(--accent-subtle);
     border-bottom: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     font-size: var(--fs-xs);
 }
 
@@ -325,7 +328,7 @@
 }
 
 .trello-card--done .trello-card__title {
-    color: var(--text-secondary);
+    color: var(--trello-muted);
 }
 
 .trello-card__labels {
@@ -387,7 +390,7 @@
     padding: var(--sp-2);
     border: none;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     font-size: var(--fs-xs);
     font-family: var(--font-primary);
     cursor: pointer;
@@ -460,7 +463,7 @@
     justify-content: center;
     gap: var(--sp-3);
     height: 100%;
-    color: var(--text-secondary);
+    color: var(--trello-muted);
 }
 
 /* ── Detail Header ─────────────────────────────── */
@@ -492,7 +495,7 @@
     justify-content: center;
     border: 1px solid var(--border-subtle);
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 14px;
@@ -531,7 +534,7 @@
     gap: var(--sp-2);
     padding: 0 var(--sp-4) var(--sp-3);
     font-size: var(--fs-xs);
-    color: var(--text-secondary);
+    color: var(--trello-muted);
 }
 
 .trello-move select {
@@ -575,7 +578,7 @@
     margin: 0 0 var(--sp-2);
     font-size: 13px;
     font-weight: var(--fw-semibold);
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     letter-spacing: 0.3px;
 }
 
@@ -593,7 +596,7 @@
 
 .trello-detail__empty-text {
     font-size: var(--fs-sm);
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     font-style: italic;
     margin: 0;
 }
@@ -616,7 +619,7 @@
 
 .trello-detail__checklist-count {
     font-size: 11px;
-    color: var(--text-secondary);
+    color: var(--trello-muted);
 }
 
 .trello-detail__progress-track {
@@ -653,7 +656,7 @@
 }
 
 .trello-detail__check-items li.checked {
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     text-decoration: line-through;
 }
 
@@ -680,7 +683,7 @@
     background: var(--bg-surface-hover);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     text-decoration: none;
     font-size: var(--fs-sm);
     transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
@@ -727,7 +730,7 @@
 }
 
 .trello-detail__activity-text {
-    color: var(--text-secondary);
+    color: var(--trello-muted);
     line-height: 1.4;
     white-space: pre-wrap;
     overflow-wrap: anywhere;

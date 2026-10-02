@@ -86,7 +86,13 @@
 
 .short-links__notice { margin: 8px 0 0; font-size: 12px; color: var(--text-secondary); }
 
-.short-links__table { width: 100%; border-collapse: collapse; font-size: 12px; }
+/* Fixed layout: the short link keeps a readable share at the 520 px minimum width, the destination
+   ellipsises, and the QR / edit form get their own full-width row (.short-links__detail). */
+.short-links__table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.short-links__table th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.short-links__table th:first-child { width: 34%; }
+.short-links__table th:nth-last-child(2) { width: 58px; }
+.short-links__table th:last-child { width: 148px; }
 .short-links__table th {
     padding: 6px 8px;
     text-align: left;
@@ -103,17 +109,18 @@
     vertical-align: top;
 }
 
-.short-links__short { font-weight: 600; word-break: break-all; }
+.short-links__short { font-weight: 600; overflow-wrap: anywhere; }
 
 .short-links__dest {
-    max-width: 260px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--text-secondary);
 }
 
-.short-links__actions { display: flex; align-items: flex-start; gap: 4px; }
+.short-links__actions > * { margin: 0 4px 4px 0; vertical-align: top; }
+.short-links__detail { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.short-links__spark { max-width: 100%; }
 
 .short-links__qr {
     display: block;
@@ -153,16 +160,15 @@
 .short-links__clicks { white-space: nowrap; }
 .short-links__spark { display: block; margin-top: 2px; color: var(--accent); }
 
-.short-links__confirm { display: inline-flex; align-items: center; gap: 4px; }
+.short-links__confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 
 .short-links__table tr[data-archived] td { opacity: 0.55; }
 
 .short-links__edit {
-    flex-basis: 100%;
+    flex: 1 1 100%;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 6px;
     padding: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;

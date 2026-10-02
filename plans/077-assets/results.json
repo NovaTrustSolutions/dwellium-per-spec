@@ -1,0 +1,170 @@
+{
+  "ranAt": "2026-10-02T15:20:32.270Z",
+  "results": [
+    {
+      "name": "list renders both links",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "built-in hides: Domain select",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "built-in hides: Expires at",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "built-in hides: Filter by tag",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "built-in hides: New tag name",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "built-in hides: Open in Dub",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "built-in hides: Tags column",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "UTM builder still offered",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no tags/domains/analytics requests",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "StrictMode double mount settles on a rendered list",
+      "pass": true,
+      "detail": "list GETs: 2"
+    },
+    {
+      "name": "layout: short-link column keeps a readable width (>= 140 px)",
+      "pass": true,
+      "detail": "155px"
+    },
+    {
+      "name": "layout: all row action buttons sit inside the window",
+      "pass": true,
+      "detail": "Archive button right edge 468px of 504"
+    },
+    {
+      "name": "create body is exactly {url with utm, key}",
+      "pass": true,
+      "detail": "{\"url\":\"https://example.com/pay?utm_source=door\",\"key\":\"pay-rent\"}"
+    },
+    {
+      "name": "composer cleared after a successful create",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "built-in edit form offers the URL only",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "layout: the edit form and its Save button sit inside the window",
+      "pass": true,
+      "detail": "Save right edge 412px of 504"
+    },
+    {
+      "name": "layout: the edit form uses the full row width (>= 400 px)",
+      "pass": true,
+      "detail": "440px"
+    },
+    {
+      "name": "preset click keeps the composer draft",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "preset click keeps the open edit and its typed value",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "preset sends no tagNames in built-in mode",
+      "pass": true,
+      "detail": "{\"url\":\"http://127.0.0.1:60860/?pay=rent\",\"key\":\"woodland-parc-rent\"}"
+    },
+    {
+      "name": "edit PATCH body is exactly {url}",
+      "pass": true,
+      "detail": "{\"url\":\"https://example.com/welcome-v2\"}"
+    },
+    {
+      "name": "row shows the new destination",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "row QR is a client-side image that loads",
+      "pass": true,
+      "detail": "{\"data\":true,\"w\":148}"
+    },
+    {
+      "name": "layout: the QR image sits inside the window",
+      "pass": true,
+      "detail": "QR right edge 160px of 504"
+    },
+    {
+      "name": "layout: the archive confirmation sits inside the window",
+      "pass": true,
+      "detail": "right edges 465/375px of 504"
+    },
+    {
+      "name": "archive is PATCH {archived:true}",
+      "pass": true,
+      "detail": "{\"archived\":true}"
+    },
+    {
+      "name": "no DELETE request was ever sent",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bare 503 → \"Backend unavailable\" error card",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Retry recovers the list",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "door sheet offers no \"Mint short links\" in built-in mode",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "measure: horizontal overflow at 520px",
+      "pass": null,
+      "detail": "{\"scrollWidth\":520,\"clientWidth\":520}"
+    },
+    {
+      "name": "no unexpected console errors or page errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "info: outside requests aborted",
+      "pass": null,
+      "detail": "none"
+    }
+  ]
+}

@@ -14,7 +14,7 @@
  * printable per-unit QR door sheet (client-side, works with no shortener). A
  * 503 `needsSetup` (OLD backend only) renders a card pointing at the door sheet.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, ArchiveRestore, Copy, ExternalLink, Pencil, Printer, QrCode, RefreshCw, X } from 'lucide-react';
 import {
     archiveShortLink,
@@ -68,11 +68,13 @@ export function isoToLocalInput(iso: string): string {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** Fold utm_* params into the destination URL (built-in mode stores only the URL). */
+/** Append utm_* params to the destination (built-in mode stores only the URL). Appends as text so the URL the user typed is never re-serialised. */
 function withUtm(url: string, utm: Record<string, string>): string {
-    const u = new URL(url);
-    for (const [k, v] of Object.entries(utm)) u.searchParams.set(k, v);
-    return u.toString();
+    const qs = Object.entries(utm).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    if (!qs) return url;
+    const at = url.indexOf('#');
+    const [base, hash] = at < 0 ? [url, ''] : [url.slice(0, at), url.slice(at)];
+    return `${base}${base.includes('?') ? '&' : '?'}${qs}${hash}`;
 }
 
 function dubDashboardUrl(): string {
@@ -150,27 +152,28 @@ export default function ShortLinks() {
     const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draft, setDraft] = useState<EditDraft>({ url: '', key: '', expiresAt: '', tagNames: [] });
+    // The row as it was when the edit opened: a refresh behind an open form must not turn untouched fields into "changes".
+    const [editBase, setEditBase] = useState<ShortLink | null>(null);
     const [saving, setSaving] = useState(false);
     // Built-in mode stores only url + key; the Dub-only controls render when this is true.
     const dub = state.kind === 'ok' && state.data.mode === 'dub';
 
     // Latest-wins guard: an older refresh response must never overwrite a newer one.
     const refreshSeq = useRef(0);
-    const refresh = useCallback(async (archived = showArchived) => {
+    const refresh = useCallback(async () => {
         const seq = ++refreshSeq.current;
         // Keep an already-rendered list (and the composer / open edit form) mounted while re-fetching.
         setState(s => (s.kind === 'ok' ? s : { kind: 'loading' }));
         setConfirmArchiveId(null);
-        const r = await listShortLinks(archived);
+        const r = await listShortLinks(showArchived);
+        // Tags + domains are Dub-only and best-effort — the link list must render without them.
+        const [tagsR, domainsR] = r.kind === 'ok' && r.data.mode === 'dub' ? await Promise.all([listLinkTags(), listLinkDomains()]) : [null, null];
         if (seq !== refreshSeq.current) return;
         if (r.kind !== 'ok') {
             setState(r.kind === 'needs-setup' ? { kind: 'needs-setup' } : { kind: 'error', message: r.message });
             return;
         }
         const { links, mode } = r.data;
-        // Tags + domains are Dub-only and best-effort — the link list must render without them.
-        const [tagsR, domainsR] = mode === 'dub' ? await Promise.all([listLinkTags(), listLinkDomains()]) : [null, null];
-        if (seq !== refreshSeq.current) return;
         setEditingId(cur => (cur && links.some(l => l.id === cur) ? cur : null));
         setState({
             kind: 'ok',
@@ -184,7 +187,11 @@ export default function ShortLinks() {
         });
     }, [showArchived]);
 
-    useEffect(() => { void refresh(); }, [refresh]);
+    // Handlers ask for a reload by bumping this — never by calling `refresh` themselves: a create or
+    // save still in flight holds an OLDER render's refresh (stale "Show archived"), the effect never does.
+    const [reloadTick, setReloadTick] = useState(0);
+    const reload = (): void => setReloadTick(t => t + 1);
+    useEffect(() => { void refresh(); }, [refresh, reloadTick]);
 
     // Eager sparkline fetch for the first clicked links (one analytics call per row).
     useEffect(() => {
@@ -212,7 +219,7 @@ export default function ShortLinks() {
         setCreating(false);
         if (r.kind === 'ok') {
             setNotice(`Created ${r.data?.shortLink ?? label ?? 'link'}`);
-            void refresh();
+            reload();
             return true;
         }
         if (r.kind === 'needs-setup') setState({ kind: 'needs-setup' });
@@ -235,12 +242,7 @@ export default function ShortLinks() {
             };
         } else {
             // Built-in stores only url + key — carry the UTM params inside the destination itself.
-            try {
-                input = { url: Object.keys(utmSet).length ? withUtm(url.trim(), utmSet) : url.trim(), ...(key.trim() ? { key: key.trim() } : {}) };
-            } catch {
-                setNotice('A valid http(s) url is required');
-                return;
-            }
+            input = { url: withUtm(url.trim(), utmSet), ...(key.trim() ? { key: key.trim() } : {}) };
         }
         if (await create(input)) {
             setUrl(''); setKey(''); setExpiry('');
@@ -265,7 +267,7 @@ export default function ShortLinks() {
         if (r.kind === 'ok') {
             setNewTag('');
             setPickedTags(t => (t.includes(name) ? t : [...t, name]));
-            void refresh();
+            reload();
         } else {
             setNotice(r.kind === 'needs-setup' ? UNAVAILABLE : r.message);
         }
@@ -274,6 +276,7 @@ export default function ShortLinks() {
     const startEdit = (l: ShortLink) => {
         setConfirmArchiveId(null);
         setEditingId(l.id);
+        setEditBase(l);
         setDraft({
             url: l.url,
             key: l.key,
@@ -284,7 +287,7 @@ export default function ShortLinks() {
 
     const saveEdit = async (l: ShortLink) => {
         if (!URL_RE.test(draft.url.trim())) { setNotice('A valid http(s) url is required'); return; }
-        const patch = editPatch(draft, l);
+        const patch = editPatch(draft, editBase ?? l);
         if (Object.keys(patch).length === 0) { setEditingId(null); return; }
         setSaving(true);
         setNotice(null);
@@ -293,7 +296,7 @@ export default function ShortLinks() {
         if (r.kind === 'ok') {
             setNotice(`Updated ${r.data?.shortLink ?? l.shortLink}`);
             setEditingId(null);
-            void refresh();
+            reload();
         } else {
             setNotice(r.kind === 'needs-setup' ? UNAVAILABLE : r.message);
         }
@@ -304,7 +307,7 @@ export default function ShortLinks() {
         const r = await archiveShortLink(l.id, archived);
         if (r.kind === 'ok') {
             setNotice(`${archived ? 'Archived' : 'Unarchived'} ${l.shortLink}`);
-            void refresh();
+            reload();
         } else {
             setNotice(r.kind === 'needs-setup' ? UNAVAILABLE : r.message);
         }
@@ -347,7 +350,7 @@ export default function ShortLinks() {
                             Open in Dub <ExternalLink size={12} aria-hidden />
                         </a>
                     )}
-                    <button className="short-links__btn short-links__btn--ghost" onClick={() => void refresh()} aria-label="Refresh short links">
+                    <button className="short-links__btn short-links__btn--ghost" onClick={reload} aria-label="Refresh short links">
                         <RefreshCw size={14} aria-hidden />
                     </button>
                 </div>
@@ -375,7 +378,7 @@ export default function ShortLinks() {
                 <div className="short-links__empty" data-state="error">
                     <h3>Backend unavailable</h3>
                     <p>{state.message}</p>
-                    <button className="short-links__btn" onClick={() => void refresh()}>Retry</button>
+                    <button className="short-links__btn" onClick={reload}>Retry</button>
                 </div>
             )}
 
@@ -538,7 +541,8 @@ export default function ShortLinks() {
                                 </thead>
                                 <tbody>
                                     {visibleLinks.map(l => (
-                                        <tr key={l.id} data-archived={l.archived || undefined}>
+                                    <Fragment key={l.id}>
+                                        <tr data-archived={l.archived || undefined}>
                                             <td className="short-links__short">{l.shortLink}{l.archived ? ' (archived)' : ''}</td>
                                             <td className="short-links__dest" title={l.url}>{l.url}</td>
                                             {dub && (
@@ -600,62 +604,71 @@ export default function ShortLinks() {
                                                                 <Archive size={13} aria-hidden />
                                                             </button>
                                                         )}
-                                                {qrFor === l.id && (
-                                                    // Builtin-mode rows carry no hosted qrCode URL — render the same client-side QR the door sheet uses.
-                                                    <img className="short-links__qr" src={l.qrCode || qrDataUri(l.shortLink) || undefined} alt={`QR code for ${l.shortLink}`} width={120} height={120} />
-                                                )}
-                                                {editingId === l.id && (
-                                                    <div className="short-links__edit" aria-label={`Edit form for ${l.shortLink}`}>
-                                                        <input
-                                                            className="short-links__input"
-                                                            value={draft.url}
-                                                            onChange={e => setDraft(d => ({ ...d, url: e.target.value }))}
-                                                            aria-label="Edit destination URL"
-                                                        />
-                                                        {dub && (
-                                                            <>
-                                                                <input
-                                                                    className="short-links__input short-links__input--key"
-                                                                    value={draft.key}
-                                                                    onChange={e => setDraft(d => ({ ...d, key: e.target.value }))}
-                                                                    aria-label="Edit key"
-                                                                />
-                                                                <input
-                                                                    className="short-links__input short-links__input--key"
-                                                                    type="datetime-local"
-                                                                    value={draft.expiresAt}
-                                                                    onChange={e => setDraft(d => ({ ...d, expiresAt: e.target.value }))}
-                                                                    aria-label="Edit expiry"
-                                                                />
-                                                                <div className="short-links__tag-picker">
-                                                                    {state.data.tags.map(t => (
-                                                                        <label key={t.id} className="short-links__tag-option">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={draft.tagNames.includes(t.name)}
-                                                                                onChange={e => setDraft(d => ({
-                                                                                    ...d,
-                                                                                    tagNames: e.target.checked
-                                                                                        ? [...d.tagNames, t.name]
-                                                                                        : d.tagNames.filter(n => n !== t.name),
-                                                                                }))}
-                                                                            />
-                                                                            {t.name}
-                                                                        </label>
-                                                                    ))}
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                        <button className="short-links__btn" disabled={saving} onClick={() => void saveEdit(l)}>
-                                                            {saving ? 'Saving…' : 'Save'}
-                                                        </button>
-                                                        <button className="short-links__btn short-links__btn--ghost" onClick={() => setEditingId(null)}>
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                )}
                                             </td>
                                         </tr>
+                                        {(qrFor === l.id || editingId === l.id) && (
+                                            <tr>
+                                                <td colSpan={dub ? 5 : 4}>
+                                                    <div className="short-links__detail">
+                                                    {qrFor === l.id && (
+                                                        // Builtin-mode rows carry no hosted qrCode URL — render the same client-side QR the door sheet uses.
+                                                        <img className="short-links__qr" src={l.qrCode || qrDataUri(l.shortLink) || undefined} alt={`QR code for ${l.shortLink}`} width={120} height={120} />
+                                                    )}
+                                                    {editingId === l.id && (
+                                                        <div className="short-links__edit" aria-label={`Edit form for ${l.shortLink}`}>
+                                                            <input
+                                                                className="short-links__input"
+                                                                value={draft.url}
+                                                                onChange={e => setDraft(d => ({ ...d, url: e.target.value }))}
+                                                                aria-label="Edit destination URL"
+                                                            />
+                                                            {dub && (
+                                                                <>
+                                                                    <input
+                                                                        className="short-links__input short-links__input--key"
+                                                                        value={draft.key}
+                                                                        onChange={e => setDraft(d => ({ ...d, key: e.target.value }))}
+                                                                        aria-label="Edit key"
+                                                                    />
+                                                                    <input
+                                                                        className="short-links__input short-links__input--key"
+                                                                        type="datetime-local"
+                                                                        value={draft.expiresAt}
+                                                                        onChange={e => setDraft(d => ({ ...d, expiresAt: e.target.value }))}
+                                                                        aria-label="Edit expiry"
+                                                                    />
+                                                                    <div className="short-links__tag-picker">
+                                                                        {state.data.tags.map(t => (
+                                                                            <label key={t.id} className="short-links__tag-option">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={draft.tagNames.includes(t.name)}
+                                                                                    onChange={e => setDraft(d => ({
+                                                                                        ...d,
+                                                                                        tagNames: e.target.checked
+                                                                                            ? [...d.tagNames, t.name]
+                                                                                            : d.tagNames.filter(n => n !== t.name),
+                                                                                    }))}
+                                                                                />
+                                                                                {t.name}
+                                                                            </label>
+                                                                        ))}
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                            <button className="short-links__btn" disabled={saving} onClick={() => void saveEdit(l)}>
+                                                                {saving ? 'Saving…' : 'Save'}
+                                                            </button>
+                                                            <button className="short-links__btn short-links__btn--ghost" onClick={() => setEditingId(null)}>
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </Fragment>
                                     ))}
                                 </tbody>
                             </table>

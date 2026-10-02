@@ -104,6 +104,9 @@ async function requestJson<T>(path: string, init: RequestInit | undefined, pick:
             const message = typeof body?.error === 'string' ? body.error : `Backend answered ${res.status}`;
             return { kind: 'error', message };
         }
+        // A 200 that is not our JSON envelope (e.g. a host's SPA fallback serving index.html) is a broken
+        // backend, not an empty list — and must not be read as "Dub mode".
+        if (!body || typeof body !== 'object' || Array.isArray(body)) return { kind: 'error', message: 'Backend sent an unexpected response' };
         return { kind: 'ok', data: pick(body) };
     } catch {
         return { kind: 'error', message: 'Backend unreachable' };

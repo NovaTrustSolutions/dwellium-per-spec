@@ -1,6 +1,7 @@
 # 077 — Links & QR widget: audit + improvement plan
 
-Status: PLAN ONLY 2026-10-01. Audit was read-only; nothing is implemented, committed or pushed.
+Status: PHASE 1 IMPLEMENTED 2026-10-02, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
+backend `feat/077-links-backend-p1` (see §7). Phases 2–4 are still plan only. The audit (2026-10-01) was read-only.
 Base: frontend `main` @ `fe281de`; backend `main` (links code identical on the checked-out
 `chore/token-encryption-key-secret` branch — `git diff main` touches only `deploy/cloud-run.sh`).
 Swarm: ruflo `swarm-1790844744784-onqku3` (hierarchical). ruflo only *registered* the agents
@@ -129,6 +130,9 @@ Check: extend `shortLinksWidget.test.tsx` with a built-in-shaped fixture (`mode:
 `qrCode:''`) and an expiry round-trip test under a non-UTC `TZ`; add a jest case for a
 non-string title and for DELETE-archives.
 
+Phase 1 status: done, see §7. Pulled forward from 3.5 because the live render showed it: the
+table layout at the 520 px minimum width (short link unreadable, QR and edit form off-screen).
+
 ### Phase 2 — make the door sheet do its job
 
 | Step | Change | Fixes |
@@ -136,7 +140,7 @@ non-string title and for DELETE-archives.
 | 2.1 | Destinations per Q1: remove the hardcoded `?request=…` URLs and the default door pattern. Add per-property destination fields (portal, maintenance, pay, notice) stored with the existing widget memory, empty by default. A preset button or door-sheet Generate is disabled with "Set a destination for this property first" until its field holds a valid URL. Ilya enters the external URLs later; no code change needed then. | D1, D15 |
 | 2.2 | Built-in `POST /api/links/bulk`: loop the existing create in one transaction; same slug + same URL returns the existing row (idempotent re-mint); chunk at 100 on the client. | D4, D14 |
 | 2.3 | Door sheet: Generate mints first, then each cell's QR encodes the **short link**; print the short URL as text under each code; snapshot the pattern at Generate. | D2, D14 |
-| 2.4 | Short-link domain per Q2: one `/l/*` line in `write-netlify-redirects.mjs`; `PUBLIC_BASE_URL` = app origin; backend refuses to mint when `PUBLIC_BASE_URL` is empty. | D5 |
+| 2.4 | Short-link domain per Q2: one `/l/*` line in `write-netlify-redirects.mjs`; `PUBLIC_BASE_URL` = app origin; backend refuses to mint when `PUBLIC_BASE_URL` is empty. Once two hosts serve `/l/*` (app domain + `run.app`), the self-link check must know both — it compares against `PUBLIC_BASE_URL` only (review B-2). | D5 |
 | 2.5 | One encoder: use `Scribe/idocs/blocks/qr.ts` everywhere, delete `Scheduling/qr.ts`, add a `qrDataUri` wrapper beside `qrSvg`. | D13 |
 | 2.6 | Row actions: "Download SVG" (an `<a download>` on the data URI). Skip PNG. | export gap |
 | 2.7 | Print CSS: `@page` margins and a real print-preview check on a 30-unit roster; scan a printed sheet with two phones. | unverified print |
@@ -153,6 +157,8 @@ a `302` with the right `Location`, not a `200 text/html`.
 | 3.3 | Rate-limit `/l/:slug` with the existing limiter middleware. | D8 |
 | 3.4 | Client-side search box over the loaded list. | search gap |
 | 3.5 | Accessibility pass: `role="status"` on the notice, focus kept on Archive→Confirm, `:focus-visible`, 12 px minimum text, wrap the action cell. | D17 |
+
+| 3.6 | Carried over from the Phase 1 review: slugs are case-sensitive while the `/l/` route is not (`/l/PAY` 404s when the slug is `pay`) — look slugs up case-insensitively and refuse case-only duplicates; a failed background refresh replaces the list with the error card (nothing is lost, Retry restores it) — keep the list and show a notice instead; re-clicking a preset whose link is archived answers "key is taken" with no visible row — say it is archived and offer to unarchive (2.2's idempotent mint covers the door sheet). | review B-4, F-6, F-7 |
 
 ### Phase 4 — integrations plan 047 promised (only if still wanted)
 
@@ -193,3 +199,41 @@ export function qrDataUri(text: string, opts?: { ecc?: 'L' | 'M' }): string | nu
 ```
 
 Orchestrator reads every wave's diff and commits between waves; nothing is pushed.
+
+## 7. Phase 1 — what was done (2026-10-02)
+
+Swarm: ruflo `swarm-1790952808617-qhjacy` registered `links077-backend-coder`,
+`links077-frontend-coder` and `links077-adversarial-reviewer`; the work ran as Claude Code
+subagents — two coders in parallel on disjoint files (one per repo), then one refute-first reviewer
+over both commits. The orchestrator read every diff, added fixes of its own, mutation-checked the
+bug-pinning tests and ran the gates.
+
+| Step | Done | Where |
+|---|---|---|
+| 1.1 | Widget reads `mode`; built-in hides domain, tags, tag filter, expiry, key edit, Tags column, Open in Dub and Mint; no tags/domains/sparkline requests; UTM appended to the destination as text; presets send no tags | ShortLinks.tsx, shortLinksApi.ts |
+| 1.2 | 503 is needs-setup only with `needsSetup:true`; a 200 that is not a JSON envelope is an error | shortLinksApi.ts |
+| 1.3 | Expiry shown in local time; PATCH carries only fields changed since the edit opened | ShortLinks.tsx (`isoToLocalInput`, `editPatch`, `editBase`) |
+| 1.4 | Refresh keeps list, composer and open edit; latest-wins guard; handlers `reload()` instead of calling a stale `refresh`; presets do not wipe the composer | ShortLinks.tsx |
+| 1.5 | Deferred to 3.1 (see table above) | — |
+| 1.6 | One destination validator for create + PATCH, stores the parsed URL; non-string inputs ignored; 500 instead of a hung request; single-statement PATCH | linkRoutes.ts |
+| 1.7 | Built-in DELETE archives; slug stays reserved | linkRoutes.ts |
+| 1.8 | Stale copy removed (widget, registry, API client, tools/dub/README.md) | — |
+| extra | Table layout at 520 px: fixed columns, QR + edit form in their own full-width row | ShortLinks.css, ShortLinks.tsx |
+
+Review: 0 high, 3 medium, several low — all reproduced by the reviewer with probes. Fixed in this
+phase: B-1 (validator stored the raw string), B-2 (self-link by origin; the two-host case is in 2.4),
+B-3 (non-atomic PATCH), F-1 (untouched edit reverted another writer's change), F-2 (stale
+"Show archived" after a create), F-3 (HTML 200 read as Dub mode), F-5 (UTM re-serialised the query),
+plus the test gaps it found (second guard untested → one guard; a UTC-only pass; unwrapped GET).
+Deferred with a home: B-4, F-6, F-7 → 3.6.
+
+Evidence: `plans/077-assets/probe.cjs` renders the real widget standalone (StrictMode, no shell, no
+login) against an in-memory fake of the built-in backend on `http://harness.invalid` — it cannot
+reach a real server. `results.json` and the PNGs beside it are generated by that script;
+`before-520-edit.png` is the same harness pointed at `main`.
+
+Not done / not verified in Phase 1: nothing is pushed or deployed; the widget has not been seen
+inside the logged-in shell or against the real backend (creating links there would write real
+data); Dub mode was exercised by unit tests only; presets still point at the app's own origin
+(D1 — Phase 2.1).
+

@@ -501,7 +501,7 @@ describe('ShortLinks widget — built-in mode (default backend)', () => {
         await waitFor(() => expect(calls.some(c => c.method === 'POST')).toBe(true));
         const body = calls.find(c => c.method === 'POST')!.body!;
         expect(body).toEqual({
-            url: 'https://example.com/notice?ref=door&utm_source=door-qr&utm_campaign=spring+sale',
+            url: 'https://example.com/notice?ref=door&utm_source=door-qr&utm_campaign=spring%20sale',
             key: 'notice1',
         });
         for (const k of ['utm_source', 'tagNames', 'expiresAt', 'domain']) expect(body).not.toHaveProperty(k);
@@ -595,10 +595,13 @@ describe('ShortLinks widget — Dub-mode edit sends only what changed', () => {
     });
 
     it('saving with nothing changed sends no request and closes the editor', async () => {
-        const calls = await openEdit();
-        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-        await waitFor(() => expect(screen.queryByLabelText('Edit destination URL')).not.toBeInTheDocument());
-        expect(patches(calls)).toHaveLength(0);
+        // Forced non-UTC zone: under UTC a UTC-digits baseline would pass this by accident.
+        await withTz('America/New_York', async () => {
+            const calls = await openEdit();
+            fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+            await waitFor(() => expect(screen.queryByLabelText('Edit destination URL')).not.toBeInTheDocument());
+            expect(patches(calls)).toHaveLength(0);
+        });
     });
 });
 
@@ -710,5 +713,85 @@ describe('ShortLinks widget — refresh never throws away work in progress', () 
         await new Promise(r => setTimeout(r, 30));
         expect(screen.getByText(LINK_2.shortLink)).toBeInTheDocument();
         expect(screen.queryByText(LINK.shortLink)).not.toBeInTheDocument();
+    });
+});
+
+describe('ShortLinks widget — adversarial-review regressions (plan 077 p1)', () => {
+    const openBuiltin = async () => {
+        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        return calls;
+    };
+
+    it('an untouched edit saved after a refresh changed the row sends nothing (no silent revert of someone else\'s change)', async () => {
+        let rows: JsonObject[] = [BUILTIN_LINK];
+        const calls: Recorded[] = [];
+        vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+            calls.push({ url: String(url), method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : undefined });
+            return jsonResponse({ success: true, mode: 'builtin', data: rows });
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+
+        rows = [{ ...BUILTIN_LINK, url: 'https://example.com/changed-by-someone-else' }];
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh short links' }));
+        await waitFor(() => expect(screen.getByText('https://example.com/changed-by-someone-else')).toBeInTheDocument());
+
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(screen.queryByLabelText('Edit destination URL')).not.toBeInTheDocument());
+        expect(calls.filter(c => c.method === 'PATCH')).toHaveLength(0);
+    });
+
+    it('"Show archived" stays in charge when a create resolves after it was ticked', async () => {
+        let releasePost: ((r: Response) => void) | null = null;
+        const gets: string[] = [];
+        vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+            if ((init?.method ?? 'GET') === 'POST') return new Promise<Response>(res => { releasePost = res; });
+            gets.push(String(url));
+            return jsonResponse({ success: true, mode: 'builtin', data: [BUILTIN_LINK] });
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/new' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(releasePost).not.toBeNull());
+
+        fireEvent.click(screen.getByLabelText('Show archived'));
+        await waitFor(() => expect(gets[gets.length - 1]).toContain('showArchived=true'));
+        const before = gets.length;
+        releasePost!(jsonResponse({ success: true, mode: 'builtin', data: { ...BUILTIN_LINK, id: 'n1', key: 'n1' } }));
+        await waitFor(() => expect(gets.length).toBe(before + 1)); // the refresh fired by the create
+        expect(gets[gets.length - 1]).toContain('showArchived=true');
+    });
+
+    it('a 200 that is not a JSON envelope (a host serving index.html) is an error — never an empty "Dub" workspace', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('<!doctype html><html></html>', { status: 200, headers: { 'Content-Type': 'text/html' } })));
+        expect(await listShortLinks()).toEqual({ kind: 'error', message: 'Backend sent an unexpected response' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText('Backend unavailable')).toBeInTheDocument());
+        expect(screen.queryByLabelText('Expires at')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Open in Dub/i })).not.toBeInTheDocument();
+    });
+
+    it('UTM is appended as text: the typed query and fragment survive byte-for-byte', async () => {
+        const calls = await openBuiltin();
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/p?q=a%20b&flag&t=~#frag' } });
+        fireEvent.change(screen.getByLabelText('utm_source'), { target: { value: 'door' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(calls.some(c => c.method === 'POST')).toBe(true));
+        expect(calls.find(c => c.method === 'POST')!.body).toEqual({ url: 'https://example.com/p?q=a%20b&flag&t=~&utm_source=door#frag' });
+    });
+
+    it('QR and the edit form get their own full-width row under the link, outside the actions cell', async () => {
+        await openBuiltin();
+        fireEvent.click(screen.getByRole('button', { name: `Show QR for ${BUILTIN_LINK.shortLink}` }));
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+        const cell = screen.getByAltText(`QR code for ${BUILTIN_LINK.shortLink}`).closest('td')!;
+        expect(cell.colSpan).toBe(4);
+        expect(cell.contains(screen.getByLabelText('Edit destination URL'))).toBe(true);
+        expect(cell.className).not.toContain('short-links__actions');
+        expect(cell.closest('tr')!.previousElementSibling!.textContent).toContain(BUILTIN_LINK.shortLink);
     });
 });

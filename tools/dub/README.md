@@ -1,5 +1,9 @@
 # Dub — branded short links + QR for Dwellium "Links & QR" (plan 047/053)
 
+> **Dub is optional and currently unused (Ilya, 2026-10-02: no paid tier).** With no `DUB_API_KEY` the
+> backend runs the built-in SQLite shortener and the widget works with no setup — see
+> `plans/077-links-qr-widget.md`. Everything below applies only if Dub is ever switched on.
+
 Dwellium talks to the **hosted Dub API** (`https://api.dub.co`, Bearer token) through
 the backend proxy at `/api/links` (`src/routes/linkRoutes.ts` in the backend repo).
 The browser never sees the key. Dub is AGPL-3.0 but self-hosting is explicitly not
@@ -37,7 +41,7 @@ Backend (Cloud Run — `deploy/cloud-run.sh` upserts the secret):
 
 | Var | Required | What |
 |---|---|---|
-| `DUB_API_KEY` | yes | Workspace API key (secret `dwellium-dub-api-key`). Unset → every `/api/links` route answers 503 `needsSetup:true`. |
+| `DUB_API_KEY` | yes | Workspace API key (secret `dwellium-dub-api-key`). Unset → the backend serves the built-in Dwellium shortener instead (the default; no 503). |
 | `DUB_WORKSPACE` | optional | Workspace id (`ws_…`); appended as `workspaceId=` on every call. |
 | `DUB_DOMAIN` | optional | Default short-link domain (e.g. `go.dwellium.com`) applied to creates when the widget doesn't pick one. |
 | `DUB_API_BASE` | optional | Override `https://api.dub.co` (tests use it). |
@@ -46,7 +50,6 @@ Frontend (Netlify):
 
 | Var | Required | What |
 |---|---|---|
-| `VITE_DUB_URL` | optional | Flips the Tools-hub pill to Ready (status only). Set to `https://app.dub.co`. |
 | `VITE_DUB_WORKSPACE` | optional | Workspace slug — the widget's "Open in Dub ↗" deep-links to `https://app.dub.co/<slug>`. |
 
 ## What the widget covers (plan 053)

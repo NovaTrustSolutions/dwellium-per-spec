@@ -1,814 +1,583 @@
-import { getAuthToken } from '../../context/UserContext';
-import { Clock, ClipboardList, FileText, ListChecks, MessageSquare, Paperclip, RefreshCw, Square, SquareCheck, TriangleAlert, X } from 'lucide-react';
-import { useState, useEffect, useCallback, useRef } from 'react';
-import './TrelloBoard.css';
-import { API_BASE } from '../../config';
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react';
+import { ClipboardList, Clock, FileText, ListChecks, MessageSquare, Paperclip, RefreshCw, Square, SquareCheck, TriangleAlert, X } from 'lucide-react';
+import { UserContext } from '../../context/UserContext';
 import {
-    BlastGateError,
-    enforceBlastGate,
-    isBlastGateEnabled,
-    type BlastFields,
-    type CardDraft,
-    type ValidationIssue,
-} from '../../services/blastGate';
-import { isCardSuggestEnabled, suggestCard } from '../../services/cardSuggest';
+    TrelloApiError, describeTrelloError, trelloApi,
+    type Activity, type CardDetail, type Checklist, type TrelloBoard as BoardInfo, type TrelloCard, type TrelloList,
+} from './trelloApi';
+import { TRELLO_A11Y } from './a11yContract';
+import { labelDisplayName, labelStyle } from './trelloLabelColors';
+import './TrelloBoard.css';
 
-const API = `${API_BASE}/api/trello`;
+interface BoardData { boardId: string; lists: TrelloList[]; cards: TrelloCard[]; truncated: boolean }
+interface DetailData { card: CardDetail; activity: Activity[] }
 
-/** Authenticated fetch — attaches the JWT from localStorage */
-function authFetch(url: string, init?: RequestInit): Promise<Response> {
-    const token = getAuthToken();
-    const headers: Record<string, string> = { ...(init?.headers as Record<string, string> || {}) };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (init?.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
-    return fetch(url, { ...init, headers });
+const NO_LISTS: TrelloList[] = [];
+const NO_CARDS: TrelloCard[] = [];
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const SR_ONLY: CSSProperties = { position: 'absolute', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 };
+const BADGES_STYLE: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: 'var(--text-secondary)' };
+
+const formatDate = (iso: string): string => new Date(iso).toLocaleDateString();
+const isOverdue = (c: TrelloCard): boolean => !!c.due && !c.dueComplete && Date.parse(c.due) < Date.now();
+
+/** Wrap Tab / Shift+Tab inside the dialog (same pattern as TrelloCardModal). */
+function trapTab(e: KeyboardEvent, root: HTMLElement): void {
+    const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+    if (items.length === 0) { e.preventDefault(); root.focus(); return; }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    const outside = !root.contains(active) || active === root;
+    if (e.shiftKey && (active === first || outside)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (active === last || outside)) { e.preventDefault(); first.focus(); }
 }
 
-// ── Types ──────────────────────────────────────────
-
-interface TrelloBoard {
-    id: string;
-    name: string;
-    url: string;
+function activityText(a: Activity): string | undefined {
+    if (a.type === 'commentCard') return a.data?.text;
+    if (a.type === 'updateCard' && a.data?.listAfter) return `moved to ${a.data.listAfter.name}`;
+    return a.type.replace(/([A-Z])/g, ' $1').toLowerCase();
 }
 
-interface TrelloList {
-    id: string;
-    name: string;
-    idBoard: string;
+// ── Data hooks ─────────────────────────────────────
+
+/**
+ * Latest-request-wins guard. `begin()` aborts the previous request and returns a handle whose
+ * `current()` is false once superseded or cancelled. The sequence check (not the abort) is what
+ * drops stale responses, so it also holds when fetch ignores the signal.
+ */
+function useLatest() {
+    const seq = useRef(0);
+    const ctl = useRef<AbortController | null>(null);
+    const begin = useCallback(() => {
+        ctl.current?.abort();
+        const c = new AbortController();
+        ctl.current = c;
+        const id = ++seq.current;
+        return { signal: c.signal, current: () => id === seq.current };
+    }, []);
+    const cancel = useCallback(() => { seq.current++; ctl.current?.abort(); ctl.current = null; }, []);
+    return { begin, cancel };
 }
 
-interface TrelloLabel {
-    id: string;
-    name: string;
-    color: string;
-}
+function useBoardData() {
+    const [boards, setBoards] = useState<BoardInfo[]>([]);
+    const [boardsLoading, setBoardsLoading] = useState(true);
+    const [boardsError, setBoardsError] = useState<unknown>(null);
+    const [selected, setSelected] = useState('');
+    const [data, setData] = useState<BoardData | null>(null);
+    const [boardLoading, setBoardLoading] = useState(false);
+    const [boardError, setBoardError] = useState<unknown>(null);
+    const { begin: beginBoards, cancel: cancelBoards } = useLatest();
+    const { begin: beginBoard, cancel: cancelBoard } = useLatest();
 
-interface TrelloCard {
-    id: string;
-    name: string;
-    desc: string;
-    url: string;
-    idList: string;
-    labels?: TrelloLabel[];
-    due?: string | null;
-    pos: number;
-}
-
-interface CheckItem {
-    id: string;
-    name: string;
-    state: 'complete' | 'incomplete';
-}
-
-interface Checklist {
-    id: string;
-    name: string;
-    checkItems: CheckItem[];
-}
-
-interface Attachment {
-    id: string;
-    name: string;
-    url: string;
-    date: string;
-}
-
-interface CardDetail {
-    id: string;
-    name: string;
-    desc: string;
-    url: string;
-    idList: string;
-    labels?: TrelloLabel[];
-    due?: string | null;
-    dateLastActivity?: string;
-    checklists?: Checklist[];
-    attachments?: Attachment[];
-    members?: { id: string; fullName: string; avatarUrl?: string }[];
-}
-
-interface Activity {
-    id: string;
-    type: string;
-    date: string;
-    memberCreator?: { fullName: string };
-    data?: {
-        text?: string;
-        card?: { name: string };
-        listBefore?: { name: string };
-        listAfter?: { name: string };
-    };
-}
-
-const BLAST_FIELDS: { key: keyof BlastFields; label: string; placeholder: string }[] = [
-    { key: 'benefit', label: 'Benefit', placeholder: 'Why this card matters' },
-    { key: 'labor', label: 'Labor', placeholder: 'Role or team doing the work' },
-    { key: 'assignee', label: 'Assignee', placeholder: 'Accountable owner' },
-    { key: 'scope', label: 'Scope', placeholder: 'What is in and out' },
-    { key: 'time', label: 'Time', placeholder: 'Due date or commitment' },
-];
-
-function buildTrelloDescription(draft: CardDraft): string {
-    const description = typeof draft.description === 'string' ? draft.description.trim() : '';
-    const blast = draft.blast ?? {};
-    const blastLines = BLAST_FIELDS
-        .map(({ key, label }) => {
-            const value = blast[key]?.trim();
-            return value ? `${label}: ${value}` : null;
-        })
-        .filter((line): line is string => Boolean(line));
-
-    if (blastLines.length === 0) return description;
-    return [description, `B.L.A.S.T.\n${blastLines.join('\n')}`].filter(Boolean).join('\n\n');
-}
-
-function issuesFor(issues: ValidationIssue[], field: keyof BlastFields | 'title'): string[] {
-    return issues.filter(issue => issue.field === field).map(issue => issue.message);
-}
-
-function emptyBlast(): Partial<BlastFields> {
-    return { benefit: '', labor: '', assignee: '', scope: '', time: '' };
-}
-
-// Surface a clear "not configured" message when the backend signals a
-// missing/invalid Trello credential. Without this, users see Trello's
-// raw "invalid token" string and assume their account is broken, when
-// in fact the backend just hasn't been wired with TRELLO_API_KEY +
-// TRELLO_TOKEN. Pattern-match is intentionally loose.
-function humanizeTrelloError(msg: string | undefined | null): string {
-    const raw = (msg || '').toLowerCase();
-    if (!raw) return 'Failed to load Trello boards.';
-    if (raw.includes('invalid token') || raw.includes('invalid key') ||
-        raw.includes('unauthorized') || raw.includes('missing trello')) {
-        return 'Trello not configured — set TRELLO_API_KEY and TRELLO_TOKEN on the backend to enable this widget.';
-    }
-    return msg || 'Failed to load Trello boards.';
-}
-
-// ── Color map for Trello label colors ──────────────
-
-const LABEL_COLORS: Record<string, string> = {
-    green: '#61bd4f',
-    yellow: '#f2d600',
-    orange: '#ff9f1a',
-    red: '#eb5a46',
-    purple: '#c377e0',
-    blue: '#0079bf',
-    sky: '#00c2e0',
-    lime: '#51e898',
-    pink: '#ff78cb',
-    black: '#344563',
-};
-
-// ── Component ──────────────────────────────────────
-
-export default function TrelloBoard() {
-    const [boards, setBoards] = useState<TrelloBoard[]>([]);
-    const [selectedBoard, setSelectedBoard] = useState<string>('');
-    const [lists, setLists] = useState<TrelloList[]>([]);
-    const [cards, setCards] = useState<TrelloCard[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    // Drag state
-    const [dragCardId, setDragCardId] = useState<string | null>(null);
-    const [dragOverListId, setDragOverListId] = useState<string | null>(null);
-    const didDrag = useRef(false);
-    const dragCounter = useRef<Record<string, number>>({});
-
-    // Add-card state
-    const [addingToList, setAddingToList] = useState<string | null>(null);
-    const [newCardName, setNewCardName] = useState('');
-    const [newCardDesc, setNewCardDesc] = useState('');
-    const [newCardBlast, setNewCardBlast] = useState<Partial<BlastFields>>(emptyBlast);
-    const [suggesting, setSuggesting] = useState(false);
-    const [suggestError, setSuggestError] = useState<string | null>(null);
-    const [suggestedDraft, setSuggestedDraft] = useState(false);
-    const [blastIssues, setBlastIssues] = useState<ValidationIssue[]>([]);
-    const addInputRef = useRef<HTMLInputElement>(null);
-
-    // Detail panel state
-    const [activeCard, setActiveCard] = useState<CardDetail | null>(null);
-    const [activity, setActivity] = useState<Activity[]>([]);
-    const [detailLoading, setDetailLoading] = useState(false);
-
-    // ── Fetch boards ───────────────────────────────
-
-    useEffect(() => {
-        setLoading(true);
-        setError(null);
-        authFetch(`${API}/boards`)
-            .then(r => r.json())
-            .then(res => {
-                if (res.success && res.data) {
-                    setBoards(res.data);
-                    if (res.data.length > 0 && !selectedBoard) {
-                        setSelectedBoard(res.data[0].id);
-                    }
-                } else {
-                    setError(humanizeTrelloError(res.error || 'Failed to load boards'));
-                }
-            })
-            .catch(err => setError(humanizeTrelloError(err?.message)))
-            .finally(() => setLoading(false));
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // ── Fetch lists + cards when board changes ─────
-
-    useEffect(() => {
-        if (!selectedBoard) return;
-        setLoading(true);
-        setError(null);
-
-        Promise.all([
-            authFetch(`${API}/boards/${selectedBoard}/lists`).then(r => r.json()),
-        ])
-            .then(async ([listsRes]) => {
-                if (!listsRes.success) throw new Error(listsRes.error || 'Failed to load lists');
-                const fetchedLists: TrelloList[] = listsRes.data;
-                setLists(fetchedLists);
-
-                const cardResults = await Promise.all(
-                    fetchedLists.map(l =>
-                        authFetch(`${API}/lists/${l.id}/cards`)
-                            .then(r => r.json())
-                            .then(res => (res.success ? res.data : []))
-                    )
-                );
-                setCards(cardResults.flat());
-            })
-            .catch(err => setError(err.message))
-            .finally(() => setLoading(false));
-    }, [selectedBoard]);
-
-    // ── Card Click → Detail Panel ──────────────────
-
-    const openCardDetail = useCallback(async (cardId: string) => {
-        setDetailLoading(true);
-        setActiveCard(null);
-        setActivity([]);
-
+    const loadBoards = useCallback(async () => {
+        const req = beginBoards();
+        setBoardsLoading(true);
         try {
-            const [cardRes, actRes] = await Promise.all([
-                authFetch(`${API}/cards/${cardId}`).then(r => r.json()),
-                authFetch(`${API}/cards/${cardId}/activity`).then(r => r.json()),
+            const list = await trelloApi.boards(req.signal);
+            if (!req.current()) return;
+            setBoards(list);
+            setBoardsError(null);
+            setSelected(prev => (list.some(b => b.id === prev) ? prev : (list[0]?.id ?? '')));
+        } catch (e) {
+            if (req.current()) setBoardsError(e);
+        } finally {
+            if (req.current()) setBoardsLoading(false);
+        }
+    }, [beginBoards]);
+
+    // `silent` keeps an existing board error on screen until the refetch succeeds (focus refetch).
+    const loadBoard = useCallback(async (id: string, silent: boolean) => {
+        if (!id) return;
+        const req = beginBoard();
+        setBoardLoading(true);
+        if (!silent) setBoardError(null);
+        try {
+            const full = await trelloApi.boardFull(id, req.signal);
+            if (!req.current()) return;
+            setData({ boardId: id, lists: full.lists, cards: full.cards, truncated: full.truncated });
+            setBoardError(null);
+        } catch (e) {
+            if (req.current()) setBoardError(e);
+        } finally {
+            if (req.current()) setBoardLoading(false);
+        }
+    }, [beginBoard]);
+
+    const updateCards = useCallback((boardId: string, fn: (cards: TrelloCard[]) => TrelloCard[]) => {
+        setData(d => (d && d.boardId === boardId ? { ...d, cards: fn(d.cards) } : d));
+    }, []);
+
+    useEffect(() => { void loadBoards(); return cancelBoards; }, [loadBoards, cancelBoards]);
+    useEffect(() => { void loadBoard(selected, false); return cancelBoard; }, [selected, loadBoard, cancelBoard]);
+    useEffect(() => {
+        if (!selected) return;
+        const onFocus = () => { void loadBoard(selected, true); };
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, [selected, loadBoard]);
+
+    const refresh = useCallback(() => { void loadBoards(); void loadBoard(selected, true); }, [loadBoards, loadBoard, selected]);
+    const retryBoard = useCallback(() => { void loadBoard(selected, false); }, [loadBoard, selected]);
+    // Data from the board that was selected before a switch stays in state but is never shown.
+    const visible = data && data.boardId === selected ? data : null;
+
+    return { boards, boardsLoading, boardsError, selected, setSelected, visible, boardLoading, boardError, updateCards, loadBoards, refresh, retryBoard };
+}
+
+function useCardDetail() {
+    const [openId, setOpenId] = useState<string | null>(null);
+    const [detail, setDetail] = useState<DetailData | null>(null);
+    const [error, setError] = useState<unknown>(null);
+    const { begin, cancel } = useLatest();
+
+    const open = useCallback(async (cardId: string) => {
+        const req = begin();
+        setOpenId(cardId);
+        setDetail(null);
+        setError(null);
+        try {
+            const [card, activity] = await Promise.all([
+                trelloApi.card(cardId, req.signal),
+                trelloApi.activity(cardId, req.signal).catch((): Activity[] => []), // activity is optional
             ]);
-
-            if (cardRes.success) setActiveCard(cardRes.data);
-            if (actRes.success) setActivity(actRes.data || []);
-        } catch {
-            // fail silently — card summary is still shown
-        } finally {
-            setDetailLoading(false);
+            if (req.current()) setDetail({ card, activity });
+        } catch (e) {
+            if (req.current()) setError(e);
         }
-    }, []);
+    }, [begin]);
 
-    const closeDetail = useCallback(() => {
-        setActiveCard(null);
-        setActivity([]);
-    }, []);
+    // Closing cancels the request and bumps the sequence, so a late response cannot reopen the dialog.
+    const close = useCallback(() => { cancel(); setOpenId(null); setDetail(null); setError(null); }, [cancel]);
+    useEffect(() => cancel, [cancel]);
 
-    // ── Drag & Drop ────────────────────────────────
+    return { openId, detail, error, open, close };
+}
 
-    const onDragStart = useCallback((cardId: string) => {
-        didDrag.current = false;
-        setDragCardId(cardId);
-        dragCounter.current = {};
-    }, []);
+// ── Presentational pieces ──────────────────────────
 
-    const onDragOver = useCallback((e: React.DragEvent, listId: string) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        didDrag.current = true;
-    }, []);
+function Failure({ error, isAdmin, onRetry }: { error: unknown; isAdmin: boolean; onRetry: () => void }) {
+    const message = describeTrelloError(error, { isAdmin });
+    const code = error instanceof TrelloApiError ? error.code : null;
+    if (code === 'FORBIDDEN') return <div className="trello-noaccess"><p>{message}</p></div>;
+    if (code === 'NOT_CONFIGURED') return <div className="trello-empty-state"><p>{message}</p></div>;
+    return (
+        <div className="trello-board--error">
+            <span className="trello-error-icon"><TriangleAlert size={20} aria-hidden /></span>
+            <p role="alert">{message}</p>
+            <button type="button" className="trello-btn" onClick={onRetry}>{TRELLO_A11Y.retry}</button>
+        </div>
+    );
+}
 
-    const onDragEnter = useCallback((e: React.DragEvent, listId: string) => {
-        e.preventDefault();
-        dragCounter.current[listId] = (dragCounter.current[listId] || 0) + 1;
-        if (dragOverListId !== listId) {
-            setDragOverListId(listId);
-        }
-    }, [dragOverListId]);
+function CardBadges({ badges }: { badges: TrelloCard['badges'] }) {
+    if (!badges) return null;
+    const { comments, attachments, checkItems, checkItemsChecked } = badges;
+    if (!comments && !attachments && !checkItems) return null;
+    return (
+        <span style={BADGES_STYLE} aria-hidden="true">
+            {!!comments && <span><MessageSquare size={12} /> {comments}</span>}
+            {!!attachments && <span><Paperclip size={12} /> {attachments}</span>}
+            {!!checkItems && <span><SquareCheck size={12} /> {checkItemsChecked ?? 0}/{checkItems}</span>}
+        </span>
+    );
+}
 
-    const onDragLeave = useCallback((e: React.DragEvent, listId: string) => {
-        dragCounter.current[listId] = Math.max(0, (dragCounter.current[listId] || 0) - 1);
-        if (dragCounter.current[listId] === 0) {
-            setDragOverListId(prev => prev === listId ? null : prev);
-        }
-    }, []);
+interface CardButtonProps {
+    card: TrelloCard;
+    dragging: boolean;
+    onOpen: (id: string) => void;
+    onDragStart: (e: DragEvent<HTMLButtonElement>, id: string) => void;
+    onDragEnd: () => void;
+}
 
-    const onDragEnd = useCallback(() => {
-        setDragCardId(null);
-        setDragOverListId(null);
-        dragCounter.current = {};
-    }, []);
+// The button is both the click target and the drag source; browsers fire no click after a drag.
+function CardButton({ card, dragging, onOpen, onDragStart, onDragEnd }: CardButtonProps) {
+    const state = card.dueComplete ? ' trello-card--done' : isOverdue(card) ? ' trello-card--overdue' : '';
+    return (
+        <button
+            type="button"
+            data-card-id={card.id}
+            className={`${TRELLO_A11Y.cardClass}${state}${dragging ? ' trello-card--dragging' : ''}`}
+            draggable
+            onDragStart={e => onDragStart(e, card.id)}
+            onDragEnd={onDragEnd}
+            onClick={() => onOpen(card.id)}
+        >
+            {!!card.labels?.length && (
+                <span className="trello-card__labels" aria-hidden="true">
+                    {card.labels.map(l => (
+                        <span key={l.id} className="trello-card__label" style={labelStyle(l.color)}>{labelDisplayName(l)}</span>
+                    ))}
+                </span>
+            )}
+            <span className="trello-card__title">{card.name}</span>
+            {card.due && (
+                <span className="trello-card__due" aria-hidden="true"><Clock size={12} /> {formatDate(card.due)}</span>
+            )}
+            <CardBadges badges={card.badges} />
+        </button>
+    );
+}
 
-    const onDrop = useCallback(async (listId: string) => {
-        if (!dragCardId) return;
-        const card = cards.find(c => c.id === dragCardId);
-        if (!card || card.idList === listId) {
-            setDragCardId(null);
-            setDragOverListId(null);
-            dragCounter.current = {};
-            return;
-        }
+interface AddCardProps { onCreate: (name: string) => Promise<boolean>; onClose: () => void }
 
-        setCards(prev => prev.map(c =>
-            c.id === dragCardId ? { ...c, idList: listId } : c
-        ));
-        setDragCardId(null);
-        setDragOverListId(null);
-        dragCounter.current = {};
+function AddCard({ onCreate, onClose }: AddCardProps) {
+    const [name, setName] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+    const busy = useRef(false); // set synchronously: fetch fires before the first await, so Enter-twice cannot double-submit
+    useEffect(() => { inputRef.current?.focus(); }, []);
 
-        try {
-            await authFetch(`${API}/cards/${dragCardId}/move`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ listId })
-            });
-        } catch {
-            setCards(prev => prev.map(c =>
-                c.id === dragCardId ? { ...c, idList: card.idList } : c
-            ));
-        }
-    }, [dragCardId, cards]);
-
-    const onCardClick = useCallback((cardId: string) => {
-        // Only open detail if this wasn't a drag
-        if (!didDrag.current) {
-            openCardDetail(cardId);
-        }
-        didDrag.current = false;
-    }, [openCardDetail]);
-
-    // ── Add Card ───────────────────────────────────
-
-    const resetAddCardForm = useCallback(() => {
-        setNewCardName('');
-        setNewCardDesc('');
-        setNewCardBlast(emptyBlast());
-        setSuggestError(null);
-        setSuggestedDraft(false);
-        setBlastIssues([]);
-    }, []);
-
-    const cancelAddCard = useCallback(() => {
-        setAddingToList(null);
-        resetAddCardForm();
-    }, [resetAddCardForm]);
-
-    const handleSuggestCard = useCallback(async () => {
-        const intent = [newCardName, newCardDesc].filter(Boolean).join('\n\n').trim();
-        if (!intent) {
-            setSuggestError('Enter a card intent before requesting a suggestion.');
-            return;
-        }
-
-        setSuggesting(true);
-        setSuggestError(null);
-        setBlastIssues([]);
-        try {
-            const draft = await suggestCard({ intent, context: { boardId: selectedBoard } });
-            setNewCardName(draft.title);
-            setNewCardDesc(typeof draft.description === 'string' ? draft.description : intent);
-            setNewCardBlast({ ...emptyBlast(), ...(draft.blast ?? {}) });
-            setSuggestedDraft(true);
-        } catch (err) {
-            setSuggestError(err instanceof Error ? err.message : 'Card suggestion failed.');
-        } finally {
-            setSuggesting(false);
-        }
-    }, [newCardDesc, newCardName, selectedBoard]);
-
-    const handleAddCard = useCallback(async (listId: string) => {
-        if (!newCardName.trim()) return;
-
-        const draft: CardDraft = {
-            title: newCardName.trim(),
-            description: newCardDesc.trim(),
-            blast: newCardBlast,
-        };
-
-        let cardToCreate = draft;
-        if (isBlastGateEnabled()) {
-            try {
-                cardToCreate = enforceBlastGate(draft);
-            } catch (err) {
-                if (err instanceof BlastGateError) {
-                    setBlastIssues(err.issues);
-                    return;
-                }
-                throw err;
-            }
-        }
-
-        try {
-            const res = await authFetch(`${API}/cards`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: cardToCreate.title,
-                    desc: buildTrelloDescription(cardToCreate),
-                    listId,
-                })
-            });
-            const json = await res.json();
-            if (json.success && json.data) {
-                setCards(prev => [...prev, json.data]);
-                setAddingToList(null);
-                resetAddCardForm();
-            }
-        } catch {
-            // silent fail
-        }
-    }, [newCardBlast, newCardDesc, newCardName, resetAddCardForm]);
-
-    useEffect(() => {
-        if (addingToList && addInputRef.current) {
-            addInputRef.current.focus();
-        }
-    }, [addingToList]);
-
-    // ── Refresh ────────────────────────────────────
-
-    const refresh = useCallback(() => {
-        if (selectedBoard) {
-            const boardId = selectedBoard;
-            setSelectedBoard('');
-            setTimeout(() => setSelectedBoard(boardId), 50);
-        }
-    }, [selectedBoard]);
-
-    // ── Helper: list name from id ──────────────────
-
-    const getListName = useCallback((listId: string) => {
-        return lists.find(l => l.id === listId)?.name || 'Unknown';
-    }, [lists]);
-
-    // ── Render ──────────────────────────────────────
-
-    if (loading && boards.length === 0) {
-        return (
-            <div className="trello-board trello-board--loading">
-                <div className="trello-spinner" />
-                <p>Connecting to Trello…</p>
-            </div>
-        );
-    }
-
-    if (error && boards.length === 0) {
-        return (
-            <div className="trello-board trello-board--error">
-                <span className="trello-error-icon"><TriangleAlert size={20} aria-hidden /></span>
-                <p>{error}</p>
-                <button className="trello-btn" onClick={() => window.location.reload()}>Retry</button>
-            </div>
-        );
-    }
+    const submit = async () => {
+        const title = name.trim();
+        if (!title || busy.current) return;
+        busy.current = true;
+        const ok = await onCreate(title);
+        busy.current = false;
+        if (ok) onClose(); // on failure the form stays open with the typed title
+    };
 
     return (
-        <div className="trello-board">
-            {/* Toolbar */}
-            <div className="trello-toolbar">
-                <select
-                    className="trello-board-select"
-                    value={selectedBoard}
-                    onChange={e => setSelectedBoard(e.target.value)}
-                >
-                    <option value="" disabled>Select a board</option>
-                    {boards.map(b => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                </select>
-                <button className="trello-btn trello-btn--icon" onClick={refresh} title="Refresh" aria-label="Refresh">
-                    <RefreshCw size={16} aria-hidden />
-                </button>
-                {loading && <span className="trello-loading-dot" />}
+        <div className="trello-add-card-form">
+            <input
+                ref={inputRef}
+                className="trello-add-card-input"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Enter card title…"
+                aria-label="Card title"
+                onKeyDown={e => {
+                    if (e.key === 'Enter') void submit();
+                    if (e.key === 'Escape') onClose();
+                }}
+            />
+            <div className="trello-add-card-actions">
+                <button type="button" className="trello-btn trello-btn--primary" onClick={() => void submit()}>{TRELLO_A11Y.addCard}</button>
+                <button type="button" className="trello-btn" onClick={onClose} aria-label={TRELLO_A11Y.cancelAdd}><X size={14} aria-hidden /></button>
             </div>
+        </div>
+    );
+}
 
-            {error && (
-                <div className="trello-inline-error">
-                    {error}
-                </div>
+function ChecklistView({ list }: { list: Checklist }) {
+    const done = list.checkItems.filter(i => i.state === 'complete').length;
+    const total = list.checkItems.length;
+    return (
+        <div className="trello-detail__checklist">
+            <div className="trello-detail__checklist-header">
+                <span>{list.name}</span>
+                <span className="trello-detail__checklist-count">{done}/{total}</span>
+            </div>
+            <div className="trello-detail__progress-track">
+                <div className="trello-detail__progress-fill" style={{ width: `${total ? Math.round((done / total) * 100) : 0}%` }} />
+            </div>
+            <ul className="trello-detail__check-items">
+                {list.checkItems.map(item => (
+                    <li key={item.id} className={item.state === 'complete' ? 'checked' : ''}>
+                        <span className="trello-detail__check-box">
+                            {item.state === 'complete' ? <SquareCheck size={14} aria-hidden /> : <Square size={14} aria-hidden />}
+                        </span>
+                        {item.name}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
+function DetailBody({ card, activity }: DetailData) {
+    const members = card.members?.map(m => m.fullName).join(', ');
+    return (
+        <div className="trello-detail__body">
+            {members && <p className="trello-detail__empty-text">Members: {members}</p>}
+            <section className="trello-detail__section">
+                <h4><FileText size={14} aria-hidden /> Description</h4>
+                {card.desc
+                    ? <div className="trello-detail__desc" style={{ whiteSpace: 'pre-wrap' }}>{card.desc}</div>
+                    : <p className="trello-detail__empty-text">No description</p>}
+            </section>
+            {!!card.checklists?.length && (
+                <section className="trello-detail__section">
+                    <h4><ListChecks size={14} aria-hidden /> Checklists</h4>
+                    {card.checklists.map(cl => <ChecklistView key={cl.id} list={cl} />)}
+                </section>
             )}
-
-            {/* Kanban Columns */}
-            <div className="trello-columns">
-                {lists.map(list => {
-                    const listCards = cards
-                        .filter(c => c.idList === list.id)
-                        .sort((a, b) => a.pos - b.pos);
-                    const isDragOver = dragOverListId === list.id;
-
-                    return (
-                        <div
-                            key={list.id}
-                            className={`trello-column ${isDragOver ? 'trello-column--drag-over' : ''}`}
-                            onDragOver={e => onDragOver(e, list.id)}
-                            onDragEnter={e => onDragEnter(e, list.id)}
-                            onDragLeave={e => onDragLeave(e, list.id)}
-                            onDrop={() => onDrop(list.id)}
-                        >
-                            <div className="trello-column__header">
-                                <h4 className="trello-column__title">{list.name}</h4>
-                                <span className="trello-column__count">{listCards.length}</span>
-                            </div>
-
-                            <div className="trello-column__cards">
-                                {listCards.map(card => (
-                                    <div
-                                        key={card.id}
-                                        className={`trello-card ${dragCardId === card.id ? 'trello-card--dragging' : ''}`}
-                                        draggable
-                                        onDragStart={() => onDragStart(card.id)}
-                                        onDragEnd={onDragEnd}
-                                        onClick={() => onCardClick(card.id)}
-                                    >
-                                        {card.labels && card.labels.length > 0 && (
-                                            <div className="trello-card__labels">
-                                                {card.labels.map(label => (
-                                                    <span
-                                                        key={label.id}
-                                                        className="trello-card__label"
-                                                        style={{ background: LABEL_COLORS[label.color] || label.color }}
-                                                        title={label.name}
-                                                    >
-                                                        {label.name}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <span className="trello-card__title">{card.name}</span>
-                                        {card.due && (
-                                            <span className="trello-card__due">
-                                                <Clock size={12} aria-hidden /> {new Date(card.due).toLocaleDateString()}
-                                            </span>
-                                        )}
-                                    </div>
-                                ))}
-
-                                {/* Add Card */}
-                                {addingToList === list.id ? (
-                                    <div className="trello-add-card-form">
-                                        <input
-                                            ref={addInputRef}
-                                            className="trello-add-card-input"
-                                            value={newCardName}
-                                            onChange={e => setNewCardName(e.target.value)}
-                                            placeholder="Enter card title…"
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') handleAddCard(list.id);
-                                                if (e.key === 'Escape') cancelAddCard();
-                                            }}
-                                        />
-                                        {(isCardSuggestEnabled() || isBlastGateEnabled() || suggestedDraft) && (
-                                            <div className="trello-c9-panel">
-                                                {isCardSuggestEnabled() && (
-                                                    <>
-                                                        <textarea
-                                                            className="trello-add-card-textarea"
-                                                            value={newCardDesc}
-                                                            onChange={e => setNewCardDesc(e.target.value)}
-                                                            placeholder="Intent or details for the suggested card…"
-                                                            aria-label="Card suggestion intent"
-                                                        />
-                                                        <button
-                                                            className="trello-btn trello-btn--ai"
-                                                            onClick={handleSuggestCard}
-                                                            disabled={suggesting}
-                                                        >
-                                                            {suggesting ? 'Suggesting…' : 'Suggest with AI'}
-                                                        </button>
-                                                        {suggestError && <div className="trello-c9-error">{suggestError}</div>}
-                                                    </>
-                                                )}
-
-                                                {(isBlastGateEnabled() || suggestedDraft) && (
-                                                    <div className="trello-blast-fields" aria-label="B.L.A.S.T. card fields">
-                                                        {issuesFor(blastIssues, 'title').map(message => (
-                                                            <div key={message} className="trello-c9-error">{message}</div>
-                                                        ))}
-                                                        {BLAST_FIELDS.map(({ key, label, placeholder }) => (
-                                                            <label key={key} className="trello-blast-field">
-                                                                <span>{label}</span>
-                                                                <input
-                                                                    className="trello-add-card-input"
-                                                                    value={newCardBlast[key] ?? ''}
-                                                                    onChange={e => {
-                                                                        const value = e.target.value;
-                                                                        setNewCardBlast(prev => ({ ...prev, [key]: value }));
-                                                                        setBlastIssues(prev => prev.filter(issue => issue.field !== key));
-                                                                    }}
-                                                                    placeholder={placeholder}
-                                                                    aria-label={`B.L.A.S.T. ${label}`}
-                                                                />
-                                                                {issuesFor(blastIssues, key).map(message => (
-                                                                    <span key={message} className="trello-blast-field__issue">{message}</span>
-                                                                ))}
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                        <div className="trello-add-card-actions">
-                                            <button
-                                                className="trello-btn trello-btn--primary"
-                                                onClick={() => handleAddCard(list.id)}
-                                            >
-                                                Add
-                                            </button>
-                                            <button
-                                                className="trello-btn"
-                                                onClick={cancelAddCard}
-                                                aria-label="Cancel"
-                                            >
-                                                <X size={14} aria-hidden />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button
-                                        className="trello-add-card-btn"
-                                        onClick={() => {
-                                            setAddingToList(list.id);
-                                            resetAddCardForm();
-                                        }}
-                                    >
-                                        + Add a card
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* ── Card Detail Panel ──────────────────── */}
-            {(activeCard || detailLoading) && (
-                <div className="trello-detail-overlay" onClick={closeDetail}>
-                    <div className="trello-detail-panel" onClick={e => e.stopPropagation()}>
-                        {detailLoading ? (
-                            <div className="trello-detail-loading">
-                                <div className="trello-spinner" />
-                                <p>Loading card…</p>
-                            </div>
-                        ) : activeCard && (
-                            <>
-                                {/* Header */}
-                                <div className="trello-detail__header">
-                                    <h3 className="trello-detail__title">{activeCard.name}</h3>
-                                    <button className="trello-detail__close" onClick={closeDetail}><X size={16} /></button>
-                                </div>
-
-                                {/* Meta: list + due */}
-                                <div className="trello-detail__meta">
-                                    <span className="trello-detail__list-badge">
-                                        <ClipboardList size={12} aria-hidden /> {getListName(activeCard.idList)}
-                                    </span>
-                                    {activeCard.due && (
-                                        <span className="trello-detail__due-badge">
-                                            <Clock size={12} aria-hidden /> {new Date(activeCard.due).toLocaleDateString()}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Labels */}
-                                {activeCard.labels && activeCard.labels.length > 0 && (
-                                    <div className="trello-detail__labels">
-                                        {activeCard.labels.map(l => (
-                                            <span
-                                                key={l.id}
-                                                className="trello-detail__label-chip"
-                                                style={{ background: LABEL_COLORS[l.color] || l.color }}
-                                            >
-                                                {l.name || l.color}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Scrollable body */}
-                                <div className="trello-detail__body">
-                                    {/* Description */}
-                                    {activeCard.desc ? (
-                                        <section className="trello-detail__section">
-                                            <h4><FileText size={14} aria-hidden /> Description</h4>
-                                            <div className="trello-detail__desc">
-                                                {activeCard.desc}
-                                            </div>
-                                        </section>
-                                    ) : (
-                                        <section className="trello-detail__section">
-                                            <h4><FileText size={14} aria-hidden /> Description</h4>
-                                            <p className="trello-detail__empty-text">No description</p>
-                                        </section>
-                                    )}
-
-                                    {/* Checklists */}
-                                    {activeCard.checklists && activeCard.checklists.length > 0 && (
-                                        <section className="trello-detail__section">
-                                            <h4><ListChecks size={14} aria-hidden /> Checklists</h4>
-                                            {activeCard.checklists.map(cl => {
-                                                const done = cl.checkItems.filter(i => i.state === 'complete').length;
-                                                const total = cl.checkItems.length;
-                                                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                                                return (
-                                                    <div key={cl.id} className="trello-detail__checklist">
-                                                        <div className="trello-detail__checklist-header">
-                                                            <span>{cl.name}</span>
-                                                            <span className="trello-detail__checklist-count">
-                                                                {done}/{total}
-                                                            </span>
-                                                        </div>
-                                                        <div className="trello-detail__progress-track">
-                                                            <div
-                                                                className="trello-detail__progress-fill"
-                                                                style={{ width: `${pct}%` }}
-                                                            />
-                                                        </div>
-                                                        <ul className="trello-detail__check-items">
-                                                            {cl.checkItems.map(item => (
-                                                                <li key={item.id} className={item.state === 'complete' ? 'checked' : ''}>
-                                                                    <span className="trello-detail__check-box">
-                                                                        {item.state === 'complete' ? <SquareCheck size={14} aria-hidden /> : <Square size={14} aria-hidden />}
-                                                                    </span>
-                                                                    {item.name}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                );
-                                            })}
-                                        </section>
-                                    )}
-
-                                    {/* Attachments */}
-                                    {activeCard.attachments && activeCard.attachments.length > 0 && (
-                                        <section className="trello-detail__section">
-                                            <h4><Paperclip size={14} aria-hidden /> Attachments</h4>
-                                            <div className="trello-detail__attachments">
-                                                {activeCard.attachments.map(att => (
-                                                    <a
-                                                        key={att.id}
-                                                        className="trello-detail__attachment"
-                                                        href={att.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        <span className="trello-detail__attachment-icon"><FileText size={14} aria-hidden /></span>
-                                                        <span className="trello-detail__attachment-name">{att.name}</span>
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-
-                                    {/* Activity / Comments */}
-                                    {activity.length > 0 && (
-                                        <section className="trello-detail__section">
-                                            <h4><MessageSquare size={14} aria-hidden /> Activity</h4>
-                                            <div className="trello-detail__activity">
-                                                {activity.slice(0, 20).map(act => (
-                                                    <div key={act.id} className="trello-detail__activity-item">
-                                                        <span className="trello-detail__activity-author">
-                                                            {act.memberCreator?.fullName || 'Unknown'}
-                                                        </span>
-                                                        <span className="trello-detail__activity-text">
-                                                            {act.type === 'commentCard'
-                                                                ? act.data?.text
-                                                                : act.type === 'updateCard' && act.data?.listAfter
-                                                                    ? `moved to ${act.data.listAfter.name}`
-                                                                    : act.type.replace(/([A-Z])/g, ' $1').toLowerCase()
-                                                            }
-                                                        </span>
-                                                        <span className="trello-detail__activity-date">
-                                                            {new Date(act.date).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-                                </div>
-
-                                {/* Footer: Open in Trello */}
-                                <div className="trello-detail__footer">
-                                    <a
-                                        className="trello-btn trello-btn--primary trello-detail__open-link"
-                                        href={activeCard.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Open in Trello ↗
-                                    </a>
-                                </div>
-                            </>
-                        )}
+            {!!card.attachments?.length && (
+                <section className="trello-detail__section">
+                    <h4><Paperclip size={14} aria-hidden /> Attachments</h4>
+                    <div className="trello-detail__attachments">
+                        {card.attachments.map(att => (
+                            <a key={att.id} className="trello-detail__attachment" href={att.url} target="_blank" rel="noopener noreferrer">
+                                <span className="trello-detail__attachment-icon"><FileText size={14} aria-hidden /></span>
+                                <span className="trello-detail__attachment-name">{att.name}</span>
+                            </a>
+                        ))}
                     </div>
-                </div>
+                </section>
+            )}
+            {activity.length > 0 && (
+                <section className="trello-detail__section">
+                    <h4><MessageSquare size={14} aria-hidden /> Activity</h4>
+                    <div className="trello-detail__activity">
+                        {activity.slice(0, 20).map(a => (
+                            <div key={a.id} className="trello-detail__activity-item">
+                                <span className="trello-detail__activity-author">{a.memberCreator?.fullName || 'Unknown'}</span>
+                                <span className="trello-detail__activity-text">{activityText(a)}</span>
+                                <span className="trello-detail__activity-date">{formatDate(a.date)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
             )}
         </div>
     );
+}
+
+interface DetailDialogProps {
+    title: string;
+    loading: boolean;
+    error: unknown;
+    isAdmin: boolean;
+    detail: DetailData | null;
+    lists: TrelloList[];
+    listId: string;
+    onMove: (listId: string) => void;
+    onClose: () => void;
+}
+
+function DetailDialog({ title, loading, error, isAdmin, detail, lists, listId, onMove, onClose }: DetailDialogProps) {
+    const titleId = useId();
+    const closeRef = useRef<HTMLButtonElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+    useEffect(() => { closeRef.current?.focus(); }, []);
+
+    // Keys are handled on the presentational overlay (they bubble up from the dialog) so the dialog itself stays non-interactive for a11y lint.
+    const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
+        else if (e.key === 'Tab' && panelRef.current) trapTab(e, panelRef.current);
+    };
+    const card = detail?.card;
+
+    return (
+        <div className={TRELLO_A11Y.detailOverlayClass} role="presentation" onKeyDown={onKeyDown} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+            <div ref={panelRef} className="trello-detail-panel" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+                <div className="trello-detail__header">
+                    <h3 id={titleId} className="trello-detail__title">{card?.name ?? title}</h3>
+                    <button ref={closeRef} type="button" className="trello-detail__close" aria-label={TRELLO_A11Y.closeDetail} onClick={onClose}>
+                        <X size={16} aria-hidden />
+                    </button>
+                </div>
+                {loading && (
+                    <div className="trello-detail-loading">
+                        <div className="trello-spinner" />
+                        <p role="status">{TRELLO_A11Y.loadingCard}</p>
+                    </div>
+                )}
+                {error != null && <p className="trello-alert" role="alert">{describeTrelloError(error, { isAdmin })}</p>}
+                {card && detail && (
+                    <>
+                        <div className="trello-detail__meta">
+                            {card.due && <span className="trello-detail__due-badge"><Clock size={12} aria-hidden /> {formatDate(card.due)}</span>}
+                            {!!card.labels?.length && card.labels.map(l => (
+                                <span key={l.id} className="trello-detail__label-chip" style={labelStyle(l.color)}>{labelDisplayName(l)}</span>
+                            ))}
+                        </div>
+                        <label className="trello-move">
+                            <ClipboardList size={12} aria-hidden />
+                            <span>{TRELLO_A11Y.moveTo}</span>
+                            <select aria-label={TRELLO_A11Y.moveTo} value={listId} onChange={e => onMove(e.target.value)}>
+                                {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                            </select>
+                        </label>
+                        <DetailBody card={card} activity={detail.activity} />
+                        <div className="trello-detail__footer">
+                            <a className="trello-btn trello-btn--primary trello-detail__open-link" href={card.url} target="_blank" rel="noopener noreferrer">
+                                {TRELLO_A11Y.openInTrello} <span aria-hidden="true">↗</span>
+                            </a>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ── Board ──────────────────────────────────────────
+
+function TrelloBoardView({ isAdmin }: { isAdmin: boolean }) {
+    const b = useBoardData();
+    const d = useCardDetail();
+    const { updateCards, selected } = b;
+    const rootRef = useRef<HTMLDivElement>(null);
+    const [actionError, setActionError] = useState<unknown>(null);
+    const [dragId, setDragId] = useState<string | null>(null);
+    const [overId, setOverId] = useState<string | null>(null);
+    const [addingTo, setAddingTo] = useState<string | null>(null);
+
+    const lists = b.visible?.lists ?? NO_LISTS;
+    const cards = b.visible?.cards ?? NO_CARDS;
+    const byList = useMemo(() => {
+        const map = new Map<string, TrelloCard[]>();
+        for (const c of [...cards].sort((x, y) => x.pos - y.pos)) map.set(c.idList, [...(map.get(c.idList) ?? []), c]);
+        return map;
+    }, [cards]);
+
+    const moveCard = useCallback(async (card: TrelloCard, toList: string) => {
+        if (card.idList === toList) return;
+        const from = card.idList; // the list at drop time
+        setActionError(null);
+        updateCards(selected, cs => cs.map(c => (c.id === card.id ? { ...c, idList: toList } : c)));
+        try {
+            await trelloApi.moveCard(card.id, toList);
+        } catch (e) {
+            // Roll back only if the card is still where we put it; a refetch may have moved it since.
+            updateCards(selected, cs => cs.map(c => (c.id === card.id && c.idList === toList ? { ...c, idList: from } : c)));
+            setActionError(e);
+        }
+    }, [updateCards, selected]);
+
+    const createCard = useCallback(async (listId: string, name: string) => {
+        setActionError(null);
+        try {
+            const card = await trelloApi.createCard({ name, listId });
+            updateCards(selected, cs => [...cs, card]);
+            return true;
+        } catch (e) {
+            setActionError(e);
+            return false;
+        }
+    }, [updateCards, selected]);
+
+    const closeDetail = () => {
+        const id = d.openId;
+        d.close();
+        // Query by id, not a saved element: moving the card via the dialog remounts its button.
+        const btn = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find(el => el.dataset.cardId === id);
+        btn?.focus();
+    };
+
+    const onDragStart = (e: DragEvent<HTMLButtonElement>, id: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+        setDragId(id);
+    };
+    const onDragEnd = () => { setDragId(null); setOverId(null); };
+    const onDragOver = (e: DragEvent, listId: string) => {
+        if (!dragId) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setOverId(listId);
+    };
+    const onDragLeave = (e: DragEvent, listId: string) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOverId(p => (p === listId ? null : p));
+    };
+    const onDrop = (e: DragEvent, listId: string) => {
+        e.preventDefault();
+        const card = cards.find(c => c.id === dragId);
+        onDragEnd();
+        if (card) void moveCard(card, listId);
+    };
+
+    if (b.boardsLoading && b.boards.length === 0) {
+        return (
+            <div className="trello-board">
+                <div className="trello-board--loading">
+                    <div className="trello-spinner" />
+                    <p className="trello-status" role="status">{TRELLO_A11Y.loadingBoards}</p>
+                </div>
+            </div>
+        );
+    }
+    if (b.boards.length === 0) {
+        return (
+            <div className="trello-board">
+                {b.boardsError != null
+                    ? <Failure error={b.boardsError} isAdmin={isAdmin} onRetry={() => void b.loadBoards()} />
+                    : <div className="trello-empty-state"><p>No Trello boards are available to this account.</p></div>}
+            </div>
+        );
+    }
+
+    // A failed refetch with a board already on screen is a banner; with nothing to show it replaces the board.
+    const alertError = actionError ?? (b.visible ? b.boardError : null) ?? b.boardsError;
+    const refreshing = (b.boardsLoading || b.boardLoading) && !!b.visible;
+    const openCard = cards.find(c => c.id === d.openId) ?? d.detail?.card;
+
+    return (
+        <div className="trello-board" ref={rootRef}>
+            <div className="trello-toolbar">
+                <select className="trello-board-select" aria-label={TRELLO_A11Y.boardSelect} value={b.selected} onChange={e => b.setSelected(e.target.value)}>
+                    <option value="" disabled>Select a board</option>
+                    {b.boards.map(board => <option key={board.id} value={board.id}>{board.name}</option>)}
+                </select>
+                <button type="button" className="trello-btn trello-btn--icon" onClick={b.refresh} title="Refresh" aria-label={TRELLO_A11Y.refresh}>
+                    <RefreshCw size={16} aria-hidden />
+                </button>
+                <span className="trello-status" role="status">
+                    {refreshing && <><span className="trello-loading-dot" aria-hidden="true" /><span style={SR_ONLY}>Refreshing…</span></>}
+                </span>
+            </div>
+            {alertError != null && <div className="trello-alert" role="alert">{describeTrelloError(alertError, { isAdmin })}</div>}
+            {b.visible?.truncated && <div className="trello-banner--truncated">Showing the first 1,000 cards of this board.</div>}
+
+            {!b.visible && b.boardError != null && <Failure error={b.boardError} isAdmin={isAdmin} onRetry={b.retryBoard} />}
+            {!b.visible && b.boardError == null && (
+                <div className="trello-board--loading">
+                    <div className="trello-spinner" />
+                    <p className="trello-status">Loading board…</p>
+                </div>
+            )}
+            {b.visible && lists.length === 0 && <div className="trello-empty-state"><p>This board has no lists yet.</p></div>}
+            {b.visible && lists.length > 0 && (
+                <div className="trello-columns">
+                    {lists.map(list => {
+                        const listCards = byList.get(list.id) ?? NO_CARDS;
+                        return (
+                            <div
+                                key={list.id}
+                                className={`${TRELLO_A11Y.columnClass}${overId === list.id ? ' trello-column--drag-over' : ''}`}
+                                onDragOver={e => onDragOver(e, list.id)}
+                                onDragLeave={e => onDragLeave(e, list.id)}
+                                onDrop={e => onDrop(e, list.id)}
+                            >
+                                <div className="trello-column__header">
+                                    <h4 className="trello-column__title">{list.name}</h4>
+                                    <span className="trello-column__count">{listCards.length}</span>
+                                </div>
+                                <div className="trello-column__cards">
+                                    {listCards.map(card => (
+                                        <CardButton key={card.id} card={card} dragging={dragId === card.id} onOpen={id => void d.open(id)} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+                                    ))}
+                                    {addingTo === list.id
+                                        ? <AddCard onCreate={name => createCard(list.id, name)} onClose={() => setAddingTo(null)} />
+                                        : <button type="button" className="trello-add-card-btn" onClick={() => setAddingTo(list.id)}>{TRELLO_A11Y.addCardOpen}</button>}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {d.openId && (
+                <DetailDialog
+                    title={openCard?.name ?? ''}
+                    loading={!d.detail && d.error == null}
+                    error={d.error}
+                    isAdmin={isAdmin}
+                    detail={d.detail}
+                    lists={lists}
+                    listId={openCard?.idList ?? ''}
+                    onMove={listId => { if (openCard) void moveCard(openCard, listId); }}
+                    onClose={closeDetail}
+                />
+            )}
+        </div>
+    );
+}
+
+export default function TrelloBoard() {
+    const user = useContext(UserContext)?.user;
+    // Keyed by account: switching users unmounts the view, which aborts requests and drops all board/detail state.
+    return <TrelloBoardView key={user?.id ?? 'anonymous'} isAdmin={user?.role === 'god'} />;
 }

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, useSyncExternalStore, ReactNode } from 'react';
 import { WindowState, DockItem, LayoutState, SavedLayout } from '../data/types';
 import { useUser } from './UserContext';
+import { useOptionalPermissions } from './PermissionsContext';
 import { defaultDockItems } from '../data/hierarchy';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { resolveWidgetId } from '../registry/widgetRegistry';
@@ -202,6 +203,9 @@ function initialSessionWindows(): WindowState[] {
 
 export function WindowProvider({ children }: { children: ReactNode }) {
     const { user } = useUser();
+    const perms = useOptionalPermissions();
+    const permsRef = useRef(perms);
+    permsRef.current = perms;
 
     // Plan 055: the single writer sets EVERY per-user identity holder
     // (including sessionRestoreUserIdHolder) during render, BEFORE the
@@ -307,6 +311,14 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     const openWindow = useCallback((rawComponent: string, title: string, icon: string): string | null => {
         // plan 066: every open resolves a retired id (e.g. 'inbox-zero') to the live one here.
         const component = resolveWidgetId(rawComponent);
+        // plan 078 FE16: enforce `widget:<id>` at the single open choke point (sidebar,
+        // ⌘K, bus). Only ids with a key in the loaded map are gated — Wiki etc. have none.
+        const p = permsRef.current;
+        const gateKey = `widget:${component}`;
+        if (p && !p.loading && gateKey in p.permissions && !p.can(gateKey)) {
+            console.info(`You don't have access to ${title}.`); // ponytail: no global toast exists; swap in when one lands
+            return null;
+        }
         // Plan 055 phase 3 — feed the ⌘K "Resume" trail (open AND re-focus
         // both count as a touch). Central here so sidebar/⌘K/bus all record.
         recordActivity('widget', component, title);

@@ -9,79 +9,18 @@
 // Run:  node plans/077-assets/probe.cjs
 //   → PASS/FAIL per check, results.json + PNGs beside this file. Vite runs in-process
 //     on a free port with its dep cache in the OS temp dir (never the repo's node_modules/.vite).
-const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-const net = require('net');
-
-const BASE = 'http://harness.invalid';
-const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
+const { start } = require('./harness.cjs');
 const results = [];
 const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, detail: String(detail) }); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); };
 
 (async () => {
-    // In-memory stand-in for linkRoutes.ts built-in mode (same shapes, same status codes).
-    const rows = [
+    const h = await start({ rows: [
         { slug: 'woodland-parc-maint', url: 'https://example.com/maintenance', clicks: 12, archived: 0 },
         { slug: 'front-door', url: 'https://example.com/welcome?from=door', clicks: 0, archived: 0 },
-    ];
-    const row = r => ({ id: r.slug, shortLink: `https://dwellium.example/l/${r.slug}`, url: r.url, key: r.slug, domain: 'dwellium', clicks: r.clicks, qrCode: '', archived: !!r.archived, expiresAt: null, tags: [], comments: null });
-    const calls = [];
-    let failNextList = 0;
-    const aborted = [];
-
-    const port = await new Promise(res => { const srv = net.createServer(); srv.listen(0, '127.0.0.1', () => { const p = srv.address().port; srv.close(() => res(p)); }); });
-    const { createServer } = await import('vite');
-    const vite = await createServer({
-        configFile: false, root: __dirname, logLevel: 'error', appType: 'mpa',
-        cacheDir: path.join(os.tmpdir(), 'dwellium-077-probe-vite'),
-        esbuild: { jsx: 'automatic' },
-        define: { 'import.meta.env.VITE_API_URL': JSON.stringify(BASE) },
-        server: { port, strictPort: true, host: '127.0.0.1', fs: { strict: false } },
-    });
-    await vite.listen();
-    const PAGE = `http://127.0.0.1:${port}`;
-
-    const browser = await chromium.launch();
-    const page = await browser.newPage({ viewport: { width: 900, height: 700 } });
-    const consoleErrors = [];
-    page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
-    page.on('pageerror', e => consoleErrors.push('pageerror: ' + e.message));
-
-    await page.route('**/*', async route => {
-        const req = route.request();
-        const url = req.url();
-        if (url.startsWith(PAGE)) return route.continue();
-        if (!url.startsWith(BASE)) { aborted.push(url); return route.abort(); } // nothing real is ever contacted
-        const method = req.method();
-        if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
-        const u = new URL(url);
-        const body = req.postData() ? JSON.parse(req.postData()) : undefined;
-        calls.push({ method, path: u.pathname + u.search, body });
-        const json = (status, b) => route.fulfill({ status, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(b) });
-        if (u.pathname === '/api/links' && method === 'GET') {
-            if (failNextList > 0) { failNextList--; return route.fulfill({ status: 503, headers: CORS, body: 'Service Unavailable' }); }
-            const all = u.searchParams.get('showArchived') === 'true';
-            return json(200, { success: true, mode: 'builtin', data: rows.filter(r => all || !r.archived).map(row) });
-        }
-        if (u.pathname === '/api/links' && method === 'POST') {
-            const slug = body.key || 'rnd' + (rows.length + 1);
-            if (rows.some(r => r.slug === slug)) return json(409, { success: false, error: `key "${slug}" is taken` });
-            rows.unshift({ slug, url: body.url, clicks: 0, archived: 0 });
-            return json(200, { success: true, mode: 'builtin', data: row(rows[0]) });
-        }
-        if (u.pathname === '/api/links/bulk') return json(501, { success: false, mode: 'builtin', error: 'Bulk create needs Dub' });
-        const m = u.pathname.match(/^\/api\/links\/([^/]+)$/);
-        if (m && method === 'PATCH') {
-            const r = rows.find(x => x.slug === decodeURIComponent(m[1]));
-            if (!r) return json(404, { success: false, error: 'link not found' });
-            if (typeof body.url === 'string') r.url = body.url;
-            if (typeof body.archived === 'boolean') r.archived = body.archived ? 1 : 0;
-            return json(200, { success: true, mode: 'builtin', data: row(r) });
-        }
-        return json(404, { success: false, error: 'not in fake' });
-    });
+    ] });
+    const { page, PAGE, calls, aborted, consoleErrors, state, browser, vite } = h;
 
     await page.goto(PAGE + '/' + (process.env.SHOT_ONLY ? process.env.SHOT_ONLY.split(':')[0] : 'index.html'));
     await page.addStyleTag({ content: '*{animation:none!important;transition:none!important}' });
@@ -143,12 +82,15 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     await page.mouse.move(2, 600);
     await page.locator('.short-links__edit').scrollIntoViewIfNeeded();
     await shot('builtin-520-edit.png');
+    check('presets are disabled until a destination is set', await page.locator('button:text-is("+ Rent payment")').isDisabled());
+    await page.click('summary:has-text("Destinations")');
+    await page.fill('[aria-label="Rent payment destination"]', 'https://pay.example.com/woodland');
     await page.click('button:text-is("+ Rent payment")');
     await page.getByText('https://dwellium.example/l/woodland-parc-rent').first().waitFor();
     check('preset click keeps the composer draft', (await page.inputValue('[aria-label="Destination URL"]')) === 'https://example.com/half-typed');
     check('preset click keeps the open edit and its typed value', (await has('[aria-label="Edit destination URL"]')) && (await page.inputValue('[aria-label="Edit destination URL"]')) === 'https://example.com/welcome-v2');
     const presetPost = calls.filter(c => c.method === 'POST').pop();
-    check('preset sends no tagNames in built-in mode', !('tagNames' in presetPost.body), JSON.stringify(presetPost.body));
+    check('preset sends the STORED destination and no tagNames (built-in)', !('tagNames' in presetPost.body) && presetPost.body.url === 'https://pay.example.com/woodland', JSON.stringify(presetPost.body));
 
     // 4. Save the edit: PATCH carries only {url}; editor closes; row shows the new destination.
     await page.click('.short-links__edit button:text-is("Save")');
@@ -184,7 +126,7 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     check('no DELETE request was ever sent', !calls.some(c => c.method === 'DELETE'));
 
     // 7. A bare 503 on refresh is the retryable error card, not the setup card; Retry recovers.
-    failNextList = 1;
+    state.failNextList = 1;
     await page.click('[aria-label="Refresh short links"]');
     await page.locator('[data-state="error"]').waitFor();
     check('bare 503 → "Backend unavailable" error card', (await has('[data-state="error"] h3:text-is("Backend unavailable")')) && !(await has('[data-state="needs-setup"]')));

@@ -9,6 +9,7 @@
  * an OLD backend answered `503 {needsSetup:true}`, which callers still map to
  * a typed needs-setup result; any other 503 is an ordinary error. Same
  * authFetch shape as esignApi.ts; the Dub key never reaches the browser.
+ * Built-in bulk is an upsert by key (re-minting re-aims already-printed codes).
  * Dub rows carry a hosted `qrCode` URL; built-in rows carry '' (client-side QR).
  */
 import { getAuthToken } from '../../context/UserContext';
@@ -50,6 +51,8 @@ export interface ClicksPoint {
 
 export interface CreateShortLinkInput {
     url: string;
+    /** Stored by the built-in backend (door-sheet cells send "<property> unit <unit>"). */
+    title?: string;
     key?: string;
     domain?: string;
     tagNames?: string[];
@@ -142,8 +145,19 @@ export function archiveShortLink(id: string, archived = true): Promise<ShortLink
     return updateShortLink(id, { archived });
 }
 
-export function bulkCreateShortLinks(links: CreateShortLinkInput[]): Promise<ShortLinksResult<ShortLink[]>> {
-    return requestJson('/api/links/bulk', { method: 'POST', body: JSON.stringify({ links }) }, dataList<ShortLink>);
+/** Backend cap per POST /api/links/bulk. */
+const BULK_CHUNK = 100;
+
+/** Sequential chunks of <=100; stops at the first non-ok result and returns it. */
+export async function bulkCreateShortLinks(links: CreateShortLinkInput[]): Promise<ShortLinksResult<ShortLink[]>> {
+    const all: ShortLink[] = [];
+    for (let i = 0; i < links.length; i += BULK_CHUNK) {
+        const res = await requestJson('/api/links/bulk',
+            { method: 'POST', body: JSON.stringify({ links: links.slice(i, i + BULK_CHUNK) }) }, dataList<ShortLink>);
+        if (res.kind !== 'ok') return res;
+        all.push(...res.data);
+    }
+    return { kind: 'ok', data: all };
 }
 
 export function listLinkTags(): Promise<ShortLinksResult<LinkTag[]>> {

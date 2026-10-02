@@ -16,7 +16,11 @@ if (rawTarget) {
     // Interactive Docs public pages: https://<site>/p/<slug> → backend `/api/idocs/p/:slug`
     // (Docs/idocs-wave3-api.md §1b). Must sit before the SPA catch-all.
     lines.push(`/p/* ${target}/api/idocs/p/:splat 200!`);
-    console.log(`[netlify] Emitting /health, /api/* and /p/* proxy redirects to ${target}`);
+    // plan 077 — short links live on the app domain; the backend answers 302 to the destination.
+    // Verify after deploy with `curl -sI https://<app>/l/<slug>` expecting `302` + `Location`,
+    // NOT a `200 text/html` (Netlify serves index.html with 200 for anything it does not proxy).
+    lines.push(`/l/* ${target}/l/:splat 200!`);
+    console.log(`[netlify] Emitting /health, /api/*, /p/* and /l/* proxy redirects to ${target}`);
 } else {
     console.warn('[netlify] NETLIFY_API_PROXY_TARGET is not set; backend-backed features will use offline/reconnect handling until an API target is configured.');
 }

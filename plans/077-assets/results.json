@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-10-02T15:20:32.270Z",
+  "ranAt": "2026-10-02T22:42:56.869Z",
   "results": [
     {
       "name": "list renders both links",
@@ -87,6 +87,11 @@
       "detail": "440px"
     },
     {
+      "name": "presets are disabled until a destination is set",
+      "pass": true,
+      "detail": ""
+    },
+    {
       "name": "preset click keeps the composer draft",
       "pass": true,
       "detail": ""
@@ -97,9 +102,9 @@
       "detail": ""
     },
     {
-      "name": "preset sends no tagNames in built-in mode",
+      "name": "preset sends the STORED destination and no tagNames (built-in)",
       "pass": true,
-      "detail": "{\"url\":\"http://127.0.0.1:60860/?pay=rent\",\"key\":\"woodland-parc-rent\"}"
+      "detail": "{\"url\":\"https://pay.example.com/woodland\",\"key\":\"woodland-parc-rent\"}"
     },
     {
       "name": "edit PATCH body is exactly {url}",
@@ -114,7 +119,7 @@
     {
       "name": "row QR is a client-side image that loads",
       "pass": true,
-      "detail": "{\"data\":true,\"w\":148}"
+      "detail": "{\"data\":true,\"w\":200}"
     },
     {
       "name": "layout: the QR image sits inside the window",

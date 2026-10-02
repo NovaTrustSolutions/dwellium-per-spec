@@ -1,0 +1,75 @@
+{
+  "ranAt": "2026-10-02T22:44:31.619Z",
+  "results": [
+    {
+      "name": "preset enabled once its destination is set",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "door-sheet pattern prefilled from the maintenance destination",
+      "pass": true,
+      "detail": "https://maintenance.example.com/request?unit={unit}"
+    },
+    {
+      "name": "Generate minted through ONE bulk call of 30 entries",
+      "pass": true,
+      "detail": "1 call(s)"
+    },
+    {
+      "name": "bulk entries carry url, key and title and no tagNames (built-in)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "every cell shows its own short URL (what the code encodes)",
+      "pass": true,
+      "detail": "https://dwellium.example/l/woodland-parc-a01, https://dwellium.example/l/woodland-parc-a02"
+    },
+    {
+      "name": "no fallback notice (short links were minted)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Print opens the standalone sheet document and calls print() on it once",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "PDF has a sane page count for 30 cells",
+      "pass": true,
+      "detail": "4 pages"
+    },
+    {
+      "name": "each unit label and its short URL land on the SAME page (no cell split across pages)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "nothing but the sheet prints (no composer / Back button text in the PDF)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "CIDetector reads exactly one code from each of the 30 printed cells",
+      "pass": true,
+      "detail": "30/30"
+    },
+    {
+      "name": "decoded set == the 30 short links",
+      "pass": true,
+      "detail": "https://dwellium.example/l/woodland-parc-a01, https://dwellium.example/l/woodland-parc-a02"
+    },
+    {
+      "name": "measure: smallest decoded code width in the print render (px @96dpi)",
+      "pass": null,
+      "detail": "129"
+    },
+    {
+      "name": "no unexpected console errors",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

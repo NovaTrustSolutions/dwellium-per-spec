@@ -21,7 +21,7 @@ import {
     ANDY_EVENT_TYPES, ANDY_PROPERTIES, buildBookingLink, calcomBase, calcomUrl,
 } from './calcomLinks';
 import { cancelBooking, listUpcomingBookings, type CalBooking } from './schedulingApi';
-import { qrDataUri } from './qr';
+import { qrDataUri } from '../Scribe/idocs/blocks/qr';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { useWidgetMemory } from '../../lib/widgetMemory';
 import './Scheduling.css';

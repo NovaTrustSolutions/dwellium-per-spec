@@ -14,7 +14,7 @@ import Scheduling from '../components/Scheduling/Scheduling';
 import {
     ANDY_EVENT_TYPES, ANDY_PROPERTIES, buildBookingLink, bookingLinkFor, calcomBase,
 } from '../components/Scheduling/calcomLinks';
-import { qrMatrix, qrDataUri } from '../components/Scheduling/qr';
+import { encodeQr as qrMatrix, qrDataUri } from '../components/Scribe/idocs/blocks/qr';
 import { resetWidgetMemory } from '../lib/widgetMemory';
 
 const URL_ENV = { VITE_CALCOM_URL: 'https://cal.com/andy' };
@@ -153,22 +153,22 @@ describe('Scheduling widget — separate embed and API gates', () => {
 
 describe('qr encoder', () => {
     it('produces the right version per payload size and a stable data URI', () => {
-        // v1 = 21 modules, v6 = 41 — size is 17 + 4 × version
+        // v1 = 21 modules — size is 17 + 4 × version (ECC M default)
         expect(qrMatrix('HELLO')!.length).toBe(21);
         expect(qrMatrix('https://cal.com/andy')!.length).toBe(25);
         expect(qrDataUri('https://cal.com/andy')).toMatch(/^data:image\/svg\+xml,/);
     });
 
-    it('every Andy booking link encodes (none exceeds the supported capacity)', () => {
+    it('every Andy booking link encodes (all fit within QR_MAX_VERSION)', () => {
         for (const ev of ANDY_EVENT_TYPES) {
             const link = buildBookingLink('https://cal.com/andy', ev.slug, { notes: ANDY_PROPERTIES[0] });
             expect(qrMatrix(link), ev.slug).not.toBeNull();
         }
     });
 
-    it('returns null (not a broken image) beyond the supported capacity', () => {
-        expect(qrMatrix('x'.repeat(200))).toBeNull();
-        expect(qrDataUri('x'.repeat(200))).toBeNull();
+    it('returns null (not a broken image) beyond QR_MAX_VERSION capacity (v10 M = 213 bytes)', () => {
+        expect(qrMatrix('x'.repeat(300))).toBeNull();
+        expect(qrDataUri('x'.repeat(300))).toBeNull();
     });
 
     it('finder patterns and the dark module are placed per spec', () => {

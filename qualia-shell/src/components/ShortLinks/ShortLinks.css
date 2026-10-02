@@ -39,6 +39,7 @@
 .short-links__btn:hover { background: rgba(255, 255, 255, 0.09); }
 .short-links__btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.short-links__btn--disabled-hint:disabled { cursor: not-allowed; } /* the reason lives in the title attribute */
 .short-links__btn--ghost { padding: 6px; color: var(--text-secondary); }
 
 .short-links__empty {
@@ -141,6 +142,19 @@
 .short-links__details { font-size: 12px; color: var(--text-secondary); }
 .short-links__details summary { cursor: pointer; font-weight: 600; }
 
+.short-links__destinations { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+.short-links__destinations summary { cursor: pointer; font-weight: 600; }
+.short-links__destinations-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 6px;
+}
+.short-links__destinations-grid label { display: flex; flex-direction: column; gap: 4px; }
+@media (min-width: 520px) {
+    .short-links__destinations-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .short-links__tag-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; align-items: center; }
 .short-links__tag-option { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
 .short-links__tag-new { display: inline-flex; align-items: center; gap: 4px; }
@@ -187,7 +201,7 @@
 .qr-door-sheet__title { margin: 0; font-size: 14px; }
 .qr-door-sheet__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
     gap: 12px;
 }
 .qr-door-sheet__cell {
@@ -206,18 +220,8 @@
 }
 .qr-door-sheet__cell figcaption { display: flex; flex-direction: column; gap: 2px; }
 .qr-door-sheet__url { font-size: 9px; word-break: break-all; color: #444; }
+/* The short URL printed under the code — this is what the code encodes. */
+.qr-door-sheet__short { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: #000; overflow-wrap: anywhere; }
+/* Per-sheet notice when codes point straight at the destination. */
+.qr-door-sheet__fallback { font-size: 11px; color: #444; margin: 0; }
 
-/* Print: only the generated sheet, black on white, page-break-safe cells. */
-@media print {
-    body * { visibility: hidden; }
-    .qr-door-sheet__print, .qr-door-sheet__print * { visibility: visible; }
-    .qr-door-sheet__print {
-        position: absolute;
-        inset: 0 auto auto 0;
-        width: 100%;
-        background: #fff;
-        color: #000;
-        padding: 16px;
-    }
-    .qr-door-sheet__cell { border: 1px solid #000; break-inside: avoid; }
-}

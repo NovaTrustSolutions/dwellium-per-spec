@@ -240,3 +240,9 @@ export function qrSvg(text: string, opts: { ecc?: QrEcc; size?: number; title?: 
     const title = opts.title ? `<title>${opts.title.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'))}</title>` : '';
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${p.dim} ${p.dim}" width="${px}" height="${px}" role="img" shape-rendering="crispEdges">${title}<rect width="${p.dim}" height="${p.dim}" fill="#fff"/><path d="${p.d}" fill="#000"/></svg>`;
 }
+
+/** `<img src>`-ready data URI of qrSvg (same shape the retired Scheduling encoder returned). Null when text doesn't fit. */
+export function qrDataUri(text: string, opts: { ecc?: QrEcc; size?: number; title?: string } = {}): string | null {
+    const svg = qrSvg(text, opts);
+    return svg && `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}

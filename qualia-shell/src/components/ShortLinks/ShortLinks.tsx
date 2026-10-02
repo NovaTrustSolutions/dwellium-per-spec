@@ -11,8 +11,10 @@
  * filter, clicks sparkline, "Open in Dub ↗". Always: list with click counts,
  * inline edit that PATCHes only changed fields, confirm-gated archive, copy +
  * QR (client-side when the row has no hosted qrCode), link presets and a
- * printable per-unit QR door sheet (client-side, works with no shortener). A
- * 503 `needsSetup` (OLD backend only) renders a card pointing at the door sheet.
+ * printable per-unit QR door sheet (mints short links, the codes encode them).
+ * Presets and the door sheet point at per-property destinations the user enters
+ * (widget memory) — nothing links to the app itself; a preset stays disabled
+ * until its destination is set. A 503 `needsSetup` (OLD backend only) renders a card pointing at the door sheet.
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, ArchiveRestore, Copy, ExternalLink, Pencil, Printer, QrCode, RefreshCw, X } from 'lucide-react';
@@ -33,8 +35,16 @@ import {
     type UpdateShortLinkInput,
     type ShortLink,
 } from './shortLinksApi';
-import { ANDY_LINK_PRESETS, ANDY_PROPERTIES, presetKey } from './andyLinkPresets';
-import { qrDataUri } from '../Scheduling/qr'; // client-side QR — builtin-mode links carry no hosted qrCode URL
+import {
+    ANDY_LINK_PRESETS,
+    ANDY_PROPERTIES,
+    HTTP_URL_RE,
+    presetKey,
+    presetUrl,
+    type DestinationsMemory,
+    type PresetId,
+} from './andyLinkPresets';
+import { qrDataUri } from '../Scribe/idocs/blocks/qr'; // client-side QR — builtin-mode links carry no hosted qrCode URL
 import QrDoorSheet from './QrDoorSheet';
 import { openWidget } from '../../lib/dwelliumCommands';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
@@ -126,8 +136,12 @@ export default function ShortLinks() {
     usePerUserIdentity();
     const [state, setState] = useState<ViewState>({ kind: 'loading' });
     // Plan 055 phase 2 — the active mode reopens where it was left.
-    const [mem, patchMem] = useWidgetMemory('short-links', { mode: 'links' });
+    const [mem, patchMem] = useWidgetMemory('short-links', { mode: 'links', destinations: {} as DestinationsMemory });
     const mode: 'links' | 'sheet' = mem.mode === 'sheet' ? 'sheet' : 'links';
+    // A corrupt (non-object) slice reads as "nothing entered".
+    const destinations: DestinationsMemory = typeof mem.destinations === 'object' && mem.destinations && !Array.isArray(mem.destinations) ? mem.destinations : {};
+    const setDestination = (propertyId: string, presetId: PresetId, value: string): void =>
+        patchMem({ destinations: { ...destinations, [propertyId]: { ...destinations[propertyId], [presetId]: value } } });
     const setMode = (m: 'links' | 'sheet'): void => patchMem({ mode: m });
     const [showArchived, setShowArchived] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
@@ -253,9 +267,10 @@ export default function ShortLinks() {
     const applyPreset = (presetId: string) => {
         const property = ANDY_PROPERTIES.find(p => p.id === presetProperty) ?? ANDY_PROPERTIES[0];
         const preset = ANDY_LINK_PRESETS.find(p => p.id === presetId);
-        if (!preset) return;
+        const dest = preset && presetUrl(destinations, property.id, preset.id);
+        if (!preset || !dest) return;
         void create(
-            { url: preset.url, key: presetKey(property, preset), ...(dub ? { tagNames: [property.tag, preset.kindTag] } : {}) },
+            { url: dest, key: presetKey(property, preset), ...(dub ? { tagNames: [property.tag, preset.kindTag] } : {}) },
             preset.label,
         );
     };
@@ -322,7 +337,7 @@ export default function ShortLinks() {
     if (mode === 'sheet') {
         return (
             <div className="short-links">
-                <QrDoorSheet configured={dub} onBack={() => setMode('links')} />
+                <QrDoorSheet destinations={destinations} links={state.kind === 'ok' ? state.data.mode : 'unavailable'} onBack={() => setMode('links')} />
             </div>
         );
     }
@@ -393,17 +408,44 @@ export default function ShortLinks() {
                         >
                             {ANDY_PROPERTIES.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
-                        {ANDY_LINK_PRESETS.map(p => (
-                            <button
-                                key={p.id}
-                                className="short-links__btn short-links__btn--ghost"
-                                disabled={creating}
-                                onClick={() => applyPreset(p.id)}
-                            >
-                                + {p.label}
-                            </button>
-                        ))}
+                        {ANDY_LINK_PRESETS.map(p => {
+                            const unset = presetUrl(destinations, presetProperty, p.id) === null;
+                            return (
+                                <button
+                                    key={p.id}
+                                    className={`short-links__btn short-links__btn--ghost${unset ? ' short-links__btn--disabled-hint' : ''}`}
+                                    disabled={creating || unset}
+                                    title={unset ? `Set the ${p.label} destination for this property first` : undefined}
+                                    onClick={() => applyPreset(p.id)}
+                                >
+                                    + {p.label}
+                                </button>
+                            );
+                        })}
                     </section>
+                    <details className="short-links__destinations">
+                        <summary>Destinations — {ANDY_PROPERTIES.find(p => p.id === presetProperty)?.name}</summary>
+                        <div className="short-links__destinations-grid">
+                            {ANDY_LINK_PRESETS.map(p => {
+                                const value = destinations[presetProperty]?.[p.id] ?? '';
+                                return (
+                                    <label key={p.id}>
+                                        {p.label}
+                                        <input
+                                            className="short-links__input"
+                                            placeholder="https://…"
+                                            value={value}
+                                            onChange={e => setDestination(presetProperty, p.id, e.target.value)}
+                                            aria-label={`${p.label} destination`}
+                                        />
+                                        {value.trim() && !HTTP_URL_RE.test(value.trim()) && (
+                                            <span className="short-links__muted">must start with http:// or https://</span>
+                                        )}
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </details>
 
                     <section className="short-links__composer" aria-label="New link">
                         <div className="short-links__form">
@@ -612,7 +654,15 @@ export default function ShortLinks() {
                                                     <div className="short-links__detail">
                                                     {qrFor === l.id && (
                                                         // Builtin-mode rows carry no hosted qrCode URL — render the same client-side QR the door sheet uses.
-                                                        <img className="short-links__qr" src={l.qrCode || qrDataUri(l.shortLink) || undefined} alt={`QR code for ${l.shortLink}`} width={120} height={120} />
+                                                        <>
+                                                            <img className="short-links__qr" src={l.qrCode || qrDataUri(l.shortLink) || undefined} alt={`QR code for ${l.shortLink}`} width={120} height={120} />
+                                                            {qrDataUri(l.shortLink) && (
+                                                                // Always the client-side SVG (vector, print-ready), even in Dub mode.
+                                                                <a className="short-links__btn short-links__btn--ghost" href={qrDataUri(l.shortLink) ?? undefined} download={`${l.key}.svg`}>
+                                                                    Download SVG
+                                                                </a>
+                                                            )}
+                                                        </>
                                                     )}
                                                     {editingId === l.id && (
                                                         <div className="short-links__edit" aria-label={`Edit form for ${l.shortLink}`}>

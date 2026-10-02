@@ -26,7 +26,8 @@ const UNITS = Array.from({ length: 30 }, (_, i) => `${String.fromCharCode(65 + M
     // Destination for the first property (Woodland Parc is selected by default).
     await page.click('summary:has-text("Destinations")');
     await page.fill('[aria-label="Maintenance request destination"]', 'https://maintenance.example.com/request?unit={unit}');
-    check('preset enabled once its destination is set', !(await page.locator('button:text-is("+ Maintenance request")').isDisabled()));
+    const maintBtn = page.locator('button:text-is("+ Maintenance request")');
+    check('a per-unit ({unit}) destination keeps the preset disabled with the door-sheet hint', (await maintBtn.isDisabled()) && /per unit/.test(await maintBtn.getAttribute('title') ?? ''));
 
     // Door sheet: pattern prefilled from that destination; 30-unit roster; Generate mints.
     await page.click('[aria-label="QR door sheet"]');
@@ -39,7 +40,7 @@ const UNITS = Array.from({ length: 30 }, (_, i) => `${String.fromCharCode(65 + M
     check('Generate minted through ONE bulk call of 30 entries', bulk.length === 1 && bulk[0].body.links.length === 30, `${bulk.length} call(s)`);
     check('bulk entries carry url, key and title and no tagNames (built-in)', bulk.length === 1 && bulk[0].body.links.every(l => l.url && l.key && l.title && !('tagNames' in l)));
     const shorts = await page.locator('.qr-door-sheet__short').allTextContents();
-    const expected = UNITS.map(u => `https://dwellium.example/l/woodland-parc-${u.toLowerCase()}`);
+    const expected = UNITS.map(u => `https://dwellium.example/l/woodland-parc-unit-${u.toLowerCase()}`);
     check('every cell shows its own short URL (what the code encodes)', JSON.stringify(shorts) === JSON.stringify(expected), shorts.slice(0, 2).join(', '));
     check('no fallback notice (short links were minted)', (await page.locator('.qr-door-sheet__fallback').count()) === 0);
 
@@ -65,7 +66,7 @@ const UNITS = Array.from({ length: 30 }, (_, i) => `${String.fromCharCode(65 + M
     const all = pages.join('\n');
     check('PDF has a sane page count for 30 cells', pdfDoc.numPages >= 2 && pdfDoc.numPages <= 6, `${pdfDoc.numPages} pages`);
     // pdf.js hands back glyph runs ('U|n|i|t| |A|01'), so compare with whitespace removed.
-    const perPage = UNITS.every(u => pages.some(t => { const c = t.replace(/\s+/g, ''); return c.includes(`Unit${u}`) && c.includes(`/l/woodland-parc-${u.toLowerCase()}`); }));
+    const perPage = UNITS.every(u => pages.some(t => { const c = t.replace(/\s+/g, ''); return c.includes(`Unit${u}`) && c.includes(`/l/woodland-parc-unit-${u.toLowerCase()}`); }));
     check('each unit label and its short URL land on the SAME page (no cell split across pages)', perPage);
     check('nothing but the sheet prints (no composer / Back button text in the PDF)', !/Create link|Back|Destination pattern/.test(all));
 

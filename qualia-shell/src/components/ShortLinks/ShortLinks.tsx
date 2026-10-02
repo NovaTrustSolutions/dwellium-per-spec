@@ -39,6 +39,7 @@ import {
     ANDY_LINK_PRESETS,
     ANDY_PROPERTIES,
     HTTP_URL_RE,
+    destinationValue,
     presetKey,
     presetUrl,
     type DestinationsMemory,
@@ -268,7 +269,7 @@ export default function ShortLinks() {
         const property = ANDY_PROPERTIES.find(p => p.id === presetProperty) ?? ANDY_PROPERTIES[0];
         const preset = ANDY_LINK_PRESETS.find(p => p.id === presetId);
         const dest = preset && presetUrl(destinations, property.id, preset.id);
-        if (!preset || !dest) return;
+        if (!preset || !dest || dest.includes('{unit}')) return;
         void create(
             { url: dest, key: presetKey(property, preset), ...(dub ? { tagNames: [property.tag, preset.kindTag] } : {}) },
             preset.label,
@@ -409,13 +410,16 @@ export default function ShortLinks() {
                             {ANDY_PROPERTIES.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                         {ANDY_LINK_PRESETS.map(p => {
-                            const unset = presetUrl(destinations, presetProperty, p.id) === null;
+                            const dest = presetUrl(destinations, presetProperty, p.id);
+                            // A per-unit destination ({unit}) is for the door sheet; a preset is one link per property.
+                            const perUnit = !!dest && dest.includes('{unit}');
+                            const unset = dest === null || perUnit;
                             return (
                                 <button
                                     key={p.id}
                                     className={`short-links__btn short-links__btn--ghost${unset ? ' short-links__btn--disabled-hint' : ''}`}
                                     disabled={creating || unset}
-                                    title={unset ? `Set the ${p.label} destination for this property first` : undefined}
+                                    title={perUnit ? `This destination is per unit ({unit}) — print it from the door sheet` : unset ? `Set the ${p.label} destination for this property first` : undefined}
                                     onClick={() => applyPreset(p.id)}
                                 >
                                     + {p.label}
@@ -427,7 +431,7 @@ export default function ShortLinks() {
                         <summary>Destinations — {ANDY_PROPERTIES.find(p => p.id === presetProperty)?.name}</summary>
                         <div className="short-links__destinations-grid">
                             {ANDY_LINK_PRESETS.map(p => {
-                                const value = destinations[presetProperty]?.[p.id] ?? '';
+                                const value = destinationValue(destinations, presetProperty, p.id);
                                 return (
                                     <label key={p.id}>
                                         {p.label}

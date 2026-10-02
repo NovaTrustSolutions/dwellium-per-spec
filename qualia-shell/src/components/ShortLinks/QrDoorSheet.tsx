@@ -19,6 +19,7 @@ import { qrSvg } from '../Scribe/idocs/blocks/qr';
 import {
     ANDY_PROPERTIES,
     HTTP_URL_RE,
+    KEY_RE,
     presetUrl,
     unitKey,
     type AndyProperty,
@@ -102,13 +103,17 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
     const maintenance = (p: AndyProperty): string => presetUrl(destinations, p.id, 'maintenance') ?? '';
     const [property, setProperty] = useState<AndyProperty>(ANDY_PROPERTIES[0]);
     const [unitsText, setUnitsText] = useState(ANDY_PROPERTIES[0].units.join('\n'));
-    const [pattern, setPattern] = useState(() => maintenance(ANDY_PROPERTIES[0]));
+    // null = follow the property's maintenance destination, so one entered after this sheet opened still shows up.
+    const [typedPattern, setTypedPattern] = useState<string | null>(null);
+    const pattern = typedPattern ?? maintenance(property);
     const [generated, setGenerated] = useState<Generated | null>(null);
+    const [refusal, setRefusal] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const run = useRef(0); // a Generate that lost to a newer one / a property switch must not render
 
     const patternOk = HTTP_URL_RE.test(pattern.trim());
     const units = useMemo(() => parseUnits(unitsText), [unitsText]);
+    const svgs = useMemo(() => generated?.cells.map(({ unit, url, short }) => qrSvg(short ?? url, { size: 160, title: `QR code for unit ${unit}` })) ?? [], [generated]);
 
     const pickProperty = (id: string) => {
         const next = ANDY_PROPERTIES.find(p => p.id === id) ?? ANDY_PROPERTIES[0];
@@ -116,12 +121,29 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
         setBusy(false);
         setProperty(next);
         setUnitsText(next.units.join('\n'));
-        setPattern(maintenance(next));
+        setTypedPattern(null);
         setGenerated(null);
+        setRefusal(null);
+    };
+
+    /** Why this roster cannot be minted as-is (two labels → one key, or a label that makes no valid key), or null. */
+    const keyProblem = (tag: string, labels: string[]): string | null => {
+        const seen = new Map<string, string>();
+        for (const unit of labels) {
+            const key = unitKey(tag, unit);
+            if (!KEY_RE.test(key)) return `Unit "${unit}" cannot become a short-link key (letters, digits, - and _, at most 64 characters in all)`;
+            const other = seen.get(key);
+            if (other !== undefined) return `Units "${other}" and "${unit}" would share one code (${key}) — rename one`;
+            seen.set(key, unit);
+        }
+        return null;
     };
 
     const generate = async () => {
         const snap = { property, pattern: pattern.trim(), units };
+        const problem = keyProblem(snap.property.tag, snap.units);
+        setRefusal(problem);
+        if (problem) return;
         const cells: Cell[] = snap.units.map(unit => ({ unit, url: unitUrl(snap.pattern, unit), short: null }));
         const id = ++run.current;
         let fallback: string | null = null;
@@ -162,7 +184,7 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
                 </label>
                 <label className="qr-door-sheet__field qr-door-sheet__field--wide">
                     Destination pattern ({'{unit}'} is replaced per unit when present)
-                    <input className="short-links__input" value={pattern} onChange={e => setPattern(e.target.value)} aria-label="Destination pattern" />
+                    <input className="short-links__input" value={pattern} onChange={e => setTypedPattern(e.target.value)} aria-label="Destination pattern" />
                 </label>
                 <label className="qr-door-sheet__field qr-door-sheet__field--wide">
                     Units — one per line (seeded from Strata data; paste the full roster to print a building)
@@ -190,6 +212,7 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
                 </div>
                 {!pattern.trim() && <p className="short-links__muted">{EMPTY_HINT}</p>}
                 {pattern.trim() && !patternOk && <p className="short-links__muted">The destination must be an http(s) URL.</p>}
+                {refusal && <p className="short-links__notice" role="status">{refusal}</p>}
             </div>
 
             {generated && (
@@ -197,8 +220,8 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
                     <h3 className="qr-door-sheet__title">{generated.propertyName} — unit QR codes</h3>
                     {generated.fallback && <p className="qr-door-sheet__fallback">{generated.fallback}</p>}
                     <div className="qr-door-sheet__grid">
-                        {generated.cells.map(({ unit, url, short }) => {
-                            const svg = qrSvg(short ?? url, { size: 160, title: `QR code for unit ${unit}` });
+                        {generated.cells.map(({ unit, url, short }, i) => {
+                            const svg = svgs[i];
                             return (
                                 <figure key={unit} className="qr-door-sheet__cell" data-testid="qr-door-sheet-cell">
                                     {svg

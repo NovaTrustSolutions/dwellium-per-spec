@@ -85,6 +85,10 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     check('presets are disabled until a destination is set', await page.locator('button:text-is("+ Rent payment")').isDisabled());
     await page.click('summary:has-text("Destinations")');
     await page.fill('[aria-label="Rent payment destination"]', 'https://pay.example.com/woodland');
+    const destH = await page.locator('[aria-label="Rent payment destination"]').evaluate(e => Math.round(e.getBoundingClientRect().height));
+    check('layout: destination inputs are single-line controls (< 60 px tall)', destH < 60, `${destH}px`);
+    await page.mouse.move(2, 600);
+    await shot('builtin-520-destinations.png');
     await page.click('button:text-is("+ Rent payment")');
     await page.getByText('https://dwellium.example/l/woodland-parc-rent').first().waitFor();
     check('preset click keeps the composer draft', (await page.inputValue('[aria-label="Destination URL"]')) === 'https://example.com/half-typed');
@@ -138,6 +142,9 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     await page.click('[aria-label="QR door sheet"]');
     await page.locator('[aria-label="Destination pattern"]').waitFor();
     check('door sheet offers no "Mint short links" in built-in mode', !(await has('button:has-text("Mint short links")')));
+    const selH = await page.locator('[aria-label="Property"]').evaluate(e => Math.round(e.getBoundingClientRect().height));
+    const patH = await page.locator('[aria-label="Destination pattern"]').evaluate(e => Math.round(e.getBoundingClientRect().height));
+    check('layout: door-sheet select and pattern input are single-line controls (< 60 px tall)', selH < 60 && patH < 60, `select ${selH}px, input ${patH}px`);
     await page.mouse.move(2, 600);
     await shot('builtin-520-doorsheet.png');
 

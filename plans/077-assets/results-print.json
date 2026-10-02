@@ -1,8 +1,8 @@
 {
-  "ranAt": "2026-10-02T22:44:31.619Z",
+  "ranAt": "2026-10-02T23:00:14.262Z",
   "results": [
     {
-      "name": "preset enabled once its destination is set",
+      "name": "a per-unit ({unit}) destination keeps the preset disabled with the door-sheet hint",
       "pass": true,
       "detail": ""
     },
@@ -24,7 +24,7 @@
     {
       "name": "every cell shows its own short URL (what the code encodes)",
       "pass": true,
-      "detail": "https://dwellium.example/l/woodland-parc-a01, https://dwellium.example/l/woodland-parc-a02"
+      "detail": "https://dwellium.example/l/woodland-parc-unit-a01, https://dwellium.example/l/woodland-parc-unit-a02"
     },
     {
       "name": "no fallback notice (short links were minted)",
@@ -59,7 +59,7 @@
     {
       "name": "decoded set == the 30 short links",
       "pass": true,
-      "detail": "https://dwellium.example/l/woodland-parc-a01, https://dwellium.example/l/woodland-parc-a02"
+      "detail": "https://dwellium.example/l/woodland-parc-unit-a01, https://dwellium.example/l/woodland-parc-unit-a02"
     },
     {
       "name": "measure: smallest decoded code width in the print render (px @96dpi)",

@@ -68,18 +68,31 @@ export type DestinationsMemory = Record<string, PropertyDestinations>;
 
 export const HTTP_URL_RE = /^https?:\/\/\S+$/i;
 
+/** The stored text for a preset on a property ('' when unset); anything that is not a string (a foreign/old write) reads as unset. */
+export function destinationValue(destinations: DestinationsMemory | undefined, propertyId: string, presetId: PresetId): string {
+    const v = destinations?.[propertyId]?.[presetId];
+    return typeof v === 'string' ? v : '';
+}
+
 /** Trimmed destination for a preset on a property, or null when unset/invalid. */
 export function presetUrl(destinations: DestinationsMemory | undefined, propertyId: string, presetId: PresetId): string | null {
-    const url = destinations?.[propertyId]?.[presetId]?.trim();
+    const url = destinationValue(destinations, propertyId, presetId).trim();
     return url && HTTP_URL_RE.test(url) ? url : null;
 }
+
+/** Slug rules of the built-in shortener (linkRoutes.ts SLUG_RE). */
+export const KEY_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 
 /** Short-link key for a preset on a property, e.g. "riverwood-club-rent". */
 export function presetKey(property: AndyProperty, preset: AndyLinkPreset): string {
     return `${property.tag}-${preset.keySuffix}`;
 }
 
-/** Sanitize an arbitrary unit label into a Dub key segment. */
+/**
+ * Short-link key for a unit's door code, e.g. "riverwood-club-unit-b03". The `-unit-` segment keeps
+ * door keys out of the preset namespace: a unit labelled "rent" must never overwrite the rent preset.
+ * Two labels can still collapse to one key ("A 1" / "A-1") — the door sheet refuses that roster.
+ */
 export function unitKey(propertyTag: string, unit: string): string {
-    return `${propertyTag}-${unit}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return `${propertyTag}-unit-${unit}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }

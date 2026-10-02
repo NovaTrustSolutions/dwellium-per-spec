@@ -16,11 +16,11 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ShortLinks, { isoToLocalInput } from '../components/ShortLinks/ShortLinks';
 import { doorSheetHtml, printDoorSheet, unitUrl } from '../components/ShortLinks/QrDoorSheet';
 import { qrSvg } from '../components/Scribe/idocs/blocks/qr';
-import { ANDY_PROPERTIES, presetKey, ANDY_LINK_PRESETS, type DestinationsMemory } from '../components/ShortLinks/andyLinkPresets';
+import { ANDY_PROPERTIES, presetKey, unitKey, ANDY_LINK_PRESETS, type DestinationsMemory } from '../components/ShortLinks/andyLinkPresets';
 import {
     archiveShortLink,
     bulkCreateShortLinks,
@@ -464,7 +464,7 @@ describe('QR door sheet', () => {
         return await screen.findByTestId('qr-door-sheet-print');
     };
     const bulks = (calls: Recorded[]) => calls.filter(c => c.url.includes('/api/links/bulk'));
-    const unitKeys = (units: string[]) => units.map(u => `woodland-parc-${u}`);
+    const unitKeys = (units: string[]) => units.map(u => `woodland-parc-unit-${u}`);
 
     it('substitutes {unit} (URL-encoded) into the destination pattern', () => {
         expect(unitUrl('https://x.test/?unit={unit}', 'B03')).toBe('https://x.test/?unit=B03');
@@ -503,7 +503,7 @@ describe('QR door sheet', () => {
         const sent = bulks(calls)[0].body?.links as JsonObject[];
         expect(sent).toEqual(['101', '102', '103'].map(u => ({
             url: unitUrl(wpPattern, u),
-            key: `woodland-parc-${u}`,
+            key: `woodland-parc-unit-${u}`,
             title: `Woodland Parc Townhomes unit ${u}`,
         })));
         for (const l of sent) expect(l).not.toHaveProperty('tagNames');
@@ -511,7 +511,7 @@ describe('QR door sheet', () => {
         const cells = within(sheet).getAllByTestId('qr-door-sheet-cell');
         expect(cells).toHaveLength(3);
         ['101', '102', '103'].forEach((u, i) => {
-            const short = `${SHORT_BASE}woodland-parc-${u}`;
+            const short = `${SHORT_BASE}woodland-parc-unit-${u}`;
             const dest = unitUrl(wpPattern, u);
             const title = `QR code for unit ${u}`;
             expect(cellQr(cells[i])).toBe(markup(qrSvg(short, { size: 160, title })));
@@ -531,7 +531,7 @@ describe('QR door sheet', () => {
         await generate();
         expect(bulks(calls)[0].body?.links).toEqual([{
             url: unitUrl(wpPattern, '101'),
-            key: 'woodland-parc-101',
+            key: 'woodland-parc-unit-101',
             title: 'Woodland Parc Townhomes unit 101',
             tagNames: [WP.tag, 'door-qr'],
         }]);
@@ -544,7 +544,7 @@ describe('QR door sheet', () => {
         const sheet = await generate();
         const sent = bulks(calls)[0].body?.links as JsonObject[];
         expect(sent.map(l => l.url)).toEqual(['https://forms.example.org/maint', 'https://forms.example.org/maint']);
-        expect(sent.map(l => l.key)).toEqual(['woodland-parc-a1', 'woodland-parc-a2']);
+        expect(sent.map(l => l.key)).toEqual(['woodland-parc-unit-a1', 'woodland-parc-unit-a2']);
         const dests = within(sheet).getAllByTestId('qr-door-sheet-cell').map(c => c.querySelector('.qr-door-sheet__url')!.textContent);
         expect(dests).toEqual(['https://forms.example.org/maint', 'https://forms.example.org/maint']);
     });
@@ -555,7 +555,7 @@ describe('QR door sheet', () => {
         fireEvent.change(screen.getByLabelText('Property'), { target: { value: 'riverwood-club' } });
         const sheet = await generate();
         expect(within(sheet).getAllByTestId('qr-door-sheet-cell')).toHaveLength(RW.units.length);
-        expect((bulks(calls)[0].body?.links as JsonObject[]).map(l => l.key)).toEqual(RW.units.map(u => `riverwood-club-${u.toLowerCase()}`));
+        expect((bulks(calls)[0].body?.links as JsonObject[]).map(l => l.key)).toEqual(RW.units.map(u => `riverwood-club-unit-${u.toLowerCase()}`));
         expect(within(sheet).getByText(/Riverwood Club Apartments — unit QR codes/)).toBeInTheDocument();
     });
 
@@ -719,7 +719,7 @@ describe('ShortLinks widget — built-in mode (default backend)', () => {
         expect(screen.queryByRole('columnheader', { name: 'Tags' })).not.toBeInTheDocument();
         expect(screen.getAllByRole('row')[1].querySelectorAll('td')).toHaveLength(4);
 
-        fireEvent.click(screen.getByRole('button', { name: '+ Maintenance request' }));
+        fireEvent.click(screen.getByRole('button', { name: '+ Rent payment' }));
         await waitFor(() => expect(calls.some(c => c.method === 'POST')).toBe(true));
         expect(calls.find(c => c.method === 'POST')?.body).not.toHaveProperty('tagNames');
         expect(calls.some(c => c.url.includes('/api/links/analytics'))).toBe(false);
@@ -854,7 +854,7 @@ describe('ShortLinks widget — refresh never throws away work in progress', () 
         fireEvent.click(screen.getByRole('button', { name: `Edit ${LINK.shortLink}` }));
         fireEvent.change(screen.getByLabelText('Edit destination URL'), { target: { value: 'https://example.com/typing' } });
 
-        fireEvent.click(screen.getByRole('button', { name: '+ Maintenance request' }));
+        fireEvent.click(screen.getByRole('button', { name: '+ Rent payment' }));
         await waitFor(() => expect(screen.getByText(/^Created /)).toBeInTheDocument());
         await waitFor(() => expect(listGets(calls)).toBeGreaterThanOrEqual(2));
         await waitFor(() => expect(screen.getByText(LINK.shortLink)).toBeInTheDocument());
@@ -1069,6 +1069,107 @@ describe('door sheet print document (plan 077 p2.7)', () => {
         Object.defineProperty(frame, 'contentWindow', { value: { addEventListener: () => undefined, focus: () => undefined, print: () => printed.push('print') } });
         frame.onload!(new Event('load'));
         expect(printed).toEqual(['print']);
+        frame.remove();
+    });
+});
+
+describe('door sheet + presets — phase 2 review regressions', () => {
+    it('refuses a roster where two labels collapse to one key, naming both, and mints nothing', async () => {
+        seedDestinations();
+        const calls = stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        fireEvent.change(screen.getByLabelText('Units'), { target: { value: 'A 1\nA-1\nB03' } });
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        expect(await screen.findByRole('status')).toHaveTextContent('Units "A 1" and "A-1" would share one code (woodland-parc-unit-a-1)');
+        expect(screen.queryByTestId('qr-door-sheet-print')).not.toBeInTheDocument();
+        expect(calls.some(c => c.url.includes('/api/links/bulk'))).toBe(false);
+    });
+
+    it('refuses a label that cannot become a key (too long), naming the unit', async () => {
+        seedDestinations();
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        fireEvent.change(screen.getByLabelText('Units'), { target: { value: 'x'.repeat(80) } });
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        expect(await screen.findByRole('status')).toHaveTextContent(/cannot become a short-link key/);
+    });
+
+    it('door keys live in their own namespace: a unit labelled "rent" never gets the rent preset\'s key', () => {
+        const p = ANDY_PROPERTIES[0];
+        expect(unitKey(p.tag, 'rent')).toBe('woodland-parc-unit-rent');
+        expect(unitKey(p.tag, 'rent')).not.toBe(presetKey(p, ANDY_LINK_PRESETS.find(x => x.id === 'rent-payment')!));
+    });
+
+    it('a corrupt destination value (number / object) reads as unset instead of crashing the widget', async () => {
+        patchWidgetMemory('short-links', { destinations: { 'woodland-parc': { maintenance: 5, 'rent-payment': { a: 1 } } } });
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        expect(screen.getByRole('button', { name: '+ Maintenance request' })).toBeDisabled();
+        expect((screen.getByLabelText('Maintenance request destination') as HTMLInputElement).value).toBe('');
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        expect(screen.getByRole('button', { name: /Generate sheet/i })).toBeDisabled();
+    });
+
+    it('a per-unit destination ({unit}) disables the preset with a door-sheet hint but still feeds the door sheet', async () => {
+        patchWidgetMemory('short-links', { destinations: { 'woodland-parc': { maintenance: 'https://m.example/?u={unit}' } } });
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        const btn = screen.getByRole('button', { name: '+ Maintenance request' });
+        expect(btn).toBeDisabled();
+        expect(btn).toHaveAttribute('title', expect.stringMatching(/per unit/));
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        expect((screen.getByLabelText('Destination pattern') as HTMLInputElement).value).toBe('https://m.example/?u={unit}');
+    });
+
+    it('an open door sheet picks up a maintenance destination entered after it mounted', async () => {
+        patchWidgetMemory('short-links', { mode: 'sheet' });
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await screen.findByLabelText('Destination pattern');
+        expect((screen.getByLabelText('Destination pattern') as HTMLInputElement).value).toBe('');
+        act(() => { patchWidgetMemory('short-links', { destinations: { 'woodland-parc': { maintenance: 'https://late.example/m' } } }); });
+        await waitFor(() => expect((screen.getByLabelText('Destination pattern') as HTMLInputElement).value).toBe('https://late.example/m'));
+        expect(screen.getByRole('button', { name: /Generate sheet/i })).toBeEnabled();
+    });
+
+    it('a mint that resolves after the property was switched never renders (stale guard), and Generate is usable again', async () => {
+        seedDestinations();
+        let release: ((r: Response) => void) | null = null;
+        vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+            if (String(url).includes('/api/links/bulk')) return new Promise<Response>(res => { release = res; });
+            return jsonResponse({ success: true, mode: 'builtin', data: [] });
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        await waitFor(() => expect(release).not.toBeNull());
+        fireEvent.change(screen.getByLabelText('Property'), { target: { value: ANDY_PROPERTIES[1].id } });
+        release!(jsonResponse({ success: true, mode: 'builtin', data: [{ ...BUILTIN_LINK, key: 'woodland-parc-unit-2794-5', shortLink: 'https://x/l/woodland-parc-unit-2794-5' }] }));
+        await new Promise(r => setTimeout(r, 30));
+        expect(screen.queryByTestId('qr-door-sheet-print')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Generate sheet/i })).toBeEnabled();
+    });
+
+    it('the Print button prints the generated sheet (short links) from a hidden iframe', async () => {
+        seedDestinations();
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        await screen.findByTestId('qr-door-sheet-print');
+        fireEvent.click(screen.getByRole('button', { name: 'Print sheet' }));
+        const frame = document.querySelector('iframe[aria-hidden="true"]') as HTMLIFrameElement;
+        expect(frame).not.toBeNull();
+        expect(frame.srcdoc).toContain('/l/woodland-parc-unit-2794-5');
+        expect(frame.srcdoc).toContain(qrSvg('https://dwellium.example/l/woodland-parc-unit-2794-5', { size: 160, title: 'QR code for unit 2794-5' }));
         frame.remove();
     });
 });

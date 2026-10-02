@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-10-02T22:42:56.869Z",
+  "ranAt": "2026-10-02T22:59:24.670Z",
   "results": [
     {
       "name": "list renders both links",
@@ -92,6 +92,11 @@
       "detail": ""
     },
     {
+      "name": "layout: destination inputs are single-line controls (< 60 px tall)",
+      "pass": true,
+      "detail": "28px"
+    },
+    {
       "name": "preset click keeps the composer draft",
       "pass": true,
       "detail": ""
@@ -155,6 +160,11 @@
       "name": "door sheet offers no \"Mint short links\" in built-in mode",
       "pass": true,
       "detail": ""
+    },
+    {
+      "name": "layout: door-sheet select and pattern input are single-line controls (< 60 px tall)",
+      "pass": true,
+      "detail": "select 30px, input 28px"
     },
     {
       "name": "measure: horizontal overflow at 520px",

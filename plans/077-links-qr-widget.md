@@ -1,7 +1,7 @@
 # 077 — Links & QR widget: audit + improvement plan
 
-Status: PHASE 1 IMPLEMENTED 2026-10-02, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
-backend `feat/077-links-backend-p1` (see §7). Phases 2–4 are still plan only. The audit (2026-10-01) was read-only.
+Status: PHASES 1–2 IMPLEMENTED 2026-10-02, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
+backend `feat/077-links-backend-p1` (see §7–8). Phases 3–4 are still plan only. The audit (2026-10-01) was read-only.
 Base: frontend `main` @ `fe281de`; backend `main` (links code identical on the checked-out
 `chore/token-encryption-key-secret` branch — `git diff main` touches only `deploy/cloud-run.sh`).
 Swarm: ruflo `swarm-1790844744784-onqku3` (hierarchical). ruflo only *registered* the agents
@@ -158,7 +158,7 @@ a `302` with the right `Location`, not a `200 text/html`.
 | 3.4 | Client-side search box over the loaded list. | search gap |
 | 3.5 | Accessibility pass: `role="status"` on the notice, focus kept on Archive→Confirm, `:focus-visible`, 12 px minimum text, wrap the action cell. | D17 |
 
-| 3.6 | Carried over from the Phase 1 review: slugs are case-sensitive while the `/l/` route is not (`/l/PAY` 404s when the slug is `pay`) — look slugs up case-insensitively and refuse case-only duplicates; a failed background refresh replaces the list with the error card (nothing is lost, Retry restores it) — keep the list and show a notice instead; re-clicking a preset whose link is archived answers "key is taken" with no visible row — say it is archived and offer to unarchive (2.2's idempotent mint covers the door sheet). | review B-4, F-6, F-7 |
+| 3.6 | Carried over from the Phase 1 and Phase 2 reviews (see §7/§8 for the Phase 2 items F6, F10, F11, F12): slugs are case-sensitive while the `/l/` route is not (`/l/PAY` 404s when the slug is `pay`) — look slugs up case-insensitively and refuse case-only duplicates; a failed background refresh replaces the list with the error card (nothing is lost, Retry restores it) — keep the list and show a notice instead; re-clicking a preset whose link is archived answers "key is taken" with no visible row — say it is archived and offer to unarchive (2.2's idempotent mint covers the door sheet). | review B-4, F-6, F-7 |
 
 ### Phase 4 — integrations plan 047 promised (only if still wanted)
 
@@ -236,4 +236,44 @@ Not done / not verified in Phase 1: nothing is pushed or deployed; the widget ha
 inside the logged-in shell or against the real backend (creating links there would write real
 data); Dub mode was exercised by unit tests only; presets still point at the app's own origin
 (D1 — Phase 2.1).
+
+## 8. Phase 2 — what was done (2026-10-02)
+
+Swarm: ruflo `swarm-1790980313449-6hfqrn` registered `links077-p2-backend`, `links077-p2-qr`,
+`links077-p2-infra`, `links077-p2-integrator` and a reviewer; the work ran as Claude Code subagents —
+three coders in parallel on disjoint files (backend bulk/env; QR encoder merge; presets/API
+client/CSS/Netlify), then one integrator for the widget, then a refute-first reviewer. The
+orchestrator read every diff, built the print/scan check, and fixed what it found.
+
+| Step | Done | Where |
+|---|---|---|
+| 2.1 | Per-property destinations entered in a Destinations section (widget memory); presets disabled with a hint until set; the hardcoded `?request=…` URLs and `APP_BASE` are gone | ShortLinks.tsx, andyLinkPresets.ts |
+| 2.2 | Built-in `POST /bulk`: validate all, one transaction, UPSERT by key (re-aims + un-archives, keeps clicks); client chunks at 100 | linkRoutes.ts, shortLinksApi.ts |
+| 2.3 | Door sheet: Generate snapshots, mints, renders codes that encode the SHORT link with the short URL printed under them; fallback to the destination with a notice when minting fails; `{unit}` optional | QrDoorSheet.tsx |
+| 2.4 | Netlify `/l/*` proxy line; `PUBLIC_BASE_URL` = app origin and `SHORT_LINK_HOSTS` = Cloud Run host in the deploy script; create/bulk answer 503 without a base; self-link check knows both hosts | write-netlify-redirects.mjs, cloud-run.sh, linkRoutes.ts |
+| 2.5 | One encoder: `Scheduling/qr.ts` deleted, `qrDataUri` added to the Scribe encoder; decode-verified with CIDetector up to the 213-byte v10 ceiling | Scribe/idocs/blocks/qr.ts |
+| 2.6 | Download SVG next to the row QR | ShortLinks.tsx |
+| 2.7 | Printing from a standalone document in a hidden iframe (the in-page print hack printed one clipped page); `@page` margins; 30-unit sheet → 4-page Letter PDF, all 30 codes decoded from the print render (smallest ≈ 34 mm) | QrDoorSheet.tsx, plans/077-assets/print-check.cjs |
+
+Review (refute-first, after the integration commit): 0 high. Fixed in this phase — F1 two unit labels
+collapsing to one key printed a sticker whose destination did not match its code (the sheet now
+refuses such a roster naming both units; the backend refuses a batch with a repeated key); F2 a
+non-string destination value in widget memory blanked the whole widget (reads as unset); F4 a
+sheet opened before its destination was entered never picked it up (the pattern follows the
+destination until typed over); F5 door keys shared the preset namespace (a unit labelled "rent"
+would have overwritten the rent preset — door keys are now `<property>-unit-<unit>`); F7
+`SHORT_LINK_HOSTS` entries with a scheme or port silently disabled the loop guard (normalised);
+F8 a per-unit (`{unit}`) destination was posted verbatim by the preset (preset disabled with a
+door-sheet hint); F9 every keystroke re-encoded every code (memoised); plus tests for the three
+guards the reviewer showed were unprotected (stale mint, Print wiring, keyless-slug retry).
+Deferred with a home — 3.6: F6 (a long label or refused URL fails the whole batch with an index,
+and a chunk failing after an earlier chunk committed reports "unavailable"), F10 (`LIMIT 200`
+can hide presets behind a large door sheet — paginate), F11 (list/PATCH return relative short
+links with no base; only writes refuse), F12 (real-browser print path, Safari/Firefox).
+
+Not done / not verified: nothing pushed or deployed; the Netlify `/l/*` proxy and the new env
+values take effect only on the next deploy (verify with `curl -sI https://<app>/l/<slug>` → 302 +
+Location); no phone-camera scan of a paper print (CIDetector on the print render stands in);
+the widget has not been exercised in the logged-in shell. Destinations are per-user widget memory
+(Ilya is the only operator) — move them to the backend if a second operator ever needs them.
 

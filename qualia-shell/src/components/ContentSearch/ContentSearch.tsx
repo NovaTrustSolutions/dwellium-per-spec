@@ -16,6 +16,7 @@ import { foundryStore, type FoundryItem } from '../Foundry/foundryStore';
 import { copawStore, type MemoryFact } from '../Hive/copawStore';
 import { readTranscriptLog, type TranscriptLogEntry } from '../../lib/transcriptSearch';
 import { fetchFileNames, searchRemote } from './remoteSearch';
+import { useNotesScopeParam } from '../../lib/notesScopeStore';
 import { searchCorpus, highlightParts, type SearchDoc, type SearchDocType, type SearchHit } from './searchEngine';
 import { getWidgetMeta } from '../../registry/widgetRegistry';
 import { setPendingDeepLink } from '../../lib/pendingDeepLink';
@@ -50,6 +51,7 @@ function Highlighted({ text, query }: { text: string; query: string }): ReactNod
 
 export default function ContentSearch() {
     usePerUserIdentity();
+    const notesScope = useNotesScopeParam();
 
     const dumps: DumpEntry[] = useSyncExternalStore(dumpStore.subscribe, dumpStore.getSnapshot, dumpStore.getServerSnapshot);
     const syntheses: Synthesis[] = useSyncExternalStore(synthesisStore.subscribe, synthesisStore.getSnapshot, synthesisStore.getServerSnapshot);
@@ -123,7 +125,7 @@ export default function ContentSearch() {
         // assertion made right after local results render.
         const timer = window.setTimeout(() => {
             setRemotePending(true);
-            searchRemote(trimmed, fileNamesRef.current, controller.signal)
+            searchRemote(trimmed, fileNamesRef.current, controller.signal, notesScope)
                 .then((res) => {
                     if (remoteSeq.current !== seq) return; // superseded by a newer query
                     setRemoteHits(res.hits);
@@ -137,7 +139,7 @@ export default function ContentSearch() {
                 });
         }, REMOTE_DEBOUNCE_MS);
         return () => { window.clearTimeout(timer); controller.abort(); };
-    }, [query]);
+    }, [query, notesScope]);
 
     const docs: SearchDoc[] = useMemo(() => {
         const d: SearchDoc[] = [];

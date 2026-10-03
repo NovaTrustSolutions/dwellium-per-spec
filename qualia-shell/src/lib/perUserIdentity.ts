@@ -127,6 +127,9 @@ export const copawUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 071 phase 3 — per-user last run / status per agent (agentActivityStore). */
 export const agentActivityUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 070 — per-user god-only "Show other users' notes" toggle (notesScopeStore). */
+export const notesScopeUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -170,6 +173,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     wikiUserIdHolder,
     foundryUserIdHolder,
     copawUserIdHolder,
+    notesScopeUserIdHolder,
     agentActivityUserIdHolder,
 ];
 

@@ -108,14 +108,17 @@ export async function searchRemote(
     query: string,
     names: Map<string, string>,
     signal?: AbortSignal,
+    /** Plan 070 — already-built `'scope=all'` or `''` (see `notesScopeParam`). */
+    notesScope?: string,
 ): Promise<RemoteSearchResult> {
     const trimmed = query.trim();
     if (trimmed.length < 2) return { hits: [], failed: false };
 
     // Semantic search embeds the query server-side — only from 3 chars, like ⌘K (CommandPalette.tsx:758).
     const semantic = trimmed.length >= 3;
+    const notesUrl = `${FILES_API}/notes?q=${encodeURIComponent(trimmed)}&limit=12${notesScope ? `&${notesScope}` : ''}`;
     const settled = await Promise.allSettled([
-        fetch(`${FILES_API}/notes?q=${encodeURIComponent(trimmed)}&limit=12`, { signal }),
+        fetch(notesUrl, { signal }),
         semantic
             ? fetch(`${FILES_API}/search`, {
                 method: 'POST',

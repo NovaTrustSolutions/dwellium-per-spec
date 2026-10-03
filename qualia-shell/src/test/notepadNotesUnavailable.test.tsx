@@ -45,4 +45,19 @@ describe('Notepad notes loading', () => {
         await waitFor(() => expect(screen.getByText('Real note')).toBeInTheDocument());
         expect(screen.queryByRole('status')).toBeNull();
     });
+
+    it('a save the server refuses shows "Not saved", never "Saved"', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (init?.method === 'POST') return json({ success: false, error: 'Note not found' }, 404);
+            return String(url).includes('/api/files/notes')
+                ? json({ success: true, data: [{ id: 'n1', title: 'Other user note', content: 'x', created_at: '', updated_at: '' }] })
+                : json({ success: true, data: [] });
+        }));
+        render(<Notepad />);
+        fireEvent.click(await screen.findByText('Other user note'));
+        const title = await screen.findByDisplayValue('Other user note');
+        fireEvent.change(title, { target: { value: 'Edited title' } });
+        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Not saved'), { timeout: 4000 });
+        expect(screen.queryByText('Saved')).toBeNull();
+    }, 8000);
 });

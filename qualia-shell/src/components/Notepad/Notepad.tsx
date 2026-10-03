@@ -7,6 +7,14 @@ import './Notepad.css';
 import { API_BASE } from '../../config';
 import { WIDGET_ACTION_EVENT, consumePendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
 import { takePendingDeepLink } from '../../lib/pendingDeepLink';
+import { useNotesScopeParam } from '../../lib/notesScopeStore';
+
+/** Appends `scope` (already `scope=all` or `''`) to a URL that may or may not
+ *  already carry a `?query`. Plan 070 — every notes call goes through this. */
+function withNotesScope(url: string, scope: string): string {
+    if (!scope) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}${scope}`;
+}
 
 // ============================================
 // TYPES
@@ -58,6 +66,7 @@ export function noteDragData(note: Pick<Note, 'id' | 'title' | 'content'>): { wi
 
 export default function Notepad() {
     const { hierarchy } = useHierarchy();
+    const notesScope = useNotesScopeParam();
     const [notes, setNotes] = useState<Note[]>([]);
     const [notesUnavailable, setNotesUnavailable] = useState(false);
     const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -66,6 +75,7 @@ export default function Notepad() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showPreview, setShowPreview] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [saveFailed, setSaveFailed] = useState(false);
     const [showMentions, setShowMentions] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [mentionPos, setMentionPos] = useState({ top: 0, left: 0 });
@@ -140,7 +150,7 @@ export default function Notepad() {
         // "Notes unavailable" state with Retry; a success clears it.
         try {
             const q = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : '';
-            const res = await fetch(`${API_FILES}/notes${q}`);
+            const res = await fetch(withNotesScope(`${API_FILES}/notes${q}`, notesScope));
             const json = await res.json().catch(() => null);
             if (res.ok && json?.success && Array.isArray(json.data)) {
                 setNotes(json.data);
@@ -156,17 +166,23 @@ export default function Notepad() {
     // ---- AUTO-SAVE ----
     const autoSave = useCallback(async (noteId: string, noteTitle: string, noteContent: string) => {
         setIsSaving(true);
+        let ok = false;
         try {
-            await fetch(`${API_FILES}/notes`, {
+            const res = await fetch(withNotesScope(`${API_FILES}/notes`, notesScope), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: noteId, title: noteTitle, content: noteContent })
             });
+            const json = await res.json().catch(() => null);
+            ok = res.ok && !!json?.success;
         } catch {
-            // Offline — save will retry
+            // offline — nothing retries this save; the status below says so
         }
+        // Never show "Saved" for a save the server refused (e.g. 404 once the god
+        // "other users' notes" toggle is off) or that never reached it (plan 070).
+        setSaveFailed(!ok);
         setIsSaving(false);
-    }, []);
+    }, [notesScope]);
 
     const handleContentChange = (newContent: string) => {
         setContent(newContent);
@@ -254,7 +270,7 @@ export default function Notepad() {
     const openNoteFromPalette = useCallback(async (detail: { noteId?: string; title?: string }) => {
         if (detail.noteId) {
             try {
-                const res = await fetch(`${API_FILES}/notes/${encodeURIComponent(detail.noteId)}`);
+                const res = await fetch(withNotesScope(`${API_FILES}/notes/${encodeURIComponent(detail.noteId)}`, notesScope));
                 const json = await res.json();
                 if (json?.success && json.data) {
                     const note = json.data as Note;
@@ -274,7 +290,7 @@ export default function Notepad() {
         if (detail.title) {
             setSearchQuery(detail.title);
         }
-    }, [selectNote]);
+    }, [selectNote, notesScope]);
 
     // Command Palette / Search deep-link: open a selected note. A link fired
     // before this chunk mounted waits in the pending slot (plan 069).
@@ -347,7 +363,7 @@ export default function Notepad() {
             if (searchQuery.length > 1 || searchQuery.length === 0) fetchNotes();
         }, 300);
         return () => clearTimeout(debounce);
-    }, [searchQuery]);
+    }, [searchQuery, notesScope]);
 
     // ---- RENDER ----
     const activeNote = notes.find(n => n.id === activeNoteId);
@@ -460,8 +476,8 @@ export default function Notepad() {
 
                     {/* Save Status */}
                     <div className="np-save">
-                        <span className={`np-save__dot ${isSaving ? 'np-save__dot--saving' : ''}`} />
-                        <span>{isSaving ? 'Saving...' : 'Saved'}</span>
+                        <span className={`np-save__dot ${isSaving ? 'np-save__dot--saving' : ''} ${!isSaving && saveFailed ? 'np-save__dot--failed' : ''}`} />
+                        <span role={!isSaving && saveFailed ? 'alert' : undefined}>{isSaving ? 'Saving...' : saveFailed ? 'Not saved — keep this window open and try again' : 'Saved'}</span>
                     </div>
                 </div>
             ) : (

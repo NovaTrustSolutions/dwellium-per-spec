@@ -10,6 +10,7 @@ import { APP_VERSION } from '../../appVersion';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
 import DictationSection from './DictationSection';
 import AccountsSection from './AccountsSection';
+import NotesScopeSection from './NotesScopeSection';
 import ActivationCenter from './ActivationCenter';
 import DataFolderSection from './DataFolderSection';
 import GoogleDriveSection from './GoogleDriveSection';
@@ -602,6 +603,9 @@ export default function ControlPanel() {
 
             {/* God-only local account admin (change passwords, enable/disable) */}
             <AccountsSection />
+
+            {/* God-only "Show other users' notes" toggle (plan 070) */}
+            <NotesScopeSection />
 
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />

@@ -88,3 +88,8 @@ export function usePermissions() {
     if (!ctx) throw new Error('usePermissions must be used within PermissionsProvider');
     return ctx;
 }
+
+/** Non-throwing variant for providers that may render outside PermissionsProvider (tests, popups). */
+export function useOptionalPermissions() {
+    return useContext(PermissionsContext);
+}

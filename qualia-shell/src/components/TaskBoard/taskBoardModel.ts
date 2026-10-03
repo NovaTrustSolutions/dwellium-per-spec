@@ -68,13 +68,14 @@ export interface TaskCard {
     parentId?: string | null;     // Phase 2 — sub-task / sub-project nesting
     attachments?: Attachment[];   // Phase 2 — project-view files
     tags?: string[];              // Phase 3 — app-wide tagging
+    dueAt?: string;               // Phase 5 — 'YYYY-MM-DD' local calendar date
 }
 
 // ── Actions (discriminated union) ──────────────────────────────────
 export interface CardPosition { cardId: string; columnId: string; order: number; enteredColumnAt: string; }
 
 /** The mutable subset of a card editable via EDIT_CARD. `urgency: null` = unset. */
-export type CardPatch = Partial<Pick<TaskCard, 'title' | 'description' | 'assignee' | 'tags'>> & { urgency?: Urgency | null };
+export type CardPatch = Partial<Pick<TaskCard, 'title' | 'description' | 'assignee' | 'tags'>> & { urgency?: Urgency | null; dueAt?: string | null };
 
 export type BoardAction =
     | { type: 'ADD_CARD'; card: TaskCard }
@@ -145,6 +146,13 @@ const isStr = (v: unknown): v is string => typeof v === 'string';
 const isIso = (v: unknown): v is string => isStr(v) && !Number.isNaN(Date.parse(v));
 const strArray = (v: unknown): string[] | undefined => (Array.isArray(v) && v.every(isStr) ? v : undefined);
 
+/** 'YYYY-MM-DD' that is a real calendar date (no 2026-02-31). */
+export function isDueDate(v: unknown): v is string {
+    if (!isStr(v) || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    const d = new Date(`${v}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
 function repairColumn(r: Rec, index: number): BoardColumn {
     const col: BoardColumn = {
         id: r.id as string,
@@ -191,6 +199,7 @@ function repairCard(r: Rec, firstColumnId: string, columnIds: Set<string>): Task
     if (attachments) card.attachments = attachments;
     const tags = strArray(r.tags);
     if (tags) card.tags = tags;
+    if (isDueDate(r.dueAt)) card.dueAt = r.dueAt;
     return card;
 }
 
@@ -239,6 +248,9 @@ function repairAuditEntry(e: Rec): AuditEntry {
     };
 }
 
+/** A new card's title is cut to this many characters (trimmed first). */
+export const MAX_TITLE = 500;
+
 /** Build a fresh card. Caller supplies id/now via ctx; columnId defaults to first column. */
 export function makeCard(
     ctx: ActionContext,
@@ -248,7 +260,7 @@ export function makeCard(
     const ts = ctx.now();
     return {
         id: ctx.id(),
-        title: fields.title.trim() || 'Untitled task',
+        title: fields.title.trim().slice(0, MAX_TITLE).replace(/[\ud800-\udbff]$/, '').trimEnd() || 'Untitled task',
         description: fields.description?.trim() ?? '',
         columnId: fields.columnId,
         order: orderInColumn,
@@ -265,6 +277,21 @@ export function makeCard(
 // ── Helpers ────────────────────────────────────────────────────────
 export function cardsInColumn(cards: TaskCard[], columnId: string): TaskCard[] {
     return cards.filter(c => c.columnId === columnId).sort((a, b) => a.order - b.order);
+}
+
+/** Last column by order (the 'done' lane). */
+export function lastColumnId(columns: BoardColumn[]): string | undefined {
+    return columns.reduce<BoardColumn | undefined>((a, c) => (!a || c.order > a.order ? c : a), undefined)?.id;
+}
+
+/** Overdue = has a due date before `today` ('YYYY-MM-DD') and is in neither the last column nor Done (a column may follow Done). */
+export function isOverdue(card: TaskCard, columns: BoardColumn[], today: string): boolean {
+    return !!card.dueAt && card.dueAt < today && card.columnId !== 'done' && card.columnId !== lastColumnId(columns);
+}
+
+/** WIP counts top-level cards only; sub-tasks do not fill a column. */
+export function wipCount(cards: TaskCard[], columnId: string): number {
+    return cards.filter(c => c.columnId === columnId && !c.parentId).length;
 }
 
 function nextOrder(cards: TaskCard[], columnId: string): number {
@@ -312,11 +339,38 @@ function planEdit(card: TaskCard, patch: CardPatch): { card: TaskCard; inverse: 
     if (Array.isArray(patch.tags) && patch.tags.every(t => typeof t === 'string') && !same(patch.tags, card.tags ?? [])) {
         next.tags = patch.tags; inverse.tags = card.tags ?? [];
     }
+    if ((patch.dueAt === null || isDueDate(patch.dueAt)) && (patch.dueAt ?? undefined) !== card.dueAt) {
+        if (patch.dueAt === null) delete next.dueAt; else next.dueAt = patch.dueAt;
+        inverse.dueAt = card.dueAt ?? null;
+    }
     return Object.keys(inverse).length === 0 ? null : { card: next, inverse };
 }
 
 // ── Core reducer (data only — no audit). Returns next data + the inverse. ──
 interface BoardData { columns: BoardColumn[]; cards: TaskCard[]; }
+
+const posOf = (c: TaskCard): CardPosition => ({ cardId: c.id, columnId: c.columnId, order: c.order, enteredColumnAt: c.enteredColumnAt });
+
+/** MOVE_CARD with toOrder: insert at that index among the destination's other cards, renumber the column 0..n-1. */
+function insertCard(state: BoardData, card: TaskCard, columnId: string, toOrder: number, ctx: ActionContext): { next: BoardData; inverse: BoardAction | null } {
+    const columnChanged = card.columnId !== columnId;
+    const column = cardsInColumn(state.cards, columnId);
+    const others = column.filter(c => c.id !== card.id);
+    const at = Number.isFinite(toOrder) ? Math.min(others.length, Math.max(0, Math.trunc(toOrder))) : others.length;
+    if (!columnChanged && at === column.indexOf(card)) return { next: state, inverse: null }; // same slot
+    const sequence = [...others.slice(0, at), card, ...others.slice(at)];
+    const slot = new Map(sequence.map((c, i) => [c.id, i]));
+    const priors: CardPosition[] = [posOf(card)]; // the moved card first, then neighbours whose order changed
+    const cards = state.cards.map(c => {
+        const i = slot.get(c.id);
+        if (i === undefined) return c;
+        if (c.id === card.id) return { ...c, columnId, order: i, enteredColumnAt: columnChanged ? ctx.now() : c.enteredColumnAt };
+        if (c.order === i) return c;
+        priors.push(posOf(c));
+        return { ...c, order: i };
+    });
+    return { next: { ...state, cards }, inverse: { type: 'RESTORE_POSITIONS', positions: priors } };
+}
 
 function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): { next: BoardData; inverse: BoardAction | null } {
     // No-op contract: a reducer that changes nothing returns `state` itself (same object).
@@ -350,17 +404,11 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
         case 'MOVE_CARD': {
             const card = state.cards.find(c => c.id === action.cardId);
             if (!card || !state.columns.some(c => c.id === action.toColumnId)) return { next: state, inverse: null };
-            const prior: CardPosition = { cardId: card.id, columnId: card.columnId, order: card.order, enteredColumnAt: card.enteredColumnAt };
             const columnChanged = card.columnId !== action.toColumnId;
-            const toOrder = action.toOrder ?? nextOrder(state.cards, action.toColumnId);
-            if (!columnChanged && (toOrder === card.order || action.toOrder === undefined)) return { next: state, inverse: null }; // already there
-            const moved: TaskCard = {
-                ...card,
-                columnId: action.toColumnId,
-                order: toOrder,
-                // Re-stamp entry time ONLY when the column actually changes.
-                enteredColumnAt: columnChanged ? ctx.now() : card.enteredColumnAt,
-            };
+            if (action.toOrder !== undefined) return insertCard(state, card, action.toColumnId, action.toOrder, ctx);
+            if (!columnChanged) return { next: state, inverse: null }; // already there
+            const prior: CardPosition = { cardId: card.id, columnId: card.columnId, order: card.order, enteredColumnAt: card.enteredColumnAt };
+            const moved: TaskCard = { ...card, columnId: action.toColumnId, order: nextOrder(state.cards, action.toColumnId), enteredColumnAt: ctx.now() };
             return {
                 next: { ...state, cards: state.cards.map(c => c.id === card.id ? moved : c) },
                 inverse: { type: 'RESTORE_POSITIONS', positions: [prior] },
@@ -586,7 +634,8 @@ function boundAudit(audit: AuditEntry[]): AuditEntry[] {
 /** Cards a MOVE_CARD/MOVE_CARDS actually moved, read off its RESTORE_POSITIONS inverse. */
 function movedIds(action: BoardAction, inverse: BoardAction | null): { cardIds: string[]; to: string } | null {
     if ((action.type !== 'MOVE_CARD' && action.type !== 'MOVE_CARDS') || inverse?.type !== 'RESTORE_POSITIONS') return null;
-    return { cardIds: inverse.positions.map(p => p.cardId), to: action.toColumnId };
+    // MOVE_CARD may also renumber neighbours (they are in the inverse); only the moved card is "moved".
+    return { cardIds: action.type === 'MOVE_CARD' ? [action.cardId] : inverse.positions.map(p => p.cardId), to: action.toColumnId };
 }
 
 export function applyAction(state: BoardState, action: BoardAction, actor: Actor, ctx: ActionContext): BoardState {

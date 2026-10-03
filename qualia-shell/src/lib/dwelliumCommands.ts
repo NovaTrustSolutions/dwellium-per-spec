@@ -15,6 +15,11 @@ import { recall, remember, type MemoryHit } from './unifiedMemory';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 import { parseSpawn, requestSpawn } from './agents/spawn';
 import { lastOpenedWidgetHolder } from './widgetActions';
+import { currentOwner } from './perUserIdentity';
+import {
+    taskBoardStore, moveCard, sendToTaskBoard, openTaskBoardCard, findCardsByTitle, boardLabel,
+} from '../components/TaskBoard/taskBoardStore';
+import { wipCount } from '../components/TaskBoard/taskBoardModel';
 
 const VALID_THEMES: Theme[] = ['dark', 'light', 'trust', 'vibrant', 'luxury', 'healthcare', 'creative', 'dark-excellence', 'terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
 
@@ -236,10 +241,56 @@ function resolveWidgetList(s: string): string[] {
         .filter((id): id is string => !!id);
 }
 
+// ── Task Board commands (plan 079 phase 5) ──
+/** Exactly one card matches `query` on the current board, else a toast says why not. */
+function oneCard(query: string) {
+    const hits = findCardsByTitle(query);
+    if (hits.length === 1) return hits[0];
+    toast(hits.length === 0 ? `No Task Board card matches "${query}"` : `${hits.length} cards match "${query}" — be more specific`);
+    return null;
+}
+export async function addTaskBoardCard(title: string): Promise<void> {
+    const owner = currentOwner();
+    if (!owner) { toast('Sign in to use the Task Board'); return; }
+    const { board } = await sendToTaskBoard(owner, { title });
+    if (board) toast(`Added to Task Board (${boardLabel(board)})`);
+}
+export function openTaskBoardCardByTitle(query: string): void {
+    const owner = currentOwner();
+    if (!owner) { toast('Sign in to use the Task Board'); return; }
+    const card = oneCard(query);
+    if (card && !openTaskBoardCard(owner, card.id)) toast(`Could not open "${card.title}"`);
+}
+/** Why the board UI would stop or ask about this move (exit criteria on the source column, a full target column); null = go. */
+function moveRefusal(card: { columnId: string; parentId?: string | null }, to: { id: string; title: string; maxWip?: number }, cols: Array<{ id: string; title: string; policies?: string[] }>): string | null {
+    if (card.columnId === to.id) return null; // a pure reorder: no checks, like the board
+    const from = cols.find(c => c.id === card.columnId);
+    if (from?.policies?.length) return `${from.title} has exit criteria — move it on the board so you can confirm them`;
+    const count = wipCount(taskBoardStore.getSnapshot().cards, to.id);
+    return !card.parentId && to.maxWip !== undefined && to.maxWip > 0 && count >= to.maxWip
+        ? `${to.title} is at its limit (${count}/${to.maxWip}) — move it on the board to override` : null;
+}
+export function moveTaskBoardCardByTitle(query: string, column: string): void {
+    if (!currentOwner()) { toast('Sign in to use the Task Board'); return; }
+    const card = oneCard(query);
+    if (!card) return;
+    const q = column.trim().toLowerCase();
+    const cols = taskBoardStore.getSnapshot().columns;
+    const partial = cols.filter(c => c.title.toLowerCase().includes(q));
+    const hit = cols.find(c => c.title.toLowerCase() === q) ?? (partial.length === 1 ? partial[0] : undefined);
+    if (!hit && partial.length > 1) { toast(`${partial.length} columns match "${column}"`); return; }
+    if (!hit) { toast(`No column matches "${column}" — "${card.title}" was not moved`); return; }
+    const refusal = moveRefusal(card, hit, cols);
+    if (refusal) { toast(refusal); return; }
+    moveCard(card.id, hit.id);
+    const moved = taskBoardStore.getSnapshot().cards.find(c => c.id === card.id)?.columnId === hit.id;
+    toast(moved ? `Moved "${card.title}" to ${hit.title}` : `Could not move "${card.title}" to ${hit.title}`);
+}
+
 // ── intent parser ──
 export interface ParsedCommand {
     label: string;
-    run: () => void;
+    run: () => unknown; // some commands return a boolean or a Promise (add task); callers only need to call it
 }
 
 const REGION_WORDS = 'top left|top right|bottom left|bottom right|top-left|top-right|bottom-left|bottom-right|top|bottom|left|right|center|middle';
@@ -251,6 +302,19 @@ function parseSingle(input: string): ParsedCommand | null {
     const l = stripPoliteness(s);
     if (!l) return null;
     let m: RegExpMatchArray | null;
+
+    // Task Board (plan 079 p5), first so free-text titles can't trip the keyword rules below.
+    // Only the exact "add task|add card|new task <title>" forms — bare "add …" still goes to chat.
+    // The title keeps the caller's casing.
+    if ((m = l.match(/^(?:add|new)\s+(?:task|card)\s*:?\s+(.+)$/))) {
+        const at = s.toLowerCase().indexOf(m[1]);
+        const title = (at >= 0 ? s.slice(at, at + m[1].length) : m[1]).trim();
+        return { label: `Add to Task Board: ${title.slice(0, 40)}`, run: () => addTaskBoardCard(title) };
+    }
+    // "open task <query>" — but "open task board" / "open task menu" stay widget opens.
+    if ((m = l.match(/^open\s+(?:task|card)\s+(.+)$/)) && !resolveWidget(`task ${m[1]}`, false)) {
+        const q = m[1]; return { label: `Open Task Board card: ${q}`, run: () => openTaskBoardCardByTitle(q) };
+    }
 
     // keyboard shortcuts sheet (plan 046 S2-8) — ShortcutSheet listens for the event.
     if (/^(keyboard )?shortcuts?$|^hotkeys?$|^show shortcuts$/.test(l)) return { label: 'Keyboard shortcuts', run: () => window.dispatchEvent(new CustomEvent('dwellium:open-shortcuts')) };
@@ -296,6 +360,11 @@ function parseSingle(input: string): ParsedCommand | null {
             const regions = placements.map(p => p.region).join(' + ');
             return { label: `Place → ${regions}`, run: () => placements.forEach(p => placeWidget(p.id, p.region)) };
         }
+    }
+    // "move task <query> to <column>" — AFTER placement so "move task board to the left" stays a dock.
+    // ponytail: greedy query (the last " to " splits), so a column name containing " to " is not supported.
+    if ((m = l.match(/^move\s+(?:task|card)\s+(.+)\s+to\s+(.+)$/))) {
+        const [q, col] = [m[1], m[2]]; return { label: `Move task "${q}" to ${col}`, run: () => moveTaskBoardCardByTitle(q, col) };
     }
     // group windows into tabs ("group strata and scribe into tabs")
     if ((m = l.match(/^(?:group|tab|stack)\s+(.+?)(?:\s+(?:in|into)\s+tabs?)?$/))) {
@@ -375,7 +444,11 @@ export function parseCommand(input: string): ParsedCommand | null {
 
     // Verbs whose argument legitimately contains "and" / commas — parse whole,
     // never split (group lists, free-text memory, space names, multi-placement).
-    if (/^(?:group|tab|stack|remember|save|put|place|move|dock|send)\b/i.test(s)) {
+    // Checked on the politeness-stripped text: "please add task buy milk and eggs" must stay whole too.
+    // "open task|card <title>" too, except "open task board/menu", which may be chained ("open task board and open inbox").
+    const l = stripPoliteness(s);
+    if (/^(?:group|tab|stack|remember|save|put|place|move|dock|send)\b/i.test(l) || /^(?:add|new)\s+(?:task|card)\b/i.test(l)
+        || /^open\s+(?:task|card)(?!\s+(?:board|menu)\b)\b/i.test(l)) {
         return parseSingle(s);
     }
 

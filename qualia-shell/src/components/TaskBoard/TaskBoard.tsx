@@ -24,13 +24,13 @@ import {
     captureBoard, taskBoardSaveError,
     addCard, moveCard, moveCards, removeCard, editCard,
     addColumn, renameColumn, removeColumn, resizeColumn,
-    undo, undoLastAi, aiFileBacklog, boardReport,
+    undo, undoLastAi, aiApply, boardReport,
     assignCard, routeCard, addSubtask, attachToCard, removeAttachment, MAX_INLINE_ATTACHMENT,
     updateColumnLimits, updateColumnPolicies,
     type RouteResult,
 } from './taskBoardStore';
 import {
-    cardsInColumn, actorLabel, cardTimeline, subtasksOf, lastReversible,
+    cardsInColumn, actorLabel, cardTimeline, subtasksOf, lastReversible, isOverdue, wipCount,
     type Urgency, type TaskCard, type Assignee, type BoardState, type BoardColumn,
 } from './taskBoardModel';
 import { BUILT_IN_TARGETS, describeRoute } from './taskRouting';
@@ -48,6 +48,29 @@ const URGENCY_COLOR: Record<string, string> = { high: 'var(--danger)', medium: '
 const KEY_RESIZE_STEP = 16;
 const KEY_RESIZE_IDLE_MS = 400;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+/** Local calendar date as YYYY-MM-DD (the same shape as TaskCard.dueAt). */
+const localYmd = (d: Date = new Date()): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+/** 'YYYY-MM-DD' -> 'Oct 3' (local, month short + day). */
+function fmtDue(ymd: string): string {
+    const [y, m, d] = ymd.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return Number.isNaN(date.getTime()) ? ymd : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+/** Filter match: case-insensitive on title, description, tags and assignee label. */
+function matchesFilter(card: TaskCard, q: string): boolean {
+    const hay = [card.title, card.description, ...(card.tags ?? []), card.assignee?.label ?? ''];
+    return hay.some(h => h.toLowerCase().includes(q));
+}
+
+/** Selected ids whose cards exist and pass the filter. */
+function shownSelection(selected: Set<string>, cards: TaskCard[], q: string): string[] {
+    return [...selected].filter(id => {
+        const c = cards.find(card => card.id === id);
+        return c && (!q || matchesFilter(c, q));
+    });
+}
 
 function relTime(iso: string): string {
     const t = new Date(iso).getTime();
@@ -111,6 +134,7 @@ export default function TaskBoard() {
     const [editingCol, setEditingCol] = useState<string | null>(null);
     const [editColTitle, setEditColTitle] = useState('');
     const [showAudit, setShowAudit] = useState(false);
+    const [filter, setFilter] = useState('');
     const [copied, setCopied] = useState(false);
     const addRef = useRef<HTMLInputElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -172,6 +196,7 @@ export default function TaskBoard() {
         toColumnId: string;
         limit: number;
         count: number;
+        adding?: boolean; // add-a-card flow: "Add anyway" instead of "Override & Proceed"
         onConfirm: () => void;
     } | null>(null);
 
@@ -187,20 +212,22 @@ export default function TaskBoard() {
     const colTitle = (id: string) => board.columns.find(c => c.id === id)?.title ?? id;
     // After a committed move the old focus target (select, bulk bar, modal) is gone: land on the moved card.
     const pendingFocus = useRef<string | null>(null);
-    const commitMove = (cardId: string, toColumnId: string) => {
+    const commitMove = (cardId: string, toColumnId: string, toIndex?: number, message?: string) => {
         const title = board.cards.find(c => c.id === cardId)?.title ?? 'card';
         const before = taskBoardStore.getSnapshot();
-        if (moveCard(cardId, toColumnId) === before) return; // nothing changed (e.g. the card was removed meanwhile)
+        if (moveCard(cardId, toColumnId, toIndex) === before) return; // nothing changed (e.g. the card was removed meanwhile)
         pendingFocus.current = cardId;
-        announce(`Moved ${title} to ${colTitle(toColumnId)}`);
+        announce(message ?? `Moved ${title} to ${colTitle(toColumnId)}`);
     };
-    const commitMoves = (cardIds: string[], toColumnId: string) => {
+    const commitMoves = (cardIds: string[], toColumnId: string, agent?: string) => {
         const before = taskBoardStore.getSnapshot();
-        const after = moveCards(cardIds, toColumnId);
+        const after = agent ? aiApply({ type: 'MOVE_CARDS', cardIds, toColumnId }, agent) : moveCards(cardIds, toColumnId);
         if (after === before) return;
         const moved = after.audit[after.audit.length - 1]?.cardIds ?? [];
-        clearSel(); // only a committed move consumes the selection; a cancelled dialog keeps it
-        pendingFocus.current = moved[0] ?? null;
+        if (!agent) { // only a committed user move consumes the selection / takes focus; a cancelled dialog keeps both
+            clearSel();
+            pendingFocus.current = moved[0] ?? null;
+        }
         announce(`Moved ${moved.length} card${moved.length === 1 ? '' : 's'} to ${colTitle(toColumnId)}`);
     };
     // Undo buttons: announce the entry the undo just appended (same snapshot = nothing to undo).
@@ -210,97 +237,80 @@ export default function TaskBoard() {
         if (after !== before) announce(after.audit[after.audit.length - 1]?.summary ?? 'Undone');
     };
 
-    const initiateMoveCard = (cardId: string, toColumnId: string) => {
-        const card = board.cards.find(c => c.id === cardId);
-        if (!card) return;
-        if (card.columnId === toColumnId) return;
-
-        const executeMove = () => {
-            const targetCol = board.columns.find(c => c.id === toColumnId);
-            const targetCards = cardsInColumn(board.cards, toColumnId);
-            if (targetCol?.maxWip !== undefined && targetCol.maxWip > 0 && targetCards.length >= targetCol.maxWip) {
-                setWipAlert({
-                    cardId,
-                    toColumnId,
-                    limit: targetCol.maxWip,
-                    count: targetCards.length,
-                    onConfirm: () => {
-                        commitMove(cardId, toColumnId);
-                        setWipAlert(null);
-                    }
-                });
-            } else {
-                commitMove(cardId, toColumnId);
-            }
-        };
-
-        const sourceCol = board.columns.find(c => c.id === card.columnId);
-        if (sourceCol?.policies && sourceCol.policies.length > 0) {
-            setExitCriteriaCheck({
-                cardId,
-                fromColumnId: card.columnId,
-                toColumnId,
-                policies: sourceCol.policies,
-                onConfirm: () => {
-                    setExitCriteriaCheck(null);
-                    executeMove();
-                }
-            });
-        } else {
-            executeMove();
-        }
+    /** WIP check shared by moves and adds: `incoming` top-level cards would land in the column. */
+    const wipBreach = (toColumnId: string, incoming: number) => {
+        const col = board.columns.find(c => c.id === toColumnId);
+        const count = wipCount(board.cards, toColumnId);
+        return col?.maxWip !== undefined && col.maxWip > 0 && incoming > 0 && count + incoming > col.maxWip
+            ? { limit: col.maxWip, count } : null;
+    };
+    const incomingTopLevel = (cardIds: string[], toColumnId: string): number =>
+        [...new Set(cardIds)].filter(id => {
+            const c = board.cards.find(card => card.id === id);
+            return c && !c.parentId && c.columnId !== toColumnId;
+        }).length;
+    /** Adding a top-level card into a column at its max opens the WIP dialog ("Add anyway" / Cancel). */
+    const guardedAdd = (columnId: string, run: () => void) => {
+        const breach = wipBreach(columnId, 1);
+        if (!breach) { run(); return; }
+        setWipAlert({ toColumnId: columnId, ...breach, adding: true, onConfirm: () => { setWipAlert(null); run(); } });
     };
 
-    const initiateMoveCards = (cardIds: string[], toColumnId: string) => {
-        if (cardIds.length === 0) return;
-        const targetCol = board.columns.find(c => c.id === toColumnId);
-        const targetCards = cardsInColumn(board.cards, toColumnId);
-
-        const executeMove = () => {
-            const incomingCount = cardIds.filter(id => {
-                const c = board.cards.find(card => card.id === id);
-                return c && c.columnId !== toColumnId;
-            }).length;
-
-            if (targetCol?.maxWip !== undefined && targetCol.maxWip > 0 && (targetCards.length + incomingCount) > targetCol.maxWip) {
-                setWipAlert({
-                    cardIds,
-                    toColumnId,
-                    limit: targetCol.maxWip,
-                    count: targetCards.length,
-                    onConfirm: () => {
-                        commitMoves(cardIds, toColumnId);
-                        setWipAlert(null);
-                    }
-                });
-            } else {
-                commitMoves(cardIds, toColumnId);
-            }
-        };
-
+    /** Exit-policy check first (source columns), then the WIP check, then `commit`. */
+    const withPolicies = (cardIds: string[], toColumnId: string, afterPolicies: () => void) => {
         const sourceColIds = new Set(cardIds.map(id => board.cards.find(c => c.id === id)?.columnId).filter(Boolean));
-        const allPolicies: string[] = [];
-        for (const colId of sourceColIds) {
-            const col = board.columns.find(c => c.id === colId);
-            if (col?.policies) {
-                allPolicies.push(...col.policies);
-            }
-        }
+        const policies = new Set<string>();
+        for (const colId of sourceColIds) board.columns.find(c => c.id === colId)?.policies?.forEach(p => policies.add(p));
+        if (policies.size === 0) { afterPolicies(); return; }
+        setExitCriteriaCheck({
+            cardIds,
+            fromColumnId: Array.from(sourceColIds)[0] || '',
+            toColumnId,
+            policies: Array.from(policies),
+            onConfirm: () => { setExitCriteriaCheck(null); afterPolicies(); },
+        });
+    };
+    const withWip = (toColumnId: string, incoming: number, commit: () => void) => {
+        const breach = wipBreach(toColumnId, incoming);
+        if (!breach) { commit(); return; }
+        setWipAlert({ toColumnId, ...breach, onConfirm: () => { commit(); setWipAlert(null); } });
+    };
 
-        if (allPolicies.length > 0) {
-            setExitCriteriaCheck({
-                cardIds,
-                fromColumnId: Array.from(sourceColIds)[0] || '',
-                toColumnId,
-                policies: Array.from(new Set(allPolicies)),
-                onConfirm: () => {
-                    setExitCriteriaCheck(null);
-                    executeMove();
-                }
-            });
-        } else {
-            executeMove();
+    /** Drop/menu move of one card. `toIndex` places it inside the target column (drop ON a card). */
+    const initiateMoveCard = (cardId: string, toColumnId: string, toIndex?: number, message?: string) => {
+        const card = board.cards.find(c => c.id === cardId);
+        if (!card) return;
+        if (card.columnId === toColumnId) { // same column: a pure reorder — no WIP / exit-policy checks
+            if (toIndex !== undefined) commitMove(cardId, toColumnId, toIndex, message);
+            return;
         }
+        withPolicies([cardId], toColumnId, () =>
+            withWip(toColumnId, card.parentId ? 0 : 1, () => commitMove(cardId, toColumnId, toIndex)));
+    };
+
+    /** Bulk move (also the AI door: `agent` keeps the AI actor, WIP and exit policies still apply). */
+    const initiateMoveCards = (cardIds: string[], toColumnId: string, agent?: string) => {
+        if (cardIds.length === 0) return;
+        withPolicies(cardIds, toColumnId, () =>
+            withWip(toColumnId, incomingTopLevel(cardIds, toColumnId), () => commitMoves(cardIds, toColumnId, agent)));
+    };
+
+    /** AI: file Backlog — the same lookups as the store's aiFileBacklog, routed through the guarded bulk move. */
+    const fileBacklog = () => {
+        const backlog = board.columns.find(c => c.id === 'backlog' || /backlog/i.test(c.title));
+        const todo = board.columns.find(c => c.id === 'todo' || /to ?do/i.test(c.title));
+        if (!backlog || !todo) return;
+        initiateMoveCards(board.cards.filter(c => c.columnId === backlog.id).map(c => c.id), todo.id, 'ara');
+    };
+
+    /** Alt+ArrowUp/Down on a card title: one place within its column. */
+    const nudgeCard = (card: TaskCard, colCards: TaskCard[], dir: -1 | 1) => {
+        const from = colCards.findIndex(c => c.id === card.id);
+        // Step to the next VISIBLE neighbour (index math on the full column); no visible neighbour = no-op.
+        let to = from + dir;
+        while (query && colCards[to] && !matchesFilter(colCards[to], query)) to += dir;
+        if (to < 0 || to >= colCards.length) return;
+        commitMove(card.id, card.columnId, to, `Moved ${card.title} ${dir < 0 ? 'up' : 'down'}`);
     };
 
     const doRoute = async (cardId: string) => {
@@ -370,12 +380,18 @@ export default function TaskBoard() {
     useEffect(() => {
         setAddingTo(null); setNewTitle(''); setEditingCol(null); setEditColTitle('');
         setEditingLimitsCol(null); setShowPoliciesCol(null); setAssignFor(null); setRouteMsg(null);
-        setWipAlert(null); setExitCriteriaCheck(null);
+        setWipAlert(null); setExitCriteriaCheck(null); setFilter('');
         window.clearTimeout(keyTimer.current); resize.current = null;
         setSelected(prev => (prev.size ? new Set() : prev));
     }, [userId, activeProjectId]);
 
     // ── selection helpers ──
+    const query = filter.trim().toLowerCase();
+    // Only cards the filter shows can be acted on in bulk; `selected` is pruned to match whenever the filter or cards change.
+    const selIds = shownSelection(selected, board.cards, query);
+    useEffect(() => {
+        setSelected(prev => { const shown = shownSelection(prev, board.cards, query); return shown.length === prev.size ? prev : new Set(shown); });
+    }, [query, board.cards]);
     const toggleSel = (id: string) => setSelected(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id); else next.add(id);
@@ -420,19 +436,35 @@ export default function TaskBoard() {
         dragCounter.current = {};
         if (!id) return;
         // If the dragged card is part of a multi-selection, move the whole set.
-        if (selected.has(id) && selected.size > 1) {
-            initiateMoveCards([...selected], colId);
+        if (selIds.includes(id) && selIds.length > 1) {
+            initiateMoveCards(selIds, colId);
         } else {
             initiateMoveCard(id, colId);
         }
     };
 
+    // Drop ON a card: the dragged card lands before it (same column = reorder; other column = guarded move + index).
+    const onCardDrop = (e: React.DragEvent, target: TaskCard) => {
+        e.preventDefault();
+        e.stopPropagation(); // the column's own drop (append) must not also fire
+        const id = e.dataTransfer.getData('text/plain') || dragId;
+        setDragId(null);
+        setDragOverCol(null);
+        dragCounter.current = {};
+        if (!id || id === target.id) return;
+        if (selIds.includes(id) && selIds.length > 1) { initiateMoveCards(selIds, target.columnId); return; }
+        const idx = cardsInColumn(board.cards, target.columnId).filter(c => c.id !== id).findIndex(c => c.id === target.id);
+        const title = board.cards.find(c => c.id === id)?.title ?? 'card';
+        initiateMoveCard(id, target.columnId, Math.max(0, idx), `Moved ${title} before ${target.title}`);
+    };
+
     // ── card actions ──
     const submitNewCard = (colId: string) => {
         const title = newTitle.trim();
-        if (title) addCard({ title, columnId: colId });
-        setNewTitle('');
-        setAddingTo(null);
+        const done = () => { setNewTitle(''); setAddingTo(null); };
+        if (!title) { done(); return; }
+        // At the WIP max the title stays in the input until the dialog is answered (Cancel keeps it).
+        guardedAdd(colId, () => { addCard({ title, columnId: colId }); done(); });
     };
     const cycleUrgency = (card: TaskCard) => {
         const cur = card.urgency ?? 'low';
@@ -449,6 +481,8 @@ export default function TaskBoard() {
         setTimeout(() => setCopied(false), 1800);
     };
 
+    const shownCount = query ? board.cards.filter(c => matchesFilter(c, query)).length : board.cards.length;
+    const today = localYmd(); // once per render: every card's overdue check shares one "today"
     const aiActionCount = board.audit.filter(e => e.actor.kind === 'ai' && !e.reversed && e.type !== 'UNDO').length;
     const canUndo = lastReversible(board) !== null;
 
@@ -482,7 +516,18 @@ export default function TaskBoard() {
                     ))}
                 </select>
 
-                <span className="tb-toolbar__count">{board.cards.length} card{board.cards.length === 1 ? '' : 's'}</span>
+                <span className="tb-toolbar__count">
+                    {query ? `${shownCount} of ${board.cards.length} cards` : `${board.cards.length} card${board.cards.length === 1 ? '' : 's'}`}
+                </span>
+                <input
+                    type="search"
+                    className="tb-filter"
+                    aria-label="Filter cards"
+                    placeholder="Filter cards…"
+                    value={filter}
+                    onChange={e => setFilter(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Escape' && filter) { e.preventDefault(); e.stopPropagation(); setFilter(''); } }}
+                />
                 {saveError && <span className="tb-toolbar__error" role="alert">{saveError}</span>}
                 <span className="tb-spacer" />
 
@@ -501,14 +546,14 @@ export default function TaskBoard() {
                     onChange={handleLoadBoard}
                 />
 
-                {selected.size > 0 && (
+                {selIds.length > 0 && (
                     <div className="tb-bulk">
-                        <span className="tb-bulk__count">{selected.size} selected</span>
+                        <span className="tb-bulk__count">{selIds.length} selected</span>
                         <select
                             className="tb-bulk__move"
                             aria-label="Move selected cards to column"
                             value=""
-                            onChange={e => { if (e.target.value) initiateMoveCards([...selected], e.target.value); }}
+                            onChange={e => { if (e.target.value) initiateMoveCards(selIds, e.target.value); }}
                         >
                             <option value="" disabled>Move to…</option>
                             {columns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -519,7 +564,7 @@ export default function TaskBoard() {
 
                 <button
                     className="btn-secondary tb-btn tb-btn--ai"
-                    onClick={() => runAndAnnounce(() => aiFileBacklog('ara'))}
+                    onClick={fileBacklog}
                     title="Local rule (not an LLM call): ARA files every Backlog card into To Do — reversible via Undo last AI"
                 >
                     <Sparkles size={14} aria-hidden /> AI: file Backlog
@@ -538,12 +583,14 @@ export default function TaskBoard() {
                 <div className="tb-columns">
                     {columns.map(col => {
                         const colCards = cardsInColumn(board.cards, col.id);
+                        const shownCards = query ? colCards.filter(c => matchesFilter(c, query)) : colCards;
+                        const wip = wipCount(board.cards, col.id); // sub-tasks excluded
                         const w = widthOf(col.id, col.width);
                         const over = dragOverCol === col.id;
 
                         // Check limits for class highlights
-                        const isExceeded = col.maxWip !== undefined && col.maxWip > 0 && colCards.length > col.maxWip;
-                        const isStarved = col.minWip !== undefined && col.minWip > 0 && colCards.length < col.minWip;
+                        const isExceeded = col.maxWip !== undefined && col.maxWip > 0 && wip > col.maxWip;
+                        const isStarved = col.minWip !== undefined && col.minWip > 0 && wip < col.minWip;
                         
                         let colClass = 'tb-col';
                         if (over) colClass += ' tb-col--over';
@@ -607,11 +654,11 @@ export default function TaskBoard() {
                                             title={`Limits (Min: ${col.minWip ?? '-'}, Max: ${col.maxWip ?? '-'})`}
                                         >
                                             {col.minWip !== undefined ? `${col.minWip}≤` : ''}
-                                            {colCards.length}
+                                            {wip}
                                             {col.maxWip !== undefined ? `≤${col.maxWip}` : ''}
                                         </span>
                                     ) : (
-                                        <span className="tb-col__count">{colCards.length}</span>
+                                        <span className="tb-col__count">{wip}</span>
                                     )}
 
                                     <button
@@ -643,10 +690,11 @@ export default function TaskBoard() {
                                 </div>
 
                                 <div className="tb-col__cards">
-                                    {colCards.map(card => {
+                                    {shownCards.map(card => {
                                         const isSel = selected.has(card.id);
                                         const urg = card.urgency ?? 'low';
                                         const subCount = subtasksOf(board.cards, card.id).length;
+                                        const overdue = isOverdue(card, columns, today);
                                         return (
                                             <div
                                                 key={card.id}
@@ -655,6 +703,7 @@ export default function TaskBoard() {
                                                 draggable
                                                 onDragStart={e => onDragStart(e, card.id)}
                                                 onDragEnd={onDragEnd}
+                                                onDrop={e => onCardDrop(e, card)}
                                             >
                                                 <div className="tb-card__top">
                                                     <input
@@ -672,7 +721,11 @@ export default function TaskBoard() {
                                                         role="button"
                                                         tabIndex={0}
                                                         title="Open project view"
-                                                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenCardId(card.id); } }}
+                                                        aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+                                                        onKeyDown={e => {
+                                                            if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); nudgeCard(card, colCards, e.key === 'ArrowUp' ? -1 : 1); return; }
+                                                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenCardId(card.id); }
+                                                        }}
                                                     >{card.title}</span>
                                                     <button
                                                         className="tb-icon-btn tb-card__edit"
@@ -697,6 +750,11 @@ export default function TaskBoard() {
                                                     <span className="tb-card__time" title={`Entered this column ${new Date(card.enteredColumnAt).toLocaleString()}`}>
                                                         <Clock size={12} aria-hidden /> {relTime(card.enteredColumnAt)}
                                                     </span>
+                                                    {card.dueAt && (
+                                                        <span className={`tb-card__due ${overdue ? 'tb-card__due--overdue' : ''}`}>
+                                                            {overdue ? `Overdue · ${fmtDue(card.dueAt)}` : `Due ${fmtDue(card.dueAt)}`}
+                                                        </span>
+                                                    )}
                                                     {subCount > 0 && (
                                                         <span className="tb-card__badge" title="Sub-tasks">⊞ {subCount}</span>
                                                     )}
@@ -845,6 +903,7 @@ export default function TaskBoard() {
                     board={board}
                     cardId={openCardId}
                     onOpenCard={setOpenCardId}
+                    onAddCard={title => guardedAdd(columns[0]?.id ?? '', () => addCard({ title }))}
                     onClose={() => setOpenCardId(null)}
                 />
             )}
@@ -864,7 +923,7 @@ const onDialogKey = (close: () => void) => (e: React.KeyboardEvent) => {
 };
 
 function WipModal({ wip, onCancel }: {
-    wip: { limit: number; count: number; onConfirm: () => void }; onCancel: () => void;
+    wip: { limit: number; count: number; adding?: boolean; onConfirm: () => void }; onCancel: () => void;
 }) {
     const ref = useFocusTrap<HTMLDivElement>(true);
     const headId = useId();
@@ -875,12 +934,12 @@ function WipModal({ wip, onCancel }: {
                 <p>
                     The target column has a maximum WIP limit of <strong>{wip.limit}</strong>.
                     It currently contains <strong>{wip.count}</strong> cards.
-                    Proceeding will violate the WIP limits.
+                    {wip.adding ? 'Adding another card' : 'Proceeding'} will violate the WIP limits.
                 </p>
                 <div className="tb-modal-actions">
                     <button className="btn-ghost tb-btn" onClick={onCancel}>Cancel</button>
                     <button className="btn-danger tb-btn" onClick={wip.onConfirm}>
-                        Override & Proceed
+                        {wip.adding ? 'Add anyway' : 'Override & Proceed'}
                     </button>
                 </div>
             </div>
@@ -922,8 +981,8 @@ function fmtBytes(n: number): string {
 }
 
 // ── Project / sub-project view: timeline + sub-tasks + attachments ──
-function ProjectView({ board, cardId, onOpenCard, onClose }: {
-    board: BoardState; cardId: string; onOpenCard: (id: string) => void; onClose: () => void;
+function ProjectView({ board, cardId, onOpenCard, onAddCard, onClose }: {
+    board: BoardState; cardId: string; onOpenCard: (id: string) => void; onAddCard: (title: string) => void; onClose: () => void;
 }) {
     const card = board.cards.find(c => c.id === cardId);
     const [title, setTitle] = useState(card?.title ?? '');
@@ -937,6 +996,10 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
     const announce = useAnnounce();
     const dialogRef = useFocusTrap<HTMLDivElement>(true);
     const attachId = useId();
+    const dueId = useId();
+    // Local mirror so a half-typed date segment (browsers report '') is not fought by a controlled value.
+    const [due, setDue] = useState(card?.dueAt ?? '');
+    useEffect(() => { setDue(card?.dueAt ?? ''); }, [cardId, card?.dueAt]);
 
     // Re-seed local fields when switching to a different card (e.g. into a sub-project)
     useEffect(() => { setTitle(card?.title ?? ''); setDesc(card?.description ?? ''); }, [cardId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -977,15 +1040,18 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
     const doRoute = async () => { const r = await routeCard(cardId); announce(r.detail); setRouteMsg(r.detail); setTimeout(() => setRouteMsg(null), 4000); };
     const commitTitle = () => { const t = title.trim(); if (t && t !== card.title) editCard(cardId, { title: t }); };
     const commitDesc = () => { if (desc !== card.description) editCard(cardId, { description: desc }); };
-    const onKey = onDialogKey(() => { commitTitle(); commitDesc(); onClose(); }); // Escape must not lose a half-typed edit
+    // Typing a year steps through valid dates: commit once (blur / Enter / close), not per keystroke.
+    const commitDue = () => { if (due !== (card.dueAt ?? '')) editCard(cardId, { dueAt: due || null }); };
+    const closeCommitting = () => { commitTitle(); commitDesc(); commitDue(); onClose(); };
+    const onKey = onDialogKey(closeCommitting); // Escape must not lose a half-typed edit
 
     return (
-        <div className="tb-pv-overlay" role="presentation" onClick={onBackdrop(onClose)} onKeyDown={onKey}>
+        <div className="tb-pv-overlay" role="presentation" onClick={onBackdrop(closeCommitting)} onKeyDown={onKey}>
             <div ref={dialogRef} className="tb-pv" role="dialog" aria-modal="true" aria-label={`Card: ${card.title}`} tabIndex={-1}>
                 <div className="tb-pv__head">
                     <input className="tb-pv__title" value={title} onChange={e => setTitle(e.target.value)} onBlur={commitTitle} aria-label="Task title" />
                     <span className="tb-pv__col" title="Current column">{colName}</span>
-                    <button className="tb-icon-btn" aria-label="Close project view" onClick={onClose}>×</button>
+                    <button className="tb-icon-btn" aria-label="Close project view" onClick={closeCommitting}>×</button>
                 </div>
 
                 {card.parentId && board.cards.some(c => c.id === card.parentId) && (
@@ -1000,6 +1066,20 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                     {card.assignee && <button className="tb-send-btn" onClick={doRoute}><Send size={12} aria-hidden /> Send</button>}
                     {assignOpen && <AssigneePicker onPick={a => { assignCard(cardId, a); setAssignOpen(false); }} onClose={() => setAssignOpen(false)} />}
                     {routeMsg && <span className="tb-route-msg tb-route-msg--inline">{routeMsg}</span>}
+                </div>
+
+                <div className="tb-pv__due">
+                    <label className="tb-pv__assign-label" htmlFor={dueId}>Due:</label>
+                    <input
+                        id={dueId}
+                        type="date"
+                        className="tb-pv__due-input"
+                        aria-label="Due date"
+                        value={due}
+                        onChange={e => setDue(e.target.value)}
+                        onBlur={commitDue}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitDue(); } }}
+                    />
                 </div>
 
                 <div className="tb-pv__body">
@@ -1023,7 +1103,7 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                                     <div key={r.id} className="tb-pv__rel-item">
                                         <span className="tb-pv__rel-src">{r.source}</span>
                                         <span className="tb-pv__rel-title" title={r.tags.map(t => `#${t}`).join(' ')}>{r.title}</span>
-                                        <button className="btn-ghost tb-btn" onClick={() => addCard({ title: r.title })} title="Add this linked item as a card on the board">＋ Add as card</button>
+                                        <button className="btn-ghost tb-btn" onClick={() => onAddCard(r.title)} title="Add this linked item as a card on the board">＋ Add as card</button>
                                     </div>
                                 ))}
                             </div>
@@ -1248,7 +1328,7 @@ function MetricsDashboard({ board, onClose }: { board: BoardState; onClose: () =
     const activeCards = board.cards.filter(c => c.columnId !== firstId && c.columnId !== doneId);
     // A one-column board has no Done: first and last would be the same column.
     const completedCards = columns.length < 2 ? [] : board.cards.filter(c => c.columnId === doneId);
-    const countIn = (colId: string) => board.cards.filter(c => c.columnId === colId).length;
+    const countIn = (colId: string) => wipCount(board.cards, colId); // sub-tasks excluded, same as the column badges
 
     // 1. WIP stats
     let starvedCount = 0;

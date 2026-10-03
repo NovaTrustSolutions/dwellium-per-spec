@@ -1,7 +1,7 @@
 # 077 — Links & QR widget: audit + improvement plan
 
-Status: PHASES 1–4 IMPLEMENTED 2026-10-02/03, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
-backend `feat/077-links-backend-p1` (see §7–10). The audit (2026-10-01) was read-only.
+Status: PHASES 1–4 IMPLEMENTED 2026-10-02/03; pushed 2026-10-03 as draft PRs dwellium-per-spec#186 (frontend
+`feat/077-links-qr-p1`) and Dwellium#24 (backend `feat/077-links-backend-p1`), see §7–10. The audit (2026-10-01) was read-only.
 Base: frontend `main` @ `fe281de`; backend `main` (links code identical on the checked-out
 `chore/token-encryption-key-secret` branch — `git diff main` touches only `deploy/cloud-run.sh`).
 Swarm: ruflo `swarm-1790844744784-onqku3` (hierarchical). ruflo only *registered* the agents

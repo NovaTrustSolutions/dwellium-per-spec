@@ -1,6 +1,6 @@
 # 079 — Task Board widget: capability report, audit, improvement plan
 
-Status: phases 1–2 DONE 2026-10-01 (branches feat/079-task-board-p1, -p2 stacked, unpushed); phase 3 in progress (feat/079-task-board-p3). Base: `origin/main` @ `fe281de`
+Status: phases 1–3 DONE 2026-10-01 (branches feat/079-task-board-p1, -p2, -p3 stacked, unpushed); phase 4 in progress (feat/079-task-board-p4). Base: `origin/main` @ `fe281de`
 (local `main` was level with it). Backend read at `origin/main` via `git show` (its working tree is on another branch).
 Swarm: ruflo `swarm-1790844744917-lsf0h7` (hierarchical). ruflo only *registered* the agents
 (`tb-m1-model`, `tb-m2-persistence`, `tb-m3-ui`, `tb-m4-integration`, `tb-r1-refuter`); the work ran as
@@ -325,6 +325,72 @@ Person routing: unchanged except the capped body.
 
 Acceptance: a fake fetch asserting the exact ARA body (`mode: 'chief-of-staff'`), every outcome above, and that
 `grep -rn "queued" components/TaskBoard` finds nothing; every new test fails on the phase-2 commit.
+
+## 10. Phase 4 contract (P0 — accessibility, layout, theming)
+
+Owner split: **I** = `components/TaskBoard/TaskBoard.tsx` (one integrator); **C** = `TaskBoard.css`;
+**T** = new `src/test/taskBoard.p4.test.tsx`. Reuse `src/hooks/useA11y.ts` (`useFocusTrap`, `useAnnounce`) — no new
+dialog component, no new dependency (native `<dialog>.showModal` is not implemented in jsdom). `.sr-only` exists in
+`styles/global.css`. The 16 selectable themes are `VALID_PICKER_THEMES` in `context/ThemeContext.tsx:148`.
+
+### UI contract (accessible names — the harness, the tests and the integrator all use these exact strings)
+| Element | Role / name |
+|---|---|
+| WIP modal | `role="dialog" aria-modal="true"`, labelled by its heading "WIP Limit Exceeded" |
+| Exit-criteria modal | `role="dialog" aria-modal="true"`, labelled by its heading "Column Exit Criteria Enforced" |
+| Card view (ProjectView) | `role="dialog" aria-modal="true" aria-label="Card: <title>"` |
+| Per-card move | `<select aria-label="Move <title> to">`, first option "Move to…" (disabled), then every OTHER column |
+| Attach input | `<input type="file" multiple>` with visible label "Attach files" inside the card view |
+| Attachment download | `<a download href=dataUrl>` named "Download <file name>" (only when bytes are stored) |
+| Toolbar Undo | button "Undo last action", `disabled` when nothing is reversible |
+| Column remove | button "Remove column <title>", `disabled` when it is the only column |
+| Resize handle | `role="separator" aria-orientation="vertical" tabIndex=0 aria-valuenow/min/max` (200/640), name "Resize column <title>" |
+| Metrics tabs | `role="tablist"` + `role="tab"` with `aria-selected` |
+| Each metrics chart | wrapper `role="img"` with an `aria-label` that states the data in words |
+
+### Behaviour
+1. **Dialogs**: the three modals get the roles above, `useFocusTrap(true)` on the dialog element (focus moves in, Tab
+   cycles, focus returns to the opener on close), and Escape closes them (onKeyDown on the dialog). Backdrop click still closes.
+2. **Announcements** (`useAnnounce`, polite): after a move/bulk move ("Moved <title> to <column>" / "Moved N cards to <column>"),
+   undo (the new UNDO entry's summary), card removed ("Removed <title>. Undo is available."), column removed, send result
+   (RouteResult.detail).
+3. **Per-card move select** calls `initiateMoveCard` (so WIP and exit policies still apply). The bulk "Move to…" clears the
+   selection after moving (like drag does).
+4. **Attachments**: file input + drop zone share one handler (`onFiles`, keeps phase 2's `captureBoard` guard); input value
+   reset after use so the same file can be chosen again. Download link per stored attachment.
+5. **Reset on switch**: an effect keyed on `[userId, activeProjectId]` clears transient UI state (adding-card draft,
+   column-settings / policies popovers, assignee picker, rename field, WIP / exit modals, selection). A remembered project id
+   that is no longer in a NON-EMPTY project list falls back to 'global'.
+6. **Destructive confirms** (native `window.confirm`, `ponytail:` comment): removing a column that holds cards
+   ("Remove column "<title>" and its N card(s)? Undo can restore them.") and Load Board ("Replace this board with the
+   backup file? Undo can restore the current board."); cancel = no change. The Load Board file input value is reset after use.
+7. **Undo button** disabled via `lastReversible(board) === null` (export it from the model if needed — it already is).
+8. **Keyboard resize**: ArrowLeft/ArrowRight on the separator resize by 16 px through `resizeColumn` (clamped by the model).
+9. **Metrics** (no text parsing): Done = the LAST column by `order`; lead time = Done entry time − createdAt; cycle time =
+   Done entry time − ts of the first non-reversed MOVE entry whose `cardIds` include the card and whose `to` is not the FIRST
+   column by order (fallback: createdAt). Throughput "avg per week" = completed ÷ max(1, weeks since the oldest card's
+   createdAt) and is rendered. WIP chart counts use the actual columns.
+10. **Theme tokens** (C): no hard-coded colours remain in TaskBoard.css or inline styles in TaskBoard.tsx except
+    `transparent`/`currentColor`. Scoped tokens on `.tb-board`:
+    `--tb-muted: color-mix(in srgb, var(--text-secondary) 65%, var(--text-primary))` for all small/secondary text;
+    card background `var(--bg-surface)`; WIP exceeded = `color-mix(in srgb, var(--danger) 12%, var(--bg-surface))` + danger
+    border; starved = same with `--accent`; no `!important` that would hide the drag-over highlight (`.tb-col--over` wins).
+    Urgency: a small coloured dot (decorative, `aria-hidden`) + the level as text in `--tb-muted`; card left border keeps the
+    urgency colour (non-text). Badges: text `var(--text-primary)` on a `color-mix(... 18%, var(--bg-surface))` tint.
+    Recharts: axis/ticks/tooltip colours from CSS variables via `var(--…)` strings.
+11. **Layout** (C): `.tb-toolbar { flex-wrap: wrap }`; `.tb-main { position: relative }`; the Activity and Metrics drawers
+    overlay the columns (`position: absolute; top: 0; right: 0; bottom: 0; width: min(<current>, 100%)`) instead of taking
+    width from them; popovers inside cards/column heads must not be clipped by `.tb-col__cards` overflow at 680 px
+    (open upward/leftward or render via `position: fixed` — C's choice, must pass the harness screenshot).
+    Card × visible on `:focus-within` and `:hover`; touch targets ≥ 24×24 px for every button in the board.
+    `.tb-toolbar__error` rule replaces the inline style.
+12. **Dead code** (I): remove the `didDrag` ref; compute `subtasksOf` once per card.
+
+Acceptance (harness, `~/dwellium-harness/079-task-board`, standalone Vite page, before = phase-3 commit, after = this phase):
+at 680×460 every toolbar button is inside the window; opening both drawers never pushes columns off; axe (scoped to the
+board) reports 0 violations with a card view open and with the WIP modal open; every text node ≥ 4.5:1 (≥ 3:1 for ≥ 18.66 px
+bold / 24 px) in all 16 picker themes; keyboard-only: open a card, Escape closes it and focus returns to the opener, move a
+card via its select, attach a file via the input. Full vitest + tsc -b + both builds green.
 
 ## 6. What was and was not verified
 

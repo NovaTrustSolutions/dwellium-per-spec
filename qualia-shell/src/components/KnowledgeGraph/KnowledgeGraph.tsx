@@ -9,7 +9,7 @@
  */
 import { useState, useEffect, useMemo, type CSSProperties } from 'react';
 import { Share2, AlertTriangle } from 'lucide-react';
-import { fetchTree } from '../FileExplorer/fileExplorerApi';
+import { fetchTree, FILE_TREE_CHANGED } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { useScribeStore } from '../Scribe/scribeStore';
 import { buildGraph, communities, isolatedNodes, simulate, type GraphNode } from './forceLayout';
@@ -34,12 +34,19 @@ function FilesGraphView() {
 
     useEffect(() => {
         let cancelled = false;
-        (async () => {
-            try { const t = await fetchTree(); if (!cancelled) { setTree(t); setOffline(false); } }
-            catch { if (!cancelled) setOffline(true); }
-            finally { if (!cancelled) setLoading(false); }
+        let seq = 0; // newest load wins: an older fetch resolving late must not overwrite a newer tree
+        const load = () => (async () => {
+            const mine = ++seq;
+            const live = () => !cancelled && mine === seq;
+            try { const t = await fetchTree(); if (live()) { setTree(t); setOffline(false); } }
+            catch { if (live()) setOffline(true); }
+            finally { if (live()) setLoading(false); }
         })();
-        return () => { cancelled = true; };
+        void load();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const onChanged = () => { clearTimeout(timer); timer = setTimeout(() => { void load(); }, 300); };
+        window.addEventListener(FILE_TREE_CHANGED, onChanged);
+        return () => { cancelled = true; clearTimeout(timer); window.removeEventListener(FILE_TREE_CHANGED, onChanged); };
     }, []);
 
     const files = useMemo(() => allFiles(tree), [tree]);

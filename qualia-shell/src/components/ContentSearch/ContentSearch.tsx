@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, useId, type KeyboardEvent, type ReactNode } from 'react';
 import { Search, FileText, Brain, Layers, Inbox, BookOpen, Cpu, StickyNote, Mic } from 'lucide-react';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
-import { fetchTree } from '../FileExplorer/fileExplorerApi';
+import { fetchTree, FILE_TREE_CHANGED } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { dumpStore, type DumpEntry } from '../Scribe/dumpStore';
 import { synthesisStore, type Synthesis } from '../Synthesis/synthesisStore';
@@ -86,10 +86,12 @@ export default function ContentSearch() {
 
     useEffect(() => {
         let cancelled = false;
+        let filesSeq = 0; // newest load wins: an older fetch resolving late must not overwrite a newer list
         const loadFiles = () => {
+            const mine = ++filesSeq;
             fetchTree()
-                .then((t) => { if (!cancelled) { setFiles(allFilePaths(t)); setFilesUnavailable(false); } })
-                .catch(() => { if (!cancelled) setFilesUnavailable(true); });
+                .then((t) => { if (!cancelled && mine === filesSeq) { setFiles(allFilePaths(t)); setFilesUnavailable(false); } })
+                .catch(() => { if (!cancelled && mine === filesSeq) setFilesUnavailable(true); });
         };
         const loadTranscripts = () => { if (!cancelled) refreshTranscripts(); };
         const loadNames = () => { fetchFileNames().then((m) => { if (!cancelled) fileNamesRef.current = m; }); };
@@ -99,10 +101,15 @@ export default function ContentSearch() {
         loadFiles();
         loadTranscripts();
         loadNames();
+        let treeTimer: ReturnType<typeof setTimeout> | undefined;
+        const onTreeChanged = () => { clearTimeout(treeTimer); treeTimer = setTimeout(loadFiles, 300); };
+        window.addEventListener(FILE_TREE_CHANGED, onTreeChanged);
         window.addEventListener('focus', onFocus);
         window.addEventListener('storage', loadTranscripts);
         return () => {
             cancelled = true;
+            clearTimeout(treeTimer);
+            window.removeEventListener(FILE_TREE_CHANGED, onTreeChanged);
             window.removeEventListener('focus', onFocus);
             window.removeEventListener('storage', loadTranscripts);
         };

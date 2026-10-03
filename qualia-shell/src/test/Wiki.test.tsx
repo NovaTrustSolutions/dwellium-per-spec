@@ -15,7 +15,8 @@ import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
 
 const mockFetchTree = vi.fn();
 const mockReadFile = vi.fn();
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: (...args: unknown[]) => mockFetchTree(...args),
     readFile: (...args: unknown[]) => mockReadFile(...args),
 }));

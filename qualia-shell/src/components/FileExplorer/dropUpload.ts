@@ -1,40 +1,47 @@
 /**
- * Finder-drop upload for the File Explorer. The backend's /touch takes the file
- * as JSON text under a 1 MB body limit and never overwrites, so binary, oversize
- * and same-name files are refused here (and the user is told) instead of being
- * corrupted by a text decode or silently dropped.
+ * Upload for the File Explorer (Upload button, Finder drops, pasted screenshots).
+ * Plan 076 P4: files go to the multipart /upload route (binary OK, never overwrites),
+ * replacing the old 900 KB text-only /touch path. The server judges each file; this
+ * module only turns the per-file results into one user-facing line.
  */
-import { touch } from './fileExplorerApi';
+import { uploadFiles, type UploadResult } from './fileExplorerApi';
 
-// ponytail: backend express.json limit is 1mb; 900 KB leaves room for JSON escaping.
-// A file that is mostly quotes/newlines can still 413 — that surfaces as a refusal too.
-// Real fix is a multipart /upload route on the backend (also unlocks binary files).
-export const MAX_UPLOAD_BYTES = 900 * 1024;
-
-/** Why a dropped file can't be uploaded, or null when it can. `text` is null before the file is read. */
-export function refusalFor(file: { name: string; size: number }, text: string | null, existingNames: string[]): string | null {
-    if (existingNames.includes(file.name)) return 'a file with that name already exists here';
-    if (file.size > MAX_UPLOAD_BYTES) return `too large (${Math.ceil(file.size / 1024).toLocaleString()} KB, limit ${MAX_UPLOAD_BYTES / 1024} KB)`;
-    if (text !== null && (text.includes(String.fromCharCode(0)) || text.includes(String.fromCharCode(0xfffd)))) return 'not a text file (images, PDFs and other binary files are not supported yet)';
-    return null;
+export interface UploadOutcome {
+    /** Always set: "Uploaded N of M" plus the files that were skipped and why. */
+    message: string;
+    tone: 'info' | 'error';
+    /** How many files were stored. */
+    ok: number;
 }
 
-/** Upload dropped files into `destFolder` ('' = root). Returns a user-facing summary, or null if nothing to say. */
-export async function uploadDroppedFiles(files: File[], destFolder: string, existingNames: string[]): Promise<string | null> {
-    let uploaded = 0;
-    const refused: string[] = [];
-    for (const f of files) {
-        try {
-            // Size/name check first so a huge file is never read into memory.
-            const text = refusalFor(f, null, existingNames) ? null : await f.text();
-            const why = refusalFor(f, text, existingNames);
-            if (why || text === null) { refused.push(`"${f.name}": ${why}`); continue; }
-            await touch(destFolder ? `${destFolder}/${f.name}` : f.name, text);
-            uploaded++;
-        } catch (err: any) {
-            refused.push(`"${f.name}": ${err?.message ?? err}`);
-        }
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+function skippedLine(r: UploadResult): string {
+    const why = r.status === 'exists' ? 'already exists here'
+        : r.status === 'invalid' ? 'not an accepted name or file'
+        : (r.error || 'upload failed');
+    return `"${r.name}": ${why}`;
+}
+
+/** Pure: per-file results -> one summary (files the server did not report count as skipped). */
+export function summarizeUploads(files: Array<{ name: string }>, results: UploadResult[]): UploadOutcome {
+    const ok = results.filter((r) => r.status === 'ok').length;
+    const skipped = results.filter((r) => r.status !== 'ok').map(skippedLine);
+    const reported = new Set(results.map((r) => r.name));
+    for (const f of files) if (!reported.has(f.name)) skipped.push(`"${f.name}": no result from the server`);
+    const head = `Uploaded ${ok} of ${files.length}`;
+    return {
+        message: skipped.length ? `${head}. Skipped:\n${skipped.join('\n')}` : head,
+        tone: ok === files.length ? 'info' : 'error',
+        ok,
+    };
+}
+
+/** Upload `files` into `dest` ('' = root). Never throws: a failed request becomes an error outcome. */
+export async function uploadAndSummarize(files: File[], dest: string): Promise<UploadOutcome> {
+    try {
+        return summarizeUploads(files, await uploadFiles(files, dest));
+    } catch (err) {
+        return { message: `Upload failed: ${errMsg(err)}`, tone: 'error', ok: 0 };
     }
-    if (refused.length === 0) return null;
-    return `Uploaded ${uploaded} of ${files.length}. Skipped:\n${refused.join('\n')}`;
 }

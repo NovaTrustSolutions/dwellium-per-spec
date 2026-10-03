@@ -10,7 +10,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const fetchTreeMock = vi.fn();
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: () => fetchTreeMock(),
 }));
 

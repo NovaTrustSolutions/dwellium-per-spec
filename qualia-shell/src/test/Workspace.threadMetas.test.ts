@@ -16,7 +16,8 @@ import type { FileEntry } from '../components/FileExplorer/FileExplorerCell';
 import type { ThreadMeta } from '../components/Workspace/workspaceApi';
 
 const fetchTreeMock = vi.fn();
-vi.mock('../components/FileExplorer/fileExplorerApi', () => ({
+vi.mock('../components/FileExplorer/fileExplorerApi', async (orig) => ({
+    ...(await orig<typeof import('../components/FileExplorer/fileExplorerApi')>()),
     fetchTree: () => fetchTreeMock(),
 }));
 

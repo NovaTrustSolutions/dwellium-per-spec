@@ -124,6 +124,8 @@ export default function TaskMenu() {
             const taskId = detail?.taskId;
             if (!taskId) return;
 
+            // The highlight looks up the LIST row, so a deep link must leave the Board tab.
+            setView('list'); // not chooseView: a deep link must not overwrite the saved tab preference
             setReassignTarget(null);
             setFilterUrgency('all');
             setSortBy('date');

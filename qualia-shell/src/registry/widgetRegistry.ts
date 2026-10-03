@@ -306,6 +306,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         icon: 'layout-list',
         component: lazyWithReload(() => import('../components/TrelloBoard/TrelloBoard')),
         category: 'core',
+        minWidth: 640,
+        minHeight: 420,
     },
     'task-board': {
         id: 'task-board',

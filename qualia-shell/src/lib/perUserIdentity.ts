@@ -102,6 +102,9 @@ export const walkthroughUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 058 — per-user Universal Shell nav persistence (universalShellStore). */
 export const universalShellUserIdHolder: UserIdHolder = makeHolder();
 
+/** Plan 063 — per-user Template Generator templates (templateGeneratorStore). */
+export const templateGeneratorUserIdHolder: UserIdHolder = makeHolder();
+
 /** Plan 068 phase 2 — per-user monthly AI budget (aiBudgetStore). */
 export const aiBudgetUserIdHolder: UserIdHolder = makeHolder();
 
@@ -160,6 +163,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     gridLockUserIdHolder,
     stellaPrefsUserIdHolder,
     universalShellUserIdHolder,
+    templateGeneratorUserIdHolder,
     aiBudgetUserIdHolder,
     thoughtWeaverUserIdHolder,
     twImportedUserIdHolder,

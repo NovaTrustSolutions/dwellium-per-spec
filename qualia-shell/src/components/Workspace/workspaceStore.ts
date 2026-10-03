@@ -43,6 +43,7 @@ import {
 import { fetchTree, mkdir, rename, move, deleteEntry } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { SEED_DOMAINES, SEED_TREE } from './workspaceLocalSeed';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 /**
  * Per-user local persistence of the last-known workspace STRUCTURE (tree + domaines +
@@ -143,10 +144,11 @@ interface WorkspaceState {
     threadsForProject: (projectPath: string) => FileEntry[];
 
     /** Fetch the domaines list from the backend, driving loading/error/domaines (Cycle 5). */
-    loadDomaines: () => Promise<void>;
+    /** `stillOwner`: a mutation that awaited first passes its own capture (owner-race guard). */
+    loadDomaines: (options?: { stillOwner?: () => boolean }) => Promise<void>;
 
     /** Fetch the shared file-explorer tree, driving treeLoading/treeError/tree (Cycle 6). */
-    loadTree: () => Promise<void>;
+    loadTree: (options?: { stillOwner?: () => boolean }) => Promise<void>;
 
     /**
      * Populate domaines + tree from the built-in local sample workspace and flag `offline`
@@ -266,13 +268,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return [];
     },
 
-    loadDomaines: async () => {
+    loadDomaines: async (options) => {
+        const stillOwner = options?.stillOwner ?? captureOwner();
+        if (!stillOwner()) return;
         set({ loading: true, error: null });
         try {
             const list = await fetchDomaines();
+            // owner-race guard: account changed mid-fetch — drop A's list, but unblock B's own load.
+            if (!stillOwner()) { set({ loading: false }); return; }
             set({ domaines: list, loading: false, offline: false });
             persistWorkspace({ tree: get().tree, domaines: list, threadMetas: get().threadMetas });
         } catch (err) {
+            if (!stillOwner()) { set({ loading: false }); return; }
             set({
                 error: err instanceof Error ? err.message : 'Failed to load domaines',
                 loading: false,
@@ -280,13 +287,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         }
     },
 
-    loadTree: async () => {
+    loadTree: async (options) => {
+        const stillOwner = options?.stillOwner ?? captureOwner();
+        if (!stillOwner()) return;
         set({ treeLoading: true, treeError: null });
         try {
             const tree = await fetchTree();
+            // owner-race guard: account changed mid-fetch — drop A's tree; clear treeLoading so B's lazy load isn't gated.
+            if (!stillOwner()) { set({ treeLoading: false }); return; }
             set({ tree, treeLoading: false, offline: false });
             persistWorkspace({ tree, domaines: get().domaines, threadMetas: get().threadMetas });
         } catch (err) {
+            if (!stillOwner()) { set({ treeLoading: false }); return; }
             set({
                 treeError: err instanceof Error ? err.message : 'Failed to load workspace tree',
                 treeLoading: false,
@@ -306,10 +318,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     loadThreadMetas: async (threadPaths) => {
         if (threadPaths.length === 0) return;
+        const stillOwner = captureOwner();
         set({ threadMetaLoading: true });
         // Best-effort: settle each independently so one missing/erroring sidecar (e.g. the
         // sibling backend route not yet implemented) never blocks the rest or the thread list.
         const results = await Promise.allSettled(threadPaths.map((p) => fetchThreadMeta(p)));
+        // owner-race guard: account changed mid-fetch — never merge A's metas into B's cache.
+        if (!stillOwner()) { set({ threadMetaLoading: false }); return; }
         const next = { ...get().threadMetas };
         results.forEach((r, i) => {
             if (r.status === 'fulfilled') next[threadPaths[i]] = r.value;
@@ -325,12 +340,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         const invalid = nameError(name);
         if (invalid) { set({ mutationError: invalid }); return false; }
         const fullPath = parentPath ? `${parentPath}/${name}` : name;
+        const stillOwner = captureOwner(); // owner-race guard: reload only for the account that made the change
         set({ mutating: true, mutationError: null });
         try {
             await mkdir(fullPath);
-            await get().loadTree();
+            if (!stillOwner()) { set({ mutating: false }); return true; } // the server change succeeded for A
+            await get().loadTree({ stillOwner });
             // A new depth-1 folder is a new domaine — refresh the domaines list too.
-            if (parentPath === null) await get().loadDomaines();
+            if (parentPath === null) await get().loadDomaines({ stillOwner });
             set({ mutating: false });
             return true;
         } catch (err) {
@@ -343,17 +360,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         const toName = rawToName.trim();
         const invalid = nameError(toName);
         if (invalid) { set({ mutationError: invalid }); return false; }
+        const stillOwner = captureOwner(); // owner-race guard (see createEntry)
         set({ mutating: true, mutationError: null });
         try {
             const { toPath } = await rename(path, toName);
+            if (!stillOwner()) { set({ mutating: false }); return true; }
             // Defensive: if the renamed node happens to be one we've drilled into, follow it.
             const st = get();
             const patch: Partial<WorkspaceState> = {};
             if (st.activeProjectPath === path) patch.activeProjectPath = toPath;
             if (st.activeDomainePath === path) patch.activeDomainePath = toPath;
             if (Object.keys(patch).length) set(patch);
-            await get().loadTree();
-            if (pathDepth(path) === 1) await get().loadDomaines();
+            await get().loadTree({ stillOwner });
+            if (pathDepth(path) === 1) await get().loadDomaines({ stillOwner });
             set({ mutating: false });
             return true;
         } catch (err) {
@@ -363,17 +382,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     },
 
     removeEntry: async (path) => {
+        const stillOwner = captureOwner(); // owner-race guard (see createEntry)
         set({ mutating: true, mutationError: null });
         try {
             await deleteEntry(path);
+            if (!stillOwner()) { set({ mutating: false }); return true; }
             // Defensive: stepping out if we deleted the node we're currently inside.
             const st = get();
             if (st.activeProjectPath === path) set({ view: 'domaine', activeProjectPath: null });
             else if (st.activeDomainePath === path) {
                 set({ view: 'index', activeDomainePath: null, activeProjectPath: null });
             }
-            await get().loadTree();
-            if (pathDepth(path) === 1) await get().loadDomaines();
+            await get().loadTree({ stillOwner });
+            if (pathDepth(path) === 1) await get().loadDomaines({ stillOwner });
             set({ mutating: false });
             return true;
         } catch (err) {
@@ -383,11 +404,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     },
 
     moveEntry: async (fromPath, toPath) => {
+        const stillOwner = captureOwner(); // owner-race guard (see createEntry)
         set({ mutating: true, mutationError: null });
         try {
             await move(fromPath, toPath);
-            await get().loadTree();
-            if (pathDepth(fromPath) === 1 || pathDepth(toPath) === 1) await get().loadDomaines();
+            if (!stillOwner()) { set({ mutating: false }); return true; }
+            await get().loadTree({ stillOwner });
+            if (pathDepth(fromPath) === 1 || pathDepth(toPath) === 1) await get().loadDomaines({ stillOwner });
             set({ mutating: false });
             return true;
         } catch (err) {
@@ -397,10 +420,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     },
 
     saveDomaineMeta: async (domainePath, patch) => {
+        const stillOwner = captureOwner(); // owner-race guard (see createEntry)
         set({ mutating: true, mutationError: null });
         try {
             await putDomaine(domainePath, patch);
-            await get().loadDomaines();
+            if (!stillOwner()) { set({ mutating: false }); return true; }
+            await get().loadDomaines({ stillOwner });
             set({ mutating: false });
             return true;
         } catch (err) {
@@ -410,9 +435,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     },
 
     setThreadStatus: async (threadPath, status) => {
+        const stillOwner = captureOwner();
         set({ mutating: true, mutationError: null });
         try {
             const saved = await putThreadMeta(threadPath, { status });
+            // owner-race guard: the server write succeeded for A; only the local merge into B's cache is dropped.
+            if (!stillOwner()) { set({ mutating: false }); return true; }
             const existing = get().threadMetas[threadPath];
             // Optimistically reflect the new status; merge any fuller meta the route echoed back.
             const merged = { ...(existing ?? {}), ...saved, status } as ThreadMeta;
@@ -421,12 +449,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             persistWorkspace({ tree: get().tree, domaines: get().domaines, threadMetas: nextMetas });
             return true;
         } catch (err) {
+            if (!stillOwner()) { set({ mutating: false }); return false; }
             set({ mutating: false, mutationError: err instanceof Error ? err.message : 'Failed to update thread' });
             return false;
         }
     },
 
     hydrate: (userId) => {
+        // A different account must not inherit the previous one's in-memory structure
+        // (the lazy tree load skips when tree is non-empty, and the next persist would cache it under the new key).
+        if (userId !== workspaceUserIdHolder.current) set({ ...INITIAL });
         workspaceUserIdHolder.current = userId;
         try {
             const raw = localStorage.getItem(cacheKey(userId));

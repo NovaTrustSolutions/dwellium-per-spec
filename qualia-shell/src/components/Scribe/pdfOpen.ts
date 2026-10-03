@@ -13,6 +13,7 @@
  */
 import { API_BASE } from '../../config';
 import { getAuthHeaders } from '../../context/UserContext';
+import { captureOwner } from '../../lib/perUserIdentity';
 import { openWidget } from '../../lib/dwelliumCommands';
 import { useScribeStore } from './scribeStore';
 import { pdfToMarkdown, MAX_PDF_BYTES } from './pdfToMarkdown';
@@ -48,15 +49,18 @@ export function bytesFromBinaryString(s: string): Uint8Array {
  * Convert PDF bytes → sibling markdown doc, open it, toast. If the converted
  * doc already exists it is opened directly (no duplicate conversion). Over
  * the size cap → honest toast + PDF Gear instead.
+ *
+ * `stillOwner`: callers that awaited first pass their own capture (owner-race guard).
  */
-export async function openPdfBytesAsMarkdown(pdfPath: string, bytes: Uint8Array): Promise<void> {
+export async function openPdfBytesAsMarkdown(pdfPath: string, bytes: Uint8Array, stillOwner: () => boolean = captureOwner()): Promise<void> {
     const name = pdfPath.split('/').pop() || pdfPath;
     const store = useScribeStore.getState();
     const target = convertedMdPath(pdfPath);
 
     const files = await store.listFiles();
+    if (!stillOwner()) return; // owner-race guard: account changed — drop, never convert into the new one
     if (files.some(f => f.filepath === target)) {
-        await store.openFile(target);
+        await store.openFile(target, { stillOwner });
         return;
     }
 
@@ -77,7 +81,8 @@ export async function openPdfBytesAsMarkdown(pdfPath: string, bytes: Uint8Array)
     }
 
     const content = `${FROM_PDF_MARKER} ${pdfPath} -->\n\n${body}`;
-    await store.createFile(target, content); // creates AND opens the .md; the PDF is untouched
+    await store.createFile(target, content, { stillOwner }); // creates AND opens the .md; the PDF is untouched (dropped if the account changed mid-conversion)
+    if (!stillOwner()) return;
     toast(`Converted ${name} → markdown${truncated ? ` (first pages only)` : ''} · Open original in PDF Gear`);
 }
 
@@ -86,12 +91,13 @@ export async function openPdfBytesAsMarkdown(pdfPath: string, bytes: Uint8Array)
  * conversion, else fetch the stored bytes and convert. A backend/binary
  * failure still lands on an honest fallback doc — never garbage bytes.
  */
-export async function openPdfFilepath(filepath: string): Promise<void> {
+export async function openPdfFilepath(filepath: string, stillOwner: () => boolean = captureOwner()): Promise<void> {
     const store = useScribeStore.getState();
     const target = convertedMdPath(filepath);
     const files = await store.listFiles();
+    if (!stillOwner()) return; // owner-race guard: never fetch/convert the PDF with the new account's token
     if (files.some(f => f.filepath === target)) {
-        await store.openFile(target);
+        await store.openFile(target, { stillOwner });
         return;
     }
 
@@ -103,5 +109,5 @@ export async function openPdfFilepath(filepath: string): Promise<void> {
             bytes = bytesFromBinaryString(data.content);
         }
     } catch { /* offline — fallback doc below */ }
-    await openPdfBytesAsMarkdown(filepath, bytes);
+    await openPdfBytesAsMarkdown(filepath, bytes, stillOwner);
 }

@@ -42,12 +42,12 @@ import { AgentWiki } from './AgentWiki';
 import { HermesAgentWorkspace } from './HermesAgentWorkspace';
 import { agentWikiUserIdHolder, buildWikiContext } from './agentWikiStore';
 import { runHermes } from './hermesRunner';
-import { buildReactLoopFn, mergedToolNames } from './hermesReact';
+import { buildReactLoopFn, mergedToolNames, hermesFallbackSystemPrompt, HERMES_BROWSER_SKILLS } from './hermesReact';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
 import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
-import { runSkillForInput, describeSkillsForPrompt, AGENT_SKILLS } from '../../lib/agents/skills';
+import { runSkillForInput } from '../../lib/agents/skills';
 import CostAdvisorPanel from '../AiSpend/CostAdvisorPanel';
 import {
     arrangeMarkdownFiles,
@@ -336,19 +336,12 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                 const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search }, undefined, 'model');
                 return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
             },
-            reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
+            reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm, integrations.search) : undefined,
             llmFallbackFn: async (t, fewShot) => {
                 if (!hasActiveLlm(integrations.llm)) return null;
                 const wikiCtx = buildWikiContext();
                 const res = await callLlm({
-                    systemPrompt:
-                        'You are Hermes, a pragmatic autonomous task agent inside the Dwellium app. ' +
-                        'The Hermes backend is offline, so answer the task directly from reasoning and general knowledge. ' +
-                        'Be concrete and actionable; say plainly when a step would need live tools or property data.\n' +
-                        // Bidirectional memory OUT-path: the LLM Wiki (identity + distilled facts)
-                        // flows into every run so the agent knows the operator and their world.
-                        `\n# Your memory (LLM Wiki)\n${wikiCtx}\n` +
-                        `Skills available browser-side for follow-ups:\n${describeSkillsForPrompt()}`,
+                    systemPrompt: hermesFallbackSystemPrompt(wikiCtx),
                     prompt: fewShot ? `${fewShot}\n\nTask: ${t}` : `Task: ${t}`,
                     maxTokens: 1024,
                     temperature: 0.4,
@@ -701,12 +694,12 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     {/* Tool Registry — backend tools when up, browser-side skills otherwise */}
                     <div className="hhp__tools-section">
                         <h3 className="hhp__section-title">
-                            <Wrench size={16} aria-hidden /> {hermesTools.length > 0 ? `Registered Tools (${hermesTools.length})` : `Browser-side Skills (${AGENT_SKILLS.length})`}
+                            <Wrench size={16} aria-hidden /> {hermesTools.length > 0 ? `Registered Tools (${hermesTools.length})` : `Browser-side Skills (${HERMES_BROWSER_SKILLS.length})`}
                         </h3>
                         <div className="hhp__tools-grid">
                             {(hermesTools.length > 0
                                 ? hermesTools
-                                : AGENT_SKILLS.map(s => ({ name: s.name, description: s.description }))
+                                : HERMES_BROWSER_SKILLS.map(s => ({ name: s.name, description: s.description }))
                             ).map(t => (
                                 <div key={t.name} className="hhp__tool-card">
                                     <span className="hhp__tool-name">{t.name}</span>

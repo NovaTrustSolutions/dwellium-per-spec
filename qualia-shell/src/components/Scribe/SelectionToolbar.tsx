@@ -15,6 +15,7 @@ import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { REDLINE_SYSTEM_PROMPT, parseRedlineResponse } from './redlinePrompt';
 import { AI_ACTIONS, buildActionSystemPrompt, buildSummarizePreface, type AiAction } from './aiActions';
 import { getActiveEditorView } from './markdownConfig';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 const TOOLBAR_HEIGHT = 36;
 const GAP_ABOVE_SELECTION = 8;
@@ -85,6 +86,7 @@ export function SelectionToolbar() {
         if (!llmReady || redlineLoading) return;
         useScribeStore.getState().setSelectionToolbar(null);
         useScribeStore.getState().setRedlineLoading(true);
+        const stillOwner = captureOwner(); // owner-race guard: no redline on the next account's same-path file
 
         try {
             const res = await callLlm({
@@ -94,6 +96,7 @@ export function SelectionToolbar() {
                 maxTokens: 2048,
                 temperature: 0.3,
             }, integrations.llm);
+            if (!stillOwner()) return; // finally clears redlineLoading
 
             if (!res) {
                 useScribeStore.getState().setRedlineLoading(false);
@@ -125,7 +128,7 @@ export function SelectionToolbar() {
         } catch {
             // LLM call failed — silently degrade
         } finally {
-            useScribeStore.getState().setRedlineLoading(false);
+            if (stillOwner()) useScribeStore.getState().setRedlineLoading(false); // never clear the next account's spinner
         }
     };
 

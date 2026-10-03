@@ -90,8 +90,17 @@ export interface PersonaDossier {
     hidden?: string[];
 }
 
-/** Build a default dossier for a persona (seeded from the wireframe template). */
+/**
+ * Build a default dossier for a persona, seeded from REAL persona fields only —
+ * no invented measurements or developer template text (Docs/code.md 2026-09-05/06:
+ * "A metric with no live feed renders Not available, never a plausible literal").
+ */
 export function defaultDossier(p: Persona): PersonaDossier {
+    const model = !p.preferredModel
+        ? 'Active provider'
+        : p.preferredModel.model
+            ? `${p.preferredModel.provider} · ${p.preferredModel.model}`
+            : p.preferredModel.provider;
     return {
         subjectId: (p.name || 'Subject').slice(0, 14).toUpperCase().replace(/\s+/g, '-'),
         scanMode: 'Wireframe',
@@ -100,41 +109,18 @@ export function defaultDossier(p: Persona): PersonaDossier {
         description: p.tagline || 'Discipline specialist persona dossier.',
         identity: [
             { label: 'Alias', value: p.name || 'Persona-01' },
-            { label: 'Type', value: '3D Persona' },
-            { label: 'Status', value: 'Active Mesh' },
-            { label: 'Rig', value: 'Humanoid v4' },
-            { label: 'Source', value: 'Parametric' },
+            { label: 'Discipline', value: p.discipline },
+            { label: 'Origin', value: p.builtin ? 'Built-in' : 'Custom' },
+            { label: 'Model', value: model },
         ],
         traits: [
-            { label: 'Topology Integrity', value: '94%' },
-            { label: 'Facial Symmetry', value: '89%' },
-            { label: 'Animation Ready', value: 'Yes' },
+            { label: 'Tools equipped', value: String(p.tools?.length ?? 0) },
         ],
-        tags: [
-            { label: 'Cranial Mesh', value: '27 Nodes' },
-            { label: 'Optic Band', value: 'Stabilized' },
-            { label: 'Jaw Arc', value: '2.4 Rad' },
-            { label: 'Rig Port', value: 'Enabled' },
-        ],
-        metrics: [
-            { label: 'Vertex density', value: '12.8K' },
-            { label: 'Tracking fidelity', value: '98.3%' },
-            { label: 'Latency', value: '06 ms' },
-        ],
-        readout: [
-            { label: 'Wireframe shell', value: 'Nominal' },
-            { label: 'Pose profile', value: 'Neutral A' },
-            { label: 'Viewport lock', value: 'Centerline' },
-        ],
-        channels: [
-            { label: 'Biometric contour match', pct: 91 },
-            { label: 'Expression calibration', pct: 76 },
-            { label: 'Gesture mapping', pct: 84 },
-        ],
-        notes: [
-            { title: 'Operator note', body: 'Use this layout as a landing view for an avatar generator, ID card, or sci-fi profile system.' },
-            { title: 'Visual cues', body: 'Built in pure HTML/CSS — swap the center wireframe for a real WebGL avatar later.' },
-        ],
+        tags: [],
+        metrics: [],
+        readout: [],
+        channels: [],
+        notes: [],
     };
 }
 

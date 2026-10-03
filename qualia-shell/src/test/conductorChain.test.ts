@@ -136,6 +136,17 @@ describe('P11-3: spawn-in-chain', () => {
         expect(outcomes[1].text).toContain('22');
     });
 
+    it('a failed step breaks the pipe: a later "the result" never silently uses an older step\'s output', async () => {
+        const chain = parseChain('calculate 2+2 then spawn research squad on comps then calculate the result + 10')!;
+        const runner = vi.fn(async () => ({ ok: false, text: 'No response from the model.' }));
+        const outcomes = await executeChain(chain, { llm: noLlm }, undefined, runner);
+        expect(outcomes[0]).toMatchObject({ ok: true });
+        expect(outcomes[1]).toMatchObject({ ok: false });
+        expect(outcomes[2].ok).toBe(false);                  // "the result" had nothing valid to refer to
+        expect(outcomes[2].text).not.toContain('14');        // not 4 + 10 from step 1
+        expect(outcomes[2].text).not.toMatch(/No response from the model/); // and never the error text
+    });
+
     it('spawn steps without a runner fail honestly and do not halt the chain', async () => {
         const chain = parseChain('spawn research squad on comps then calculate 2+2')!;
         const outcomes = await executeChain(chain, { llm: noLlm });

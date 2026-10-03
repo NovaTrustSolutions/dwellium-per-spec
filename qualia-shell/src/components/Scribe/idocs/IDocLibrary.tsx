@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { hasActiveLlm } from '../../../lib/llmClient';
+import { captureOwner } from '../../../lib/perUserIdentity';
 import { useIntegrations } from '../../../hooks/useIntegrations';
 import type { IntegrationsBundle } from '../../../types/integrations';
 import { docxToMarkdown } from '../docxConvert';
@@ -52,6 +53,8 @@ type SortKey = 'updated' | 'title';
 
 export default function IDocLibrary({ state, initialPrompt, api }: { state: IdocsState; initialPrompt?: string | null; api?: IdocsApiDeps }) {
     const { integrations } = useIntegrations();
+    // owner-race guard: bound to this render's account; async jobs keep the closures of the render that started them.
+    const renderOwner = captureOwner();
     const llmReady = hasActiveLlm(integrations.llm);
     const [tab, setTab] = useState<Tab>(initialPrompt ? 'ai' : null);
     const [prompt, setPrompt] = useState(initialPrompt ?? '');
@@ -92,14 +95,14 @@ export default function IDocLibrary({ state, initialPrompt, api }: { state: Idoc
     const openShared = (item: SharedListItem) => run(async () => {
         try {
             const r = await getSharedDoc(item.docId, api);
-            replaceDoc({ ...r.doc, id: item.docId, analytics: r.doc.analytics ?? { views: 0, cardSeconds: {} }, shared: { version: r.version, updatedAt: r.updatedAt, role: r.role, ownerId: r.owner?.id, ownerName: r.owner?.name } });
-            setActive(item.docId); setView('edit');
+            open({ ...r.doc, id: item.docId, analytics: r.doc.analytics ?? { views: 0, cardSeconds: {} }, shared: { version: r.version, updatedAt: r.updatedAt, role: r.role, ownerId: r.owner?.id, ownerName: r.owner?.name } });
         } catch (e) { setSharedErr(`Couldn't open “${item.title}”: ${(e as Error).message}`); }
     });
 
     const genOpts: GenerateOpts = { cards: opts.cards, amount: opts.amount, tone: opts.tone || undefined, audience: opts.audience.trim() || undefined, language: opts.language.trim() || undefined };
     const patch = (p: Partial<ComposerOpts>) => setOpts((o) => ({ ...o, ...p }));
-    const open = (doc: IDoc) => { replaceDoc(doc); setActive(doc.id); setView('edit'); };
+    // owner-race guard: every async create/import (AI, URL, file, shared, AgentComposer) lands here — drop if the account changed.
+    const open = (doc: IDoc) => { if (!renderOwner()) return; replaceDoc(doc); setActive(doc.id); setView('edit'); };
 
     const run = async (job: () => Promise<void>) => {
         setBusy(true); setError(null);
@@ -128,7 +131,9 @@ export default function IDocLibrary({ state, initialPrompt, api }: { state: Idoc
             const name = f.name.toLowerCase();
             const title = f.name.replace(/\.[^.]+$/, '');
             if (name.endsWith('.json')) {
-                if (!importDoc(await f.text())) setError('Not a valid Interactive Doc JSON file.');
+                const json = await f.text();
+                if (!renderOwner()) return; // owner-race guard: importDoc writes directly, not via open
+                if (!importDoc(json)) setError('Not a valid Interactive Doc JSON file.');
                 return;
             }
             if (name.endsWith('.pdf')) {

@@ -12,7 +12,7 @@ import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useScribeStore } from '../Scribe/scribeStore';
 import { captureFacts, copawUserIdHolder } from '../Hive/copawStore';
-import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 import { AGENTS, composePrompt, canRun, type AgentMode } from './agentDefs';
 
 const ACCENT = '#D6FE51';
@@ -42,7 +42,8 @@ export default function BuilderAgents() {
         try {
             const { systemPrompt, prompt } = composePrompt(mode, values);
             const res = await callLlm({ systemPrompt, prompt, maxTokens: 1500, temperature: 0.2, responseFormat: mode === 'schema' ? 'text' : 'text', source: 'builder-agents' }, integrations.llm);
-            if (!stillOwner()) return; // account switched mid-run — drop, never show/store A's output
+            // owner-race guard: account switched mid-run — drop A's output + CoPaw facts, say why (finally clears busy).
+            if (!stillOwner()) { setErr(ACCOUNT_CHANGED); return; }
             if (res && res.text.trim()) {
                 setOutput(res.text.trim());
                 captureFacts(def.label, res.text.trim(), uid); // CoPaw §8.5

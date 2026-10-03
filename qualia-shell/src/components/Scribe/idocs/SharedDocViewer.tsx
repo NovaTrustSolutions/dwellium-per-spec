@@ -7,6 +7,7 @@
  */
 import { useCallback, useContext, useState } from 'react';
 import { UserContext } from '../../../context/UserContext';
+import { captureOwner } from '../../../lib/perUserIdentity';
 import CommentsPanel from './CommentsPanel';
 import IDocRenderer from './IDocRenderer';
 import { postComment, type IdocsApiDeps, type PresenceEntry } from './idocsApi';
@@ -50,7 +51,9 @@ export default function SharedDocViewer({ doc, api }: { doc: IDoc; api?: IdocsAp
     const canComment = role === 'comment' || role === 'edit' || role === 'owner';
     const card = findCard(doc.cards, activeCardId) ?? doc.cards[0];
     const postRemote = useCallback(async (cardId: string, blockId: string | undefined, text: string) => {
+        const stillOwner = captureOwner();
         await postComment(doc.id, { cardId, blockId, text }, api);
+        if (!stillOwner()) return; // owner-race guard: refresh() would capture the NEW owner and pull A's doc into B's library
         await sync.refresh(); // pull the server's version (with the new comment)
     }, [doc.id, api, sync]);
 

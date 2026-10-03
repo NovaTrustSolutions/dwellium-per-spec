@@ -35,12 +35,14 @@ import type { IntegrationsBundle } from '../../types/integrations';
 import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import { getWidgetMeta, getWidgetKeys } from '../../registry/widgetRegistry';
 import { spawnHermesFromStella } from '../StellaAgent/stellaHermesSpawn';
+import { hermesBrowserFallbacks } from '../HonchoHermesPanel/hermesReact';
 import {
     buildPersonaSystemPrompt,
     drainSentences,
     parseAssistantReply,
     pickIdleNudge,
     stripForSpeech,
+    toTranscriptText,
     getVoiceOption,
     resolveAutoVoiceId,
     type PersonaConfig,
@@ -106,6 +108,12 @@ export interface PersonaTurn {
 }
 
 const IDLE_NUDGE_MS = 14000;
+/** A finished tool answer waits for a streaming reply to end — unless that stream produces nothing for this long
+ *  (it has stalled; streams have no timeout). */
+const HOLD_MAX_MS = 8000;
+type ReplyInFlight = { gen: number; epoch: number; streaming: boolean; seq: number; deltas: number };
+/** Longest end_call waits for its goodbye (and anything queued before it) to be said before hanging up. */
+const END_CALL_MAX_MS = 6000;
 const MAX_NUDGES = 3;
 const OPENAI_TTS_ENDPOINT = 'https://api.openai.com/v1/audio/speech';
 const MAX_HISTORY_TURNS = 16;
@@ -150,6 +158,19 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
     const [thinking, setThinking] = useState(false);
 
     const liveRef = useRef(false);
+    /** Bumped when a call ends (or end_call says goodbye): a tool answer from before that must never land. */
+    const callGenRef = useRef(0);
+    /** respond() calls still producing their own reply (LLM in flight / streaming): the call and speech epoch they
+     *  started in, and their order. See holdsAnswers / stillThinking. */
+    const repliesRef = useRef(new Set<ReplyInFlight>());
+    const replySeqRef = useRef(0);
+    /** Replies older than the newest one that has finished are superseded: it already spoke past them. */
+    const supersededBelowRef = useRef(0);
+    const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    /** end_call's pending hang-up (fires when the queued speech — the goodbye — has been said, or at its cap). */
+    const hangUpRef = useRef<(() => void) | null>(null);
+    /** Tool answers held back while another reply is being produced, so they neither cut it off nor land inside it. */
+    const heldAnswersRef = useRef<Array<{ text: string; gen: number }>>([]);
     const speakingRef = useRef(false);
     const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
     const whisperHandleRef = useRef<WhisperSessionHandle | null>(null);
@@ -167,6 +188,10 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
     configRef.current = config;
     const llmRef = useRef(integrations.llm);
     llmRef.current = integrations.llm;
+    // Read at use time (like llmRef): the speech handlers are bound once per call, so closures would
+    // keep the keys from when the call started.
+    const searchRef = useRef(integrations.search);
+    searchRef.current = integrations.search;
 
     // ── Speech-queue state (streamed sentences append; stopSpeech flushes) ──
     /** Count of queued/playing speech chunks — speaking stays true until 0. */
@@ -254,6 +279,7 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
         if (epochRef.current !== epoch) return;         // stopSpeech already reset everything
         pendingRef.current = Math.max(0, pendingRef.current - 1);
         if (pendingRef.current > 0) return;
+        if (hangUpRef.current) { hangUpRef.current(); if (!liveRef.current) return; }   // end_call: the goodbye has been said
         speakingRef.current = false;
         setSpeaking(false);
         speechProgressRef.current = { active: false, text: '', charIndex: -1, boundaryAt: 0, cues: [] };
@@ -440,6 +466,74 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
         queueSpeech(text, cues);
     }, [stopSpeech, queueSpeech]);
 
+    /**
+     * A tool's answer (Hermes can take a minute) belongs to the CALL, not to the reply that asked for it:
+     * dropped only if that call is over (endCall, or end_call's goodbye); otherwise added and APPENDED to the
+     * speech queue — never cancel-then-say, which would cut off whatever is playing (and, mid-stream, drop the
+     * rest of that reply via the epoch bump). It is HELD only while a reply is still STREAMING sentences it could
+     * land between — and for at most HOLD_MAX_MS, since a stalled stream (no timeout) may never finish.
+     */
+    /** A reply of this call still streaming sentences that can be heard (a talked-over one's deltas are dropped). */
+    const streamingNow = (r: ReplyInFlight) => r.gen === callGenRef.current && r.streaming && r.epoch === epochRef.current;
+    const holdsAnswers = useCallback(() => {
+        for (const r of repliesRef.current) if (streamingNow(r)) return true;
+        return false;
+    }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+    /** "Thinking…": a reply of this call that can still say something and that no newer finished reply has
+     *  superseded (a non-streaming one isn't dropped by a barge-in; a hung one must not keep it on forever).
+     *  The call check is belt-and-braces (mutation-equivalent: endCall clears Thinking, and a new call's first
+     *  finished reply supersedes any stale one). */
+    const stillThinking = useCallback(() => {
+        for (const r of repliesRef.current) {
+            if (r.gen === callGenRef.current && r.seq >= supersededBelowRef.current && (!r.streaming || r.epoch === epochRef.current)) return true;
+        }
+        return false;
+    }, []);
+
+    /** Deliver the held answers in the order they finished (each re-checks its call). */
+    const flushHeld = useCallback(() => {
+        if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
+        for (const h of heldAnswersRef.current.splice(0)) {
+            if (h.gen !== callGenRef.current || !liveRef.current) continue;
+            appendTurn(makeTurn({ role: 'assistant', text: h.text }));
+            queueSpeech(h.text);
+        }
+    }, [appendTurn, queueSpeech]);
+
+    /** Sentences streamed so far by the replies holding answers — the stall check compares it across HOLD_MAX_MS. */
+    const streamedSoFar = () => {
+        let n = 0;
+        for (const r of repliesRef.current) if (streamingNow(r)) n += r.deltas;
+        return n;
+    };
+    /** Held answers wait while a stream keeps producing; a stream that produced nothing for HOLD_MAX_MS has stalled
+     *  (streams have no timeout), and the answers go out anyway. */
+    const armHoldTimer = useCallback((seen: number) => {
+        holdTimerRef.current = setTimeout(() => {
+            holdTimerRef.current = null;
+            if (heldAnswersRef.current.length === 0) return;
+            const now = streamedSoFar();
+            if (holdsAnswers() && now !== seen) armHoldTimer(now);
+            else flushHeld();
+        }, HOLD_MAX_MS);
+    }, [flushHeld, holdsAnswers]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** Every answer joins one queue, so answers are never said out of the order they finished (even when a hold
+     *  lapses without a release — a stream that fell back, or was talked over). */
+    const deliverToolAnswer = useCallback((text: string, gen: number) => {
+        heldAnswersRef.current.push({ text, gen });        // flushHeld drops it if its call is over
+        if (!holdsAnswers()) flushHeld();
+        else if (!holdTimerRef.current) armHoldTimer(streamedSoFar());
+    }, [armHoldTimer, flushHeld, holdsAnswers]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** A respond() finished producing its reply: it supersedes older ones for "Thinking…"; once nothing streams,
+     *  the held answers go out. */
+    const releaseReply = useCallback((reply: ReplyInFlight) => {
+        repliesRef.current.delete(reply);
+        supersededBelowRef.current = Math.max(supersededBelowRef.current, reply.seq);
+        if (!holdsAnswers() && heldAnswersRef.current.length > 0) flushHeld();
+    }, [flushHeld, holdsAnswers]);
+
     // ── Tools ─────────────────────────────────────────────────────────
     const runTool = useCallback(async (name: string, args: Record<string, unknown>): Promise<string | null> => {
         const cfg = configRef.current;
@@ -447,8 +541,19 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
             case 'end_call': {
                 if (!cfg.tools.endCall) return null;
                 appendTurn(makeTurn({ role: 'event', text: '', toolBadge: 'end_call · completed' }));
-                // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                setTimeout(() => endCallRef.current(), 1200);
+                // respond() already voided this call's pending answers (startTool). Hang up once everything queued —
+                // the goodbye — has been said (a fixed 1.2 s cut a long goodbye, or one queued behind an answer),
+                // at most END_CALL_MAX_MS; never end a NEW call the user started meanwhile.
+                const gen = callGenRef.current;
+                let timer: ReturnType<typeof setTimeout> | null = null;
+                const hangUp = () => {
+                    if (timer) clearTimeout(timer);
+                    if (hangUpRef.current === hangUp) hangUpRef.current = null;
+                    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+                    if (callGenRef.current === gen) endCallRef.current();
+                };
+                hangUpRef.current = hangUp;
+                timer = setTimeout(hangUp, pendingRef.current > 0 ? END_CALL_MAX_MS : 1200);
                 return null;
             }
             case 'skip_turn': {
@@ -494,10 +599,22 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
                         ...((init?.headers as Record<string, string>) ?? {}),
                     },
                 });
-                const { result } = await spawnHermesFromStella(task, { authFetch, toolNames: [] });
+                // Same offline chain as Stella's /hermes (skill → ReAct, origin 'model', the user's search keys);
+                // without it a backend miss left the persona's Hermes with no fallback at all.
+                let result: Awaited<ReturnType<typeof spawnHermesFromStella>>['result'];
+                try {
+                    ({ result } = await spawnHermesFromStella(task, { authFetch, toolNames: [], ...hermesBrowserFallbacks(llmRef.current, searchRef.current) }));
+                } catch (e) {
+                    // A Hermes failure is Hermes's to report (it used to surface as "I hit a snag reaching the language model").
+                    appendTurn(makeTurn({ role: 'event', text: '', toolBadge: 'hermes · failed' }));
+                    return `Hermes couldn't finish that: ${(e as Error)?.message || 'the run failed.'}`;
+                }
                 appendTurn(makeTurn({ role: 'event', text: '', toolBadge: `hermes · ${result.outcome === 'success' ? 'completed' : 'failed'}` }));
+                // Shown with its lines and source links (markers dropped); queueSpeech cleans what is heard (no URLs).
+                // A multi-line answer starts on its own line, so a leading ``` fence stays a fence.
+                const answer = toTranscriptText(result.result || 'done, but no answer text came back.');
                 return result.outcome === 'success'
-                    ? `Hermes finished: ${stripForSpeech(result.result || 'done, but no answer text came back.')}`
+                    ? `Hermes finished:${answer.includes('\n') ? '\n' : ' '}${answer}`
                     : `Hermes couldn't finish that: ${result.error || 'the run failed.'}`;
             }
             default: {
@@ -582,6 +699,9 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
         // Interruption guard: stopSpeech bumps the epoch, so deltas/flushes
         // from an interrupted reply are dropped instead of resurrecting it.
         const epoch = epochRef.current;
+        // The call this turn belongs to (see deliverToolAnswer). Not the epoch: every speak() (idle nudge,
+        // a later reply) and every barge-in bumps it, and must not throw a finished tool answer away.
+        const callGen = callGenRef.current;
 
         // Progressive stream state — the assistant turn is created lazily on
         // the first displayable sentence and grown in place via updateTurn.
@@ -617,10 +737,24 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
 
         const onDelta = (delta: string) => {
             if (epochRef.current !== epoch) return;
+            reply.deltas += 1;                          // the stream is alive (see armHoldTimer)
             buffer += delta;
             const { sentences, rest } = drainSentences(buffer);
             buffer = rest;
             for (const sentence of sentences) consumeSentence(sentence);
+        };
+
+        const reply: ReplyInFlight = { gen: callGen, epoch, streaming: true, seq: (replySeqRef.current += 1), deltas: 0 };
+        repliesRef.current.add(reply);
+        let replyDone = false;
+        const finishReply = () => { if (!replyDone) { replyDone = true; releaseReply(reply); } };
+        /** The reply is out; run its tool. Goodbye (end_call) voids this call's pending answers FIRST, so the release
+         *  can't flush one that the hang-up would cut off; every other tool starts after the release, so an earlier
+         *  task's held answer comes before the new task's "running…" badge. */
+        const startTool = (name: string, args: Record<string, unknown>) => {
+            if (name === 'end_call' && configRef.current.tools.endCall) callGenRef.current += 1;
+            finishReply();
+            return runTool(name, args);
         };
 
         try {
@@ -650,11 +784,8 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
                     const toolParsed = parseAssistantReply(toolLines[0]);
                     if (toolParsed.tool) {
                         ranTool = true;
-                        const followUp = await runTool(toolParsed.tool.name, toolParsed.tool.args);
-                        if (followUp && epochRef.current === epoch) {
-                            appendTurn(makeTurn({ role: 'assistant', text: followUp }));
-                            queueSpeech(followUp);
-                        }
+                        const followUp = await startTool(toolParsed.tool.name, toolParsed.tool.args);
+                        if (followUp) deliverToolAnswer(followUp, callGen);
                     }
                 }
                 if (spokenAnything || ranTool) return;
@@ -665,9 +796,13 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
                 return;
             }
 
-            // Non-streamable provider (gemini) or pre-speech stream failure —
-            // the original non-streaming path.
+            // Non-streamable provider (gemini) or pre-speech stream failure — the original non-streaming path.
+            // Its reply is appended (it never cuts off a tool answer), so it holds none back; it still counts as
+            // "thinking" (a barge-in doesn't drop it) until it's out or a newer reply supersedes it.
+            reply.streaming = false;
             const res = await callLlm(req, llm);
+            // Hung up (or a new call started) while the model was thinking: don't say it, don't run its tool.
+            if (callGenRef.current !== callGen || !liveRef.current) return;
             if (!res || !res.text.trim()) {
                 const msg = 'I need an LLM to think with — add an API key under Settings, then call me again.';
                 appendTurn(makeTurn({ role: 'assistant', text: msg }));
@@ -677,23 +812,25 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
             const parsed = parseAssistantReply(res.text);
             if (parsed.display) {
                 appendTurn(makeTurn({ role: 'assistant', text: parsed.display, cues: parsed.cues }));
-                speak(parsed.speech, parsed.cues);
+                // A goodbye (end_call) is said now — cutting whatever plays — or the hang-up would drop it unheard;
+                // any other reply is appended, so it never cuts off a tool answer.
+                if (parsed.tool?.name === 'end_call' && configRef.current.tools.endCall) speak(parsed.speech, parsed.cues);
+                else queueSpeech(parsed.speech, parsed.cues);
             }
             if (parsed.tool) {
-                const followUp = await runTool(parsed.tool.name, parsed.tool.args);
-                if (followUp) {
-                    appendTurn(makeTurn({ role: 'assistant', text: followUp }));
-                    speak(followUp);
-                }
+                const followUp = await startTool(parsed.tool.name, parsed.tool.args);
+                if (followUp) deliverToolAnswer(followUp, callGen);
             }
         } catch (e: any) {
+            if (callGenRef.current !== callGen || !liveRef.current) return;   // hung up meanwhile: say nothing
             const msg = `I hit a snag reaching the language model${e?.message ? ` — ${String(e.message).slice(0, 120)}` : ''}.`;
             appendTurn(makeTurn({ role: 'assistant', text: msg }));
             speak(msg);
         } finally {
-            setThinking(false);
+            finishReply();
+            if (!stillThinking()) setThinking(false);  // a later turn may still be thinking
         }
-    }, [appendTurn, host, queueSpeech, runTool, speak, updateTurn, userName, widgetCatalog]);
+    }, [appendTurn, deliverToolAnswer, host, queueSpeech, releaseReply, runTool, speak, stillThinking, updateTurn, userName, widgetCatalog]);
 
     // ── User input (voice + text share this path) ─────────────────────
     const handleUserUtterance = useCallback((text: string) => {
@@ -818,6 +955,11 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
     // ── Call lifecycle ────────────────────────────────────────────────
     const endCall = useCallback(() => {
         liveRef.current = false;
+        callGenRef.current += 1;
+        heldAnswersRef.current = [];
+        if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
+        hangUpRef.current = null;                           // its timer is generation-guarded
+        setThinking(false);                                 // a call that ended isn't thinking (a stale request may linger)
         setCallState('idle');
         stopRecognition();
         stopSpeech();

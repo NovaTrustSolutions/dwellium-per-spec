@@ -13,11 +13,12 @@
  * PURE-AT-THE-SEAMS like hermesRunner: LLM, skills, and clock are injectable;
  * unit-testable with no network.
  */
-import { AGENT_SKILLS, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
+import { AGENT_SKILLS, isSkillAllowedForOrigin, describeSkillsForPrompt, runSkillForInput, type AgentSkill, type SkillContext } from '../../lib/agents/skills';
 import { extractJson } from '../../lib/agents/orchestrator';
-import { callLlm, type LlmRequest } from '../../lib/llmClient';
+import { callLlm, hasActiveLlm, type LlmRequest } from '../../lib/llmClient';
 import type { IntegrationsBundle } from '../../types/integrations';
 import type { HermesRunStep } from './hermesRunner';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 export interface ReactLoopResult {
     steps: HermesRunStep[];
@@ -36,6 +37,23 @@ export interface ReactLoopDeps {
     /** Max reason→act iterations before a final answer is forced (default 4). */
     maxSteps?: number;
     now?: () => string;
+}
+
+/** The browser skills Hermes may run on its own: its tool choices are model-chosen, so only the
+ *  autonomous-safe allowlist (skills.ts isSkillAllowedForOrigin). ONE list for the ReAct loop, the
+ *  offline fallback prompt and the Hermes panel. */
+export const HERMES_BROWSER_SKILLS: ReadonlyArray<AgentSkill> = AGENT_SKILLS.filter(s => isSkillAllowedForOrigin(s, 'model'));
+
+/** System prompt for Hermes's single-shot offline fallback (backend down, ReAct produced nothing).
+ *  Lists only the skills Hermes can actually use, so it never offers a human-only one. */
+export function hermesFallbackSystemPrompt(wikiCtx: string): string {
+    return 'You are Hermes, a pragmatic autonomous task agent inside the Dwellium app. ' +
+        'The Hermes backend is offline, so answer the task directly from reasoning and general knowledge. ' +
+        'Be concrete and actionable; say plainly when a step would need live tools or property data.\n' +
+        // Bidirectional memory OUT-path: the LLM Wiki (identity + distilled facts)
+        // flows into every run so the agent knows the operator and their world.
+        `\n# Your memory (LLM Wiki)\n${wikiCtx}\n` +
+        `Browser skills Hermes can use on a follow-up (anything else is human-only):\n${describeSkillsForPrompt(HERMES_BROWSER_SKILLS)}`;
 }
 
 /** Browser-skill names — the registry half the backend can't see. */
@@ -58,6 +76,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
     const steps: HermesRunStep[] = [];
     const toolsUsed = new Set<string>();
     const scratchpad: string[] = [];
+    const stillOwner = captureOwner(); // owner-race guard: no tool runs for a user who signed out mid-loop
 
     const systemPrompt =
         'You are Hermes, a tool-using task agent inside the Dwellium app. Work step by step.\n' +
@@ -69,7 +88,9 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
         'when you can answer. Prefer tools for facts/calculations; never invent tool output.' +
         (fewShot ? `\n\n${fewShot}` : '');
 
+    const stopped = (): ReactLoopResult => ({ steps, result: '', ok: false, toolsUsed: [...toolsUsed] });
     for (let i = 0; i < maxSteps; i++) {
+        if (!stillOwner()) return stopped();
         const raw = await deps.invoke({
             systemPrompt,
             prompt:
@@ -94,10 +115,11 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
         const tool = v.action?.tool?.trim();
         if (!tool) break;
         steps.push({ type: 'action', content: `${tool}(${v.action?.input ?? ''})`, timestamp: now() });
+        if (!stillOwner()) return stopped();
         let observation = '';
         try {
             const r = await deps.runSkill(tool, v.action?.input ?? '');
-            observation = r ? (r.ok ? r.text : `Tool error: ${r.text}`) : `Unknown tool "${tool}".`;
+            observation = r ? (r.ok ? r.text : `Tool error: ${r.text}`) : `Unknown tool "${tool}" — it is not available here; use only the TOOLS listed.`;
             if (r) toolsUsed.add(tool);
         } catch (err) {
             observation = `Tool threw: ${err instanceof Error ? err.message : String(err)}`;
@@ -107,6 +129,7 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
     }
 
     // Out of steps (or unusable output) — force a final answer from the scratchpad.
+    if (!stillOwner()) return stopped();
     if (scratchpad.length) {
         const raw = await deps.invoke({
             systemPrompt: 'Summarize the work below into a direct final answer to the task. Plain text.',
@@ -126,21 +149,48 @@ export async function runReactLoop(task: string, fewShot: string, deps: ReactLoo
 /**
  * Production builder: ReAct over the real AGENT_SKILLS with the user's LLM
  * bundle. Returns null-producing fn when no LLM is configured (runner skips).
+ *
+ * PROVENANCE GATE: the tool name and input come from MODEL output (which a
+ * prompt-injected web-search observation can steer), so this loop is origin
+ * 'model' — only the autonomous-safe allowlist (skills.ts
+ * isSkillAllowedForOrigin) is offered to the model or ever run. The code
+ * runner, memory writes, widget actions and paid skills stay human-only.
+ *
+ * `search` is required on purpose: Web Search uses the user's Tavily/Brave key
+ * (without it the loop's searches fell back to "no live web" answers).
  */
-export function buildReactLoopFn(llm: IntegrationsBundle['llm']) {
-    const ctx: SkillContext = { llm };
-    const byName = new Map<string, AgentSkill>(AGENT_SKILLS.map(s => [s.name.toLowerCase(), s]));
+export function buildReactLoopFn(llm: IntegrationsBundle['llm'], search: IntegrationsBundle['search']) {
+    const ctx: SkillContext = { llm, search };
+    const allowed = HERMES_BROWSER_SKILLS;
+    const byName = new Map<string, AgentSkill>(allowed.map(s => [s.name.toLowerCase(), s]));
     return async (task: string, fewShot: string): Promise<ReactLoopResult | null> => {
         const result = await runReactLoop(task, fewShot, {
             invoke: async (req) => (await callLlm(req, llm))?.text ?? null,
             runSkill: async (name, input) => {
                 const skill = byName.get(name.toLowerCase());
-                if (!skill) return null;
+                // Not offered, or not safe for a model-chosen call: refused (null → "not available", never counted as used).
+                if (!skill || !isSkillAllowedForOrigin(skill, 'model')) return null;
                 const r = await skill.run(input, ctx);
                 return { ok: r.ok, text: r.text };
             },
-            skills: AGENT_SKILLS.map(s => ({ name: s.name, description: s.description })),
+            skills: allowed.map(s => ({ name: s.name, description: s.description })),
         });
         return result.ok ? result : null;
+    };
+}
+
+/**
+ * Hermes's browser-side offline chain (direct skill match → ReAct loop) for callers that don't build
+ * their own — e.g. the voice persona's `hermes` tool, which used to run Hermes with no fallbacks at all
+ * (a backend miss meant no Web Search, no Tavily/Brave key). The task is model-chosen, so both legs
+ * are origin 'model': only the autonomous-safe skills can run, with the user's search keys.
+ */
+export function hermesBrowserFallbacks(llm: IntegrationsBundle['llm'], search: IntegrationsBundle['search']) {
+    return {
+        skillFallbackFn: async (task: string) => {
+            const hit = await runSkillForInput(task, { llm, search }, undefined, 'model');
+            return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
+        },
+        reactLoopFn: hasActiveLlm(llm) ? buildReactLoopFn(llm, search) : undefined,
     };
 }

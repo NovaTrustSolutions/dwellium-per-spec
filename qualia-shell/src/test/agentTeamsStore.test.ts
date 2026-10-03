@@ -78,22 +78,22 @@ describe('agentTeamsStore', () => {
         expect(snapshot.teams.some(t => t.id === 'research-squad')).toBe(true);
     });
 
-    it('defaultDossier seeds every editable section', () => {
+    it('defaultDossier seeds real persona facts and leaves measurement sections empty', () => {
         const d = defaultDossier(DEFAULT_PERSONAS[1]);
-        expect(d.identity.length).toBeGreaterThanOrEqual(5);
+        expect(d.identity.map(r => r.label)).toEqual(['Alias', 'Discipline', 'Origin', 'Model']);
         expect(d.traits.length).toBeGreaterThan(0);
-        expect(d.tags.length).toBe(4);
-        expect(d.metrics.length).toBe(3);
-        expect(d.channels.length).toBe(3);
-        expect(d.notes.length).toBe(2);
+        expect(d.tags).toEqual([]);
+        expect(d.metrics).toEqual([]);
+        expect(d.channels).toEqual([]);
+        expect(d.notes).toEqual([]);
     });
 
     it('persists an edited persona dossier across a cache reset (built-in override)', () => {
         const base = DEFAULT_PERSONAS.find(p => p.id === 'researcher')!;
         const dossier = defaultDossier(base);
         dossier.identity[0].value = 'Edited Alias';
-        dossier.channels[0].pct = 42;
-        dossier.notes[0].body = 'Custom operator note';
+        dossier.channels.push({ label: 'Signal', pct: 42 });
+        dossier.notes.push({ title: 'Operator note', body: 'Custom operator note' });
         upsertPersona({ ...base, dossier });
         (agentTeamsStore as unknown as { reset?: () => void }).reset?.();
         const stored = agentTeamsStore.getSnapshot().personas.find(p => p.id === 'researcher');

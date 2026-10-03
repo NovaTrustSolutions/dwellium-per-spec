@@ -25,7 +25,7 @@
 import { useState, useSyncExternalStore, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { UserContext } from '../../context/UserContext';
 import { Sparkles, RefreshCw, Save, Layers, Trash2, TriangleAlert, X } from 'lucide-react';
-import { usePerUserIdentity, captureOwner } from '../../lib/perUserIdentity';
+import { usePerUserIdentity, captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useAIAvailability } from '../../hooks/useAIAvailability';
@@ -175,7 +175,8 @@ export default function Synthesis() {
         abortRef.current = controller;
         try {
             const { prompt, pending, used } = await prepare();
-            if (controller.signal.aborted || !stillOwner()) return; // cancelled / account switched during retrieval
+            if (controller.signal.aborted) return; // cancelled during retrieval — silent, previous answer untouched
+            if (!stillOwner()) { setErr(ACCOUNT_CHANGED); return; } // account switched during retrieval — the paid call never goes out
             const res = await callLlm({
                 systemPrompt: SYSTEM_PROMPT,
                 prompt,
@@ -184,7 +185,7 @@ export default function Synthesis() {
                 source: 'synthesis',
                 signal: controller.signal,
             }, integrations.llm);
-            if (!stillOwner()) return; // account switched mid-run — drop, never show/store the old owner's answer
+            if (!stillOwner()) { setErr(ACCOUNT_CHANGED); return; } // account switched mid-run — drop, never show/store the old owner's answer; say why
             if (res && res.text.trim()) {
                 setAnswer({
                     id: pending.id, query: pending.query, result: res.text.trim(), layer: pending.layer, parentId: pending.parentId,
@@ -197,7 +198,7 @@ export default function Synthesis() {
             }
         } catch (e: any) {
             if (e?.name === 'AbortError') return; // cancelled — no error banner, previous answer untouched
-            if (!stillOwner()) return;
+            if (!stillOwner()) { setErr(ACCOUNT_CHANGED); return; } // account switched — not the next user's error
             setErr(e?.message || 'Synthesis failed.');
         } finally {
             setBusy(false);

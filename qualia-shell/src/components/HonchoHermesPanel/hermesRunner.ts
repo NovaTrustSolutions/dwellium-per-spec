@@ -30,6 +30,7 @@ import {
     type RunInput,
     type TaskType,
 } from './hermesLearningStore';
+import { captureOwner, ACCOUNT_CHANGED } from '../../lib/perUserIdentity';
 
 export interface HermesRunStep {
     type: 'thought' | 'action' | 'observation' | 'final_answer';
@@ -125,6 +126,9 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
     const record = deps.recordRunFn ?? defaultRecordRun;
     const snapshot = deps.learningSnapshot ?? hermesLearningStore.getSnapshot;
     const shouldRecord = deps.record !== false;
+    // Owner-race guard: after an account switch no offline fallback starts (each would capture the NEW owner and
+    // write the old task's results there), nothing is recorded, and the run reports a failure so callers write nothing.
+    const stillOwner = captureOwner();
 
     const taskType = classify(task);
     const pastRuns = relevant(task);
@@ -142,6 +146,7 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
 
     /** Offline chain: browser-side skill → user's own LLM key. */
     const tryFallbacks = async (reason: string): Promise<void> => {
+        if (!stillOwner()) return;
         if (deps.skillFallbackFn) {
             try {
                 const hit = await deps.skillFallbackFn(task);
@@ -154,6 +159,7 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
                 }
             } catch { /* fall through to LLM */ }
         }
+        if (!stillOwner()) return;
         if (deps.reactLoopFn) {
             try {
                 const loop = await deps.reactLoopFn(task, fewShot);
@@ -166,6 +172,7 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
                 }
             } catch { /* fall through to single-shot LLM */ }
         }
+        if (!stillOwner()) return;
         if (deps.llmFallbackFn) {
             try {
                 const answer = await deps.llmFallbackFn(task, fewShot);
@@ -207,8 +214,10 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
         if (outcome === 'fail') steps.push({ type: 'final_answer', content: `Error: ${error}`, timestamp: now() });
     }
 
+    const owner = stillOwner();
+    if (!owner) { outcome = 'fail'; result = ''; error = ACCOUNT_CHANGED; }
     let recordId: string | undefined;
-    if (shouldRecord) {
+    if (shouldRecord && owner) {
         try {
             const rec = record({
                 prompt: task,

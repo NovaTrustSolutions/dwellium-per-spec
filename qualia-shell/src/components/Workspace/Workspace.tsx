@@ -151,7 +151,8 @@ export default function Workspace() {
     const uid = userCtx?.user?.id ?? null;
     useEffect(() => { hydrate(uid); }, [hydrate, uid]);
 
-    // Fetch the domaines list once on mount (effect-time = SSR-safe). If the backend route
+    // Fetch the domaines list on mount and again when a different account signs in (hydrate
+    // clears the previous account's structure; effect-time = SSR-safe). If the backend route
     // is unreachable (no backend / 404), fall back to the local sample workspace so the
     // Domaine→Project→Thread drill-down stays reachable offline (Cycle 9).
     useEffect(() => {
@@ -160,7 +161,7 @@ export default function Workspace() {
             const s = useWorkspaceStore.getState();
             if (s.error && s.domaines.length === 0) s.useLocalWorkspace();
         })();
-    }, [loadDomaines]);
+    }, [loadDomaines, uid]);
 
     // Restore the last-active domaine once the list has loaded (per-user persistence
     // polish, decision C10-D1). Fires at most once per widget instance and never

@@ -9,10 +9,11 @@
  * (ShareDialog), server analytics section, live-lite sync banner + presence
  * chips when `doc.shared` (useSharedDocSync).
  */
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent, type ReactNode, type SyntheticEvent } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent, type ReactNode, type SyntheticEvent } from 'react';
 import { UserContext } from '../../../context/UserContext';
 import { recordArtifact } from '../../../lib/artifactStore';
 import { hasActiveLlm } from '../../../lib/llmClient';
+import { captureOwner } from '../../../lib/perUserIdentity';
 import { useIntegrations } from '../../../hooks/useIntegrations';
 import * as BlockEditorModule from './BlockEditor';
 import CommentsPanel from './CommentsPanel';
@@ -288,6 +289,8 @@ export function cardMatches(card: Card, q: string): boolean {
 
 export default function IDocEditor({ doc }: { doc: IDoc }) {
     const { integrations } = useIntegrations();
+    // owner-race guard: bound to this render's account; an await resumes in the closures of the render that started it.
+    const renderOwner = captureOwner();
     const { docs: allDocs, customThemes } = useIdocs();
     // Raw context (not useUser()) — anon/test envs degrade to "You", same as InteractiveDocs.tsx.
     const author = useContext(UserContext)?.user?.name || 'You';
@@ -361,9 +364,11 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
     }, []);
     useEffect(() => { if (find !== null) findRef.current?.focus(); }, [find]);
 
-    const save = useCallback((patch: Partial<IDoc>) => replaceDoc({ ...doc, ...patch }), [doc]);
+    // owner-race guard: save upserts the closure's whole doc (paste after a clipboard await, etc.) — drop if the account changed.
+    const save = (patch: Partial<IDoc>) => { if (!renderOwner()) return; replaceDoc({ ...doc, ...patch }); };
     const setCards = (cards: Card[]) => save({ cards });
-    const patchCard = (id: string, patch: Partial<Card>) => updateCard(doc.id, id, patch);
+    // owner-race guard: async card edits (block AI rewrite, BlockEditor image/chart uploads) resume here — id-keyed, but a shared doc has the same ids in B's copy.
+    const patchCard = (id: string, patch: Partial<Card>) => { if (!renderOwner()) return; updateCard(doc.id, id, patch); };
     const patchBlock = (cardId: string, block: Block) => { const c = findCard(doc.cards, cardId); if (c) patchCard(cardId, { blocks: c.blocks.map((b) => (b.id === block.id ? block : b)) }); };
 
     // ── cards ──
@@ -491,7 +496,7 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
             if (!out) { flash('AI returned nothing'); return; }
             // Deep patch through the store so edits made while the model was thinking aren't clobbered.
             const latest = findCard(idocsStore.getSnapshot().docs.find((d) => d.id === doc.id)?.cards ?? [], cardId);
-            if (latest) updateCard(doc.id, cardId, { blocks: latest.blocks.map((x) => (x.id === block.id ? ({ ...x, md: out } as Block) : x)) });
+            if (latest) patchCard(cardId, { blocks: latest.blocks.map((x) => (x.id === block.id ? ({ ...x, md: out } as Block) : x)) });
         } catch (e) { flash(`AI failed: ${(e as Error).message}`); } finally { setAiBusy(null); }
     };
 
@@ -529,6 +534,7 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
             debouncer.cancel(); pushSnapshot(doc.id); // ⌘Z reverts the AI edit
             const latest = idocsStore.getSnapshot().docs.find((d) => d.id === doc.id) ?? doc;
             const out = await action.run(latest, action.perCard ? `${activeCard?.id ?? ''}|${input}` : input, integrations.llm);
+            if (!renderOwner()) return; // owner-race guard: replaceDoc upserts A's whole doc into whoever is signed in now
             if (!out) { flash('AI returned nothing'); return; }
             replaceDoc({ ...out, id: doc.id, createdAt: latest.createdAt, analytics: latest.analytics }); flash(`${action.label} ✓ (⌘Z to revert)`);
         } catch (e) { flash(`AI failed: ${(e as Error).message}`); } finally { setAiBusy(null); }

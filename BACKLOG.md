@@ -29,7 +29,7 @@ Unfinished items surfaced across the Fey-UI, ARA/skills, Hermes, and Terminal·B
 - **Multi-step actions inside widgets:** "open Notepad and draft a letter in it" opens Notepad but can't type into it. Needs a widget-action bus (per-widget verbs ARA can call) or an LLM tool-loop. Biggest single "ease" win.
 - **Voice input for ARA:** she speaks (TTS) but has no mic — "If I say open Notepad" implies speech-to-ARA. Reuse TranscriptionHub's SpeechRecognition as a mic button in ARA's composer.
 - **Stella doesn't execute AGENT_SKILLS:** her Skills tab shows them, but her chat path doesn't run `matchSkill` like ARA's now does. Mirror the ARA hook.
-- **Agent Lab orchestrator runs don't EXECUTE skills:** personas display equipped skill chips, but team runs only prompt with text — wire `runSkillForInput` into member task execution so a Researcher actually web-searches.
+- ✅ **Resolved in P11-5 (`ec91737`) — Agent Lab orchestrator runs EXECUTE skills:** `lib/agents/orchestrator.ts` calls `deps.runSkill` per member task. Open follow-up (Agent Lab audit 2026-09-22, D6/D7): skill triggers are anchored `^…$`, so LLM-written tasks rarely match, and the Tools tab offers tools the `'model'` origin gate never runs.
 - **Hermes browser-side fallback is single-shot,** not a multi-step ReAct loop; and when the backend IS up, backend tools + browser skills aren't merged into one registry.
 - **Compound commands across layers:** "open notepad and calculate 15% of 2400" — command clauses chain, but skills aren't chained with commands.
 - **Backend humanize:** the `humanize` flag is sent but the ARA backend route ignores it (frontend prefix only). Backend prompt change needed for a fully consistent voice when the backend answers.

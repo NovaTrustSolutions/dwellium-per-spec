@@ -40,6 +40,41 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-018 — Sent Ilya to sign in on a deploy preview that could not accept his password, then burned his time on browser confusion and guessed causes (2026-09-23, PR #138)
+- **Problem:** For real-app screenshots of the Agent Lab fixes I asked Ilya to sign in on
+  `deploy-preview-138--argyleholocron.netlify.app`. His email + password — the same ones he
+  copy-pastes into the live site every day — got **"Incorrect email or password."** there.
+  Along the way I also: (a) told him I could not drive Comet and pushed him toward the in-app
+  browser / Chrome, when the Claude extension was running *inside Comet* the whole time
+  (`list_apps` showed `com.google.Chrome` `isRunning: false`; Comet reports itself as "Google
+  Chrome", which is what fooled me), and (b) proposed "your password was changed" before I had
+  read which step failed or looked at anything.
+- **Root cause:** the email + password step is checked **in the browser**
+  (`qualia-shell/src/components/Auth/LoginScreen.tsx:83`) against the built-in roster merged with
+  an override layer stored in `localStorage['dwellium:local-accounts']`
+  (`src/components/Auth/localAccounts.ts:5-16` — device-local, never synced). localStorage is
+  per-site, and a deploy preview is a different site from `argyleholocron.netlify.app`
+  (`netlify.app` is a public suffix). Verified in Ilya's Comet via the extension: the live site
+  holds one override record, for account `b5d3ac0c-…`, with only the `password` field set (value
+  not read); the preview holds none. So the live site accepts the stored password and the
+  preview accepts only the roster's original one. Ilya says the password was never changed;
+  how the override got there is unknown (overrides carry no timestamp) — plan 014
+  (`f7b3e59`, which blanked committed passwords and required runtime-set ones, reverted in
+  `2309253`) is a plausible origin, but that is inference. No backend is involved in this
+  message: backend failures show different text (`LoginScreen.tsx:101-103`), and the preview's
+  `/api/auth/me` returned the same JSON 401 as the live site.
+- **Fix:** none in code (sign-in changes need Ilya's own explicit go — see the 2026-08-22 entry).
+  Ways in today: the account's original roster password on the preview, or merge and use the
+  live site where the override exists.
+- **Prevention:** before asking Ilya to sign in on ANY new origin (deploy preview, localhost port,
+  worktree preview): (1) `curl -s -o /dev/null -w '%{http_code}' <origin>/api/auth/me` — the API
+  base must be the one his account lives on (2026-09-17 rule); (2) check his browser's live-site
+  `localStorage['dwellium:local-accounts']` for a password override (field presence only, never
+  the value) — if one exists, tell him BEFORE he tries that a fresh origin will reject his usual
+  password; (3) before saying which browser I can or can't drive, run
+  `list_connected_browsers` AND `list_apps` (is Chrome even running?) — the Claude extension may
+  be in Comet; (4) read the on-screen error (which stage failed) before proposing any cause.
+
 ### F-017 — A full day of Persona Studio work landed in the WRONG clone (~/dwellium-per-spec), verified against stale caches
 - **Problem:** An entire feature arc (Persona Studio: Anam-parity builder,
   talking-portrait face, neural TTS, whisper STT — 3 commits, ~6k lines) was

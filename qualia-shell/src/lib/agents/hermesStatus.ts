@@ -62,6 +62,41 @@ export function estimateCompletion(
     return { etaText: `~${formatDuration(remaining)} left`, finishAt, remainingMs: remaining };
 }
 
+export interface PersonaStats {
+    runs: number;
+    /** over runs that were fact-checked or failed; unchecked runs (no Sources) are not scored. */
+    successRate: number | null;
+    /** answered with no Sources, so nothing was checked. */
+    uncheckedRuns: number;
+    avgTaskMs: number | null;
+    lastRunAt: number | null;
+}
+
+/**
+ * Aggregate stats for a persona's stat row: total runs, success rate and last-run
+ * time derived from the audit log's 'Run' entries (written by personaWorkStore's
+ * recordRun as `detail: \`${outcome} · ${duration}\``), plus the existing average
+ * task duration. Pure — no store read. null fields mean "no data", never a
+ * fabricated number.
+ */
+export function personaStats(work?: PersonaWork): PersonaStats {
+    const runEntries = (work?.audit ?? []).filter(a => a.action === 'Run');
+    const scored = runEntries.filter(a => !(a.detail ?? '').startsWith('unchecked'));
+    const successRate = scored.length === 0
+        ? null
+        : scored.filter(a => (a.detail ?? '').startsWith('success')).length / scored.length;
+    const lastRunAt = runEntries.length === 0
+        ? null
+        : runEntries.reduce((max, a) => Math.max(max, a.ts), runEntries[0].ts);
+    return {
+        runs: work?.usageCount ?? 0,
+        successRate,
+        uncheckedRuns: runEntries.length - scored.length,
+        avgTaskMs: averageTaskMs(work),
+        lastRunAt,
+    };
+}
+
 /** Compute the full status for a persona card. */
 export function computePersonaStatus(
     readiness: ProviderReadiness,

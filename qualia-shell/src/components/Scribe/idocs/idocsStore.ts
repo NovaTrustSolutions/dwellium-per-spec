@@ -80,6 +80,8 @@ export function createDoc(partial: Partial<IDoc> = {}): IDoc {
 
 export function updateDoc(id: string, patch: Partial<IDoc>): void {
     const s = snap();
+    // owner-race guard: an id this account doesn't hold is a no-op — never a set() that marks B's One Save copy dirty.
+    if (!s.docs.some((d) => d.id === id)) return;
     write({ ...s, docs: s.docs.map((d) => (d.id === id ? stamp({ ...d, ...patch }) : d)) });
 }
 

@@ -56,6 +56,10 @@ export interface HermesRunRecord {
     rating?: number;
     /** Short final-answer snippet, kept for few-shot context (truncated). */
     summary?: string;
+    /** Answered, but there were no Sources to fact-check it against (outcome
+     *  'fail'). Only a user 👍 makes it reusable — see rankPastRuns. Older
+     *  builds drop the field on read, which keeps it a plain, unreused fail. */
+    unchecked?: true;
     createdAt: string;
 }
 
@@ -67,6 +71,8 @@ export interface RunInput {
     outcome: RunOutcome;
     rating?: number;
     summary?: string;
+    /** see HermesRunRecord.unchecked */
+    unchecked?: boolean;
     /** Override the auto-classifier when the caller already knows the type. */
     taskType?: TaskType;
 }
@@ -148,10 +154,18 @@ export function similarity(a: string, b: string): number {
     return union === 0 ? 0 : inter / union;
 }
 
+/** A run recall may offer: a success, or an unchecked answer (no Sources) the user 👍'd. */
+function reusable(r: HermesRunRecord): boolean {
+    return r.outcome === 'success' || (r.unchecked === true && typeof r.rating === 'number' && r.rating > 0);
+}
+
 /**
- * Rank past runs by relevance to `prompt`, SUCCESSES ONLY, returning the top-K.
- * Same-task-type runs get a small boost; ties broken by recency. Pure (operates
- * on the supplied array, reads no store).
+ * Rank past runs by relevance to `prompt`, SUCCESSES ONLY (plus unchecked
+ * answers the user 👍'd), returning the top-K.
+ * Downvoted runs (rating < 0) are excluded entirely — the strongest "don't do
+ * that again" signal available, same exclusion araChatRuns() applies. Same-
+ * task-type runs get a small boost; ties broken by recency. Pure (operates on
+ * the supplied array, reads no store).
  */
 export function rankPastRuns(
     runs: HermesRunRecord[],
@@ -160,7 +174,8 @@ export function rankPastRuns(
 ): HermesRunRecord[] {
     const wantType = classifyTaskType(prompt);
     const scored = runs
-        .filter(r => r.outcome === 'success')
+        .filter(reusable)
+        .filter(r => !(typeof r.rating === 'number' && r.rating < 0))
         .map(r => {
             const sim = similarity(prompt, r.prompt);
             const typeBoost = r.taskType === wantType ? 0.15 : 0;
@@ -272,6 +287,7 @@ function deserialize(raw: string | null): HermesRunRecord[] {
             outcome: r.outcome,
             rating: typeof r.rating === 'number' ? r.rating : undefined,
             summary: typeof r.summary === 'string' ? r.summary : undefined,
+            unchecked: r.unchecked === true ? true : undefined,
             createdAt: typeof r.createdAt === 'string' ? r.createdAt : '',
         }));
     } catch {
@@ -310,6 +326,7 @@ export function recordRun(input: RunInput): HermesRunRecord {
         outcome: input.outcome,
         rating: input.rating,
         summary: input.summary ? input.summary.slice(0, SUMMARY_MAX) : undefined,
+        unchecked: input.unchecked === true ? true : undefined,
         createdAt: new Date().toISOString(),
     };
     const current = hermesLearningStore.getSnapshot();

@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { IdocsApiError, getSharedDoc, putSharedDoc, setMembers, unshare, type IdocsApiDeps, type ShareRole, type SharedMember } from './idocsApi';
+import { captureOwner } from '../../../lib/perUserIdentity';
 import { updateDoc } from './idocsStore';
 import { toRemoteDoc } from './useSharedDocSync';
 import type { IDoc } from './idocTypes';
@@ -46,10 +47,12 @@ export default function ShareDialog({ doc, onClose, api, onToast }: ShareDialogP
     };
     const save = async () => {
         setBusy('save'); setError(null);
+        const stillOwner = captureOwner();
         try {
             let shared = doc.shared;
             if (!shared) {
                 const r = await putSharedDoc(doc.id, { doc: toRemoteDoc(doc) }, api);
+                if (!stillOwner()) return; // owner-race guard: no store write, and no member-list PUT on B's session
                 shared = { version: r.version, updatedAt: r.updatedAt, role: 'owner' };
                 updateDoc(doc.id, { shared });
             }
@@ -64,7 +67,12 @@ export default function ShareDialog({ doc, onClose, api, onToast }: ShareDialogP
     };
     const stop = async () => {
         setBusy('stop'); setError(null);
-        try { await unshare(doc.id, api); updateDoc(doc.id, { shared: undefined }); setRows([]); onToast?.('Stopped sharing'); }
+        const stillOwner = captureOwner();
+        try {
+            await unshare(doc.id, api);
+            if (!stillOwner()) return; // owner-race guard: never strip B's copy of this shared doc
+            updateDoc(doc.id, { shared: undefined }); setRows([]); onToast?.('Stopped sharing');
+        }
         catch (e) { setError(`Stop sharing failed: ${(e as Error).message}`); }
         finally { setBusy(null); }
     };

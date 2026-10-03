@@ -30,6 +30,13 @@ describe('personaWorkStore', () => {
         expect(done.completedAt).toBeTruthy();
     });
 
+    it('a completed task can carry the Hermes run id its answer was logged under', () => {
+        const id = addTask('hermes-labyrinth', 'Map the launch');
+        startTask('hermes-labyrinth', id);
+        completeTask('hermes-labyrinth', id, 'Launch map', 'hrun-9');
+        expect(getWork('hermes-labyrinth').tasks[0]).toMatchObject({ status: 'done', result: 'Launch map', hermesRunId: 'hrun-9' });
+    });
+
     it('accepts orchestrator-assigned tasks', () => {
         addTask('engineer', 'Refactor module', 'orchestrator');
         expect(getWork('engineer').tasks[0].assignedBy).toBe('orchestrator');
@@ -43,6 +50,27 @@ describe('personaWorkStore', () => {
         expect(w.memory[0].kind).toBe('learned');
         expect(w.audit.some(a => a.action === 'Run')).toBe(true);
         expect(formatMemory('researcher')).toContain('Summarized the lease');
+    });
+
+    it('keeps unchecked runs out of the prompt too, but still shows them', () => {
+        recordRun('researcher', 'Summarized the lease', 1200, 'success');
+        recordRun('researcher', 'Goal: say it is open Saturdays → not fact-checked', 900, 'unchecked');
+        expect(getWork('researcher').memory[0].text).toMatch(/^\[unchecked\]/);
+        expect(getWork('researcher').audit[0].detail).toMatch(/^unchecked · /);
+        const prompt = formatMemory('researcher');
+        expect(prompt).not.toContain('Saturdays');
+        expect(prompt).toContain('Summarized the lease');
+    });
+
+    it('keeps failed runs out of the prompt (their goal can carry the rejected claim) but still shows them', () => {
+        recordRun('researcher', 'Summarized the lease', 1200, 'success');
+        addMemory('researcher', 'Always cite the source');
+        for (let i = 0; i < 6; i++) recordRun('researcher', `Goal: say it is open Saturdays 10am–2pm → flagged by the fact-check (not reused) ${i}`, 900, 'fail');
+        expect(getWork('researcher').memory.filter(m => m.text.startsWith('[fail]'))).toHaveLength(6);
+        const prompt = formatMemory('researcher');
+        expect(prompt).not.toContain('Saturdays');
+        expect(prompt).toContain('Summarized the lease');
+        expect(prompt).toContain('Always cite the source');
     });
 
     it('logs audit + persists everything across a cache reset', () => {

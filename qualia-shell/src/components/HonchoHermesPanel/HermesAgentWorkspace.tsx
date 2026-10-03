@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
@@ -23,6 +24,12 @@ import {
     agentWikiStore,
     agentWikiUserIdHolder,
 } from './agentWikiStore';
+import {
+    hermesLearningStore,
+    hermesLearningUserIdHolder,
+    rateRun,
+    type HermesRunRecord,
+} from './hermesLearningStore';
 import { computePersonaStatus } from '../../lib/agents/hermesStatus';
 import type { IntegrationsBundle, LlmProvider } from '../../types/integrations';
 
@@ -71,6 +78,19 @@ function statusLabel(task: PersonaTask): string {
     return 'queued';
 }
 
+/** 👍/👎 for an autonomous answer. It had no Sources, so it is only reused after a 👍 (see rankPastRuns). */
+function TaskRating({ run, title }: { run: HermesRunRecord; title: string }) {
+    // Same rule as ARA's attachRun: only offer a 👍 where it can make the answer reusable.
+    if (!run.unchecked && run.outcome !== 'success') return null;
+    return (
+        <div className="haw__rating">
+            {run.unchecked && <span className="haw__rating-note">not fact-checked (no Sources) — 👍 it if it is right, so agents reuse it</span>}
+            <button type="button" className="haw__rate-btn" aria-label={`Rate this answer up: ${title}`} title="Good answer — agents use it as a reference for similar tasks" aria-pressed={run.rating === 1} onClick={() => rateRun(run.id, 1)}><ThumbsUp size={13} /></button>
+            <button type="button" className="haw__rate-btn" aria-label={`Rate this answer down: ${title}`} title="Bad answer — never use it as a reference" aria-pressed={run.rating === -1} onClick={() => rateRun(run.id, -1)}><ThumbsDown size={13} /></button>
+        </div>
+    );
+}
+
 export function HermesAgentWorkspace() {
     const { user } = useUser();
     const { integrations } = useIntegrations();
@@ -78,10 +98,13 @@ export function HermesAgentWorkspace() {
     agentLabUserIdHolder.current = uid;
     personaWorkUserIdHolder.current = uid;
     agentWikiUserIdHolder.current = uid;
+    hermesLearningUserIdHolder.current = uid;
 
     const lab = useSyncExternalStore(agentTeamsStore.subscribe, agentTeamsStore.getSnapshot, agentTeamsStore.getServerSnapshot);
     const work = useSyncExternalStore(personaWorkStore.subscribe, personaWorkStore.getSnapshot, personaWorkStore.getServerSnapshot);
     const wiki = useSyncExternalStore(agentWikiStore.subscribe, agentWikiStore.getSnapshot, agentWikiStore.getServerSnapshot);
+    const hermesRuns = useSyncExternalStore(hermesLearningStore.subscribe, hermesLearningStore.getSnapshot, hermesLearningStore.getServerSnapshot);
+    const runById = new Map(hermesRuns.map(r => [r.id, r]));
     const personas = HERMES_PERSONA_IDS
         .map(id => lab.personas.find(p => p.id === id))
         .filter((p): p is Persona => !!p);
@@ -98,7 +121,9 @@ export function HermesAgentWorkspace() {
     const selected = personas.find(p => p.id === selectedId) ?? personas[0];
     const selectedWork = selected ? work[selected.id] : undefined;
     const activeTasks = selectedWork?.tasks.filter(t => t.status !== 'done') ?? [];
-    const completedTasks = selectedWork?.tasks.filter(t => t.status === 'done') ?? [];
+    // Newest first: tasks are stored in creation order, and the list shows only six.
+    const completedTasks = [...(selectedWork?.tasks.filter(t => t.status === 'done') ?? [])].reverse()
+        .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
 
     const queueTask = () => {
         if (!selected || !taskTitle.trim()) return;
@@ -236,6 +261,7 @@ export function HermesAgentWorkspace() {
                             <details key={task.id} className="haw__completed">
                                 <summary>{task.title}<span>{task.attempts ?? 1} attempt{(task.attempts ?? 1) === 1 ? '' : 's'}</span></summary>
                                 <pre>{task.result || 'Completed without a written result.'}</pre>
+                                {task.hermesRunId && runById.has(task.hermesRunId) && <TaskRating run={runById.get(task.hermesRunId)!} title={task.title} />}
                             </details>
                         ))}
                     </div>

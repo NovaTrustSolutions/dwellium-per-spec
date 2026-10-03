@@ -19,6 +19,8 @@
 // ── Config types ──────────────────────────────────────────────────────
 
 import { defaultFaceRegions, type FaceRegions } from './personaFaceEngine';
+import { stripMarkdownForSpeech } from '../../lib/ttsVoices';
+import { splitFences, eachCodeSpan } from '../../lib/markdownText';
 
 export type PersonaStyle =
     | 'neutral'
@@ -283,7 +285,9 @@ export interface ParsedAssistantReply {
 }
 
 const TOOL_LINE_RE = /^\s*TOOL:\s*(\{.*\})\s*$/m;
-const CUE_RE = /\[([^\][\n]{1,40})\]/g;
+/** A [cue] — never a markdown link [text](url), an image ![alt](src) or the inner [1] of a [[1]](url) citation
+ *  (taking those as cues deleted the link text and left the URL to be read aloud). */
+const CUE_RE = /(?<!\[)\[([^\][\n]{1,40})\](?!\()/g;          // (?!\() also rules out ![alt](src)
 
 /**
  * Parse a raw LLM reply: extract the (optional) TOOL directive and bracketed
@@ -330,17 +334,29 @@ export function pickIdleNudge(nudgeCount: number): string {
 
 // ── Speech hygiene ────────────────────────────────────────────────────
 
-/** Strip markdown remnants so TTS never reads asterisks or pound signs. */
+/** Text → one line for TTS. The same cleaner Stella uses (lib/markdownText's scanner): markers, bullets and headings
+ *  go, a link is read as its text and a bare URL as its host, code blocks become "code block", and a line break is a
+ *  pause without doubling punctuation. The persona's own copy read every URL aloud and turned "notice.⏎" into "notice..". */
 export function stripForSpeech(text: string): string {
-    return (text ?? '')
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/\*(.+?)\*/g, '$1')
-        .replace(/`([^`]+)`/g, '$1')
-        .replace(/^#{1,6}\s+/gm, '')
-        .replace(/^[-•]\s/gm, '')
-        .replace(/\n{2,}/g, '. ')
-        .replace(/\n/g, '. ')
-        .trim();
+    return stripMarkdownForSpeech(text ?? '');
+}
+
+/** **strong** and *emphasis* (CommonMark flanking: no space just inside the markers, so "2 * 3 * 4" stays). The
+ *  classes stop at "*" / newline, so each pass is linear. */
+const BOLD = /\*\*(?![\s*])([^*\n]*[^*\s])\*\*/g;
+const ITALIC = /(?:(?<![*\p{L}\p{N}])|(?<=(?:^|[^*])\*\*))\*(?![\s*])([^*\n]*[^*\s])\*(?:(?![*\p{L}\p{N}])|(?=\*\*(?!\*)))/gu;   // may open right after / close right before a ** pair
+/** A tool answer as the transcript shows it (a plain-text, pre-wrap bubble): heading / bold / italic / inline-code
+ *  markers go; line breaks, bullets, fenced code and links (URL included) stay. Fence- and code-span-aware via the
+ *  shared scanner; the marker classes stop at "*" / newline, so each pass is linear. */
+export function toTranscriptText(md: string): string {
+    return splitFences(md ?? '').map((b) => {
+        if (b.kind === 'code') return ['```' + (b.info ?? ''), ...b.lines, '```'].join('\n');
+        const codes: string[] = [];
+        return eachCodeSpan(b.lines.join('\n'), (c) => `\uFDD0${codes.push(c) - 1}\uFDD1`)
+            .replace(/^[ \t]*#{1,6}[ \t]+/gm, '')
+            .replace(BOLD, '$1').replace(ITALIC, '$1').replace(BOLD, '$1')   // bold, italic, bold: nesting either way
+            .replace(/\uFDD0(\d+)\uFDD1/g, (_m, i: string) => codes[Number(i)] ?? '');
+    }).join('\n').trim();
 }
 
 // ── Streaming sentence drain ──────────────────────────────────────────
@@ -378,9 +394,49 @@ function isAbbreviationAt(buffer: string, dotIndex: number): boolean {
  * speech. Anything unconfirmed stays in `rest`; callers prepend `rest` to the
  * next stream chunk and drain again. Pure.
  */
+/** How far an open "[" may hold a sentence split before it's taken as a stray bracket. */
+const LINK_HOLD = 200;
+
 export function drainSentences(buffer: string): { sentences: string[]; rest: string } {
     const sentences: string[] = [];
     let start = 0;
+
+    // A markdown link is one unit for speech: no boundary inside its [text] or its (destination), or the second half
+    // no longer looks like a link and its URL is read aloud. Tracked incrementally — each character once (linear) —
+    // and reset per sentence; a line break always ends one, so a stray "[" only holds the split to the end of its line.
+    // A "[" that hasn't closed within LINK_HOLD characters isn't a link (a stray bracket): it stops holding, so a
+    // long one-line reply still speaks sentence by sentence — per bracket (a stack), so a stray "[" long before a
+    // real link never makes the real one split. An open "](" destination never gives up: a URL has no spaces, so
+    // it can only split inside a title, and a line break still ends the sentence.
+    const opens: number[] = [];                         // positions of open "[" in this sentence
+    let live = 0;                                       // opens[live..] still count; older ones were given up
+    let dest = 0;                                       // open "(" inside a "](…)" destination
+    let titled = false;                                 // the destination's "title" has begun
+    let scanned = 0;
+    const track = (upTo: number) => {
+        for (; scanned < upTo; scanned += 1) {
+            const c = buffer[scanned];
+            if (dest > 0) {
+                if (c === '(') dest += 1;
+                else if (c === ')') { dest -= 1; if (dest === 0) titled = false; }
+                else if (!titled && (c === ' ' || c === '\t')) {
+                    // A space in a destination only precedes its title ("…" '…' (…)); anything else means this was
+                    // no link (e.g. a URL with an unbalanced "("), so stop holding the rest of the line.
+                    const next = buffer[scanned + 1];
+                    if (next === '"' || next === "'" || next === '(') titled = true;
+                    else if (next !== undefined) dest = 0;
+                }
+                continue;
+            }
+            if (c === '[') opens.push(scanned);
+            else if (c === ']' && opens.length > live) {
+                opens.pop();
+                if (opens.length === live && buffer[scanned + 1] === '(') { dest = 1; scanned += 1; }
+            }
+        }
+        while (live < opens.length && upTo - opens[live] > LINK_HOLD) live += 1;
+    };
+    const inLink = () => opens.length > live || dest > 0;
 
     /** Emit [start, endExclusive) trimmed, then advance past inter-sentence whitespace. */
     const emit = (endExclusive: number, nextStart: number) => {
@@ -388,6 +444,7 @@ export function drainSentences(buffer: string): { sentences: string[]; rest: str
         if (trimmed) sentences.push(trimmed);
         start = nextStart;
         while (start < buffer.length && /\s/.test(buffer[start])) start += 1;
+        opens.length = 0; live = 0; dest = 0; titled = false; scanned = start;
     };
 
     let i = 0;
@@ -411,6 +468,8 @@ export function drainSentences(buffer: string): { sentences: string[]; rest: str
                 i += 1;
                 continue;
             }
+            track(i);
+            if (inLink()) { i += 1; continue; }        // inside a link — not a sentence end
             let end = i + 1;
             while (end < buffer.length && SENTENCE_TRAILERS.has(buffer[end])) end += 1;
             if (end >= buffer.length) break;            // boundary unconfirmed until more text arrives

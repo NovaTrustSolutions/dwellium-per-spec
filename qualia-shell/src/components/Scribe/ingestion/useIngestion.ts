@@ -40,6 +40,7 @@ import {
 import { saveIngestionHandle, loadIngestionHandle } from './ingestionHandleStore';
 import { convertFolder } from './ingestionConvert';
 import { useScribeStore } from '../scribeStore';
+import { captureOwner } from '../../../lib/perUserIdentity';
 
 export interface UseIngestion extends IngestionState {
     /** Browser exposes the File System Access API. */
@@ -169,19 +170,23 @@ export function useIngestion(): UseIngestion {
         }
         setConvertError(null);
         setConverting(true);
+        // owner-race guard: a (long) conversion started under one account never lands in the next
+        // one's ingestion index or Scribe; createFile/openFile drop the rest once it changes.
+        const stillOwner = captureOwner();
         try {
             const { entries, documents, syncedAt } = await convertFolder({
                 source,
                 backup,
                 now: () => new Date().toISOString(),
             });
+            if (!stillOwner()) return; // finally clears `converting`
             setConvertedIndex(entries, syncedAt);
             const importedPaths = documents.map((doc) => `Ingested/${doc.destName}`);
             for (let i = 0; i < documents.length; i += 1) {
-                await useScribeStore.getState().createFile(importedPaths[i], documents[i].content, { open: false });
+                await useScribeStore.getState().createFile(importedPaths[i], documents[i].content, { open: false, stillOwner });
             }
             if (importedPaths.length > 0) {
-                await useScribeStore.getState().openFile(importedPaths[0]);
+                await useScribeStore.getState().openFile(importedPaths[0], { stillOwner });
             }
         } catch (err) {
             setConvertError(err instanceof Error ? err.message : 'Conversion failed.');

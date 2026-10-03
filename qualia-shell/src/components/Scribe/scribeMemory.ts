@@ -12,7 +12,8 @@
  */
 import { patchWidgetMemory, readWidgetMemory } from '../../lib/widgetMemory';
 import { recordActivity } from '../../lib/recentActivityStore';
-import { useScribeStore } from './scribeStore';
+import { useScribeStore, isDroppingTabs } from './scribeStore';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 export interface ScribeFileView { scrollTop: number; cursor: number }
 
@@ -45,9 +46,12 @@ export async function restoreScribeSession(): Promise<void> {
     const mem = readWidgetMemory('scribe', SCRIBE_MEM_DEFAULTS);
     const remembered = mem.openFilepaths.filter((p): p is string => typeof p === 'string' && p.length > 0);
     if (remembered.length === 0) return;
+    const stillOwner = captureOwner(); // owner-race guard: a switch mid-restore stops it — A's tabs never open under B
     for (const filepath of remembered) {
-        await useScribeStore.getState().openFile(filepath);
+        if (!stillOwner()) return;
+        await useScribeStore.getState().openFile(filepath, { stillOwner });
     }
+    if (!stillOwner()) return;
     const s = useScribeStore.getState();
     if (mem.activeFilepath && s.openFiles.some(f => f.filepath === mem.activeFilepath)) {
         s.setActiveFile(mem.activeFilepath);
@@ -61,6 +65,7 @@ export function trackScribeSession(): () => void {
     // the restore itself is not re-recorded).
     let lastActive = useScribeStore.getState().activeFilepath;
     return useScribeStore.subscribe((s) => {
+        if (isDroppingTabs()) return; // owner-race guard: a drop is not this account's session
         patchWidgetMemory('scribe', {
             openFilepaths: s.openFiles.map(f => f.filepath),
             activeFilepath: s.activeFilepath,

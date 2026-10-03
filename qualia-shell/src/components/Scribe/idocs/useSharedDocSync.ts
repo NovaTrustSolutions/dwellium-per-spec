@@ -14,6 +14,7 @@
  * ponytail: full-doc JSON compare per render — docs are small; diff when they aren't.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { captureOwner } from '../../../lib/perUserIdentity';
 import { getSharedDoc, IdocsApiError, postPresence, putSharedDoc, type IdocsApiDeps, type PresenceEntry, type SharedCurrent } from './idocsApi';
 import { replaceDoc, updateDoc } from './idocsStore';
 import type { IDoc } from './idocTypes';
@@ -89,8 +90,10 @@ export function useSharedDocSync(doc: IDoc | null, opts: SharedSyncOpts = {}): S
     const poll = useCallback(async () => {
         const d = docRef.current;
         if (!d?.shared || savingRef.current) return; // in-flight save owns the version bump
+        const stillOwner = captureOwner();
         try {
             const cur = await getSharedDoc(d.id, apiRef.current);
+            if (!stillOwner()) return; // owner-race guard: tick/refresh in flight across a sign-out — never apply A's copy to B
             setError(null);
             const local = docRef.current; if (!local?.shared || savingRef.current) return;
             if (cur.version <= local.shared.version) {
@@ -120,8 +123,10 @@ export function useSharedDocSync(doc: IDoc | null, opts: SharedSyncOpts = {}): S
         if (!force && !isDirty()) return;
         savingRef.current = true; setSaving(true);
         const sent = fingerprint(d);
+        const stillOwner = captureOwner();
         try {
             const r = await putSharedDoc(d.id, force ? { doc: toRemoteDoc(d) } : { doc: toRemoteDoc(d), version: d.shared.version }, apiRef.current);
+            if (!stillOwner()) return; // owner-race guard: drop the version bump (finally still clears saving)
             syncedRef.current = sent;
             const latest = docRef.current;
             if (latest?.shared) updateDoc(latest.id, { shared: { ...latest.shared, version: r.version, updatedAt: r.updatedAt } });

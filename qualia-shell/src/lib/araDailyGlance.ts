@@ -8,7 +8,7 @@
  */
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
-import { araGlanceUserIdHolder } from './perUserIdentity';
+import { araGlanceUserIdHolder, captureOwner } from './perUserIdentity';
 import { dayKey } from './dailySynthesis';
 import { strataGet } from '../components/StrataDashboard/strataApi';
 import { taskBoardStore, taskBoardUserIdHolder } from '../components/TaskBoard/taskBoardStore';
@@ -116,7 +116,10 @@ export async function runDailyGlance(
     taskBoardUserIdHolder.current = userId;
     const today = dayKey();
     if (araGlanceStore.getSnapshot().lastShownDay === today) return false;
+    const stillOwner = captureOwner();
     const text = await assemble().catch(() => null);
+    // owner-race guard: account changed mid-assemble — don't post A's glance or mark B's day shown.
+    if (!stillOwner()) return false;
     if (!text) return false;
     post(text);
     persist({ lastShownDay: today });

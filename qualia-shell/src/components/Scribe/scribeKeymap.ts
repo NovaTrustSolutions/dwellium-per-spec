@@ -10,6 +10,7 @@ import { useScribeStore, type Redline } from './scribeStore';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { REDLINE_SYSTEM_PROMPT, parseRedlineResponse } from './redlinePrompt';
 import { getIntegrationsSnapshot } from './scribeUtils';
+import { captureOwner } from '../../lib/perUserIdentity';
 
 export const scribeKeymap = keymap.of([
     {
@@ -86,6 +87,7 @@ async function triggerRedline(filepath: string, selFrom: number, text: string) {
     const llm = getIntegrationsSnapshot();
     if (!llm || !hasActiveLlm(llm)) return;
     useScribeStore.getState().setRedlineLoading(true);
+    const stillOwner = captureOwner(); // owner-race guard (see SelectionToolbar.runRedline)
     try {
         const res = await callLlm({
             prompt: text,
@@ -94,7 +96,7 @@ async function triggerRedline(filepath: string, selFrom: number, text: string) {
             maxTokens: 2048,
             temperature: 0.3,
         }, llm);
-        if (!res) return;
+        if (!stillOwner() || !res) return;
         const parsed = parseRedlineResponse(res.text);
         if (!parsed) return;
         for (const proposal of parsed.redlines) {
@@ -113,7 +115,7 @@ async function triggerRedline(filepath: string, selFrom: number, text: string) {
             useScribeStore.getState().addRedline(redline);
         }
     } catch { /* LLM failed */ }
-    finally { useScribeStore.getState().setRedlineLoading(false); }
+    finally { if (stillOwner()) useScribeStore.getState().setRedlineLoading(false); } // never clear the next account's spinner
 }
 
 let redlineCursor = 0;

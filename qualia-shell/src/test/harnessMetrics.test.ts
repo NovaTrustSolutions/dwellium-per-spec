@@ -253,3 +253,19 @@ describe('harnessCard: ext-knowledge', () => {
         expect(card.status).toEqual({ state: 'ok', label: 'Live' });
     });
 });
+
+describe('harnessCard: unchecked runs (answered, but no Sources to fact-check) are not failures', () => {
+    const runs = [
+        makeRun({ id: 'a', toolsUsed: ['researcher'], outcome: 'fail', unchecked: true }),
+        makeRun({ id: 'b', toolsUsed: ['researcher'], outcome: 'success' }),
+        makeRun({ id: 'c', toolsUsed: ['researcher'], outcome: 'fail' }),
+    ];
+    it('tool-use success rate leaves them out; evaluation does not count them as failed', () => {
+        expect(harnessCard('tool-use', makeInputs({ runs })).metrics.find((m) => m.label === 'Success rate')?.value).toBe('50%');
+        expect(harnessCard('evaluation', makeInputs({ runs })).metrics.find((m) => m.label === 'Failed runs')?.value).toBe('1');
+    });
+    it('only unchecked runs: no success rate yet', () => {
+        const only = [makeRun({ toolsUsed: ['researcher'], outcome: 'fail', unchecked: true })];
+        expect(harnessCard('tool-use', makeInputs({ runs: only })).metrics.find((m) => m.label === 'Success rate')?.value).toBe('—');
+    });
+});

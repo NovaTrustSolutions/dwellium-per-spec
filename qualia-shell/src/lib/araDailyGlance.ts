@@ -11,7 +11,10 @@ import { withSync } from './oneSaveStore';
 import { araGlanceUserIdHolder } from './perUserIdentity';
 import { dayKey } from './dailySynthesis';
 import { strataGet } from '../components/StrataDashboard/strataApi';
-import { taskBoardStore, taskBoardUserIdHolder } from '../components/TaskBoard/taskBoardStore';
+import { repairBoard } from '../components/TaskBoard/taskBoardModel';
+// Side-effect import: registers the board store with One Save at ARA load, so the Global
+// board is pulled from the server on login even if the Task Board is never opened here.
+import '../components/TaskBoard/taskBoardStore';
 import { goalsStore } from './goalsStore';
 import { todaysBrief } from './morningBriefStore';
 
@@ -59,11 +62,29 @@ async function tryLine(fn: () => Promise<string | null> | string | null): Promis
     try { return await fn(); } catch { return null; }
 }
 
+/** Open (not in 'done') and high-urgency cards across EVERY local board of this user: Global + each project. */
+function localBoardCounts(uid: string | null): { open: number; high: number } {
+    const base = `taskboard:${uid ?? '_anonymous'}`;
+    const counts = { open: 0, high: 0 };
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || (key !== base && !key.startsWith(`${base}:`))) continue;
+        let raw: unknown = null;
+        try { raw = JSON.parse(localStorage.getItem(key) ?? 'null'); } catch { /* unreadable board → repairBoard(null) is empty */ }
+        for (const c of repairBoard(raw).cards) {
+            if (c.columnId === 'done') continue;
+            counts.open++;
+            if (c.urgency === 'high') counts.high++;
+        }
+    }
+    return counts;
+}
+
 /**
  * Pure assembler over real data. Returns the markdown glance (first 3 non-empty
  * lines, source order = priority) or null when there is nothing to say.
  */
-export async function assembleGlance(): Promise<string | null> {
+export async function assembleGlance(userId: string | null = araGlanceUserIdHolder.current): Promise<string | null> {
     const lines = (await Promise.all([
         tryLine(async () => {
             const { alerts } = await strataGet<{ alerts: Array<{ message: string }> }>('/leasing/alerts');
@@ -82,10 +103,8 @@ export async function assembleGlance(): Promise<string | null> {
             return pending > 0 ? `${plural(pending, 'inbox item')} waiting for approval` : null;
         }),
         tryLine(() => {
-            const open = taskBoardStore.getSnapshot().cards.filter(c => c.columnId !== 'done');
-            if (!open.length) return null;
-            const high = open.filter(c => c.urgency === 'high').length;
-            return `${plural(open.length, 'task')} not done — ${high} high urgency`;
+            const { open, high } = localBoardCounts(userId);
+            return open ? `${plural(open, 'task')} not done — ${high} high urgency` : null;
         }),
         tryLine(() => {
             const goals = goalsStore.getSnapshot().filter(g => g.status !== 'done');
@@ -107,16 +126,13 @@ export async function assembleGlance(): Promise<string | null> {
 export async function runDailyGlance(
     userId: string | null,
     post: (content: string) => void,
-    assemble: () => Promise<string | null> = assembleGlance,
+    assemble: (userId: string | null) => Promise<string | null> = assembleGlance,
 ): Promise<boolean> {
-    // araGlanceUserIdHolder is set by the perUserIdentity single writer
-    // (useIntegrations → usePerUserIdentity in ARAConsole's render). The task
-    // board's holder is NOT in that set (only TaskBoard.tsx writes it, same
-    // value), so set it here before reading its snapshot.
-    taskBoardUserIdHolder.current = userId;
+    // The task-board line reads this user's local boards by id; the glance no longer
+    // writes the task board's user-id holder (only TaskBoard.tsx does).
     const today = dayKey();
     if (araGlanceStore.getSnapshot().lastShownDay === today) return false;
-    const text = await assemble().catch(() => null);
+    const text = await assemble(userId).catch(() => null);
     if (!text) return false;
     post(text);
     persist({ lastShownDay: today });

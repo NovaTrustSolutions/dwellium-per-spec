@@ -19,6 +19,7 @@ import { UserContext } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import {
     taskBoardStore, taskBoardUserIdHolder, taskBoardProjectIdHolder, loadBoardState,
+    captureBoard, taskBoardSaveError,
     addCard, moveCard, moveCards, removeCard, editCard,
     addColumn, renameColumn, removeColumn, resizeColumn,
     undo, undoLastAi, aiFileBacklog, boardReport,
@@ -79,10 +80,17 @@ export default function TaskBoard() {
 
     // Per-user store binding (set holder DURING render, before useSyncExternalStore)
     const userCtx = useContext(UserContext);
-    taskBoardUserIdHolder.current = userCtx?.user?.id ?? null;
+    const userId = userCtx?.user?.id ?? null;
+    taskBoardUserIdHolder.current = userId;
     taskBoardProjectIdHolder.current = activeProjectId;
 
     const board = useSyncExternalStore(taskBoardStore.subscribe, taskBoardStore.getSnapshot, taskBoardStore.getServerSnapshot);
+    const saveError = useSyncExternalStore(taskBoardSaveError.subscribe, taskBoardSaveError.getSnapshot, taskBoardSaveError.getServerSnapshot);
+
+    // Each project board has its own server object (plan 079): pull the one now on screen. Fire-and-forget.
+    useEffect(() => {
+        void taskBoardStore.hydrate().then(() => taskBoardStore.migrate()).catch(() => { /* sync failures show in SyncStatusPill */ });
+    }, [userId, activeProjectId]);
     const columns = [...board.columns].sort((a, b) => a.order - b.order);
 
     // ── selection / drag UI state ──
@@ -389,6 +397,7 @@ export default function TaskBoard() {
                 </select>
 
                 <span className="tb-toolbar__count">{board.cards.length} card{board.cards.length === 1 ? '' : 's'}</span>
+                {saveError && <span className="tb-toolbar__error" role="alert" style={{ fontSize: 11, color: 'var(--danger)' }}>{saveError}</span>}
                 <span className="tb-spacer" />
 
                 {/* Backup Actions */}
@@ -805,7 +814,9 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
 
     const onFiles = async (files: FileList | null) => {
         if (!files) return;
+        const sameBoard = captureBoard(); // reading is async; never attach onto a board the user has since left
         for (const file of Array.from(files)) {
+            if (!sameBoard()) return;
             if (file.size <= MAX_INLINE_ATTACHMENT) {
                 const dataUrl = await new Promise<string | undefined>(res => {
                     const r = new FileReader();
@@ -813,6 +824,7 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                     r.onerror = () => res(undefined);
                     r.readAsDataURL(file);
                 });
+                if (!sameBoard()) return;
                 attachToCard(cardId, { name: file.name, size: file.size, type: file.type, dataUrl });
             } else {
                 attachToCard(cardId, { name: file.name, size: file.size, type: file.type });

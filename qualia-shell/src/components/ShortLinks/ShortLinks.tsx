@@ -235,7 +235,8 @@ export default function ShortLinks() {
     // Eager sparkline fetch for the first clicked links (one analytics call per row).
     useEffect(() => {
         if (state.kind !== 'ok' || !state.data.features.has('timeseries')) return;
-        const wanted = state.data.links.filter(l => l.clicks > 0 && !(l.id in series)).slice(0, SPARKLINE_ROWS);
+        // Only the first SPARKLINE_ROWS clicked links ever get a fetch (a hard cap, not a batch size).
+        const wanted = state.data.links.filter(l => l.clicks > 0).slice(0, SPARKLINE_ROWS).filter(l => !(l.id in series));
         if (wanted.length === 0) return;
         let cancelled = false;
         void Promise.all(wanted.map(async l => [l.id, await getClicksTimeseries(l.id)] as const)).then(results => {
@@ -298,7 +299,7 @@ export default function ShortLinks() {
             };
         }
         if (await create(input)) {
-            setUrl(''); setKey(''); setExpiry('');
+            setUrl(''); setKey(''); setExpiry(''); setPickedTags([]);
             setUtm({ utm_source: '', utm_medium: '', utm_campaign: '', utm_term: '', utm_content: '' });
         }
     };
@@ -322,9 +323,7 @@ export default function ShortLinks() {
         if (r.kind === 'ok') {
             setNewTag('');
             setPickedTags(t => (t.includes(name) ? t : [...t, name]));
-            // Built-in lists only tags some link uses, so a reload would drop the new one: merge what the backend echoed.
-            const added = r.data ?? { id: name, name, color: '' };
-            setState(s => (s.kind === 'ok' && !s.data.tags.some(t => t.name === name) ? { ...s, data: { ...s.data, tags: [...s.data.tags, added] } } : s));
+            // Built-in lists only tags some link uses — the picker shows picked-but-unused ones too (see pickerTags).
         } else {
             setNotice(r.kind === 'needs-setup' ? UNAVAILABLE : r.message);
         }
@@ -386,11 +385,15 @@ export default function ShortLinks() {
         );
     }
 
+    // Derived so a tag that vanished from the list (last link untagged, or a backend without tags) cannot strand the filter.
+    const tagList = state.kind === 'ok' && can('tags') ? state.data.tags : [];
+    const activeTag = tagList.some(t => t.name === filterTag) ? filterTag : '';
+    const pickerTags = [...tagList, ...pickedTags.filter(n => !tagList.some(t => t.name === n)).map(n => ({ id: n, name: n, color: '' }))];
     const needle = search.trim().toLowerCase();
     const matches = (l: ShortLink): boolean =>
         [l.shortLink, l.url, l.comments ?? '', ...(l.tags ?? []).map(t => t.name)].some(v => v.toLowerCase().includes(needle));
     const visibleLinks = state.kind === 'ok'
-        ? state.data.links.filter(l => (!filterTag || (l.tags ?? []).some(t => t.name === filterTag)) && (!needle || matches(l)))
+        ? state.data.links.filter(l => (!activeTag || (l.tags ?? []).some(t => t.name === activeTag)) && (!needle || matches(l)))
         : [];
 
     return (
@@ -551,7 +554,7 @@ export default function ShortLinks() {
                                 <details className="short-links__details">
                                     <summary>Tags{pickedTags.length ? ` (${pickedTags.length})` : ''}</summary>
                                     <div className="short-links__tag-picker">
-                                        {state.data.tags.map(t => (
+                                        {pickerTags.map(t => (
                                             <label key={t.id} className="short-links__tag-option">
                                                 <input
                                                     type="checkbox"
@@ -611,7 +614,7 @@ export default function ShortLinks() {
                         {can('tags') && (
                             <select
                                 className="short-links__input short-links__input--key"
-                                value={filterTag}
+                                value={activeTag}
                                 onChange={e => setFilterTag(e.target.value)}
                                 aria-label="Filter by tag"
                             >
@@ -632,28 +635,32 @@ export default function ShortLinks() {
                     {visibleLinks.length === 0
                         ? (
                             <div className="short-links__empty" data-state="none-yet">
-                                <h3>{needle ? 'No links match' : `No links${filterTag ? ` tagged ${filterTag}` : ' yet'}`}</h3>
+                                <h3>{needle ? 'No links match' : `No links${activeTag ? ` tagged ${activeTag}` : ' yet'}`}</h3>
                                 <p>{needle ? 'Clear the search or the tag filter to see more.' : 'Shorten a Tenant Portal or published-doc URL above, then print its QR.'}</p>
                             </div>
                         )
                         : (
                             <table className="short-links__table">
                                 <thead>
-                                    <tr><th>Short link</th><th>Destination</th>{can('tags') && <th>Tags</th>}<th>Clicks</th><th aria-label="Actions" /></tr>
+                                    <tr><th>Short link</th><th>Destination</th><th>Clicks</th><th aria-label="Actions" /></tr>
                                 </thead>
                                 <tbody>
                                     {visibleLinks.map(l => (
                                     <Fragment key={l.id}>
                                         <tr data-archived={l.archived || undefined}>
-                                            <td className="short-links__short">{l.shortLink}{l.archived ? ' (archived)' : ''}</td>
+                                            <td className="short-links__short">
+                                                {l.shortLink}{l.archived ? ' (archived)' : ''}
+                                                {/* Tags and the expiry state sit under the link: a fifth column does not fit the 520px minimum. */}
+                                                {(l.tags ?? []).length > 0 && (
+                                                    <div className="short-links__meta">{(l.tags ?? []).map(t => <span key={t.id} className="short-links__chip">{t.name}</span>)}</div>
+                                                )}
+                                                {l.expiresAt && (
+                                                    <div className={`short-links__meta short-links__row-hint${Date.parse(l.expiresAt) <= Date.now() ? ' short-links__expired' : ''}`}>
+                                                        {Date.parse(l.expiresAt) <= Date.now() ? 'expired ' : 'expires '}{new Date(l.expiresAt).toLocaleString()}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="short-links__dest" title={l.url}>{l.url}</td>
-                                            {can('tags') && (
-                                                <td>
-                                                    {(l.tags ?? []).map(t => (
-                                                        <span key={t.id} className="short-links__chip">{t.name}</span>
-                                                    ))}
-                                                </td>
-                                            )}
                                             <td className="short-links__clicks">
                                                 {l.clicks}
                                                 {series[l.id] && <Sparkline points={series[l.id]} />}
@@ -710,7 +717,7 @@ export default function ShortLinks() {
                                         </tr>
                                         {(qrFor === l.id || editingId === l.id) && (
                                             <tr>
-                                                <td colSpan={can('tags') ? 5 : 4}>
+                                                <td colSpan={4}>
                                                     <div className="short-links__detail">
                                                     {qrFor === l.id && (
                                                         // Builtin-mode rows carry no hosted qrCode URL — render the same client-side QR the door sheet uses.

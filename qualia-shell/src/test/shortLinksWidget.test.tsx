@@ -1214,7 +1214,8 @@ describe('ShortLinks widget — feature gating (plan 077 p3)', () => {
         expect(screen.getByLabelText('Expires at')).toBeInTheDocument();
         expect(screen.getByText(/^Tags/, { selector: 'summary' })).toBeInTheDocument();
         expect(screen.getByLabelText('Filter by tag')).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Tags' })).toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Tags' })).not.toBeInTheDocument(); // tags are chips under the short link (no fifth column at 520px)
+        expect(screen.getAllByRole('row')[1].querySelector('.short-links__chip')).not.toBeNull();
         expect(screen.getAllByText('woodland-parc').length).toBeGreaterThan(0); // chip in the row
         await waitFor(() => expect(screen.getByLabelText('Clicks sparkline: 3, 9')).toBeInTheDocument());
         expect(used(calls, /\/api\/links\/tags/)).toBe(true);
@@ -1507,5 +1508,79 @@ describe('ShortLinks widget — failures that must not cost the user their scree
         fireEvent.change(screen.getByLabelText('Custom key'), { target: { value: 'mine' } });
         fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
         await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(`Key ${key} is taken`));
+    });
+});
+
+describe('phase 3 review regressions', () => {
+    const TAGGED = { ...BUILTIN_LINK, tags: [{ id: 'x', name: 'x', color: '' }] };
+
+    it('a tag filter whose tag vanished from the list resets to All tags instead of stranding an empty list', async () => {
+        let rows: JsonObject[] = [TAGGED];
+        vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+            const u = String(url);
+            if (u.includes('/api/links/tags')) return jsonResponse({ success: true, mode: 'builtin', data: [...new Set(rows.flatMap(r => (r.tags as Array<{ name: string }>).map(t => t.name)))].map(n => ({ id: n, name: n, color: '' })) });
+            if (u.includes('/api/links/analytics')) return jsonResponse({ success: true, mode: 'builtin', data: [] });
+            return jsonResponse({ success: true, mode: 'builtin', features: ['tags'], data: rows });
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Filter by tag'), { target: { value: 'x' } });
+        expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument();
+        rows = [{ ...BUILTIN_LINK, tags: [] }]; // the only x-tagged link lost its tag elsewhere
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh short links' }));
+        await waitFor(() => expect((screen.getByLabelText('Filter by tag') as HTMLSelectElement).value).toBe(''));
+        expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument();
+        expect(screen.queryByText(/No links tagged/)).not.toBeInTheDocument();
+    });
+
+    it('a tag added with "Add tag" keeps its (ticked) checkbox across a refresh and is cleared after the link is created', async () => {
+        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('New tag name'), { target: { value: 'promo' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add tag' }));
+        await waitFor(() => expect(screen.getByLabelText('promo')).toBeChecked());
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh short links' }));
+        await waitFor(() => expect(calls.filter(c => c.method === 'GET' && /\/api\/links(\?|$)/.test(c.url)).length).toBeGreaterThanOrEqual(2));
+        expect(screen.getByLabelText('promo')).toBeChecked(); // still offered, still ticked
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://e.test/new' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(calls.some(c => c.method === 'POST' && c.url.endsWith('/api/links'))).toBe(true));
+        expect(calls.find(c => c.method === 'POST' && c.url.endsWith('/api/links'))!.body).toMatchObject({ tagNames: ['promo'] });
+        await waitFor(() => expect(screen.queryByLabelText('promo')).not.toBeInTheDocument()); // picked set cleared, tag unused → gone
+    });
+
+    it('the sparkline cap is a real cap: 30 clicked links → at most 8 analytics calls', async () => {
+        const many = Array.from({ length: 30 }, (_, i) => ({ ...BUILTIN_LINK, id: `m${i}`, key: `m${i}`, shortLink: `${SHORT_BASE}m${i}`, clicks: 1 + i }));
+        const calls = stubBackend(many, {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(`${SHORT_BASE}m29`)).toBeInTheDocument());
+        await waitFor(() => expect(calls.filter(c => c.url.includes('/api/links/analytics')).length).toBe(8));
+        await new Promise(r => setTimeout(r, 60));
+        expect(calls.filter(c => c.url.includes('/api/links/analytics')).length).toBe(8);
+    });
+
+    it('an expired link says so under its short link; a live expiry shows the date', async () => {
+        stubBackend([{ ...BUILTIN_LINK, expiresAt: '2020-01-01T00:00:00.000Z' }, { ...LINK_2, id: 'live', key: 'live', shortLink: `${SHORT_BASE}live`, qrCode: '', expiresAt: '2999-01-01T00:00:00.000Z' }], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        expect(screen.getByText(/^expired /)).toBeInTheDocument();
+        expect(screen.getByText(/^expires /)).toBeInTheDocument();
+    });
+
+    it('focus handed back after an archive is not pulled back again by later state changes', async () => {
+        const calls = stubBackend([BUILTIN_LINK, { ...LINK_2, qrCode: '' }], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Archive ${BUILTIN_LINK.shortLink}` }));
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel archive' }));
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: `Copy ${BUILTIN_LINK.shortLink}` }));
+        // The user moves on to the composer; a later refresh must not yank focus back to the row (or the search box).
+        const dest = screen.getByLabelText('Destination URL');
+        dest.focus();
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh short links' }));
+        await waitFor(() => expect(calls.filter(c => c.method === 'GET' && /\/api\/links(\?|$)/.test(c.url)).length).toBeGreaterThanOrEqual(2));
+        await new Promise(r => setTimeout(r, 30));
+        expect(document.activeElement).toBe(dest);
     });
 });

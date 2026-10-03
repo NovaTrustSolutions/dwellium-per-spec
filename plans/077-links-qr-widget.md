@@ -1,7 +1,7 @@
 # 077 — Links & QR widget: audit + improvement plan
 
-Status: PHASES 1–2 IMPLEMENTED 2026-10-02, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
-backend `feat/077-links-backend-p1` (see §7–8). Phases 3–4 are still plan only. The audit (2026-10-01) was read-only.
+Status: PHASES 1–3 IMPLEMENTED 2026-10-02/03, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
+backend `feat/077-links-backend-p1` (see §7–9). Phase 4 is still plan only. The audit (2026-10-01) was read-only.
 Base: frontend `main` @ `fe281de`; backend `main` (links code identical on the checked-out
 `chore/token-encryption-key-secret` branch — `git diff main` touches only `deploy/cloud-run.sh`).
 Swarm: ruflo `swarm-1790844744784-onqku3` (hierarchical). ruflo only *registered* the agents
@@ -276,4 +276,39 @@ values take effect only on the next deploy (verify with `curl -sI https://<app>/
 Location); no phone-camera scan of a paper print (CIDetector on the print render stands in);
 the widget has not been exercised in the logged-in shell. Destinations are per-user widget memory
 (Ilya is the only operator) — move them to the backend if a second operator ever needs them.
+
+## 9. Phase 3 — what was done (2026-10-03)
+
+Swarm: ruflo `swarm-1790993985486-tza97c` registered `links077-p3-backend`, `links077-p3-client`,
+`links077-p3-integrator` and `links077-p3-reviewer`; the work ran as Claude Code subagents — two
+coders in parallel (backend; API client + CSS) with the integrator started alongside them on a
+fixed contract, then a refute-first reviewer. The orchestrator read every diff, ran the live
+probes and fixed what they showed.
+
+| Step | Done | Where |
+|---|---|---|
+| 3.1 | `short_links` + `expires_at`, `tags` (JSON names), `created_by`, `updated_at` — `ALTER TABLE ADD COLUMN` only, idempotent; expired links 404; `GET /tags` = names in use, `POST /tags` echoes; the widget shows expiry, tags, tag filter and edit controls when the backend lists the feature | linkRoutes.ts, ShortLinks.tsx |
+| 3.2 | `short_link_clicks(slug, ts, kind)` — head / bot / human by method and user agent, no IP or UA stored; only human GETs count; zero-filled per-UTC-day timeseries and windowed counts; the sparkline draws in built-in mode | linkRoutes.ts, ShortLinks.tsx |
+| 3.3 | `GET /l/:slug` rate limited per client (120/min, burst 30/10 s; env-overridable), keyed on Netlify's `x-nf-client-connection-ip` behind the `/l/*` proxy, else `req.ip` — `req.ip` alone would have put every resident behind the proxy in one bucket | app.ts |
+| 3.4 | Client-side search over short link, destination, title and tags, combined with the tag filter | ShortLinks.tsx |
+| 3.5 | Always-mounted `role="status"` notice; Archive → focus on Confirm → back to the row or the search box; edit form focuses its URL input and is a `group`; 12 px minimum text; global `:focus-visible` ring confirmed to reach the controls | ShortLinks.tsx, ShortLinks.css |
+| 3.6 | Case-insensitive slug lookups with 409 on case-only duplicates (an index backs the lookup); a failed background refresh keeps the list and says so; a preset refused as taken hints at Show archived; list cap 1000 | linkRoutes.ts, ShortLinks.tsx |
+| contract | The list advertises `features: ['expiry','tags','timeseries']`; the widget gates on it, so either side can deploy first (old-backend.cjs proves an older backend still hides those controls) | shortLinksApi.ts |
+
+Review (refute-first, after the integration commit): 0 critical, 6 warnings, all reproduced. Fixed:
+W1 a forged `x-nf-client-connection-ip` on a direct call to the run.app host could burn another
+client's bucket (key is now `ip|header`, truncated; limits 300/min, 60/10 s in case Netlify does
+not forward the header — verify after deploy); W2 a door-sheet re-mint could never clear an old
+expiry and the list never showed one (re-mint now defines the expiry; rows show "expires …" /
+"expired"); W3 a tag filter whose tag vanished stranded an empty list (filter is derived from the
+current tags); W4 a tag added with "Add tag" lost its checkbox on refresh while still being sent
+(picker = backend tags ∪ picked; picked cleared after create); W5 the sparkline "cap" was a batch
+size (now a real cap of 8); W6 untested focus clear (tests added). Also: strict ISO-with-zone
+expiry parsing with a calendar check, `bot\b` so a CUBOT phone is a human, a four-column table
+(tags and expiry sit under the short link — five columns did not fit 520 px).
+Deferred with a home — 3.6/Phase 4: I3 interval anchoring to UTC days (24h = 2 points), I5 an
+archive that succeeds followed by a failed refresh reads as "could not refresh", I6 `GET /tags`
+includes tags used only by archived links and `LIMIT 1000` truncates silently.
+
+Not in 3.1: `entity_type` / `entity_id` columns — nothing sends them yet (Phase 4). Dub mode untouched.
 

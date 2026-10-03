@@ -89,6 +89,8 @@
 .short-links__search { flex: 1 1 100%; width: 100%; box-sizing: border-box; }
 /* Muted inline message next to a row (e.g. "key is taken - archived"). */
 .short-links__row-hint { font-size: 12px; color: var(--text-tertiary); }
+.short-links__meta { margin-top: 4px; font-weight: 400; }
+.short-links__expired { color: color-mix(in srgb, var(--danger, #e5484d) 60%, var(--text-primary)); }
 
 .short-links__notice { margin: 8px 0 0; font-size: 12px; color: var(--text-secondary); }
 

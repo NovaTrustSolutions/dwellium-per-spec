@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-10-02T22:59:24.670Z",
+  "ranAt": "2026-10-03T02:46:44.099Z",
   "results": [
     {
       "name": "list renders both links",
@@ -7,32 +7,27 @@
       "detail": ""
     },
     {
-      "name": "built-in hides: Domain select",
+      "name": "built-in hides Dub-only: Domain select",
       "pass": true,
       "detail": ""
     },
     {
-      "name": "built-in hides: Expires at",
+      "name": "built-in hides Dub-only: Open in Dub",
       "pass": true,
       "detail": ""
     },
     {
-      "name": "built-in hides: Filter by tag",
+      "name": "built-in with features offers: Expires at",
       "pass": true,
       "detail": ""
     },
     {
-      "name": "built-in hides: New tag name",
+      "name": "built-in with features offers: Filter by tag",
       "pass": true,
       "detail": ""
     },
     {
-      "name": "built-in hides: Open in Dub",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "name": "built-in hides: Tags column",
+      "name": "built-in with features offers: Tag chips under the short link",
       "pass": true,
       "detail": ""
     },
@@ -42,7 +37,7 @@
       "detail": ""
     },
     {
-      "name": "no tags/domains/analytics requests",
+      "name": "no domains request in built-in mode (tags/analytics are feature-gated and allowed)",
       "pass": true,
       "detail": ""
     },
@@ -55,6 +50,11 @@
       "name": "layout: short-link column keeps a readable width (>= 140 px)",
       "pass": true,
       "detail": "155px"
+    },
+    {
+      "name": "layout: four columns only — the Destination header is not truncated and chips stay inside the short-link cell",
+      "pass": true,
+      "detail": "chip 99px in 155px"
     },
     {
       "name": "layout: all row action buttons sit inside the window",
@@ -72,14 +72,14 @@
       "detail": ""
     },
     {
-      "name": "built-in edit form offers the URL only",
+      "name": "built-in edit form offers URL + expiry + tags but never the key (Dub-only)",
       "pass": true,
       "detail": ""
     },
     {
       "name": "layout: the edit form and its Save button sit inside the window",
       "pass": true,
-      "detail": "Save right edge 412px of 504"
+      "detail": "Save right edge 309px of 504"
     },
     {
       "name": "layout: the edit form uses the full row width (>= 400 px)",
@@ -107,9 +107,9 @@
       "detail": ""
     },
     {
-      "name": "preset sends the STORED destination and no tagNames (built-in)",
+      "name": "preset sends the STORED destination (tags allowed: the backend lists the feature)",
       "pass": true,
-      "detail": "{\"url\":\"https://pay.example.com/woodland\",\"key\":\"woodland-parc-rent\"}"
+      "detail": "{\"url\":\"https://pay.example.com/woodland\",\"key\":\"woodland-parc-rent\",\"tagNames\":[\"woodland-parc\",\"rent-payment\"]}"
     },
     {
       "name": "edit PATCH body is exactly {url}",
@@ -147,14 +147,44 @@
       "detail": ""
     },
     {
-      "name": "bare 503 → \"Backend unavailable\" error card",
+      "name": "bare 503 on a background refresh keeps the list and shows a status notice",
       "pass": true,
       "detail": ""
     },
     {
-      "name": "Retry recovers the list",
+      "name": "the next refresh recovers (no notice, list intact)",
       "pass": true,
       "detail": ""
+    },
+    {
+      "name": "phase 3: expiry input offered when the backend lists the feature",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "phase 3: tag filter offered when the backend lists the feature",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "phase 3: sparkline requested (timeseries feature) and drawn for a clicked link",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "phase 3: search narrows the table (case-insensitive, matches the short link)",
+      "pass": true,
+      "detail": "https://dwellium.example/l/woodland-parc-maintwoodland-parcmaintenance"
+    },
+    {
+      "name": "phase 3: the status notice is a live region",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "phase 3: Archive moves keyboard focus to Confirm",
+      "pass": true,
+      "detail": "Confirm archive"
     },
     {
       "name": "door sheet offers no \"Mint short links\" in built-in mode",

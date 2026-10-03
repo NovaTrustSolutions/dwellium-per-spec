@@ -17,7 +17,7 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
 
 (async () => {
     const h = await start({ rows: [
-        { slug: 'woodland-parc-maint', url: 'https://example.com/maintenance', clicks: 12, archived: 0 },
+        { slug: 'woodland-parc-maint', url: 'https://example.com/maintenance', clicks: 12, archived: 0, tags: ['woodland-parc', 'maintenance'] },
         { slug: 'front-door', url: 'https://example.com/welcome?from=door', clicks: 0, archived: 0 },
     ] });
     const { page, PAGE, calls, aborted, consoleErrors, state, browser, vite } = h;
@@ -44,7 +44,7 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
         check(`built-in hides Dub-only: ${label}`, !(await has(sel)));
     }
     // Phase 3: the fake backend lists expiry/tags/timeseries, so those controls are offered (old-backend.cjs covers the hidden case).
-    for (const [label, sel] of [['Expires at', '[aria-label="Expires at"]'], ['Filter by tag', '[aria-label="Filter by tag"]'], ['Tags column', 'th:text-is("Tags")']]) {
+    for (const [label, sel] of [['Expires at', '[aria-label="Expires at"]'], ['Filter by tag', '[aria-label="Filter by tag"]'], ['Tag chips under the short link', 'td.short-links__short .short-links__chip']]) {
         check(`built-in with features offers: ${label}`, await has(sel));
     }
     check('UTM builder still offered', await has('summary:text-is("UTM builder")'));
@@ -55,6 +55,9 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     // Layout at the registry's 520 px minimum width.
     const shortW = await width('td.short-links__short');
     check('layout: short-link column keeps a readable width (>= 140 px)', shortW >= 140, `${shortW}px`);
+    const destR = await right('th:text-is("Destination")');
+    const chipW = await width('td.short-links__short .short-links__chip');
+    check('layout: four columns only — the Destination header is not truncated and chips stay inside the short-link cell', destR > 0 && chipW > 0 && chipW <= shortW, `chip ${chipW}px in ${shortW}px`);
     const archR = await right('[aria-label="Archive https://dwellium.example/l/front-door"]');
     check('layout: all row action buttons sit inside the window', archR <= 504, `Archive button right edge ${archR}px of 504`);
     await page.mouse.move(2, 600);

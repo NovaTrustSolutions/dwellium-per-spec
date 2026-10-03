@@ -159,9 +159,25 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     await page.mouse.move(2, 600);
     await shot('builtin-520-phase3.png');
 
-    // 8. Door sheet: no Mint button in built-in mode.
+    // 7c. Phase 4 — the "Print maintenance QR" deep link (what the Strata unit button fires) opens the sheet on that unit.
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('dwellium:open-door-sheet', { detail: { propertyId: 'riverwood-club', propertyName: 'Riverwood Club Apartments', units: ['H12'] } })));
+    await page.locator('[aria-label="Destination pattern"]').waitFor();
+    const pickedProp = await page.locator('[aria-label="Property"]').evaluate(e => e.options[e.selectedIndex].textContent);
+    const roster = await page.inputValue('[aria-label="Units"]');
+    check('phase 4: deep link opens the door sheet on the requested property with the requested unit', pickedProp === 'Riverwood Club Apartments' && roster === 'H12', `${pickedProp} / ${roster}`);
+    check('phase 4: roster label states the source honestly (no Strata here → fallback)', await has('text=/fallback roster/'));
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('dwellium:open-door-sheet', { detail: { propertyId: 'strata-9', propertyName: 'Cedar Ridge Villas', units: ['7'] } })));
+    await page.waitForTimeout(150);
+    const pickedProp2 = await page.locator('[aria-label="Property"]').evaluate(e => e.options[e.selectedIndex].textContent);
+    check('phase 4: a property the widget does not know becomes a transient entry', pickedProp2 === 'Cedar Ridge Villas' && (await page.inputValue('[aria-label="Units"]')) === '7', String(pickedProp2));
+    await page.mouse.move(2, 600);
+    await shot('builtin-520-deeplink.png');
+    await page.click('[aria-label="Back to links"]');
+    await page.locator('.short-links__table').waitFor();
     await page.click('[aria-label="QR door sheet"]');
     await page.locator('[aria-label="Destination pattern"]').waitFor();
+
+    // 8. Door sheet: no Mint button in built-in mode.
     check('door sheet offers no "Mint short links" in built-in mode', !(await has('button:has-text("Mint short links")')));
     const selH = await page.locator('[aria-label="Property"]').evaluate(e => Math.round(e.getBoundingClientRect().height));
     const patH = await page.locator('[aria-label="Destination pattern"]').evaluate(e => Math.round(e.getBoundingClientRect().height));

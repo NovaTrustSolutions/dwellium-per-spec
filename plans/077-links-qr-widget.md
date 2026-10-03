@@ -1,7 +1,7 @@
 # 077 — Links & QR widget: audit + improvement plan
 
-Status: PHASES 1–3 IMPLEMENTED 2026-10-02/03, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
-backend `feat/077-links-backend-p1` (see §7–9). Phase 4 is still plan only. The audit (2026-10-01) was read-only.
+Status: PHASES 1–4 IMPLEMENTED 2026-10-02/03, committed locally, NOT pushed — frontend `feat/077-links-qr-p1`,
+backend `feat/077-links-backend-p1` (see §7–10). The audit (2026-10-01) was read-only.
 Base: frontend `main` @ `fe281de`; backend `main` (links code identical on the checked-out
 `chore/token-encryption-key-secret` branch — `git diff main` touches only `deploy/cloud-run.sh`).
 Swarm: ruflo `swarm-1790844744784-onqku3` (hierarchical). ruflo only *registered* the agents
@@ -311,4 +311,21 @@ archive that succeeds followed by a failed refresh reads as "could not refresh",
 includes tags used only by archived links and `LIMIT 1000` truncates silently.
 
 Not in 3.1: `entity_type` / `entity_id` columns — nothing sends them yet (Phase 4). Dub mode untouched.
+
+## 10. Phase 4 — what was done (2026-10-03)
+
+Swarm: ruflo `swarm-1790997066209-b8bwrq` registered `links077-p4-data`, `links077-p4-strata`,
+`links077-p4-scribe`, `links077-p4-integrator` (and a reviewer); the work ran as Claude Code
+subagents — three coders and the integrator in parallel on disjoint files against a fixed contract,
+then a refute-first reviewer. Frontend only; the backend did not change.
+
+| Item | Done | Where |
+|---|---|---|
+| Rosters from Strata | `useLinkProperties()` returns Strata properties (tags from the name, de-duplicated) with units loaded lazily for the selected one, naturally sorted; the Andy list is the fallback when Strata has none. Presets, Destinations and the door sheet use it; destinations are keyed by the Strata property id | linkProperties.ts, ShortLinks.tsx, QrDoorSheet.tsx |
+| "Print maintenance QR" on a Strata unit, "QR door sheet" on a property | One breadcrumb button in PropertiesModule → `openDoorSheet({propertyId, propertyName, units?})` (pending slot + live event + `openWidget('short-links')`); the widget opens its sheet on that property with that roster, or a transient entry when the property is unknown to it | doorSheetLink.ts, PropertiesModule.tsx |
+| "Short link + QR" in Scribe's PublishDialog | After publishing: Make short link → bulk upsert by key `doc-<slug>` (hash-suffixed when it would exceed 64 chars, so two long slugs can never share a link) → short URL, Copy, 120 px QR, Download SVG | PublishDialog.tsx |
+
+Not done: PropertiesModule has no render test (its own test file states a full render is too costly);
+the two buttons are verified by the module's typecheck and by the deep-link module's tests only.
+No browser run inside the logged-in shell.
 

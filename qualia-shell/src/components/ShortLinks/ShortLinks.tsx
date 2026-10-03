@@ -20,6 +20,12 @@
  * Presets and the door sheet point at per-property destinations the user enters
  * (widget memory) — nothing links to the app itself; a preset stays disabled
  * until its destination is set. A 503 `needsSetup` (OLD backend only) renders a card pointing at the door sheet.
+ *
+ * Plan 077 phase 4: the property picker, Destinations and the door sheet list
+ * Strata's properties when it has any (else the hardcoded Andy list), keyed by
+ * property id in widget memory (linkProperties.ts). "Print maintenance QR" from
+ * elsewhere in the app (doorSheetLink.ts) opens the widget on the door sheet:
+ * a pending request on mount, or the live `dwellium:open-door-sheet` event.
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, ArchiveRestore, Copy, ExternalLink, Pencil, Printer, QrCode, RefreshCw, X } from 'lucide-react';
@@ -43,7 +49,6 @@ import {
 } from './shortLinksApi';
 import {
     ANDY_LINK_PRESETS,
-    ANDY_PROPERTIES,
     HTTP_URL_RE,
     destinationValue,
     presetKey,
@@ -53,6 +58,8 @@ import {
 } from './andyLinkPresets';
 import { qrDataUri } from '../Scribe/idocs/blocks/qr'; // client-side QR — builtin-mode links carry no hosted qrCode URL
 import QrDoorSheet from './QrDoorSheet';
+import { useLinkProperties } from './linkProperties';
+import { DOOR_SHEET_EVENT, parseDoorSheetRequest, takeDoorSheetRequest, type DoorSheetRequest } from './doorSheetLink';
 import { openWidget } from '../../lib/dwelliumCommands';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
 import { useWidgetMemory } from '../../lib/widgetMemory';
@@ -166,7 +173,28 @@ export default function ShortLinks() {
     const [creating, setCreating] = useState(false);
 
     // Presets
-    const [presetProperty, setPresetProperty] = useState(ANDY_PROPERTIES[0].id);
+    const { properties } = useLinkProperties();
+    const [pickedProperty, setPickedProperty] = useState<string | null>(null);
+    const presetProp = properties.find(p => p.id === pickedProperty) ?? properties[0]; // never empty: Andy fallback
+    const presetProperty = presetProp.id;
+
+    // "Print maintenance QR" deep link: one-shot pending slot on mount, live event while mounted.
+    const [doorRequest, setDoorRequest] = useState<{ request: DoorSheetRequest; key: number } | null>(null);
+    useEffect(() => {
+        const apply = (r: DoorSheetRequest | null): void => {
+            if (!r) return;
+            setDoorRequest(prev => ({ request: r, key: (prev?.key ?? 0) + 1 }));
+            patchMem({ mode: 'sheet' });
+        };
+        apply(takeDoorSheetRequest());
+        const onEvent = (e: Event): void => {
+            const r = parseDoorSheetRequest((e as CustomEvent).detail);
+            if (r) takeDoorSheetRequest(); // the sender also left a pending request for an unmounted widget — this one handled it
+            apply(r);
+        };
+        window.addEventListener(DOOR_SHEET_EVENT, onEvent);
+        return () => window.removeEventListener(DOOR_SHEET_EVENT, onEvent);
+    }, [patchMem]);
 
     // Row state
     const [qrFor, setQrFor] = useState<string | null>(null);
@@ -305,13 +333,12 @@ export default function ShortLinks() {
     };
 
     const applyPreset = (presetId: string) => {
-        const property = ANDY_PROPERTIES.find(p => p.id === presetProperty) ?? ANDY_PROPERTIES[0];
-        const preset = ANDY_LINK_PRESETS.find(p => p.id === presetId);
-        const dest = preset && presetUrl(destinations, property.id, preset.id);
-        if (!preset || !dest || dest.includes('{unit}')) return;
+        const link = ANDY_LINK_PRESETS.find(p => p.id === presetId);
+        const dest = link && presetUrl(destinations, presetProp.id, link.id);
+        if (!link || !dest || dest.includes('{unit}')) return;
         void create(
-            { url: dest, key: presetKey(property, preset), ...(can('tags') ? { tagNames: [property.tag, preset.kindTag] } : {}) },
-            preset.label,
+            { url: dest, key: presetKey(presetProp, link), ...(can('tags') ? { tagNames: [presetProp.tag, link.kindTag] } : {}) },
+            link.label,
             true,
         );
     };
@@ -380,7 +407,13 @@ export default function ShortLinks() {
     if (mode === 'sheet') {
         return (
             <div className="short-links">
-                <QrDoorSheet destinations={destinations} links={state.kind === 'ok' ? state.data.mode : 'unavailable'} onBack={() => setMode('links')} />
+                <QrDoorSheet
+                    destinations={destinations}
+                    links={state.kind === 'ok' ? state.data.mode : 'unavailable'}
+                    onBack={() => { setDoorRequest(null); setMode('links'); }}
+                    request={doorRequest?.request}
+                    requestKey={doorRequest?.key}
+                />
             </div>
         );
     }
@@ -453,10 +486,10 @@ export default function ShortLinks() {
                         <select
                             className="short-links__input short-links__input--key"
                             value={presetProperty}
-                            onChange={e => setPresetProperty(e.target.value)}
+                            onChange={e => setPickedProperty(e.target.value)}
                             aria-label="Preset property"
                         >
-                            {ANDY_PROPERTIES.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                         {ANDY_LINK_PRESETS.map(p => {
                             const dest = presetUrl(destinations, presetProperty, p.id);
@@ -477,7 +510,7 @@ export default function ShortLinks() {
                         })}
                     </section>
                     <details className="short-links__destinations">
-                        <summary>Destinations — {ANDY_PROPERTIES.find(p => p.id === presetProperty)?.name}</summary>
+                        <summary>Destinations — {presetProp.name}</summary>
                         <div className="short-links__destinations-grid">
                             {ANDY_LINK_PRESETS.map(p => {
                                 const value = destinationValue(destinations, presetProperty, p.id);

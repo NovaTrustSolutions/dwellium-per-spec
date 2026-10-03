@@ -1,8 +1,9 @@
 /**
  * QrDoorSheet — printable per-unit QR grid for a property (plan 053; plan 077 phase 2).
  *
- * Pick a property (Andy's two Georgia communities from andyLinkPresets.ts), edit
- * the unit roster, and set the destination pattern — prefilled from that
+ * Pick a property (Strata's properties when it has any, else Andy's two Georgia
+ * communities from andyLinkPresets.ts — see linkProperties.ts), edit the unit
+ * roster (seeded from Strata units, or the fallback roster), and set the destination pattern — prefilled from that
  * property's "Maintenance request" destination (entered in the links view) and
  * `{unit}` is optional (substituted per unit when present). Generate snapshots
  * the inputs, mints one short link per unit (POST /api/links/bulk, an upsert by
@@ -12,19 +13,27 @@
  * fails or the backend is unreachable the codes point straight at the
  * destination and a notice on the sheet says so. QR encoding is client-side
  * (Scribe idocs qrSvg).
+ *
+ * Plan 077 phase 4: a `request` (the "print maintenance QR" deep link, see
+ * doorSheetLink.ts) selects a property and optionally pins the roster to the
+ * given units. A property the list does not know (fallback mode, or Strata not
+ * loaded yet) becomes a transient entry so the sheet still works. A later
+ * request (new `requestKey`) replaces the current selection. The roster
+ * re-seeds when a property's units arrive or the property changes, never over
+ * text the user has typed (a picker change is a deliberate re-seed).
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Printer, QrCode } from 'lucide-react';
 import { qrSvg } from '../Scribe/idocs/blocks/qr';
 import {
-    ANDY_PROPERTIES,
     HTTP_URL_RE,
     KEY_RE,
     presetUrl,
     unitKey,
-    type AndyProperty,
     type DestinationsMemory,
 } from './andyLinkPresets';
+import { propertyTag, useLinkProperties, type LinkProperty } from './linkProperties';
+import type { DoorSheetRequest } from './doorSheetLink';
 import { bulkCreateShortLinks } from './shortLinksApi';
 
 function parseUnits(text: string): string[] {
@@ -95,14 +104,35 @@ interface QrDoorSheetProps {
     /** Which shortener answered the list call; 'unavailable' = no backend to mint with. */
     links: 'builtin' | 'dub' | 'unavailable';
     onBack: () => void;
+    /** "Print maintenance QR" deep link: which property (and units) to open on. */
+    request?: DoorSheetRequest | null;
+    /** Changes with every request, so a second identical request still applies. */
+    requestKey?: number;
 }
 
 const EMPTY_HINT = 'Set a maintenance destination for this property (Destinations, in the links view) or type one here';
 
-export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheetProps) {
-    const maintenance = (p: AndyProperty): string => presetUrl(destinations, p.id, 'maintenance') ?? '';
-    const [property, setProperty] = useState<AndyProperty>(ANDY_PROPERTIES[0]);
-    const [unitsText, setUnitsText] = useState(ANDY_PROPERTIES[0].units.join('\n'));
+const transientFor = (r: DoorSheetRequest): LinkProperty =>
+    ({ id: r.propertyId, name: r.propertyName, tag: propertyTag(r.propertyName), units: r.units ?? [] });
+
+export default function QrDoorSheet({ destinations, links, onBack, request, requestKey = 0 }: QrDoorSheetProps) {
+    const maintenance = (p: LinkProperty): string => presetUrl(destinations, p.id, 'maintenance') ?? '';
+    const list = useLinkProperties();
+    const [picked, setPicked] = useState<string | null>(request?.propertyId ?? null);
+    // A requested property the list does not (yet) know: still usable, under its own name.
+    const [transient, setTransient] = useState<LinkProperty | null>(() =>
+        request && !list.properties.some(p => p.id === request.propertyId) ? transientFor(request) : null);
+    const property: LinkProperty = list.properties.find(p => p.id === picked)
+        ?? (transient && transient.id === picked ? transient : undefined)
+        ?? list.properties[0];
+    const options = list.properties.some(p => p.id === property.id) ? list.properties : [property, ...list.properties];
+    const { unitsFor, source } = useLinkProperties(property.id);
+    const unitsKey = unitsFor(property.id).join('\n');
+    const [unitsText, setUnitsText] = useState(() => request?.units ? request.units.join('\n') : unitsKey);
+    // lastSeed = what the effect last wrote (null = re-seed whatever is current); pinned = text the user or a request put there.
+    const lastSeed = useRef<string | null>(request?.units ? null : unitsKey);
+    const pinned = useRef(!!request?.units);
+    const appliedKey = useRef(requestKey);
     // null = follow the property's maintenance destination, so one entered after this sheet opened still shows up.
     const [typedPattern, setTypedPattern] = useState<string | null>(null);
     const pattern = typedPattern ?? maintenance(property);
@@ -115,16 +145,41 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
     const units = useMemo(() => parseUnits(unitsText), [unitsText]);
     const svgs = useMemo(() => generated?.cells.map(({ unit, url, short }) => qrSvg(short ?? url, { size: 160, title: `QR code for unit ${unit}` })) ?? [], [generated]);
 
-    const pickProperty = (id: string) => {
-        const next = ANDY_PROPERTIES.find(p => p.id === id) ?? ANDY_PROPERTIES[0];
+    const resetSheet = () => {
         run.current += 1;
         setBusy(false);
-        setProperty(next);
-        setUnitsText(next.units.join('\n'));
         setTypedPattern(null);
         setGenerated(null);
         setRefusal(null);
     };
+
+    const pickProperty = (id: string) => {
+        resetSheet();
+        setPicked(id);
+        pinned.current = false;
+        lastSeed.current = null; // the effect below seeds the roster for the new property (and again when its units arrive)
+    };
+
+    // Seed the roster when the property changes or its units load — never over typed/pinned text.
+    useEffect(() => {
+        if (pinned.current || unitsKey === lastSeed.current) return;
+        lastSeed.current = unitsKey;
+        setUnitsText(unitsKey);
+    }, [property.id, unitsKey]);
+
+    // A new deep-link request replaces the current selection.
+    useEffect(() => {
+        if (requestKey === appliedKey.current || !request) return;
+        appliedKey.current = requestKey;
+        resetSheet();
+        setPicked(request.propertyId);
+        setTransient(list.properties.some(p => p.id === request.propertyId) ? null : transientFor(request));
+        pinned.current = !!request.units;
+        lastSeed.current = null;
+        if (request.units) setUnitsText(request.units.join('\n'));
+        else if (request.propertyId === property.id) setUnitsText(unitsKey); // same property: no change for the effect above to see
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requestKey]);
 
     /** Why this roster cannot be minted as-is (two labels → one key, or a label that makes no valid key), or null. */
     const keyProblem = (tag: string, labels: string[]): string | null => {
@@ -179,7 +234,7 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
                 <label className="qr-door-sheet__field">
                     Property
                     <select className="short-links__input" value={property.id} onChange={e => pickProperty(e.target.value)} aria-label="Property">
-                        {ANDY_PROPERTIES.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        {options.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                 </label>
                 <label className="qr-door-sheet__field qr-door-sheet__field--wide">
@@ -187,11 +242,11 @@ export default function QrDoorSheet({ destinations, links, onBack }: QrDoorSheet
                     <input className="short-links__input" value={pattern} onChange={e => setTypedPattern(e.target.value)} aria-label="Destination pattern" />
                 </label>
                 <label className="qr-door-sheet__field qr-door-sheet__field--wide">
-                    Units — one per line (seeded from Strata data; paste the full roster to print a building)
+                    Units — one per line ({source === 'strata' ? 'from Strata' : 'no Strata data — fallback roster'})
                     <textarea
                         className="short-links__input qr-door-sheet__units"
                         value={unitsText}
-                        onChange={e => setUnitsText(e.target.value)}
+                        onChange={e => { pinned.current = true; setUnitsText(e.target.value); }}
                         rows={4}
                         aria-label="Units"
                     />

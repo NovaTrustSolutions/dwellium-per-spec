@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
-import { AlertTriangle, Archive, ArchiveRestore, BarChart3, BookOpen, Building2, Calendar, CalendarDays, Camera, Car, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, Clock, Coins, CreditCard, Dog, DollarSign, FileText, Globe, History, Home, Image as ImageIcon, Landmark, LayoutGrid, Link2, List, ListChecks, Mail, MapPin, Megaphone, Paperclip, Phone, PieChart, Plus, Power, RefreshCw, Scale, Search, Send, Settings2, Shield, ShieldCheck, StickyNote, Table2, Trash2, TrendingUp, Upload, User, Users, Wrench, X, Zap } from 'lucide-react';
+import { AlertTriangle, Archive, ArchiveRestore, BarChart3, BookOpen, Building2, Calendar, CalendarDays, Camera, Car, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, Clock, Coins, CreditCard, Dog, DollarSign, FileText, Globe, History, Home, Image as ImageIcon, Landmark, LayoutGrid, Link2, QrCode, List, ListChecks, Mail, MapPin, Megaphone, Paperclip, Phone, PieChart, Plus, Power, RefreshCw, Scale, Search, Send, Settings2, Shield, ShieldCheck, StickyNote, Table2, Trash2, TrendingUp, Upload, User, Users, Wrench, X, Zap } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
+import { openDoorSheet } from '../../ShortLinks/doorSheetLink';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import { useProperties, useUnits, useEntities, useLinkedData, useModuleConfig, useStrataInvalidate, strataKeys } from '../useStrataQueries';
 import { useQueryClient } from '@tanstack/react-query';
@@ -963,6 +964,18 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 <ChevronRight size={14} />
                                 <span style={{ color: 'var(--s-accent, #6366f1)' }}>Unit {selectedUnit.unitNumber}</span>
                             </>
+                        )}
+                        {selected && (
+                            <button
+                                type="button"
+                                className="s-btn s-btn-ghost"
+                                onClick={() => openDoorSheet(selectedUnit
+                                    ? { propertyId: selected.id, propertyName: selected.name, units: [selectedUnit.unitNumber] }
+                                    : { propertyId: selected.id, propertyName: selected.name })}
+                                aria-label={selectedUnit ? `Print maintenance QR for unit ${selectedUnit.unitNumber}` : `QR door sheet for ${selected.name}`}
+                            >
+                                <QrCode size={14} /> {selectedUnit ? 'Print maintenance QR' : 'QR door sheet'}
+                            </button>
                         )}
                     </div>
 

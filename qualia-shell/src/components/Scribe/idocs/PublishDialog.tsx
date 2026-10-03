@@ -6,6 +6,8 @@
  * `doc.publication` is persisted through the store (`updateDoc`).
  */
 import { useState } from 'react';
+import { bulkCreateShortLinks } from '../../ShortLinks/shortLinksApi';
+import { qrDataUri } from './blocks/qr';
 import { exportHtml } from './idocExport';
 import { IdocsApiError, embedCodeFor, isValidSlug, linkedInShareUrl, publicUrlFor, publishDoc, slugify, unpublish, type IdocsApiDeps } from './idocsApi';
 import { updateDoc } from './idocsStore';
@@ -30,6 +32,10 @@ export default function PublishDialog({ doc, onClose, api, onToast }: PublishDia
     const [error, setError] = useState<string | null>(null);
     const slugOk = isValidSlug(slug);
     const url = pub ? publicUrlFor(pub.slug) : '';
+    // Short-link state is keyed by slug so re-publishing under a new slug resets it.
+    const [shortState, setShortState] = useState<{ slug: string; busy?: boolean; link?: string; msg?: string } | null>(null);
+    const short = pub && shortState?.slug === pub.slug ? shortState : null;
+    const qr = short?.link ? qrDataUri(short.link) : null;
 
     const publish = async () => {
         if (!slugOk) return;
@@ -55,6 +61,26 @@ export default function PublishDialog({ doc, onClose, api, onToast }: PublishDia
         finally { setBusy(null); }
     };
 
+    /**
+     * One doc = one short link, by key. Keys are capped at 64 chars by the shortener; a slug of 61+ chars
+     * would overflow, and plain truncation could make two docs share (and silently re-aim) one link —
+     * long slugs get a hash suffix instead.
+     */
+    const docShortKey = (slug: string): string => {
+        const full = `doc-${slug}`;
+        if (full.length <= 64) return full;
+        let h = 5381; for (const ch of slug) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+        return `doc-${slug.slice(0, 51)}-${h.toString(16).padStart(8, '0')}`;
+    };
+    const makeShort = async () => {
+        if (!pub) return;
+        const s = pub.slug;
+        setShortState({ slug: s, busy: true });
+        const r = await bulkCreateShortLinks([{ url, key: docShortKey(s), title: doc.title }]);
+        const link = r.kind === 'ok' ? r.data[0]?.shortLink : undefined;
+        setShortState({ slug: s, link, msg: link ? undefined : r.kind === 'needs-setup' ? 'Short links are not available on this backend yet' : r.kind === 'error' ? r.message : 'No short link returned' });
+    };
+
     return (
         <div className="scribe-idocs-ed__sheet-backdrop" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div className="scribe-idocs-ed__sheet scribe-idocs-pub" role="dialog" aria-label="Publish" data-testid="idoc-publish">
@@ -69,6 +95,21 @@ export default function PublishDialog({ doc, onClose, api, onToast }: PublishDia
                                 <a className="scribe-idocs__btn" href={url} target="_blank" rel="noopener noreferrer">Open</a>
                                 <a className="scribe-idocs__btn" href={linkedInShareUrl(url)} target="_blank" rel="noopener noreferrer">Share on LinkedIn</a>
                             </div>
+                        </div>
+                        <div className="scribe-idocs__field"><span>Short link + QR</span>
+                            <div className="scribe-idocs__row">
+                                {short?.link ? (
+                                    <>
+                                        <code className="scribe-idocs-pub__code" data-testid="idoc-short-url">{short.link}</code>
+                                        <button type="button" className="scribe-idocs__btn" onClick={() => void copy(short.link!, onToast, 'Short link copied')}>Copy short link</button>
+                                        {qr && <img src={qr} width={120} height={120} alt={`QR code for ${short.link}`} />}
+                                        {qr && <a className="scribe-idocs__btn" href={qr} download={`doc-${pub.slug}.svg`}>Download SVG</a>}
+                                    </>
+                                ) : (
+                                    <button type="button" className="scribe-idocs__btn" aria-label="Make short link" disabled={short?.busy} onClick={() => void makeShort()}>{short?.busy ? 'Making…' : 'Make short link'}</button>
+                                )}
+                            </div>
+                            {short?.msg && <small className="scribe-idocs__warn" role="alert">{short.msg}</small>}
                         </div>
                         <div className="scribe-idocs__field"><span>Embed code</span>
                             <code className="scribe-idocs-pub__code" data-testid="idoc-embed-code">{embedCodeFor(pub.slug)}</code>

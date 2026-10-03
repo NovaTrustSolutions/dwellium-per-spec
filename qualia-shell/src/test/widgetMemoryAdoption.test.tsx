@@ -38,7 +38,8 @@ describe('ShortLinks', () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonRes({ success: true, data: [] })));
         patchWidgetMemory('short-links', { mode: 'sheet' });
         const { default: ShortLinks } = await import('../components/ShortLinks/ShortLinks');
-        render(<ShortLinks />);
+        const { default: QueryProvider } = await import('../providers/QueryProvider'); // plan 077 p4: the widget reads Strata through react-query, as in the app
+        render(<QueryProvider><ShortLinks /></QueryProvider>);
         await waitFor(() => expect(screen.getByRole('button', { name: 'Back to links' })).toBeInTheDocument());
         fireEvent.click(screen.getByRole('button', { name: 'Back to links' }));
         expect(readWidgetMemory('short-links', { mode: 'links' }).mode).toBe('links');

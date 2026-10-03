@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-10-03T02:46:44.099Z",
+  "ranAt": "2026-10-03T03:17:46.716Z",
   "results": [
     {
       "name": "list renders both links",
@@ -185,6 +185,21 @@
       "name": "phase 3: Archive moves keyboard focus to Confirm",
       "pass": true,
       "detail": "Confirm archive"
+    },
+    {
+      "name": "phase 4: deep link opens the door sheet on the requested property with the requested unit",
+      "pass": true,
+      "detail": "Riverwood Club Apartments / H12"
+    },
+    {
+      "name": "phase 4: roster label states the source honestly (no Strata here → fallback)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "phase 4: a property the widget does not know becomes a transient entry",
+      "pass": true,
+      "detail": "Cedar Ridge Villas"
     },
     {
       "name": "door sheet offers no \"Mint short links\" in built-in mode",

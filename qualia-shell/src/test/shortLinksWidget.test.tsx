@@ -21,11 +21,22 @@
  * a 409 on a preset says the key may be archived.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Plan 077 phase 4: the widget reads properties/units through the Strata query hooks. Default = no Strata data,
+// so every test below that does not touch `live` runs on the hardcoded Andy fallback.
+const live = vi.hoisted(() => ({ properties: [] as Array<{ id: string; name: string }>, units: {} as Record<string, Array<{ unitNumber: string }>> }));
+vi.mock('../components/StrataDashboard/useStrataQueries', () => ({
+    useProperties: () => ({ data: live.properties, isLoading: false, isError: false }),
+    useUnits: (id?: string) => ({ data: id ? live.units[id] : undefined }),
+}));
 import { patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ShortLinks, { isoToLocalInput } from '../components/ShortLinks/ShortLinks';
 import { doorSheetHtml, printDoorSheet, unitUrl } from '../components/ShortLinks/QrDoorSheet';
 import { qrSvg } from '../components/Scribe/idocs/blocks/qr';
+import { propertyTag } from '../components/ShortLinks/linkProperties';
+import { DOOR_SHEET_EVENT, type DoorSheetRequest } from '../components/ShortLinks/doorSheetLink';
+import { setPendingDeepLink, takePendingDeepLink } from '../lib/pendingDeepLink';
 import { ANDY_PROPERTIES, presetKey, unitKey, ANDY_LINK_PRESETS, type DestinationsMemory } from '../components/ShortLinks/andyLinkPresets';
 import {
     archiveShortLink,
@@ -174,6 +185,8 @@ const onOpen = (e: Event) => opened.push(String((e as CustomEvent<{ widgetId: st
 
 beforeEach(() => {
     resetWidgetMemory(); // plan 055 phase 2 — v2.72.1 standing convention
+    live.properties = [];
+    live.units = {};
     localStorage.clear();
     opened.length = 0;
     window.addEventListener('dwellium:open-widget', onOpen);
@@ -1582,5 +1595,161 @@ describe('phase 3 review regressions', () => {
         await waitFor(() => expect(calls.filter(c => c.method === 'GET' && /\/api\/links(\?|$)/.test(c.url)).length).toBeGreaterThanOrEqual(2));
         await new Promise(r => setTimeout(r, 30));
         expect(document.activeElement).toBe(dest);
+    });
+});
+
+/** Plan 077 phase 4 — Strata-backed properties, roster seeding, door-sheet deep link. */
+describe('ShortLinks widget — Strata properties + door-sheet deep link (plan 077 p4)', () => {
+    const STRATA = [{ id: 'p-1', name: 'Oak Hollow Flats' }, { id: 'p-2', name: 'Maple Court' }];
+    const strata = (): void => {
+        live.properties = STRATA;
+        live.units = { 'p-1': [{ unitNumber: '10' }, { unitNumber: '2' }, { unitNumber: '1' }], 'p-2': [{ unitNumber: 'A1' }] };
+    };
+    const MAINT = (id: string): DestinationsMemory => ({ [id]: { maintenance: `https://forms.example.org/${id}?unit={unit}` } });
+    const units = (): string => (screen.getByLabelText('Units') as HTMLTextAreaElement).value;
+    const property = (): string => (screen.getByLabelText('Property') as HTMLSelectElement).value;
+    const mounted = async (opts: { sheet?: boolean } = {}) => {
+        const calls = stubBackend([], {}, { mode: 'builtin' });
+        const view = render(<ShortLinks />);
+        if (opts.sheet) await screen.findByLabelText('Property');
+        else await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        return { calls, ...view };
+    };
+    const fire = (detail: unknown): void => { act(() => { window.dispatchEvent(new CustomEvent(DOOR_SHEET_EVENT, { detail })); }); };
+    const sendPending = (req: DoorSheetRequest): void => setPendingDeepLink('short-links', JSON.stringify(req));
+    beforeEach(() => { takePendingDeepLink('short-links'); });
+
+    it('the preset picker and Destinations use Strata properties; memory is keyed by property id; keys use propertyTag', async () => {
+        strata();
+        const { calls } = await mounted();
+        const picker = screen.getByLabelText('Preset property') as HTMLSelectElement;
+        expect([...picker.options].map(o => o.text)).toEqual(['Oak Hollow Flats', 'Maple Court']);
+        expect(screen.getByText('Destinations — Oak Hollow Flats')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Resident portal destination'), { target: { value: 'https://portal.example.org/oak' } });
+        expect(readWidgetMemory('short-links', { destinations: {} }).destinations).toEqual({ 'p-1': { 'resident-portal': 'https://portal.example.org/oak' } });
+        fireEvent.click(screen.getByRole('button', { name: '+ Resident portal' }));
+        await waitFor(() => expect(calls.some(c => c.method === 'POST' && c.url.endsWith('/api/links'))).toBe(true));
+        expect(calls.find(c => c.method === 'POST' && c.url.endsWith('/api/links'))!.body).toMatchObject({ key: `${propertyTag('Oak Hollow Flats')}-portal`, url: 'https://portal.example.org/oak' });
+        fireEvent.change(picker, { target: { value: 'p-2' } });
+        expect(screen.getByText('Destinations — Maple Court')).toBeInTheDocument();
+        expect((screen.getByLabelText('Resident portal destination') as HTMLInputElement).value).toBe('');
+    });
+
+    it('the door sheet lists Strata properties, seeds units in natural order, and mints keys from propertyTag', async () => {
+        strata();
+        seedDestinations(MAINT('p-1'));
+        const { calls } = await mounted();
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        expect([...(screen.getByLabelText('Property') as HTMLSelectElement).options].map(o => o.text)).toEqual(['Oak Hollow Flats', 'Maple Court']);
+        expect(units()).toBe('1\n2\n10');
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        await screen.findByTestId('qr-door-sheet-print');
+        const sent = calls.find(c => c.url.includes('/api/links/bulk'))!.body as { links: Array<{ key: string; title: string }> };
+        expect(sent.links.map(l => l.key)).toEqual(['oak-hollow-flats-unit-1', 'oak-hollow-flats-unit-2', 'oak-hollow-flats-unit-10']);
+        expect(sent.links[0].title).toBe('Oak Hollow Flats unit 1');
+    });
+
+    it('the Units label says where the roster came from', async () => {
+        strata();
+        const first = await mounted({ sheet: false });
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        expect(screen.getByText('Units — one per line (from Strata)')).toBeInTheDocument();
+        first.unmount(); cleanup(); live.properties = [];
+        await mounted({ sheet: true });
+        expect(screen.getByText('Units — one per line (no Strata data — fallback roster)')).toBeInTheDocument();
+        expect(units()).toBe(ANDY_PROPERTIES[0].units.join('\n'));
+    });
+
+    it('the roster re-seeds when the units arrive and when the property changes', async () => {
+        live.properties = STRATA;
+        patchWidgetMemory('short-links', { mode: 'sheet' });
+        const { rerender } = await mounted({ sheet: true });
+        expect(units()).toBe(''); // p-1 units not loaded yet
+        live.units = { 'p-1': [{ unitNumber: '2' }, { unitNumber: '1' }], 'p-2': [{ unitNumber: 'A1' }] };
+        rerender(<ShortLinks />);
+        await waitFor(() => expect(units()).toBe('1\n2'));
+        fireEvent.change(screen.getByLabelText('Property'), { target: { value: 'p-2' } });
+        await waitFor(() => expect(units()).toBe('A1'));
+    });
+
+    it('units that arrive after the user edited the roster do not overwrite it', async () => {
+        live.properties = STRATA;
+        patchWidgetMemory('short-links', { mode: 'sheet' });
+        const { rerender } = await mounted({ sheet: true });
+        fireEvent.change(screen.getByLabelText('Units'), { target: { value: 'MY-1\nMY-2' } });
+        live.units = { 'p-1': [{ unitNumber: '1' }] };
+        rerender(<ShortLinks />);
+        await new Promise(r => setTimeout(r, 30));
+        expect(units()).toBe('MY-1\nMY-2');
+    });
+
+    it('a deep link left in the pending slot opens the sheet on that property with that roster', async () => {
+        strata();
+        patchWidgetMemory('short-links', { mode: 'links' });
+        sendPending({ propertyId: 'p-2', propertyName: 'Maple Court', units: ['A1'] });
+        await mounted({ sheet: true });
+        expect(property()).toBe('p-2');
+        expect(units()).toBe('A1');
+    });
+
+    it('a deep link without units seeds the whole roster of that property', async () => {
+        strata();
+        sendPending({ propertyId: 'p-1', propertyName: 'Oak Hollow Flats' });
+        await mounted({ sheet: true });
+        expect(property()).toBe('p-1');
+        await waitFor(() => expect(units()).toBe('1\n2\n10'));
+    });
+
+    it('the pending slot is one-shot: Back then reopening the sheet does not re-apply it', async () => {
+        strata();
+        sendPending({ propertyId: 'p-2', propertyName: 'Maple Court', units: ['A1'] });
+        await mounted({ sheet: true });
+        fireEvent.click(screen.getByRole('button', { name: 'Back to links' }));
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        expect(property()).toBe('p-1');
+        expect(units()).toBe('1\n2\n10');
+    });
+
+    it('a request over the live event switches a mounted widget to the sheet; a second one replaces the selection', async () => {
+        strata();
+        await mounted();
+        fire({ propertyId: 'p-2', propertyName: 'Maple Court', units: ['A1'] });
+        await screen.findByLabelText('Property');
+        expect(property()).toBe('p-2');
+        expect(units()).toBe('A1');
+        fireEvent.change(screen.getByLabelText('Units'), { target: { value: 'edited' } });
+        fire({ propertyId: 'p-1', propertyName: 'Oak Hollow Flats', units: ['7'] });
+        await waitFor(() => expect(property()).toBe('p-1'));
+        expect(units()).toBe('7');
+        fireEvent.change(screen.getByLabelText('Units'), { target: { value: 'edited again' } });
+        fire({ propertyId: 'p-1', propertyName: 'Oak Hollow Flats', units: ['7'] }); // identical request still applies
+        await waitFor(() => expect(units()).toBe('7'));
+    });
+
+    it('a request for a property the list does not know becomes a transient entry that still mints', async () => {
+        seedDestinations({});
+        const { calls } = await mounted(); // Andy fallback, no Strata
+        fire({ propertyId: 'strata-77', propertyName: 'Cedar Ridge Villas', units: ['7', '8'] });
+        await screen.findByLabelText('Property');
+        expect(property()).toBe('strata-77');
+        expect([...(screen.getByLabelText('Property') as HTMLSelectElement).options].map(o => o.text)).toEqual(['Cedar Ridge Villas', ...ANDY_PROPERTIES.map(p => p.name)]);
+        expect(units()).toBe('7\n8');
+        fireEvent.change(screen.getByLabelText('Destination pattern'), { target: { value: 'https://forms.example.org/m?u={unit}' } });
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        await screen.findByTestId('qr-door-sheet-print');
+        const sent = calls.find(c => c.url.includes('/api/links/bulk'))!.body as { links: Array<{ key: string }> };
+        expect(sent.links.map(l => l.key)).toEqual([`${propertyTag('Cedar Ridge Villas')}-unit-7`, `${propertyTag('Cedar Ridge Villas')}-unit-8`]);
+        expect(screen.getByText('Cedar Ridge Villas — unit QR codes')).toBeInTheDocument();
+    });
+
+    it('a malformed event is ignored', async () => {
+        strata();
+        await mounted();
+        fire({ propertyId: 5, propertyName: 'x' });
+        fire(undefined);
+        fire({ propertyId: 'p-1', propertyName: 'Oak', units: [1] });
+        await new Promise(r => setTimeout(r, 30));
+        expect(screen.queryByLabelText('Property')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'QR door sheet' })).toBeInTheDocument();
     });
 });

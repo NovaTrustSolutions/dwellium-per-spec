@@ -5,8 +5,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import PublishDialog from '../components/Scribe/idocs/PublishDialog';
+import { bulkCreateShortLinks } from '../components/ShortLinks/shortLinksApi';
 import { idocsStore, idocsUserIdHolder, replaceDoc } from '../components/Scribe/idocs/idocsStore';
 import { createEmptyDoc } from '../components/Scribe/idocs/idocTypes';
+
+vi.mock('../components/ShortLinks/shortLinksApi', () => ({ bulkCreateShortLinks: vi.fn() }));
+const bulk = vi.mocked(bulkCreateShortLinks);
 
 afterEach(cleanup);
 beforeEach(() => { localStorage.clear(); idocsStore.reset(); idocsUserIdHolder.current = 'me'; });
@@ -78,5 +82,87 @@ describe('PublishDialog', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Publish' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('Publish failed');
         expect(idocsStore.getSnapshot().docs[0].publication).toBeUndefined();
+    });
+
+    describe('Short link + QR', () => {
+        const SHORT = 'https://dwl.im/abc123';
+        const published = (slug = 'q3-owner-update') => createEmptyDoc({ id: 'd1', title: 'Q3 Owner Update', publication: { slug, url: `/p/${slug}`, publishedAt: '2026-08-19T00:00:00Z' } });
+        const open = (slug?: string) => render(<PublishDialog doc={published(slug)} onClose={() => {}} api={api().deps} onToast={toast} />);
+        const toast = vi.fn();
+        const writeText = vi.fn(async () => {});
+        beforeEach(() => {
+            bulk.mockReset(); toast.mockReset(); writeText.mockClear();
+            Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        });
+
+        it('is not offered before publishing', () => {
+            render(<PublishDialog doc={createEmptyDoc({ id: 'd1', title: 'Q3 Owner Update' })} onClose={() => {}} api={api().deps} />);
+            expect(screen.queryByRole('button', { name: 'Make short link' })).toBeNull();
+        });
+
+        it('upserts doc-<slug> for the public URL, then shows the short URL, copy, QR and SVG download', async () => {
+            let release!: () => void;
+            bulk.mockImplementation(() => new Promise((res) => { release = () => res({ kind: 'ok', data: [{ shortLink: SHORT }] } as never); }));
+            open();
+            fireEvent.click(screen.getByRole('button', { name: 'Make short link' }));
+            expect(bulk).toHaveBeenCalledWith([{ url: `${window.location.origin}/p/q3-owner-update`, key: 'doc-q3-owner-update', title: 'Q3 Owner Update' }]);
+            expect(bulk.mock.calls[0][0]).toHaveLength(1);
+            expect(screen.getByRole('button', { name: 'Make short link' })).toHaveTextContent('Making…');
+            release();
+            expect(await screen.findByTestId('idoc-short-url')).toHaveTextContent(SHORT);
+            expect(screen.queryByRole('button', { name: 'Make short link' })).toBeNull();
+            fireEvent.click(screen.getByRole('button', { name: 'Copy short link' }));
+            await waitFor(() => expect(writeText).toHaveBeenCalledWith(SHORT));
+            expect(toast).toHaveBeenCalledWith('Short link copied');
+            expect(screen.getByAltText(`QR code for ${SHORT}`).getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
+            expect(screen.getByRole('link', { name: 'Download SVG' })).toHaveAttribute('download', 'doc-q3-owner-update.svg');
+        });
+
+        it('needs-setup → explains the backend lacks short links, button stays', async () => {
+            bulk.mockResolvedValue({ kind: 'needs-setup' });
+            open();
+            fireEvent.click(screen.getByRole('button', { name: 'Make short link' }));
+            expect(await screen.findByText('Short links are not available on this backend yet')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Make short link' })).toBeEnabled();
+        });
+
+        it('error → shows the backend message', async () => {
+            bulk.mockResolvedValue({ kind: 'error', message: 'Key already taken' });
+            open();
+            fireEvent.click(screen.getByRole('button', { name: 'Make short link' }));
+            expect(await screen.findByText('Key already taken')).toBeInTheDocument();
+        });
+
+        it('a different slug (re-publish) resets the short-link state', async () => {
+            bulk.mockResolvedValue({ kind: 'ok', data: [{ shortLink: SHORT }] } as never);
+            const { rerender } = open();
+            fireEvent.click(screen.getByRole('button', { name: 'Make short link' }));
+            await screen.findByTestId('idoc-short-url');
+            rerender(<PublishDialog doc={published('new-slug')} onClose={() => {}} api={api().deps} />);
+            expect(screen.queryByTestId('idoc-short-url')).toBeNull();
+            expect(screen.getByRole('button', { name: 'Make short link' })).toBeInTheDocument();
+        });
+    });
+});
+
+describe('PublishDialog short-link key', () => {
+    it('a 64-char slug gets a hashed key that fits the 64-char limit and differs per slug (no silent re-aim)', async () => {
+        const { bulkCreateShortLinks } = await import('../components/ShortLinks/shortLinksApi');
+        const bulk = bulkCreateShortLinks as unknown as ReturnType<typeof vi.fn>;
+        bulk.mockResolvedValue({ kind: 'ok', data: [{ shortLink: 'https://x/l/k', key: 'k' }] });
+        const keys: string[] = [];
+        for (const slug of ['a'.repeat(64), 'a'.repeat(63) + 'b']) {
+            cleanup();
+            const doc = createEmptyDoc({ id: 'd-' + slug.length + slug.slice(-1), title: 'Long', publication: { slug, url: `/p/${slug}`, publishedAt: '2026-08-19T00:00:00Z' } });
+            replaceDoc(doc);
+            render(<PublishDialog doc={doc} onClose={() => {}} api={api().deps} />);
+            fireEvent.click(await screen.findByRole('button', { name: 'Make short link' }));
+            await waitFor(() => expect(bulk).toHaveBeenCalled());
+            keys.push((bulk.mock.calls[bulk.mock.calls.length - 1][0] as Array<{ key: string }>)[0].key);
+            bulk.mockClear();
+        }
+        expect(keys[0]).toMatch(/^doc-a{51}-[0-9a-f]{8}$/);
+        expect(keys[0].length).toBeLessThanOrEqual(64);
+        expect(keys[1]).not.toBe(keys[0]);
     });
 });

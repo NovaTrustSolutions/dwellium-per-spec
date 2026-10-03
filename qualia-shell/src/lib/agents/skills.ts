@@ -561,7 +561,7 @@ const knowledgeGraphSkill: AgentSkill = {
             });
             const json = await res.json();
             if (!json?.success) {
-                return { ok: false, text: json?.error ?? 'Knowledge graph unavailable — try a rebuild in the Knowledge Graph widget.', via: 'knowledge-graph' };
+                return { ok: false, text: json?.error ?? 'Knowledge graph unavailable — open Knowledge Graph → My knowledge and press Rebuild.', via: 'knowledge-graph' };
             }
             const answer = String(json.data?.answer ?? '').trim();
             return {

@@ -14,14 +14,13 @@ export interface KgAgent {
     name: string;
     god: string;
     color: string;
-    online: boolean;
 }
 
 // The user's agents, represented as gods (matches the reference's AGENTS rail).
 export const KG_AGENTS: KgAgent[] = [
-    { id: 'hermes', name: 'Hermes', god: 'Messenger', color: '#e7c879', online: true },
-    { id: 'ara', name: 'ARA', god: 'Athena', color: '#4d8aff', online: true },
-    { id: 'stella', name: 'Stella', god: 'Hestia', color: '#ff5a8a', online: true },
-    { id: 'hydra', name: 'Hydra', god: 'Hydra', color: '#a855f7', online: false },
-    { id: 'honcho', name: 'Honcho', god: 'Mnemosyne', color: '#34d399', online: false },
+    { id: 'hermes', name: 'Hermes', god: 'Messenger', color: '#e7c879' },
+    { id: 'ara', name: 'ARA', god: 'Athena', color: '#4d8aff' },
+    { id: 'stella', name: 'Stella', god: 'Hestia', color: '#ff5a8a' },
+    { id: 'hydra', name: 'Hydra', god: 'Hydra', color: '#a855f7' },
+    { id: 'honcho', name: 'Honcho', god: 'Mnemosyne', color: '#34d399' },
 ];

@@ -22,7 +22,14 @@ export interface KgGraphData {
     nodes: { label: string; cluster: number; importance: number; deg: number }[];
     links: [number, number][];
     builtAt: string;
+    /** Absent = 'static-import-graph' (public/data/kg/*.json). 'github-tree' links are synthesized directory hubs. */
+    source?: 'static-import-graph' | 'github-tree';
+    /** Files in the repo before the render cap (nodes.length is what is drawn). */
+    totalFiles?: number;
 }
+
+/** 'knowledge' = the user's own graphify graph (GraphifyView); 'repos' = the code-repo tabs. */
+export type KgView = 'knowledge' | 'repos';
 
 export interface HalocronKnowledgeGraphState {
     /** User-added graph tabs. Shipped defaults stay in DEFAULT_KG_PROJECTS. */
@@ -31,6 +38,8 @@ export interface HalocronKnowledgeGraphState {
     activeId: string;
     /** Generated graph payloads for user-added repos, keyed by project id. */
     graphs: Record<string, KgGraphData>;
+    /** Which view the widget shows. Defaults to the user's own graph. */
+    view: KgView;
 }
 
 // files/clusters are REAL counts from the static import-graph build
@@ -49,11 +58,14 @@ export const DEFAULT_KG_STATE: HalocronKnowledgeGraphState = {
     extras: [],
     activeId: DEFAULT_KG_PROJECTS[0].id,
     graphs: {},
+    view: 'knowledge',
 };
 
 const LEGACY_PROJECTS_KEY = 'dwellium:kg-projects';
 const LEGACY_ACTIVE_KEY = 'dwellium:kg-active-project';
 const LEGACY_GDATA_PREFIX = 'dwellium:kg-gdata:';
+/** Set once the device-wide legacy keys have been adopted by one account (plan 072 E2). */
+const LEGACY_MIGRATED_KEY = 'dwellium:kg-legacy-migrated';
 
 function resolveKey(): string {
     const uid = halocronKnowledgeGraphUserIdHolder.current;
@@ -121,12 +133,23 @@ function normalize(raw: unknown): HalocronKnowledgeGraphState {
         extras,
         activeId,
         graphs: normalizeGraphs(parsed.graphs),
+        view: parsed.view === 'repos' ? 'repos' : 'knowledge',
     };
 }
 
+/**
+ * One-time adoption of the pre-per-user, device-wide keys. Only the FIRST signed-in
+ * account to load on this device inherits them (they were that person's tabs); a
+ * flag then stops every later new account from inheriting — and One Save migrate()
+ * uploading — someone else's tabs (plan 072 E2). The adopted copy is written to that
+ * account's own key; the device-wide keys are left in place (never deleted).
+ */
 function legacyState(): HalocronKnowledgeGraphState {
     if (typeof window === 'undefined') return { ...DEFAULT_KG_STATE, graphs: {} };
+    // Signed-out reads (the _anonymous namespace) must never claim the legacy tabs.
+    if (!halocronKnowledgeGraphUserIdHolder.current) return { ...DEFAULT_KG_STATE, graphs: {} };
     try {
+        if (window.localStorage.getItem(LEGACY_MIGRATED_KEY)) return { ...DEFAULT_KG_STATE, graphs: {} };
         const projectRaw = window.localStorage.getItem(LEGACY_PROJECTS_KEY);
         const activeRaw = window.localStorage.getItem(LEGACY_ACTIVE_KEY);
         const parsedProjects = projectRaw ? JSON.parse(projectRaw) : [];
@@ -142,7 +165,16 @@ function legacyState(): HalocronKnowledgeGraphState {
                 if (isGraphData(graph)) graphs[project.id] = graph;
             } catch { /* corrupt legacy graph cache */ }
         }
-        return normalize({ extras, activeId: activeRaw || DEFAULT_KG_STATE.activeId, graphs });
+        const adopted = normalize({ extras, activeId: activeRaw || DEFAULT_KG_STATE.activeId, graphs });
+        if (projectRaw) {
+            // Flag only AFTER a successful parse (a corrupt blob stays adoptable), and keep
+            // the device-wide keys: a One Save hydrate can still replace this adoption with
+            // the account's existing remote record (remote wins, as before), and the device
+            // copy is then the only way back. The flag alone stops the cross-account leak.
+            window.localStorage.setItem(resolveKey(), JSON.stringify(adopted));
+            window.localStorage.setItem(LEGACY_MIGRATED_KEY, new Date().toISOString());
+        }
+        return adopted;
     } catch {
         return { ...DEFAULT_KG_STATE, graphs: {} };
     }
@@ -186,6 +218,27 @@ export function setKgActiveProject(activeId: string): void {
     saveHalocronKnowledgeGraphState({ ...current, activeId });
 }
 
+export function setKgView(view: KgView): void {
+    const current = halocronKnowledgeGraphStore.getSnapshot();
+    if (current.view === view) return;
+    saveHalocronKnowledgeGraphState({ ...current, view });
+}
+
+/** Remove a user-added repo tab and its stored graph. Shipped default tabs are not removable. */
+export function removeKgProject(id: string): void {
+    if (defaultIds().has(id)) return;
+    const current = halocronKnowledgeGraphStore.getSnapshot();
+    if (!current.extras.some((p) => p.id === id) && !(id in current.graphs)) return;
+    const graphs = { ...current.graphs };
+    delete graphs[id];
+    saveHalocronKnowledgeGraphState({
+        ...current,
+        extras: current.extras.filter((p) => p.id !== id),
+        graphs,
+        activeId: current.activeId === id ? DEFAULT_KG_STATE.activeId : current.activeId,
+    });
+}
+
 export function upsertKgProject(project: KgProject, graph?: KgGraphData): void {
     const current = halocronKnowledgeGraphStore.getSnapshot();
     const normalizedProject = normalizeProject(project);
@@ -193,6 +246,7 @@ export function upsertKgProject(project: KgProject, graph?: KgGraphData): void {
         ? current.extras.map((item) => item.id === normalizedProject.id ? normalizedProject : item)
         : [...current.extras, normalizedProject];
     saveHalocronKnowledgeGraphState({
+        ...current,
         extras,
         activeId: normalizedProject.id,
         graphs: graph ? { ...current.graphs, [normalizedProject.id]: graph } : current.graphs,

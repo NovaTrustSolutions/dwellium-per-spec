@@ -40,6 +40,7 @@ import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
 import { classifyForEscalation, looksLikeActionRequest, runAraEscalation } from './araEscalation';
 import { recallContext, withRecall } from '../../lib/memoryGraphRag/recall';
+import { setKgView } from '../../lib/halocronKnowledgeGraphStore';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -1610,6 +1611,7 @@ export default function ARAConsole() {
     // windows (others minimize), then the tile bus grids them side by side.
     const openKnowledgeGraphSplit = useCallback(() => {
         try {
+            setKgView('knowledge');
             window.dispatchEvent(new CustomEvent('dwellium:apply-space', { detail: { widgets: ['ara-console', 'knowledge-graph'] } }));
             window.setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('dwellium:tile', { detail: { components: ['ara-console', 'knowledge-graph'] } }));

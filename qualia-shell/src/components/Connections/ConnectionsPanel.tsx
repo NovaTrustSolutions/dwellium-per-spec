@@ -27,6 +27,7 @@ import { goalsStore, liveGoals } from '../../lib/goalsStore';
 import { artifactStore } from '../../lib/artifactStore';
 import { tagStore } from '../../lib/tagStore';
 import { morningBriefStore } from '../../lib/morningBriefStore';
+import { setKgView } from '../../lib/halocronKnowledgeGraphStore';
 import './ConnectionsPanel.css';
 
 type Chip = 'on' | 'off' | 'partial';
@@ -98,6 +99,7 @@ export default function ConnectionsPanel() {
 
     const openTarget = useCallback((widget?: string) => {
         if (!widget) return;
+        if (widget === 'knowledge-graph') setKgView('knowledge'); // land on the user's own graph
         try { openWindow(widget, widget, 'settings'); } catch { /* ignore */ }
     }, [openWindow]);
 

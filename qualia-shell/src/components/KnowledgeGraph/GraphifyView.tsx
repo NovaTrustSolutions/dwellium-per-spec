@@ -34,6 +34,25 @@ const MODE_LABELS: Record<QueryMode, string> = {
     query: 'Ask', explain: 'Explain', affected: 'Affected by', path: 'Path A→B',
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function ageInDays(builtAt: string): number {
+    return Math.floor((Date.now() - new Date(builtAt).getTime()) / DAY_MS);
+}
+
+function ageLabel(days: number): string {
+    if (days <= 0) return 'today';
+    if (days === 1) return '1 day ago';
+    return `${days} days ago`;
+}
+
+function builtAtLabel(builtAt: string): string {
+    const days = ageInDays(builtAt);
+    if (Number.isNaN(days)) return '';
+    const dateStr = new Date(builtAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    return `built ${dateStr} (${ageLabel(days)})`;
+}
+
 async function kgFetch(path: string, init?: RequestInit): Promise<Response> {
     return fetch(`${API_BASE}/api/knowledge-graph${path}`, {
         ...init,
@@ -53,14 +72,24 @@ export default function GraphifyView() {
     const [answer, setAnswer] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [statusError, setStatusError] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const loadStatus = useCallback(async (): Promise<KgStatus | null> => {
         try {
             const res = await kgFetch('/status');
             const json = await res.json();
-            if (json?.success) { setStatus(json.data); return json.data as KgStatus; }
-        } catch { /* backend down — global banner handles messaging */ }
+            if (json?.success) {
+                setStatusError(false);
+                setStatus(json.data);
+                return json.data as KgStatus;
+            }
+            setStatusError(true);
+        } catch {
+            // backend down — global banner handles the broader messaging; we
+            // still surface a local line so "Not built yet" doesn't mislead.
+            setStatusError(true);
+        }
         return null;
     }, []);
 
@@ -71,9 +100,15 @@ export default function GraphifyView() {
         } catch { /* not built yet */ }
     }, []);
 
+    // Set on every mount (StrictMode re-runs the effect), cleared on unmount.
+    const aliveRef = useRef(false);
     useEffect(() => {
+        aliveRef.current = true;
         void loadStatus().then(s => { if (s?.built) void loadViewer(); });
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+        return () => {
+            aliveRef.current = false;
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        };
     }, [loadStatus, loadViewer]);
 
     const rebuild = useCallback(async () => {
@@ -83,6 +118,9 @@ export default function GraphifyView() {
             const res = await kgFetch('/rebuild', { method: 'POST' });
             const json = await res.json();
             if (!json?.success) throw new Error(json?.error ?? 'rebuild failed');
+            // Unmounted while the POST was in flight (account switch / closed) — the
+            // cleanup already ran, so an interval started now would never be cleared.
+            if (!aliveRef.current) return;
             pollRef.current = setInterval(async () => {
                 const s = await loadStatus();
                 if (s && !s.building) {
@@ -120,20 +158,33 @@ export default function GraphifyView() {
     }, [query, queryB, mode, busy]);
 
     const isBuilding = building || !!status?.building;
+    const ageDays = status?.builtAt ? ageInDays(status.builtAt) : null;
+    const isStale = !!(status?.built && !isBuilding && ageDays !== null && ageDays > 7);
 
     return (
         <div className="gfy">
             <div className="gfy__bar">
                 <div className="gfy__stats">
                     {status?.built
-                        ? <>{status.nodes} nodes · {status.edges} edges · {status.corpusFiles} sources{status.builtAt ? ` · built ${new Date(status.builtAt).toLocaleTimeString()}` : ''}</>
-                        : 'Not built yet'}
+                        ? <>{status.nodes} nodes · {status.edges} edges · {status.corpusFiles} sources{status.builtAt && builtAtLabel(status.builtAt) ? ` · ${builtAtLabel(status.builtAt)}` : ''}</>
+                        : statusError ? "Couldn't reach the knowledge-graph service." : 'Not built yet'}
                 </div>
-                <button className="gfy__btn" onClick={() => void rebuild()} disabled={isBuilding} title="Re-export memories/captures/notes/tasks and rebuild the graph">
+                <button
+                    className={`gfy__btn${isStale ? ' gfy__btn--primary' : ''}`}
+                    onClick={() => void rebuild()}
+                    disabled={isBuilding}
+                    title="Re-export your memories, captures, notes and tasks into a private corpus and rebuild the graph (does not change your data)"
+                >
                     <RefreshCw size={13} className={isBuilding ? 'gfy__spin' : undefined} aria-hidden />
                     {isBuilding ? 'Building…' : 'Rebuild'}
                 </button>
             </div>
+
+            {isStale && ageDays !== null && (
+                <div className="gfy__notice" role="status">
+                    Your graph is {ageDays} days old — Rebuild to include what you've added since.
+                </div>
+            )}
 
             <div className="gfy__queryrow">
                 <select className="gfy__mode" value={mode} onChange={e => setMode(e.target.value as QueryMode)} aria-label="Query mode">

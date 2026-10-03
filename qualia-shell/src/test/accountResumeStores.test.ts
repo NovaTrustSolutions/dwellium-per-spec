@@ -60,6 +60,7 @@ describe('account resume stores', () => {
             splitLayout: 'quad',
         };
         const graphPayload: HalocronKnowledgeGraphState = {
+            view: 'repos',
             extras: [{
                 id: 'gh-dwellium-private',
                 name: 'Dwellium Private',
@@ -156,6 +157,7 @@ describe('account resume stores', () => {
         vi.mocked(oneSaveClient.get).mockImplementation(async (id: string) => {
             if (id === `${'halocron-knowledge-graph'}_${USER}`) {
                 return object<HalocronKnowledgeGraphState>(id, 'halocron-knowledge-graph', {
+                    view: 'knowledge',
                     extras: [{
                         id: 'gh-client-project',
                         name: 'Client Project',

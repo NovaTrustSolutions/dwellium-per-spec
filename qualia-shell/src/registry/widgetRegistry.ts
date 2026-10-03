@@ -159,8 +159,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'knowledge-graph': {
         id: 'knowledge-graph',
         label: 'Knowledge Graph',
-        description: 'Interactive map of how your files, projects and agents connect.',
-        tip: { tryThis: 'Click a node to see what it connects to.', related: ['memory-graph-rag', 'workspace'] },
+        description: 'A map of your own knowledge — memories, captures, notes and tasks — plus code repos you add.',
+        tip: { tryThis: 'Open My knowledge, press Rebuild, then ask the graph a question.', related: ['memory-graph-rag', 'workspace'] },
         icon: 'network',
         component: lazyWithReload(() => import('../components/Shell/HalocronKnowledgeGraph')),
         minWidth: 760,

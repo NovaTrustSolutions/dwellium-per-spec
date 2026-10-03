@@ -14,11 +14,11 @@
     align-items: center;
     gap: 10px;
     padding: 8px 14px;
-    border-bottom: 1px solid var(--border-color, #222);
+    border-bottom: 1px solid var(--border-default);
     flex-shrink: 0;
 }
 
-.gfy__stats { flex: 1; font-size: 11px; color: var(--text-tertiary, #808080); }
+.gfy__stats { flex: 1; font-size: 11px; color: var(--text-tertiary); }
 
 .gfy__btn {
     display: inline-flex;
@@ -26,7 +26,7 @@
     gap: 6px;
     padding: 5px 10px;
     border-radius: 7px;
-    border: 1px solid var(--border-color, #333);
+    border: 1px solid var(--border-default);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
@@ -37,21 +37,37 @@
 .gfy__btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text-primary); }
 .gfy__btn:disabled { opacity: 0.5; cursor: default; }
 
+.gfy__btn--primary {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+    color: var(--accent-text);
+}
+.gfy__btn--primary:hover:not(:disabled) { background: var(--accent); color: var(--bg-surface); }
+
 .gfy__spin { animation: gfy-rotate 1s linear infinite; }
 @keyframes gfy-rotate { to { transform: rotate(360deg); } }
+
+.gfy__notice {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--accent-subtle);
+    border-bottom: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
 
 .gfy__queryrow {
     display: flex;
     gap: 6px;
     padding: 8px 14px;
-    border-bottom: 1px solid var(--border-color, #1c1c1c);
+    border-bottom: 1px solid var(--border-default);
     flex-shrink: 0;
 }
 
 .gfy__mode {
-    background: var(--bg-desktop, #0c0c0c);
+    background: var(--bg-surface);
     color: var(--text-secondary);
-    border: 1px solid var(--border-color, #333);
+    border: 1px solid var(--border-default);
     border-radius: 7px;
     padding: 4px 6px;
     font-size: 11px;
@@ -63,16 +79,16 @@
     min-width: 80px;
     padding: 6px 10px;
     border-radius: 7px;
-    border: 1px solid var(--border-color, #333);
-    background: var(--surface-2, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border-default);
+    background: var(--bg-surface);
     color: var(--text-primary);
     font: inherit;
     font-size: 12px;
 }
 
-.gfy__error { padding: 8px 14px; color: #ff7a93; font-size: 12px; flex-shrink: 0; }
+.gfy__error { padding: 8px 14px; color: var(--danger); font-size: 12px; flex-shrink: 0; }
 
-.gfy__answer-wrap { position: relative; flex-shrink: 0; max-height: 180px; overflow: auto; border-bottom: 1px solid var(--border-color, #1c1c1c); }
+.gfy__answer-wrap { position: relative; flex-shrink: 0; max-height: 180px; overflow: auto; border-bottom: 1px solid var(--border-default); }
 
 .gfy__answer {
     margin: 0;

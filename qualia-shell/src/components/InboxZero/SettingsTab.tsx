@@ -43,6 +43,14 @@ const THEME_PALETTES: { id: Theme; name: string; mood: string; colors: string[] 
     { id: 'dark-excellence', name: 'Dark Excellence', mood: 'True black, 15:1 contrast', colors: ['#0A0A0A', '#1A1A1A', '#3B82F6', '#FFFFFF'] },
 ];
 
+/** Trello credentials live only on the backend (env / Secret Manager) — never send them back. */
+function withoutTrelloCredentials(s: AgentSettings): Partial<AgentSettings> {
+    const out: Partial<AgentSettings> = { ...s };
+    delete out.trelloApiKey;
+    delete out.trelloToken;
+    return out;
+}
+
 export default function SettingsTab() {
     const { theme: currentTheme, setTheme, fontPairing: currentFont, setFontPairing, animationsEnabled, setAnimationsEnabled } = useTheme();
     const queryClient = useQueryClient();
@@ -155,7 +163,7 @@ export default function SettingsTab() {
             const res = await authFetch(`${API_BASE}/api/settings`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings),
+                body: JSON.stringify(withoutTrelloCredentials(settings)),
             });
             const data = await res.json();
             if (data.success) {
@@ -651,7 +659,8 @@ export default function SettingsTab() {
                         </div>
                     </div>
 
-                    {/* Trello */}
+                    {/* Trello — god only (PUT /api/settings is god-only; GET omits these fields for others) */}
+                    {isGod && (
                     <div className="iz-settings__section">
                         <h3 className="iz-settings__section-title"><ClipboardList size={16} aria-hidden /> Trello Integration</h3>
                         <div className="iz-settings__group">
@@ -672,26 +681,6 @@ export default function SettingsTab() {
                                 </button>
                             </label>
                             <label className="iz-settings__label">
-                                <span className="iz-settings__name">Trello API Key</span>
-                                <input
-                                    type="password"
-                                    className="iz-settings__input"
-                                    value={settings.trelloApiKey}
-                                    onChange={e => updateSetting('trelloApiKey', e.target.value)}
-                                    placeholder="API key"
-                                />
-                            </label>
-                            <label className="iz-settings__label">
-                                <span className="iz-settings__name">Trello Token</span>
-                                <input
-                                    type="password"
-                                    className="iz-settings__input"
-                                    value={settings.trelloToken}
-                                    onChange={e => updateSetting('trelloToken', e.target.value)}
-                                    placeholder="Token"
-                                />
-                            </label>
-                            <label className="iz-settings__label">
                                 <span className="iz-settings__name">Board ID</span>
                                 <input
                                     type="text"
@@ -710,8 +699,10 @@ export default function SettingsTab() {
                                     onChange={e => updateSetting('trelloListId', e.target.value)}
                                 />
                             </label>
+                            <span className="iz-settings__hint">The Trello API key and token are set on the backend (Secret Manager in production), not here.</span>
                         </div>
                     </div>
+                    )}
 
                     {/* Google Drive & Sharing */}
                     <div className="iz-settings__section">

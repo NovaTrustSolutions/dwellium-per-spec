@@ -211,8 +211,9 @@ const AUTOMATIONS_SEED: Automation[] = [
     }),
     seedAutomation({
         id: 'auto-4', name: 'Construction Watchdog', description: 'Forward invoices to Trello → OCR scan → push to Sheets → flag missing Lien Waivers.', category: 'software', icon: 'construction', setupTime: '3h', annualSaved: '52h', integrations: ['Trello', 'Docparser', 'Google Sheets'], schedule: { enabled: false, frequency: 'manual', time: '10:00' }, envVars: { TRELLO_BOARD_ID: '', SHEET_ID: '' }, tags: ['construction', 'compliance'], requiresApproval: true, owner: 'andy', setupGuide: [
-            'Go to your Trello board for construction projects. Copy the board ID from the URL.',
-            'Open Settings → Integrations and paste the board ID into TRELLO_BOARD_ID.',
+            'Go to your Trello board for construction projects and open the list that should receive the invoice cards. Copy the list ID.',
+            'Ask an administrator to set TRELLO_LIST_ID to that list ID on the backend (it is not set from this screen).',
+            'Heads up: each run posts a comment on real Trello cards, so use a test list first.',
             'Create a Google Sheet for tracking invoices. Copy the Sheet ID from its URL.',
             'Paste the Sheet ID into SHEET_ID in the Integrations tab.',
             'Forward any construction invoice email to your Trello board email address.',
@@ -247,9 +248,10 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-8', name: 'Trello Knowledge Vector Index', description: 'Crawl all Trello boards, lists, and cards → flatten card data (descriptions, checklists, comments, attachments) into text documents → generate OpenAI embeddings → store in SQLite vector database. Enables semantic search: ask "where is the gate code?" and it finds the exact card. Agents + ARA can query automatically.', category: 'software', icon: 'brain', setupTime: '30m', annualSaved: '104h', integrations: ['Trello', 'OpenAI', 'SQLite Vector DB'], schedule: { enabled: false, frequency: 'daily', time: '02:00' }, envVars: { TRELLO_API_KEY: '', TRELLO_TOKEN: '', OPENAI_API_KEY: '' }, tags: ['ai', 'vector-db', 'search', 'trello'], requiresApproval: false, owner: 'andy', setupGuide: [
-            'Make sure your Trello API key and token are set in the .env file on the backend.',
-            'Make sure your OpenAI API key is also set in the .env file.',
+        id: 'auto-8', name: 'Trello Knowledge Vector Index', description: 'Not available yet — this automation has no backend handler and is moving to the Wiki (plan 078 Phase 5). Planned: crawl Trello boards, lists, and cards → embed the text → enable semantic search ( "where is the gate code?" ).', category: 'software', icon: 'brain', setupTime: '30m', annualSaved: '104h', integrations: ['Trello', 'OpenAI', 'SQLite Vector DB'], schedule: { enabled: false, frequency: 'daily', time: '02:00' }, envVars: { TRELLO_API_KEY: '', TRELLO_TOKEN: '', OPENAI_API_KEY: '' }, tags: ['ai', 'vector-db', 'search', 'trello'], requiresApproval: false, owner: 'andy', setupGuide: [
+            'Not available yet: Launch and Schedule are disabled until this moves to the Wiki (plan 078 Phase 5).',
+            'Trello API key and token are set on the backend by an administrator (Secret Manager in production).',
+            'The OpenAI API key is set on the backend the same way.',
             'Click ▶ Launch to start indexing all your Trello boards.',
             'The system will crawl every board, every list, and every card automatically.',
             'Each card gets turned into searchable text (title, description, checklists, comments, labels).',
@@ -431,6 +433,10 @@ const AUTOMATIONS_SEED: Automation[] = [
 ];
 
 
+// auto-8 has no backend handler: its Launch/Schedule controls stay disabled.
+const UNAVAILABLE_IDS = new Set(['auto-8']);
+const UNAVAILABLE_TITLE = 'Not available yet — moving to the Wiki (plan 078 Phase 5)';
+
 // ============================================
 // STORAGE KEYS
 // ============================================
@@ -609,6 +615,18 @@ export default function AutomationHub() {
                         a.id === auto.id && a.status === 'draft' ? { ...a, status: 'active' } : a
                     ));
                 }
+            } else {
+                // No run came back (e.g. 400 { error }) — never fail silently.
+                const entry: AuditLogEntry = {
+                    id: `local-${Date.now()}`,
+                    automationId: auto.id,
+                    automationName: auto.name,
+                    timestamp: new Date().toISOString(),
+                    durationMs: 0,
+                    result: 'failure',
+                    summary: data.error || `Launch failed (HTTP ${res.status}).`,
+                };
+                setAuditLog(prev => [entry, ...prev].slice(0, 100));
             }
         } catch (err) {
             // Fallback: still log the attempt locally
@@ -809,7 +827,8 @@ export default function AutomationHub() {
                     <button
                         className={`ahub__btn ahub__btn--launch ${isRunning ? 'ahub__btn--disabled' : ''}`}
                         onClick={() => !isRunning && handleLaunch(auto)}
-                        disabled={isRunning}
+                        disabled={isRunning || UNAVAILABLE_IDS.has(auto.id)}
+                        title={UNAVAILABLE_IDS.has(auto.id) ? UNAVAILABLE_TITLE : undefined}
                     >
                         {isRunning ? (
                             <><span className="ahub__spinner" /> Running...</>
@@ -1017,6 +1036,8 @@ export default function AutomationHub() {
                                     <input
                                         type="checkbox"
                                         checked={auto.schedule.enabled}
+                                        disabled={UNAVAILABLE_IDS.has(auto.id)}
+                                        title={UNAVAILABLE_IDS.has(auto.id) ? UNAVAILABLE_TITLE : undefined}
                                         onChange={e => updateSchedule(auto.id, { enabled: e.target.checked })}
                                     />
                                     <span>Enable Schedule</span>

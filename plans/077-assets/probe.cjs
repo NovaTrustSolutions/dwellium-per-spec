@@ -40,15 +40,16 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     }
     // 1. Loads in built-in mode with the Dub-only controls absent.
     check('list renders both links', await has('text=https://dwellium.example/l/woodland-parc-maint'));
-    for (const [label, sel] of [
-        ['Domain select', '[aria-label="Domain"]'], ['Expires at', '[aria-label="Expires at"]'],
-        ['Filter by tag', '[aria-label="Filter by tag"]'], ['New tag name', '[aria-label="New tag name"]'],
-        ['Open in Dub', '[aria-label="Open in Dub"]'], ['Tags column', 'th:text-is("Tags")'],
-    ]) check(`built-in hides: ${label}`, !(await has(sel)));
+    for (const [label, sel] of [['Domain select', '[aria-label="Domain"]'], ['Open in Dub', '[aria-label="Open in Dub"]']]) {
+        check(`built-in hides Dub-only: ${label}`, !(await has(sel)));
+    }
+    // Phase 3: the fake backend lists expiry/tags/timeseries, so those controls are offered (old-backend.cjs covers the hidden case).
+    for (const [label, sel] of [['Expires at', '[aria-label="Expires at"]'], ['Filter by tag', '[aria-label="Filter by tag"]'], ['Tags column', 'th:text-is("Tags")']]) {
+        check(`built-in with features offers: ${label}`, await has(sel));
+    }
     check('UTM builder still offered', await has('summary:text-is("UTM builder")'));
     await page.waitForTimeout(400);
-    const stray = calls.filter(c => /\/api\/links\/(tags|domains|analytics)/.test(c.path));
-    check('no tags/domains/analytics requests', stray.length === 0, stray.map(c => c.path).join(', '));
+    check('no domains request in built-in mode (tags/analytics are feature-gated and allowed)', !calls.some(c => c.path.startsWith('/api/links/domains')));
     const lists0 = calls.filter(c => c.method === 'GET' && c.path === '/api/links').length;
     check('StrictMode double mount settles on a rendered list', lists0 >= 1 && await has('.short-links__table'), `list GETs: ${lists0}`);
     // Layout at the registry's 520 px minimum width.
@@ -74,7 +75,7 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     await page.fill('[aria-label="Destination URL"]', 'https://example.com/half-typed');
     await page.click('[aria-label="Edit https://dwellium.example/l/front-door"]');
     await page.fill('[aria-label="Edit destination URL"]', 'https://example.com/welcome-v2');
-    check('built-in edit form offers the URL only', !(await has('[aria-label="Edit key"]')) && !(await has('[aria-label="Edit expiry"]')));
+    check('built-in edit form offers URL + expiry + tags but never the key (Dub-only)', !(await has('[aria-label="Edit key"]')) && (await has('[aria-label="Edit expiry"]')));
     const saveR = await right('.short-links__edit button:text-is("Save")');
     check('layout: the edit form and its Save button sit inside the window', saveR <= 504, `Save right edge ${saveR}px of 504`);
     const editW = await width('.short-links__edit');
@@ -94,7 +95,7 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     check('preset click keeps the composer draft', (await page.inputValue('[aria-label="Destination URL"]')) === 'https://example.com/half-typed');
     check('preset click keeps the open edit and its typed value', (await has('[aria-label="Edit destination URL"]')) && (await page.inputValue('[aria-label="Edit destination URL"]')) === 'https://example.com/welcome-v2');
     const presetPost = calls.filter(c => c.method === 'POST').pop();
-    check('preset sends the STORED destination and no tagNames (built-in)', !('tagNames' in presetPost.body) && presetPost.body.url === 'https://pay.example.com/woodland', JSON.stringify(presetPost.body));
+    check('preset sends the STORED destination (tags allowed: the backend lists the feature)', presetPost.body.url === 'https://pay.example.com/woodland' && Array.isArray(presetPost.body.tagNames), JSON.stringify(presetPost.body));
 
     // 4. Save the edit: PATCH carries only {url}; editor closes; row shows the new destination.
     await page.click('.short-links__edit button:text-is("Save")');
@@ -129,14 +130,31 @@ const check = (name, pass, detail = '') => { results.push({ name, pass: !!pass, 
     check('archive is PATCH {archived:true}', JSON.stringify(arch.body) === '{"archived":true}', JSON.stringify(arch.body));
     check('no DELETE request was ever sent', !calls.some(c => c.method === 'DELETE'));
 
-    // 7. A bare 503 on refresh is the retryable error card, not the setup card; Retry recovers.
+    // 7. A bare 503 on a BACKGROUND refresh keeps the list and says so (phase 3); the next refresh recovers.
     state.failNextList = 1;
     await page.click('[aria-label="Refresh short links"]');
-    await page.locator('[data-state="error"]').waitFor();
-    check('bare 503 → "Backend unavailable" error card', (await has('[data-state="error"] h3:text-is("Backend unavailable")')) && !(await has('[data-state="needs-setup"]')));
-    await page.click('button:text-is("Retry")');
-    await page.locator('.short-links__table').waitFor();
-    check('Retry recovers the list', await has('text=https://dwellium.example/l/front-door'));
+    await page.locator('.short-links__notice[role="status"]', { hasText: 'Could not refresh' }).waitFor();
+    check('bare 503 on a background refresh keeps the list and shows a status notice', (await has('.short-links__table')) && !(await has('[data-state="error"]')));
+    await page.click('[aria-label="Refresh short links"]');
+    await page.waitForTimeout(200);
+    check('the next refresh recovers (no notice, list intact)', (await has('text=https://dwellium.example/l/front-door')));
+
+    // 7b. Phase 3 — expiry + tags are real in built-in mode now (backend lists features); sparkline draws; search filters.
+    check('phase 3: expiry input offered when the backend lists the feature', await has('[aria-label="Expires at"]'));
+    check('phase 3: tag filter offered when the backend lists the feature', await has('[aria-label="Filter by tag"]'));
+    check('phase 3: sparkline requested (timeseries feature) and drawn for a clicked link', (await has('.short-links__spark')) && calls.some(c => c.path.includes('/api/links/analytics')));
+    await page.fill('[aria-label="Search links"]', 'MAINT');
+    await page.waitForTimeout(100);
+    const rowsNow = await page.locator('td.short-links__short').allTextContents();
+    check('phase 3: search narrows the table (case-insensitive, matches the short link)', rowsNow.length === 1 && /woodland-parc-maint/.test(rowsNow[0]), rowsNow.join(' | '));
+    await page.fill('[aria-label="Search links"]', '');
+    check('phase 3: the status notice is a live region', await has('.short-links__notice[role="status"]'));
+    await page.click('[aria-label="Archive https://dwellium.example/l/front-door"]');
+    const focused = await page.evaluate(() => document.activeElement && document.activeElement.textContent);
+    check('phase 3: Archive moves keyboard focus to Confirm', /Confirm archive/.test(focused || ''), String(focused));
+    await page.click('[aria-label="Cancel archive"]');
+    await page.mouse.move(2, 600);
+    await shot('builtin-520-phase3.png');
 
     // 8. Door sheet: no Mint button in built-in mode.
     await page.click('[aria-label="QR door sheet"]');

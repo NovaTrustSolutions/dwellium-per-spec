@@ -11,6 +11,12 @@
  * authFetch shape as esignApi.ts; the Dub key never reaches the browser.
  * Built-in bulk is an upsert by key (re-minting re-aims already-printed codes).
  * Dub rows carry a hosted `qrCode` URL; built-in rows carry '' (client-side QR).
+ *
+ * Capabilities (plan 077 phase 3): the widget deploys separately from the backend, so it gates
+ * expiry / tags / sparkline on the LIST response's `features` array, not on the mode. Dub mode
+ * (no `mode` key) supports all three. Built-in mode supports exactly the recognised strings the
+ * backend lists; an OLDER built-in backend sends no `features` -> empty set -> the widget hides
+ * expiry, tags and the sparkline.
  */
 import { getAuthToken } from '../../context/UserContext';
 import { API_BASE } from '../../config';
@@ -79,6 +85,10 @@ export interface UpdateShortLinkInput {
 /** Which backend mode answered the list: built-in shortener or Dub. */
 export type LinksMode = 'dub' | 'builtin';
 
+/** Optional capabilities a backend advertises on the list response. */
+export type LinkFeature = 'expiry' | 'tags' | 'timeseries';
+const ALL_FEATURES: readonly LinkFeature[] = ['expiry', 'tags', 'timeseries'];
+
 export type ShortLinksResult<T> =
     | { kind: 'ok'; data: T }
     | { kind: 'needs-setup' }
@@ -125,11 +135,18 @@ function dataOne<T>(body: Envelope): T {
     return (body?.data ?? null) as T;
 }
 
-export function listShortLinks(showArchived = false): Promise<ShortLinksResult<{ links: ShortLink[]; mode: LinksMode }>> {
-    return requestJson(`/api/links${showArchived ? '?showArchived=true' : ''}`, undefined, body => ({
-        links: dataList<ShortLink>(body),
-        mode: body?.mode === 'builtin' ? 'builtin' : 'dub',
-    }));
+/** Dub: everything. Built-in: only the known strings in `body.features` (unknown ignored, missing -> none). */
+function featuresOf(body: Envelope, builtin: boolean): Set<LinkFeature> {
+    if (!builtin) return new Set(ALL_FEATURES);
+    const listed = Array.isArray(body?.features) ? body.features : [];
+    return new Set(ALL_FEATURES.filter(f => listed.includes(f)));
+}
+
+export function listShortLinks(showArchived = false): Promise<ShortLinksResult<{ links: ShortLink[]; mode: LinksMode; features: Set<LinkFeature> }>> {
+    return requestJson(`/api/links${showArchived ? '?showArchived=true' : ''}`, undefined, body => {
+        const builtin = body?.mode === 'builtin';
+        return { links: dataList<ShortLink>(body), mode: builtin ? 'builtin' : 'dub', features: featuresOf(body, builtin) };
+    });
 }
 
 export function createShortLink(input: CreateShortLinkInput): Promise<ShortLinksResult<ShortLink>> {

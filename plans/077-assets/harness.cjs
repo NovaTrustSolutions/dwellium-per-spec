@@ -13,7 +13,9 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 /** @param {{ rows?: Array<{slug:string,url:string,clicks:number,archived:number,title?:string}>, viewport?: {width:number,height:number} }} opts */
 async function start(opts = {}) {
     const rows = opts.rows ?? [];
-    const row = r => ({ id: r.slug, shortLink: `https://dwellium.example/l/${r.slug}`, url: r.url, key: r.slug, domain: 'dwellium', clicks: r.clicks, qrCode: '', archived: !!r.archived, expiresAt: null, tags: [], comments: r.title ?? null });
+    const row = r => ({ id: r.slug, shortLink: `https://dwellium.example/l/${r.slug}`, url: r.url, key: r.slug, domain: 'dwellium', clicks: r.clicks, qrCode: '', archived: !!r.archived, expiresAt: r.expiresAt ?? null, tags: (r.tags ?? []).map(n => ({ id: n, name: n, color: '' })), comments: r.title ?? null });
+    const FEATURES = opts.features ?? ['expiry', 'tags', 'timeseries']; // Phase 3 built-in capabilities ([] = an older backend)
+    const clean = v => Array.isArray(v) ? [...new Set(v.map(String).map(t => t.trim()).filter(Boolean))] : undefined;
     const calls = [];
     const aborted = [];
     const state = { failNextList: 0, failBulk: false };
@@ -54,12 +56,12 @@ async function start(opts = {}) {
         if (u.pathname === '/api/links' && method === 'GET') {
             if (state.failNextList > 0) { state.failNextList--; return route.fulfill({ status: 503, headers: CORS, body: 'Service Unavailable' }); }
             const all = u.searchParams.get('showArchived') === 'true';
-            return json(200, { success: true, mode: 'builtin', data: rows.filter(r => all || !r.archived).map(row) });
+            return json(200, { success: true, mode: 'builtin', features: FEATURES, data: rows.filter(r => all || !r.archived).map(row) });
         }
         if (u.pathname === '/api/links' && method === 'POST') {
             const slug = body.key || 'rnd' + (rows.length + 1);
             if (rows.some(r => r.slug === slug)) return json(409, { success: false, error: `key "${slug}" is taken` });
-            rows.unshift({ slug, url: body.url, clicks: 0, archived: 0, title: typeof body.title === 'string' ? body.title : undefined });
+            rows.unshift({ slug, url: body.url, clicks: 0, archived: 0, title: typeof body.title === 'string' ? body.title : undefined, expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : null, tags: clean(body.tagNames) ?? [] });
             return json(200, { success: true, mode: 'builtin', data: row(rows[0]) });
         }
         if (u.pathname === '/api/links/bulk' && method === 'POST') {
@@ -76,12 +78,23 @@ async function start(opts = {}) {
             });
             return json(200, { success: true, mode: 'builtin', data: out });
         }
+        if (u.pathname === '/api/links/tags' && method === 'GET') return json(200, { success: true, mode: 'builtin', data: [...new Set(rows.flatMap(r => r.tags ?? []))].sort().map(n => ({ id: n, name: n, color: '' })) });
+        if (u.pathname === '/api/links/tags' && method === 'POST') return json(200, { success: true, mode: 'builtin', data: { id: String(body.name), name: String(body.name), color: '' } });
+        if (u.pathname === '/api/links/analytics') {
+            const slug = u.searchParams.get('linkId');
+            const r = rows.find(x => x.slug === slug);
+            const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+            const pts = Array.from({ length: 30 }, (_, i) => ({ start: new Date(today.getTime() - (29 - i) * 86400000).toISOString(), clicks: i === 29 ? (r?.clicks ?? 0) : (i % 7 === 0 ? 2 : 0) }));
+            return json(200, { success: true, mode: 'builtin', data: u.searchParams.get('groupBy') === 'count' ? { clicks: r?.clicks ?? 0 } : pts });
+        }
         const m = u.pathname.match(/^\/api\/links\/([^/]+)$/);
         if (m && method === 'PATCH') {
             const r = rows.find(x => x.slug === decodeURIComponent(m[1]));
             if (!r) return json(404, { success: false, error: 'link not found' });
             if (typeof body.url === 'string') r.url = body.url;
             if (typeof body.archived === 'boolean') r.archived = body.archived ? 1 : 0;
+            if ('expiresAt' in body) r.expiresAt = typeof body.expiresAt === 'string' ? body.expiresAt : null;
+            if (Array.isArray(body.tagNames)) r.tags = clean(body.tagNames);
             return json(200, { success: true, mode: 'builtin', data: row(r) });
         }
         return json(404, { success: false, error: 'not in fake' });

@@ -85,6 +85,11 @@
 
 .short-links__input--key { flex: 1 1 120px; min-width: 100px; }
 
+/* Search row above the table (plan 077 3.4): one full-width input. */
+.short-links__search { flex: 1 1 100%; width: 100%; box-sizing: border-box; }
+/* Muted inline message next to a row (e.g. "key is taken - archived"). */
+.short-links__row-hint { font-size: 12px; color: var(--text-tertiary); }
+
 .short-links__notice { margin: 8px 0 0; font-size: 12px; color: var(--text-secondary); }
 
 /* Fixed layout: the short link keeps a readable share at the 520 px minimum width, the destination
@@ -97,7 +102,7 @@
 .short-links__table th {
     padding: 6px 8px;
     text-align: left;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -167,7 +172,7 @@
     padding: 1px 6px;
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 999px;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--text-secondary);
 }
 
@@ -221,7 +226,7 @@
     font-size: 12px;
 }
 .qr-door-sheet__cell figcaption { display: flex; flex-direction: column; gap: 2px; }
-.qr-door-sheet__url { font-size: 9px; word-break: break-all; color: #444; }
+.qr-door-sheet__url { font-size: 12px; word-break: break-all; color: #444; }
 /* The short URL printed under the code — this is what the code encodes. */
 .qr-door-sheet__short { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: #000; overflow-wrap: anywhere; }
 /* Per-sheet notice when codes point straight at the destination. */

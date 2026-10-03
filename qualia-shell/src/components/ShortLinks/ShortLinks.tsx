@@ -3,15 +3,20 @@
  * rebuilt for plan 053 to cover the full daily workflow).
  *
  * The backend answers in one of two modes (`mode` on the list response). The
- * built-in Dwellium shortener is the default and stores only url + key, so in
- * that mode the domain, tag, expiry and key-edit controls and "Mint short
- * links" are hidden (the backend would silently drop them or answer 501) and
- * UTM params are folded into the destination URL client-side. In Dub mode
- * (DUB_API_KEY set) the full form shows: domain, tags, expiry, UTM fields, tag
- * filter, clicks sparkline, "Open in Dub ↗". Always: list with click counts,
+ * built-in Dwellium shortener is the default; UTM params are folded into the
+ * destination URL client-side there. Expiry, tags (picker, filter, Tags column)
+ * and the clicks sparkline are gated on the list response's `features` (plan 077
+ * phase 3), NOT on the mode: the widget deploys separately from the backend, so
+ * an OLDER built-in backend (no `features`) still hides them. Only the domain
+ * picker, the key edit and "Open in Dub ↗" stay Dub-only. Always: list with
+ * click counts, client-side search (short link, destination, title, tags),
  * inline edit that PATCHes only changed fields, confirm-gated archive, copy +
  * QR (client-side when the row has no hosted qrCode), link presets and a
  * printable per-unit QR door sheet (mints short links, the codes encode them).
+ * A failed BACKGROUND refresh keeps the list and shows a notice; only the
+ * initial load failure shows the error card. Focus follows the user: Archive
+ * moves it to Confirm, Confirm/Cancel hand it back to the row (or the search
+ * box if the row is gone), opening the edit form focuses its URL input.
  * Presets and the door sheet point at per-property destinations the user enters
  * (widget memory) — nothing links to the app itself; a preset stays disabled
  * until its destination is set. A 503 `needsSetup` (OLD backend only) renders a card pointing at the door sheet.
@@ -30,6 +35,7 @@ import {
     type ClicksPoint,
     type CreateShortLinkInput,
     type LinkDomain,
+    type LinkFeature,
     type LinksMode,
     type LinkTag,
     type UpdateShortLinkInput,
@@ -58,6 +64,7 @@ interface OkData {
     tags: LinkTag[];
     domains: LinkDomain[];
     defaultDomain: string | null;
+    features: Set<LinkFeature>;
 }
 
 type ViewState =
@@ -170,8 +177,19 @@ export default function ShortLinks() {
     // The row as it was when the edit opened: a refresh behind an open form must not turn untouched fields into "changes".
     const [editBase, setEditBase] = useState<ShortLink | null>(null);
     const [saving, setSaving] = useState(false);
-    // Built-in mode stores only url + key; the Dub-only controls render when this is true.
+    const [search, setSearch] = useState('');
+    // Dub-only: domain picker, key edit, "Open in Dub". Everything else is gated on `can(feature)`.
     const dub = state.kind === 'ok' && state.data.mode === 'dub';
+    const can = (f: LinkFeature): boolean => state.kind === 'ok' && state.data.features.has(f);
+    const stateRef = useRef(state);
+    useEffect(() => { stateRef.current = state; });
+
+    // Focus management. `refocus` = a row to hand focus back to; `wait` holds it until the refresh that follows an archive lands.
+    const rootRef = useRef<HTMLDivElement>(null);
+    const searchRef = useRef<HTMLInputElement>(null);
+    const confirmRef = useRef<HTMLButtonElement>(null);
+    const editUrlRef = useRef<HTMLInputElement>(null);
+    const [refocus, setRefocus] = useState<{ id: string; wait: boolean } | null>(null);
 
     // Latest-wins guard: an older refresh response must never overwrite a newer one.
     const refreshSeq = useRef(0);
@@ -181,14 +199,19 @@ export default function ShortLinks() {
         setState(s => (s.kind === 'ok' ? s : { kind: 'loading' }));
         setConfirmArchiveId(null);
         const r = await listShortLinks(showArchived);
-        // Tags + domains are Dub-only and best-effort — the link list must render without them.
-        const [tagsR, domainsR] = r.kind === 'ok' && r.data.mode === 'dub' ? await Promise.all([listLinkTags(), listLinkDomains()]) : [null, null];
+        // Tags (when the backend supports them) and domains (Dub only) are best-effort — the link list must render without them.
+        const [tagsR, domainsR] = r.kind === 'ok'
+            ? await Promise.all([r.data.features.has('tags') ? listLinkTags() : null, r.data.mode === 'dub' ? listLinkDomains() : null])
+            : [null, null];
         if (seq !== refreshSeq.current) return;
+        setRefocus(f => (f ? { ...f, wait: false } : f));
         if (r.kind !== 'ok') {
+            // A list already on screen survives a failed re-fetch (nothing typed or shown is lost); only the first load shows the card.
+            if (r.kind === 'error' && stateRef.current.kind === 'ok') { setNotice(`Could not refresh — ${r.message}`); return; }
             setState(r.kind === 'needs-setup' ? { kind: 'needs-setup' } : { kind: 'error', message: r.message });
             return;
         }
-        const { links, mode } = r.data;
+        const { links, mode, features } = r.data;
         setEditingId(cur => (cur && links.some(l => l.id === cur) ? cur : null));
         setState({
             kind: 'ok',
@@ -198,6 +221,7 @@ export default function ShortLinks() {
                 tags: tagsR?.kind === 'ok' ? tagsR.data : [],
                 domains: domainsR?.kind === 'ok' ? domainsR.data.domains : [],
                 defaultDomain: domainsR?.kind === 'ok' ? domainsR.data.defaultDomain : null,
+                features,
             },
         });
     }, [showArchived]);
@@ -210,8 +234,7 @@ export default function ShortLinks() {
 
     // Eager sparkline fetch for the first clicked links (one analytics call per row).
     useEffect(() => {
-        // ponytail: Dub only — the built-in timeseries is always [] until plan 077 step 3.2 adds a click log.
-        if (state.kind !== 'ok' || state.data.mode !== 'dub') return;
+        if (state.kind !== 'ok' || !state.data.features.has('timeseries')) return;
         const wanted = state.data.links.filter(l => l.clicks > 0 && !(l.id in series)).slice(0, SPARKLINE_ROWS);
         if (wanted.length === 0) return;
         let cancelled = false;
@@ -226,8 +249,17 @@ export default function ShortLinks() {
         return () => { cancelled = true; };
     }, [state, series]);
 
-    /** Resolves true when the link was created (callers reset their own draft on success). */
-    const create = async (input: CreateShortLinkInput, label?: string): Promise<boolean> => {
+    useEffect(() => { if (confirmArchiveId) confirmRef.current?.focus(); }, [confirmArchiveId]);
+    useEffect(() => { if (editingId) editUrlRef.current?.focus(); }, [editingId]);
+    useEffect(() => {
+        if (!refocus || refocus.wait) return;
+        const copy = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-copy-for]') ?? []).find(b => b.dataset.copyFor === refocus.id);
+        (copy ?? searchRef.current)?.focus();
+        setRefocus(null);
+    }, [refocus, state]);
+
+    /** Resolves true when the link was created (callers reset their own draft on success). `archivedHint`: a taken key may belong to an archived link. */
+    const create = async (input: CreateShortLinkInput, label?: string, archivedHint = false): Promise<boolean> => {
         setCreating(true);
         setNotice(null);
         const r = await createShortLink(input);
@@ -238,6 +270,7 @@ export default function ShortLinks() {
             return true;
         }
         if (r.kind === 'needs-setup') setState({ kind: 'needs-setup' });
+        else if (archivedHint && input.key && /is taken/i.test(r.message)) setNotice(`Key ${input.key} already exists — it may be archived; tick Show archived to find it`);
         else setNotice(r.message);
         return false;
     };
@@ -256,8 +289,13 @@ export default function ShortLinks() {
                 ...utmSet,
             };
         } else {
-            // Built-in stores only url + key — carry the UTM params inside the destination itself.
-            input = { url: withUtm(url.trim(), utmSet), ...(key.trim() ? { key: key.trim() } : {}) };
+            // Built-in has no utm fields — carry them inside the destination itself; tags and expiry only when the backend lists them.
+            input = {
+                url: withUtm(url.trim(), utmSet),
+                ...(key.trim() ? { key: key.trim() } : {}),
+                ...(can('tags') && pickedTags.length ? { tagNames: pickedTags } : {}),
+                ...(can('expiry') && expiry ? { expiresAt: new Date(expiry).toISOString() } : {}),
+            };
         }
         if (await create(input)) {
             setUrl(''); setKey(''); setExpiry('');
@@ -271,8 +309,9 @@ export default function ShortLinks() {
         const dest = preset && presetUrl(destinations, property.id, preset.id);
         if (!preset || !dest || dest.includes('{unit}')) return;
         void create(
-            { url: dest, key: presetKey(property, preset), ...(dub ? { tagNames: [property.tag, preset.kindTag] } : {}) },
+            { url: dest, key: presetKey(property, preset), ...(can('tags') ? { tagNames: [property.tag, preset.kindTag] } : {}) },
             preset.label,
+            true,
         );
     };
 
@@ -283,7 +322,9 @@ export default function ShortLinks() {
         if (r.kind === 'ok') {
             setNewTag('');
             setPickedTags(t => (t.includes(name) ? t : [...t, name]));
-            reload();
+            // Built-in lists only tags some link uses, so a reload would drop the new one: merge what the backend echoed.
+            const added = r.data ?? { id: name, name, color: '' };
+            setState(s => (s.kind === 'ok' && !s.data.tags.some(t => t.name === name) ? { ...s, data: { ...s.data, tags: [...s.data.tags, added] } } : s));
         } else {
             setNotice(r.kind === 'needs-setup' ? UNAVAILABLE : r.message);
         }
@@ -323,9 +364,11 @@ export default function ShortLinks() {
         const r = await archiveShortLink(l.id, archived);
         if (r.kind === 'ok') {
             setNotice(`${archived ? 'Archived' : 'Unarchived'} ${l.shortLink}`);
+            setRefocus({ id: l.id, wait: true }); // the refresh below settles first; the row may be gone by then
             reload();
         } else {
             setNotice(r.kind === 'needs-setup' ? UNAVAILABLE : r.message);
+            setRefocus({ id: l.id, wait: false });
         }
         setConfirmArchiveId(null);
     };
@@ -343,12 +386,15 @@ export default function ShortLinks() {
         );
     }
 
+    const needle = search.trim().toLowerCase();
+    const matches = (l: ShortLink): boolean =>
+        [l.shortLink, l.url, l.comments ?? '', ...(l.tags ?? []).map(t => t.name)].some(v => v.toLowerCase().includes(needle));
     const visibleLinks = state.kind === 'ok'
-        ? state.data.links.filter(l => !filterTag || (l.tags ?? []).some(t => t.name === filterTag))
+        ? state.data.links.filter(l => (!filterTag || (l.tags ?? []).some(t => t.name === filterTag)) && (!needle || matches(l)))
         : [];
 
     return (
-        <div className="short-links">
+        <div className="short-links" ref={rootRef}>
             <div className="short-links__head">
                 <h2 className="short-links__title"><QrCode size={16} aria-hidden /> Links &amp; QR</h2>
                 <div className="short-links__head-actions">
@@ -482,7 +528,7 @@ export default function ShortLinks() {
                                     ))}
                                 </select>
                             )}
-                            {dub && (
+                            {can('expiry') && (
                                 <input
                                     className="short-links__input short-links__input--key"
                                     type="datetime-local"
@@ -501,7 +547,7 @@ export default function ShortLinks() {
                             </button>
                         </div>
                         <div className="short-links__form short-links__form--extras">
-                            {dub && (
+                            {can('tags') && (
                                 <details className="short-links__details">
                                     <summary>Tags{pickedTags.length ? ` (${pickedTags.length})` : ''}</summary>
                                     <div className="short-links__tag-picker">
@@ -548,11 +594,21 @@ export default function ShortLinks() {
                                 </div>
                             </details>
                         </div>
-                        {notice && <p className="short-links__notice">{notice}</p>}
+                        {/* Always mounted so the live region exists before the first message arrives. */}
+                        <p className="short-links__notice" role="status">{notice}</p>
                     </section>
 
+                    <input
+                        ref={searchRef}
+                        className="short-links__input short-links__search"
+                        type="search"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search short link, destination, tag…"
+                        aria-label="Search links"
+                    />
                     <div className="short-links__filters">
-                        {dub && (
+                        {can('tags') && (
                             <select
                                 className="short-links__input short-links__input--key"
                                 value={filterTag}
@@ -576,14 +632,14 @@ export default function ShortLinks() {
                     {visibleLinks.length === 0
                         ? (
                             <div className="short-links__empty" data-state="none-yet">
-                                <h3>No links{filterTag ? ` tagged ${filterTag}` : ' yet'}</h3>
-                                <p>Shorten a Tenant Portal or published-doc URL above, then print its QR.</p>
+                                <h3>{needle ? 'No links match' : `No links${filterTag ? ` tagged ${filterTag}` : ' yet'}`}</h3>
+                                <p>{needle ? 'Clear the search or the tag filter to see more.' : 'Shorten a Tenant Portal or published-doc URL above, then print its QR.'}</p>
                             </div>
                         )
                         : (
                             <table className="short-links__table">
                                 <thead>
-                                    <tr><th>Short link</th><th>Destination</th>{dub && <th>Tags</th>}<th>Clicks</th><th aria-label="Actions" /></tr>
+                                    <tr><th>Short link</th><th>Destination</th>{can('tags') && <th>Tags</th>}<th>Clicks</th><th aria-label="Actions" /></tr>
                                 </thead>
                                 <tbody>
                                     {visibleLinks.map(l => (
@@ -591,7 +647,7 @@ export default function ShortLinks() {
                                         <tr data-archived={l.archived || undefined}>
                                             <td className="short-links__short">{l.shortLink}{l.archived ? ' (archived)' : ''}</td>
                                             <td className="short-links__dest" title={l.url}>{l.url}</td>
-                                            {dub && (
+                                            {can('tags') && (
                                                 <td>
                                                     {(l.tags ?? []).map(t => (
                                                         <span key={t.id} className="short-links__chip">{t.name}</span>
@@ -603,7 +659,7 @@ export default function ShortLinks() {
                                                 {series[l.id] && <Sparkline points={series[l.id]} />}
                                             </td>
                                             <td className="short-links__actions">
-                                                <button className="short-links__btn short-links__btn--ghost" onClick={() => copy(l.shortLink)} aria-label={`Copy ${l.shortLink}`}>
+                                                <button className="short-links__btn short-links__btn--ghost" onClick={() => copy(l.shortLink)} aria-label={`Copy ${l.shortLink}`} data-copy-for={l.id}>
                                                     <Copy size={13} aria-hidden />
                                                 </button>
                                                 <button
@@ -633,10 +689,10 @@ export default function ShortLinks() {
                                                     : confirmArchiveId === l.id
                                                         ? (
                                                             <span className="short-links__confirm">
-                                                                <button className="short-links__btn" onClick={() => void archive(l, true)}>
+                                                                <button ref={confirmRef} className="short-links__btn" onClick={() => void archive(l, true)}>
                                                                     Confirm archive
                                                                 </button>
-                                                                <button className="short-links__btn short-links__btn--ghost" onClick={() => setConfirmArchiveId(null)} aria-label="Cancel archive">
+                                                                <button className="short-links__btn short-links__btn--ghost" onClick={() => { setConfirmArchiveId(null); setRefocus({ id: l.id, wait: false }); }} aria-label="Cancel archive">
                                                                     <X size={13} aria-hidden />
                                                                 </button>
                                                             </span>
@@ -654,7 +710,7 @@ export default function ShortLinks() {
                                         </tr>
                                         {(qrFor === l.id || editingId === l.id) && (
                                             <tr>
-                                                <td colSpan={dub ? 5 : 4}>
+                                                <td colSpan={can('tags') ? 5 : 4}>
                                                     <div className="short-links__detail">
                                                     {qrFor === l.id && (
                                                         // Builtin-mode rows carry no hosted qrCode URL — render the same client-side QR the door sheet uses.
@@ -669,28 +725,33 @@ export default function ShortLinks() {
                                                         </>
                                                     )}
                                                     {editingId === l.id && (
-                                                        <div className="short-links__edit" aria-label={`Edit form for ${l.shortLink}`}>
+                                                        <div className="short-links__edit" role="group" aria-label={`Edit form for ${l.shortLink}`}>
                                                             <input
+                                                                ref={editUrlRef}
                                                                 className="short-links__input"
                                                                 value={draft.url}
                                                                 onChange={e => setDraft(d => ({ ...d, url: e.target.value }))}
                                                                 aria-label="Edit destination URL"
                                                             />
                                                             {dub && (
+                                                                <input
+                                                                    className="short-links__input short-links__input--key"
+                                                                    value={draft.key}
+                                                                    onChange={e => setDraft(d => ({ ...d, key: e.target.value }))}
+                                                                    aria-label="Edit key"
+                                                                />
+                                                            )}
+                                                            {can('expiry') && (
+                                                                <input
+                                                                    className="short-links__input short-links__input--key"
+                                                                    type="datetime-local"
+                                                                    value={draft.expiresAt}
+                                                                    onChange={e => setDraft(d => ({ ...d, expiresAt: e.target.value }))}
+                                                                    aria-label="Edit expiry"
+                                                                />
+                                                            )}
+                                                            {can('tags') && (
                                                                 <>
-                                                                    <input
-                                                                        className="short-links__input short-links__input--key"
-                                                                        value={draft.key}
-                                                                        onChange={e => setDraft(d => ({ ...d, key: e.target.value }))}
-                                                                        aria-label="Edit key"
-                                                                    />
-                                                                    <input
-                                                                        className="short-links__input short-links__input--key"
-                                                                        type="datetime-local"
-                                                                        value={draft.expiresAt}
-                                                                        onChange={e => setDraft(d => ({ ...d, expiresAt: e.target.value }))}
-                                                                        aria-label="Edit expiry"
-                                                                    />
                                                                     <div className="short-links__tag-picker">
                                                                         {state.data.tags.map(t => (
                                                                             <label key={t.id} className="short-links__tag-option">

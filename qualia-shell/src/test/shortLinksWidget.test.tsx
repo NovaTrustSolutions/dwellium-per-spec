@@ -11,12 +11,18 @@
  * phase 2); the QR door sheet mints short links first, then renders one cell
  * per unit encoding the short link (destination fallback with a notice when the
  * mint fails); Download SVG on the QR row; network failure → error state with
- * Retry. `mode:'builtin'` (default backend) hides every
- * Dub-only control and folds UTM params into the destination URL.
+ * Retry. `mode:'builtin'` (default backend) folds UTM params into the
+ * destination URL and never shows the domain picker, key edit or "Open in Dub".
+ *
+ * Plan 077 phase 3: expiry, tags (picker, filter, column) and the sparkline are
+ * gated on the list response's `features` — not the mode — so an OLDER built-in
+ * backend (no `features`) still hides them; client-side search; focus
+ * management and live-region a11y; a failed background refresh keeps the list;
+ * a 409 on a preset says the key may be archived.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchWidgetMemory, readWidgetMemory, resetWidgetMemory } from '../lib/widgetMemory';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ShortLinks, { isoToLocalInput } from '../components/ShortLinks/ShortLinks';
 import { doorSheetHtml, printDoorSheet, unitUrl } from '../components/ShortLinks/QrDoorSheet';
 import { qrSvg } from '../components/Scribe/idocs/blocks/qr';
@@ -30,6 +36,7 @@ import {
     listLinkTags,
     listShortLinks,
     updateShortLink,
+    type LinkFeature,
 } from '../components/ShortLinks/shortLinksApi';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -76,6 +83,7 @@ const BUILTIN_LINK = {
     tags: [],
 };
 const EXPIRY_ISO = '2026-08-15T14:30:00.000Z';
+const ALL = new Set<LinkFeature>(['expiry', 'tags', 'timeseries']);
 
 const TAGS = [
     { id: 'tag_1', name: 'woodland-parc', color: 'green' },
@@ -95,8 +103,12 @@ interface Recorded { url: string; method: string; body?: JsonObject }
 interface StubOpts {
     /** 'builtin' = the default SQLite shortener: `mode` on every body, no tags; /bulk answers 200 with rows echoing {url,key}. */
     mode?: 'builtin';
+    /** Built-in only: what the list response's `features` advertises. Default: all three (omit = an OLD backend: pass []). */
+    features?: LinkFeature[];
     /** Status for POST /api/links (create); default 201. */
     postStatus?: number;
+    /** Error text for a refused POST /api/links (default 'Create refused'). */
+    postError?: string;
     /** Status for POST /api/links/bulk; >= 400 answers {error:'Bulk exploded'}. */
     bulkStatus?: number;
 }
@@ -118,6 +130,7 @@ const isListGet = (c: Recorded): boolean => c.method === 'GET' && /\/api\/links(
 function stubBackend(links: JsonObject[], overrides: JsonObject = {}, opts: StubOpts = {}) {
     const builtin = opts.mode === 'builtin';
     const modeTag = builtin ? { mode: 'builtin' } : {};
+    const features = opts.features ?? ['expiry', 'tags', 'timeseries'];
     const calls: Recorded[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
         const u = String(url);
@@ -125,7 +138,12 @@ function stubBackend(links: JsonObject[], overrides: JsonObject = {}, opts: Stub
         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
         calls.push({ url: u, method, body });
         if (u.includes('/api/links/tags')) {
-            if (builtin) return jsonResponse({ success: true, ...modeTag, data: [] });
+            if (builtin) {
+                // Built-in: distinct names in use; POST echoes (nothing is stored until a link carries the tag).
+                if (method === 'POST') return jsonResponse({ success: true, ...modeTag, data: { id: body?.name, name: body?.name, color: '' } }, 201);
+                const names = [...new Set(links.flatMap(l => ((l.tags ?? []) as Array<{ name: string }>).map(t => t.name)))];
+                return jsonResponse({ success: true, ...modeTag, data: names.map(n => ({ id: n, name: n, color: '' })) });
+            }
             return method === 'POST'
                 ? jsonResponse({ success: true, data: { id: 'tag_new', name: body?.name, color: '' } }, 201)
                 : jsonResponse({ success: true, data: TAGS });
@@ -143,10 +161,10 @@ function stubBackend(links: JsonObject[], overrides: JsonObject = {}, opts: Stub
         }
         if (method === 'PATCH') return jsonResponse({ success: true, data: { ...LINK, ...overrides, ...body } });
         if (method === 'POST') {
-            if (opts.postStatus && opts.postStatus >= 400) return jsonResponse({ success: false, error: 'Create refused' }, opts.postStatus);
+            if (opts.postStatus && opts.postStatus >= 400) return jsonResponse({ success: false, error: opts.postError ?? 'Create refused' }, opts.postStatus);
             return jsonResponse({ success: true, ...modeTag, data: { ...LINK, id: 'link_new', ...body } }, 201);
         }
-        return jsonResponse({ success: true, ...modeTag, data: links });
+        return jsonResponse({ success: true, ...modeTag, ...(builtin ? { features } : {}), data: links });
     }));
     return calls;
 }
@@ -189,16 +207,16 @@ describe('shortLinksApi', () => {
 
     it('listShortLinks reports mode: builtin only when the body says so, else dub', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, mode: 'builtin', data: [BUILTIN_LINK] })));
-        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [BUILTIN_LINK], mode: 'builtin' } });
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [BUILTIN_LINK], mode: 'builtin', features: new Set() } }); // an old backend lists none
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, data: [LINK] })));
-        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [LINK], mode: 'dub' } });
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [LINK], mode: 'dub', features: ALL } });
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, mode: 'something-else', data: [] })));
-        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [], mode: 'dub' } });
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [], mode: 'dub', features: ALL } });
     });
 
     it('200 → data; non-ok surfaces the backend error; network failure → Backend unreachable', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, data: [LINK] })));
-        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [LINK], mode: 'dub' } });
+        expect(await listShortLinks()).toEqual({ kind: 'ok', data: { links: [LINK], mode: 'dub', features: ALL } });
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, error: 'A valid http(s) url is required' }, 400)));
         expect(await createShortLink({ url: 'nope' })).toEqual({ kind: 'error', message: 'A valid http(s) url is required' });
         vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
@@ -694,9 +712,9 @@ describe('isoToLocalInput', () => {
 });
 
 describe('ShortLinks widget — built-in mode (default backend)', () => {
-    it('hides every Dub-only control and never fetches tags or domains', async () => {
+    it('older built-in backend hides expiry, tags and the tag filter, and never fetches tags, domains or analytics', async () => {
         vi.stubEnv('VITE_DUB_WORKSPACE', 'dwellium');
-        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        const calls = stubBackend([{ ...BUILTIN_LINK, clicks: 5 }], {}, { mode: 'builtin', features: [] });
         render(<ShortLinks />);
         await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
 
@@ -708,12 +726,12 @@ describe('ShortLinks widget — built-in mode (default backend)', () => {
         expect(screen.queryByRole('link', { name: /Open in Dub/i })).not.toBeInTheDocument();
         expect(screen.getByText('UTM builder')).toBeInTheDocument(); // stays — folded into the URL
         expect(screen.getByLabelText('Link presets')).toBeInTheDocument();
-        expect(calls.some(c => /\/api\/links\/(tags|domains)/.test(c.url))).toBe(false);
+        expect(calls.some(c => /\/api\/links\/(tags|domains|analytics)/.test(c.url))).toBe(false);
     });
 
-    it('shows no Tags column, asks for no sparkline, and presets send no tagNames', async () => {
+    it('older built-in backend shows no Tags column, asks for no sparkline, and presets send no tagNames', async () => {
         seedDestinations();
-        const calls = stubBackend([{ ...BUILTIN_LINK, clicks: 7 }], {}, { mode: 'builtin' });
+        const calls = stubBackend([{ ...BUILTIN_LINK, clicks: 7 }], {}, { mode: 'builtin', features: [] });
         render(<ShortLinks />);
         await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
         expect(screen.queryByRole('columnheader', { name: 'Tags' })).not.toBeInTheDocument();
@@ -764,8 +782,8 @@ describe('ShortLinks widget — built-in mode (default backend)', () => {
         expect(calls.find(c => c.method === 'POST')!.body).toEqual({ url: 'https://example.com' });
     });
 
-    it('edit offers the destination URL only and saves {url}', async () => {
-        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+    it('older built-in backend: edit offers the destination URL only and saves {url}', async () => {
+        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin', features: [] });
         render(<ShortLinks />);
         await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
         fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
@@ -957,7 +975,7 @@ describe('ShortLinks widget — refresh never throws away work in progress', () 
 
 describe('ShortLinks widget — adversarial-review regressions (plan 077 p1)', () => {
     const openBuiltin = async () => {
-        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin' });
+        const calls = stubBackend([BUILTIN_LINK], {}, { mode: 'builtin', features: [] });
         render(<ShortLinks />);
         await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
         return calls;
@@ -1171,5 +1189,323 @@ describe('door sheet + presets — phase 2 review regressions', () => {
         expect(frame.srcdoc).toContain('/l/woodland-parc-unit-2794-5');
         expect(frame.srcdoc).toContain(qrSvg('https://dwellium.example/l/woodland-parc-unit-2794-5', { size: 160, title: 'QR code for unit 2794-5' }));
         frame.remove();
+    });
+});
+
+/** Plan 077 phase 3 — features, search, a11y, refresh failure, 409 hint. */
+describe('ShortLinks widget — feature gating (plan 077 p3)', () => {
+    const TAGGED = {
+        ...BUILTIN_LINK,
+        clicks: 7,
+        expiresAt: EXPIRY_ISO,
+        tags: [{ id: 'woodland-parc', name: 'woodland-parc', color: '' }],
+    };
+    const open = async (opts: StubOpts, rows: JsonObject[] = [TAGGED]) => {
+        const calls = stubBackend(rows, {}, opts);
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        return calls;
+    };
+    const used = (calls: Recorded[], what: RegExp) => calls.some(c => what.test(c.url));
+
+    it('built-in with all three features shows expiry, Tags, the tag filter, the Tags column and the sparkline — and still no Dub-only controls', async () => {
+        vi.stubEnv('VITE_DUB_WORKSPACE', 'dwellium');
+        const calls = await open({ mode: 'builtin' });
+        expect(screen.getByLabelText('Expires at')).toBeInTheDocument();
+        expect(screen.getByText(/^Tags/, { selector: 'summary' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Filter by tag')).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Tags' })).toBeInTheDocument();
+        expect(screen.getAllByText('woodland-parc').length).toBeGreaterThan(0); // chip in the row
+        await waitFor(() => expect(screen.getByLabelText('Clicks sparkline: 3, 9')).toBeInTheDocument());
+        expect(used(calls, /\/api\/links\/tags/)).toBe(true);
+        expect(used(calls, /\/api\/links\/analytics/)).toBe(true);
+        // Dub-only stays Dub-only
+        expect(used(calls, /\/api\/links\/domains/)).toBe(false);
+        expect(screen.queryByLabelText('Domain')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Open in Dub/i })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+        expect(screen.getByLabelText('Edit expiry')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Edit key')).not.toBeInTheDocument();
+    });
+
+    it('built-in with features: [] (an older backend) hides all of it and makes no /tags or /analytics call', async () => {
+        const calls = await open({ mode: 'builtin', features: [] });
+        expect(screen.queryByLabelText('Expires at')).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Tags/, { selector: 'summary' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Filter by tag')).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Tags' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+        expect(screen.queryByLabelText('Edit expiry')).not.toBeInTheDocument();
+        await new Promise(r => setTimeout(r, 30));
+        expect(used(calls, /\/api\/links\/(tags|analytics|domains)/)).toBe(false);
+    });
+
+    it('each feature gates only its own controls', async () => {
+        const calls = await open({ mode: 'builtin', features: ['tags'] });
+        expect(screen.getByText(/^Tags/, { selector: 'summary' })).toBeInTheDocument();
+        expect(screen.queryByLabelText('Expires at')).not.toBeInTheDocument();
+        await new Promise(r => setTimeout(r, 30));
+        expect(used(calls, /\/api\/links\/analytics/)).toBe(false); // no timeseries feature, no sparkline
+        cleanup();
+
+        const calls2 = await open({ mode: 'builtin', features: ['expiry'] });
+        expect(screen.getByLabelText('Expires at')).toBeInTheDocument();
+        expect(screen.queryByText(/^Tags/, { selector: 'summary' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Filter by tag')).not.toBeInTheDocument();
+        await new Promise(r => setTimeout(r, 30));
+        expect(used(calls2, /\/api\/links\/(tags|analytics)/)).toBe(false);
+    });
+
+    it('Dub mode is unchanged: domain, expiry, tags, filter, sparkline and "Open in Dub" all show', async () => {
+        stubBackend([LINK]);
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(LINK.shortLink)).toBeInTheDocument());
+        expect(screen.getByLabelText('Domain')).toBeInTheDocument();
+        expect(screen.getByLabelText('Expires at')).toBeInTheDocument();
+        expect(screen.getByText(/^Tags/, { selector: 'summary' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Filter by tag')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Open in Dub/i })).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByLabelText('Clicks sparkline: 3, 9')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${LINK.shortLink}` }));
+        expect(screen.getByLabelText('Edit key')).toBeInTheDocument();
+    });
+
+    it('built-in composer sends expiresAt and tagNames; a preset carries its tag pair; Add tag echoes into the picker', async () => {
+        seedDestinations();
+        const calls = await open({ mode: 'builtin' });
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/new' } });
+        fireEvent.change(screen.getByLabelText('Expires at'), { target: { value: '2026-09-01T09:15' } });
+        fireEvent.click(screen.getByText(/^Tags/, { selector: 'summary' }));
+        fireEvent.click(await screen.findByLabelText('woodland-parc', { selector: 'input[type=checkbox]' }));
+        fireEvent.change(screen.getByLabelText('New tag name'), { target: { value: 'fresh' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add tag' }));
+        expect(await screen.findByLabelText('fresh', { selector: 'input[type=checkbox]' })).toBeChecked(); // echoed tag is pickable at once
+        expect(calls.find(c => c.method === 'POST' && c.url.includes('/tags'))!.body).toEqual({ name: 'fresh' });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(calls.some(c => c.method === 'POST' && /\/api\/links$/.test(c.url))).toBe(true));
+        const body = calls.find(c => c.method === 'POST' && /\/api\/links$/.test(c.url))!.body!;
+        expect(body).toEqual({ url: 'https://example.com/new', expiresAt: new Date('2026-09-01T09:15').toISOString(), tagNames: ['woodland-parc', 'fresh'] });
+
+        fireEvent.click(screen.getByRole('button', { name: '+ Rent payment' }));
+        await waitFor(() => expect(calls.filter(c => c.method === 'POST' && /\/api\/links$/.test(c.url))).toHaveLength(2));
+        const property = ANDY_PROPERTIES[0];
+        const preset = ANDY_LINK_PRESETS.find(p => p.id === 'rent-payment')!;
+        expect(calls.filter(c => c.method === 'POST' && /\/api\/links$/.test(c.url))[1].body)
+            .toMatchObject({ key: presetKey(property, preset), tagNames: [property.tag, preset.kindTag] });
+    });
+});
+
+describe('ShortLinks widget — built-in edit with features (plan 077 p3)', () => {
+    const ROWS = [
+        { ...BUILTIN_LINK, expiresAt: EXPIRY_ISO, tags: [{ id: 'woodland-parc', name: 'woodland-parc', color: '' }] },
+        { ...BUILTIN_LINK, id: 'b_2', shortLink: 'https://go.dwellium.test/two', key: 'two', tags: [{ id: 'riverwood-club', name: 'riverwood-club', color: '' }] },
+    ];
+    const openEdit = async () => {
+        const calls = stubBackend(ROWS, {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+        return calls;
+    };
+    const patches = (calls: Recorded[]) => calls.filter(c => c.method === 'PATCH');
+    const form = () => screen.getByRole('group', { name: `Edit form for ${BUILTIN_LINK.shortLink}` });
+
+    it('adding a tag sends the full tagNames set and nothing else', async () => {
+        const calls = await openEdit();
+        fireEvent.click(await within(form()).findByLabelText('riverwood-club')); // names come from GET /tags
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(patches(calls)).toHaveLength(1));
+        expect(patches(calls)[0].body).toEqual({ tagNames: ['woodland-parc', 'riverwood-club'] });
+    });
+
+    it('clearing every tag sends tagNames: []', async () => {
+        const calls = await openEdit();
+        fireEvent.click(await within(form()).findByLabelText('woodland-parc'));
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(patches(calls)).toHaveLength(1));
+        expect(patches(calls)[0].body).toEqual({ tagNames: [] });
+    });
+
+    it('clearing the expiry sends expiresAt: null and nothing else', async () => {
+        const calls = await openEdit();
+        fireEvent.change(screen.getByLabelText('Edit expiry'), { target: { value: '' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(patches(calls)).toHaveLength(1));
+        expect(patches(calls)[0].body).toEqual({ expiresAt: null });
+    });
+});
+
+describe('ShortLinks widget — search (plan 077 p3.4)', () => {
+    const R1 = { ...BUILTIN_LINK, id: 'r1', shortLink: 'https://go.t/alpha', key: 'alpha', url: 'https://site.test/one', comments: 'First Floor', tags: [{ id: 'w', name: 'woodland-parc', color: '' }] };
+    const R2 = { ...BUILTIN_LINK, id: 'r2', shortLink: 'https://go.t/beta', key: 'beta', url: 'https://other.test/two', comments: 'Lobby sign', tags: [{ id: 'r', name: 'riverwood-club', color: '' }] };
+    const open = async () => {
+        stubBackend([R1, R2], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(R1.shortLink)).toBeInTheDocument());
+    };
+    const search = (v: string) => fireEvent.change(screen.getByLabelText('Search links'), { target: { value: v } });
+    const shown = () => [R1, R2].filter(r => screen.queryByText(r.shortLink)).map(r => r.key);
+
+    it('has the documented label and placeholder and sits above the filters', async () => {
+        await open();
+        const box = screen.getByLabelText('Search links');
+        expect(box).toHaveAttribute('placeholder', 'Search short link, destination, tag…');
+        expect(box.compareDocumentPosition(screen.getByLabelText('Show archived')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('matches the short link, destination, title and tag name — case-insensitively', async () => {
+        await open();
+        search('ALPHA'); expect(shown()).toEqual(['alpha']); // short link
+        search('Other.Test'); expect(shown()).toEqual(['beta']); // destination
+        search('lobby'); expect(shown()).toEqual(['beta']); // title (comments)
+        search('WOODLAND'); expect(shown()).toEqual(['alpha']); // tag
+        search('  '); expect(shown()).toEqual(['alpha', 'beta']); // blank = no search
+    });
+
+    it('combines with the tag filter', async () => {
+        await open();
+        search('test'); // both destinations contain it
+        expect(shown()).toEqual(['alpha', 'beta']);
+        fireEvent.change(screen.getByLabelText('Filter by tag'), { target: { value: 'riverwood-club' } });
+        expect(shown()).toEqual(['beta']);
+        search('alpha'); // beta is filtered by tag, alpha by the tag filter
+        expect(shown()).toEqual([]);
+    });
+
+    it('says "No links match" when a search finds nothing, and the list returns when cleared', async () => {
+        await open();
+        search('zzz');
+        expect(screen.getByText('No links match')).toBeInTheDocument();
+        expect(screen.queryByText('No links yet')).not.toBeInTheDocument();
+        search('');
+        expect(screen.queryByText('No links match')).not.toBeInTheDocument();
+        expect(shown()).toEqual(['alpha', 'beta']);
+    });
+});
+
+describe('ShortLinks widget — accessibility and focus (plan 077 p3.5)', () => {
+    const open = async (rows: JsonObject[] = [BUILTIN_LINK]) => {
+        const calls = stubBackend(rows, {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        return calls;
+    };
+    const copyBtn = () => screen.getByRole('button', { name: `Copy ${BUILTIN_LINK.shortLink}` });
+
+    it('the notice is a status live region that exists, empty, before any message arrives', async () => {
+        await open();
+        const region = screen.getByRole('status');
+        expect(region).toHaveClass('short-links__notice');
+        expect(region).toHaveTextContent('');
+        fireEvent.click(copyBtn());
+        expect(screen.getByRole('status')).toBe(region); // same node: it was announced, not newly inserted
+        expect(region).toHaveTextContent(`Copied ${BUILTIN_LINK.shortLink}`);
+    });
+
+    it('Archive moves focus to Confirm archive', async () => {
+        await open();
+        fireEvent.click(screen.getByRole('button', { name: `Archive ${BUILTIN_LINK.shortLink}` }));
+        await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Confirm archive' })));
+    });
+
+    it('Cancel hands focus back to that row\'s Copy button', async () => {
+        await open();
+        fireEvent.click(screen.getByRole('button', { name: `Archive ${BUILTIN_LINK.shortLink}` }));
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel archive' }));
+        await waitFor(() => expect(document.activeElement).toBe(copyBtn()));
+    });
+
+    it('Confirm: focus goes to the row\'s Copy button when the row survives the refresh, to the search box when it is gone', async () => {
+        const rows: JsonObject[] = [BUILTIN_LINK];
+        await open(rows); // rows stay put -> the refreshed list still has the row
+        fireEvent.click(screen.getByRole('button', { name: `Archive ${BUILTIN_LINK.shortLink}` }));
+        fireEvent.click(screen.getByRole('button', { name: 'Confirm archive' }));
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/^Archived /));
+        await waitFor(() => expect(document.activeElement).toBe(copyBtn()));
+        cleanup();
+
+        // Row gone after the refresh. The refresh is held open so the test sees focus wait for it, not jump to the doomed row.
+        let release: (r: Response) => void = () => {};
+        let lists = 0;
+        vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+            if ((init?.method ?? 'GET') === 'PATCH') return jsonResponse({ success: true, mode: 'builtin', data: { ...BUILTIN_LINK, archived: true } });
+            lists += 1;
+            return lists === 1
+                ? jsonResponse({ success: true, mode: 'builtin', features: [], data: [BUILTIN_LINK] })
+                : new Promise<Response>(res => { release = res; });
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: `Archive ${BUILTIN_LINK.shortLink}` }));
+        fireEvent.click(screen.getByRole('button', { name: 'Confirm archive' }));
+        await waitFor(() => expect(lists).toBe(2)); // refresh in flight, old row still on screen
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Confirm archive' })).not.toBeInTheDocument());
+        expect(document.activeElement).not.toBe(copyBtn()); // not handed to a row that is about to vanish
+        release(jsonResponse({ success: true, mode: 'builtin', features: [], data: [] }));
+        await waitFor(() => expect(screen.queryByText(BUILTIN_LINK.shortLink)).not.toBeInTheDocument());
+        await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Search links')));
+    });
+
+    it('opening the edit form focuses its URL input, and the form is a labelled group', async () => {
+        await open();
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+        await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Edit destination URL')));
+        expect(screen.getByRole('group', { name: `Edit form for ${BUILTIN_LINK.shortLink}` })).toBeInTheDocument();
+    });
+});
+
+describe('ShortLinks widget — failures that must not cost the user their screen (plan 077 p3.6)', () => {
+    it('a failed BACKGROUND refresh keeps the list, the composer and the open edit, and says so', async () => {
+        let listCalls = 0;
+        vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+            const rec = { url: String(url), method: init?.method ?? 'GET' };
+            if (!isListGet(rec)) return jsonResponse({ success: true, mode: 'builtin', data: [] });
+            listCalls += 1;
+            if (listCalls === 1) return jsonResponse({ success: true, mode: 'builtin', features: [], data: [BUILTIN_LINK] });
+            throw new Error('offline');
+        }));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/half' } });
+        fireEvent.click(screen.getByRole('button', { name: `Edit ${BUILTIN_LINK.shortLink}` }));
+        fireEvent.change(screen.getByLabelText('Edit destination URL'), { target: { value: 'https://example.com/typing' } });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Refresh short links' }));
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Could not refresh — Backend unreachable'));
+        expect(listCalls).toBe(2);
+        expect(screen.queryByText('Backend unavailable')).not.toBeInTheDocument();
+        expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument();
+        expect((screen.getByLabelText('Destination URL') as HTMLInputElement).value).toBe('https://example.com/half');
+        expect((screen.getByLabelText('Edit destination URL') as HTMLInputElement).value).toBe('https://example.com/typing');
+    });
+
+    it('the INITIAL load failing still shows the error card; Retry restores the list', async () => {
+        let ok = false;
+        vi.stubGlobal('fetch', vi.fn(async () => (ok
+            ? jsonResponse({ success: true, mode: 'builtin', features: [], data: [BUILTIN_LINK] })
+            : jsonResponse({ success: false, error: 'Boom' }, 500))));
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText('Backend unavailable')).toBeInTheDocument());
+        expect(screen.getByText('Boom')).toBeInTheDocument();
+        ok = true;
+        fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+        await waitFor(() => expect(screen.getByText(BUILTIN_LINK.shortLink)).toBeInTheDocument());
+    });
+
+    it('a preset whose key is taken says it may be archived and where to find it; a composer refusal keeps the raw message', async () => {
+        seedDestinations();
+        const property = ANDY_PROPERTIES[0];
+        const preset = ANDY_LINK_PRESETS.find(p => p.id === 'rent-payment')!;
+        const key = presetKey(property, preset);
+        stubBackend([], {}, { mode: 'builtin', postStatus: 409, postError: `Key ${key} is taken` });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByLabelText('Preset property')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: '+ Rent payment' }));
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(`Key ${key} already exists — it may be archived; tick Show archived to find it`));
+
+        fireEvent.change(screen.getByLabelText('Destination URL'), { target: { value: 'https://example.com/x' } });
+        fireEvent.change(screen.getByLabelText('Custom key'), { target: { value: 'mine' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
+        await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(`Key ${key} is taken`));
     });
 });

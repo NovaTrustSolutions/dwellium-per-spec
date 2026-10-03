@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as presets from '../components/ShortLinks/andyLinkPresets';
 import { presetUrl, type DestinationsMemory } from '../components/ShortLinks/andyLinkPresets';
-import { bulkCreateShortLinks, type CreateShortLinkInput } from '../components/ShortLinks/shortLinksApi';
+import { bulkCreateShortLinks, listShortLinks, type CreateShortLinkInput } from '../components/ShortLinks/shortLinksApi';
 
 describe('presetUrl', () => {
     const mem = (v: string): DestinationsMemory => ({ 'woodland-parc': { maintenance: v } });
@@ -71,5 +71,36 @@ describe('bulkCreateShortLinks chunking', () => {
         const fn = stubFetch();
         expect(await bulkCreateShortLinks([])).toEqual({ kind: 'ok', data: [] });
         expect(fn).not.toHaveBeenCalled();
+    });
+});
+
+describe('listShortLinks features (capability flag)', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    const listWith = async (body: unknown) => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })));
+        const res = await listShortLinks();
+        if (res.kind !== 'ok') throw new Error('expected ok');
+        return res.data;
+    };
+    it('dub mode (no mode key) -> all three features', async () => {
+        const d = await listWith({ data: [] });
+        expect(d.mode).toBe('dub');
+        expect([...d.features].sort()).toEqual(['expiry', 'tags', 'timeseries']);
+    });
+    it('dub mode ignores a stray features array', async () => {
+        expect((await listWith({ data: [], features: [] })).features.size).toBe(3);
+    });
+    it('builtin with features -> exactly those', async () => {
+        const d = await listWith({ mode: 'builtin', data: [], features: ['expiry', 'tags'] });
+        expect(d.mode).toBe('builtin');
+        expect([...d.features].sort()).toEqual(['expiry', 'tags']);
+    });
+    it('builtin without features (older backend) -> empty set', async () => {
+        expect((await listWith({ mode: 'builtin', data: [] })).features.size).toBe(0);
+        expect((await listWith({ mode: 'builtin', data: [], features: 'expiry' })).features.size).toBe(0);
+    });
+    it('builtin with junk entries -> filtered to the known strings', async () => {
+        const d = await listWith({ mode: 'builtin', data: [], features: ['timeseries', 'bogus', 7, null, 'TAGS'] });
+        expect([...d.features]).toEqual(['timeseries']);
     });
 });

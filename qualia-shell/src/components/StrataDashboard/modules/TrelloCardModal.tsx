@@ -5,13 +5,15 @@
  * Fetches live data from Trello API when a card ID is provided.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { activateOnEnterOrSpace } from '../../common/keyboardActivate';
-import { getAuthToken } from '../../../context/UserContext';
 import { X, ExternalLink, Paperclip, Calendar, Tag, CheckSquare, Square, Loader, Clock, MessageSquare, Image as ImageIcon } from 'lucide-react';
 
 import type { Workitem } from '../strataTypes';
-import { API_BASE } from '../../../config';
+import { trelloApi, describeTrelloError, TrelloApiError } from '../../TrelloBoard/trelloApi';
+import type { CardDetail, Activity } from '../../TrelloBoard/trelloApi';
+import { TRELLO_A11Y } from '../../TrelloBoard/a11yContract';
+import { labelStyle, labelDisplayName } from '../../TrelloBoard/trelloLabelColors';
 
 interface TrelloAttachment {
     id: string;
@@ -19,67 +21,105 @@ interface TrelloAttachment {
     url: string;
     previews?: { url: string; width: number; height: number }[];
     mimeType?: string;
-    isUpload?: boolean;
 }
 
-interface TrelloChecklist {
-    id: string;
-    name: string;
-    checkItems: { id: string; name: string; state: 'complete' | 'incomplete' }[];
-}
+type RawLabel = string | { name?: string | null; color?: string | null };
 
 interface Props {
     workitem: Workitem;
     onClose: () => void;
 }
 
-export default function TrelloCardModal({ workitem, onClose }: Props) {
-    const [trelloCard, setTrelloCard] = useState<any>(null);
-    const [activity, setActivity] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [imgError, setImgError] = useState<Set<string>>(new Set());
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+// metadata is arbitrary JSON: only a Trello card id (24-hex id or 8-char shortLink) may reach a URL path.
+const CARD_ID_RE = /^(?:[0-9a-fA-F]{24}|[A-Za-z0-9]{8})$/;
 
-    const cardId = (workitem.metadata as any)?.trelloCardId;
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Wrap Tab / Shift+Tab inside `root` so keyboard focus cannot leave the dialog. */
+function trapTab(e: KeyboardEvent, root: HTMLElement | null): void {
+    if (e.key !== 'Tab' || !root) return;
+    const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+    if (items.length === 0) { e.preventDefault(); root.focus(); return; }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    const outside = !root.contains(active) || active === root;
+    if (e.shiftKey && (active === first || outside)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (active === last || outside)) { e.preventDefault(); first.focus(); }
+}
+
+export default function TrelloCardModal({ workitem, onClose }: Props) {
+    const [trelloCard, setTrelloCard] = useState<CardDetail | null>(null);
+    const [activity, setActivity] = useState<Activity[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [imgError, setImgError] = useState<Set<string>>(new Set());
+    const [selectedImage, setSelectedImage] = useState<{ url: string; name: string } | null>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const closeRef = useRef<HTMLButtonElement>(null);
+    const lightboxRef = useRef<HTMLDivElement>(null);
+    const lightboxCloseRef = useRef<HTMLButtonElement>(null);
+    const titleId = useId();
+
+    const rawCardId = (workitem.metadata as any)?.trelloCardId;
+    const cardId: string | undefined = typeof rawCardId === 'string' && CARD_ID_RE.test(rawCardId) ? rawCardId : undefined;
     const trelloUrl = (workitem.metadata as any)?.trelloUrl;
 
-    const fetchCard = useCallback(async () => {
+    useEffect(() => {
         if (!cardId) { setLoading(false); return; }
-        const token = getAuthToken();
-        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-        try {
-            const [cardRes, actRes] = await Promise.all([
-                fetch(`${API_BASE}/api/trello/cards/${cardId}`, { headers }),
-                fetch(`${API_BASE}/api/trello/cards/${cardId}/activity`, { headers }).catch(() => null),
-            ]);
-            if (cardRes.ok) {
-                const cardData = await cardRes.json();
-                setTrelloCard(cardData.data || cardData);
-            }
-            if (actRes?.ok) {
-                const actData = await actRes.json();
-                setActivity((actData.data || actData || []).slice(0, 10));
-            }
-        } catch (err) {
-            console.error('[TrelloCardModal]', err);
-        }
-        setLoading(false);
+        const ctrl = new AbortController();
+        setLoading(true);
+        setLoadError(null);
+        trelloApi.card(cardId, ctrl.signal)
+            .then(card => { if (!ctrl.signal.aborted) setTrelloCard(card); })
+            .catch(err => {
+                if (ctrl.signal.aborted || (err as Error)?.name === 'AbortError') return;
+                console.warn('[TrelloCardModal] card load failed:', err instanceof TrelloApiError ? err.code : 'UNKNOWN');
+                setLoadError(describeTrelloError(err));
+            })
+            .finally(() => { if (!ctrl.signal.aborted) setLoading(false); });
+        // Activity is secondary: a failure just leaves the section out.
+        trelloApi.activity(cardId, ctrl.signal)
+            .then(acts => { if (!ctrl.signal.aborted) setActivity((acts || []).slice(0, 10)); })
+            .catch(() => { /* optional section */ });
+        return () => ctrl.abort();
     }, [cardId]);
 
-    useEffect(() => { fetchCard(); }, [fetchCard]);
-
-    // Close on Escape
+    // On open: remember the opener, focus the dialog; on close: hand focus back.
     useEffect(() => {
-        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') { selectedImage ? setSelectedImage(null) : onClose(); } };
+        const opener = document.activeElement as HTMLElement | null;
+        closeRef.current?.focus();
+        return () => { opener?.focus?.(); };
+    }, []);
+
+    // Lightbox: focus its close button; restore focus to the thumbnail on close.
+    useEffect(() => {
+        if (!selectedImage) return;
+        const opener = document.activeElement as HTMLElement | null;
+        lightboxCloseRef.current?.focus();
+        return () => { opener?.focus?.(); };
+    }, [selectedImage]);
+
+    // Escape (lightbox first, then modal) and Tab trap
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                if (selectedImage) setSelectedImage(null);
+                else onClose();
+                return;
+            }
+            trapTab(e, selectedImage ? lightboxRef.current : panelRef.current);
+        };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [onClose, selectedImage]);
 
     const meta = (workitem.metadata || {}) as Record<string, any>;
-    const attachments: TrelloAttachment[] = trelloCard?.attachments || [];
-    const checklists: TrelloChecklist[] = trelloCard?.checklists || [];
+    const attachments = (trelloCard?.attachments || []) as TrelloAttachment[];
+    const checklists = trelloCard?.checklists || [];
     const cardDesc = trelloCard?.desc || workitem.description || '';
-    const labels: any[] = trelloCard?.labels || meta.trelloLabels || [];
+    const labels: RawLabel[] = [trelloCard?.labels, meta.trelloLabels].find(Array.isArray) ?? [];
+    const members = (trelloCard?.members || []).map(m => m.fullName).filter(Boolean);
     const due = trelloCard?.due || meta.trelloDue;
     const boardName = meta.trelloBoardName || '';
     const listName = meta.trelloListName || '';
@@ -91,9 +131,8 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
 
     return (
         <>
-            {/* Backdrop */}
-            <div role="presentation"
-                onClick={() => selectedImage ? setSelectedImage(null) : onClose()}
+            {/* Backdrop: purely visual; the wrapper below handles click-outside */}
+            <div aria-hidden="true"
                 style={{
                     position: 'fixed', inset: 0, zIndex: 9998,
                     background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
@@ -102,7 +141,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
 
             {/* Image lightbox */}
             {selectedImage && (
-                <div role="presentation"
+                <div ref={lightboxRef} role="presentation"
                     onClick={() => setSelectedImage(null)}
                     style={{
                         position: 'fixed', inset: 0, zIndex: 10000,
@@ -110,17 +149,32 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                         background: 'rgba(0,0,0,0.9)', cursor: 'zoom-out',
                     }}
                 >
-                    <img src={selectedImage} alt="" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8 }} />
+                    <button ref={lightboxCloseRef} type="button" aria-label="Close image"
+                        onClick={() => setSelectedImage(null)}
+                        style={{
+                            position: 'absolute', top: 16, right: 16,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 36, height: 36, borderRadius: 8,
+                            background: 'rgba(255,255,255,0.12)', border: 'none',
+                            color: '#fff', cursor: 'pointer',
+                        }}
+                    >
+                        <X size={20} />
+                    </button>
+                    <img src={selectedImage.url} alt={selectedImage.name} style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8 }} />
                 </div>
             )}
 
-            {/* Modal */}
-            <div style={{
-                position: 'fixed', inset: 0, zIndex: 9999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: 24,
-            }}>
-                <div style={{
+            {/* Modal wrapper: clicking the empty area around the panel closes */}
+            <div role="presentation"
+                onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 9999,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 24,
+                }}>
+                <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
+                    style={{
                     width: '100%', maxWidth: 700, maxHeight: '85vh',
                     background: 'rgba(20,24,40,0.98)',
                     border: '1px solid rgba(255,255,255,0.08)',
@@ -134,7 +188,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                         position: 'sticky', top: 0, background: 'rgba(20,24,40,0.98)', zIndex: 1,
                     }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                            <h2 id={titleId} style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                                 {workitem.title}
                             </h2>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
@@ -167,7 +221,8 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                     <ExternalLink size={12} /> Trello
                                 </a>
                             )}
-                            <button
+                            <button ref={closeRef} type="button"
+                                aria-label={TRELLO_A11Y.closeDetail}
                                 onClick={onClose}
                                 style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -190,20 +245,31 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                             </div>
                         ) : (
                             <>
+                                {loadError && (
+                                    <div role="alert" style={{
+                                        marginBottom: 16, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                                        background: 'rgba(239,68,68,0.12)', color: '#fca5a5',
+                                    }}>
+                                        Couldn't load this card from Trello: {loadError}
+                                    </div>
+                                )}
+
                                 {/* Labels */}
                                 {labels.length > 0 && (
                                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-                                        {labels.map((label: any, i: number) => (
-                                            <span key={i} style={{
-                                                display: 'flex', alignItems: 'center', gap: 4,
-                                                padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                                                background: label.color ? `${label.color === 'green' ? '#22c55e' : label.color === 'red' ? '#ef4444' : label.color === 'blue' ? '#3b82f6' : label.color === 'yellow' ? '#f59e0b' : label.color === 'orange' ? '#f97316' : label.color === 'purple' ? '#D6FE51' : '#6b7280'}20` : 'rgba(255,255,255,0.06)',
-                                                color: label.color === 'green' ? '#22c55e' : label.color === 'red' ? '#ef4444' : label.color === 'blue' ? '#3b82f6' : label.color === 'yellow' ? '#f59e0b' : label.color === 'orange' ? '#f97316' : label.color === 'purple' ? '#D6FE51' : '#94a3b8',
-                                            }}>
-                                                <Tag size={10} />
-                                                {label.name || label}
-                                            </span>
-                                        ))}
+                                        {labels.map((raw, i) => {
+                                            const label = typeof raw === 'string' ? { name: raw, color: null } : raw;
+                                            return (
+                                                <span key={i} style={{
+                                                    display: 'flex', alignItems: 'center', gap: 4,
+                                                    padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                                                    ...labelStyle(label?.color),
+                                                }}>
+                                                    <Tag size={10} />
+                                                    {labelDisplayName(label || {})}
+                                                </span>
+                                            );
+                                        })}
                                     </div>
                                 )}
 
@@ -215,6 +281,13 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                     }}>
                                         <Calendar size={13} />
                                         Due: {new Date(due).toLocaleDateString()}
+                                    </div>
+                                )}
+
+                                {/* Members */}
+                                {members.length > 0 && (
+                                    <div style={{ marginBottom: 16, fontSize: 12, color: 'var(--text-secondary)' }}>
+                                        Members: {members.join(', ')}
                                     </div>
                                 )}
 
@@ -246,7 +319,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                 return (
                                                     <div role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}
                                                         key={img.id}
-                                                        onClick={() => setSelectedImage(img.url)}
+                                                        onClick={() => setSelectedImage({ url: img.url, name: img.name })}
                                                         style={{
                                                             borderRadius: 8, overflow: 'hidden', cursor: 'zoom-in',
                                                             border: '1px solid rgba(255,255,255,0.06)',
@@ -353,7 +426,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                             <MessageSquare size={14} /> Recent Activity
                                         </h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            {activity.map((act: any, i: number) => (
+                                            {activity.map((act, i) => (
                                                 <div key={i} style={{
                                                     padding: '8px 12px', borderRadius: 8,
                                                     background: 'rgba(255,255,255,0.02)',

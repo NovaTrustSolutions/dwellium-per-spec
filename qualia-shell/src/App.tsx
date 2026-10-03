@@ -36,6 +36,14 @@ const OpenJarvisWidget = lazyWithReload(() => import('./components/OpenJarvis/Op
 function AuthGate() {
     const { isAuthenticated, isLoading, role, sessionExpired } = useUser();
     const [tenantMode, setTenantMode] = useState(false);
+    // Resident view owns '#resident' so browser Back returns to the staff
+    // screen instead of leaving the site (effect-time only — SSR-safe).
+    useEffect(() => {
+        const sync = () => setTenantMode(window.location.hash === '#resident');
+        sync();
+        window.addEventListener('hashchange', sync);
+        return () => window.removeEventListener('hashchange', sync);
+    }, []);
     // F-016: module-level session health — flipped by oneSaveClient on any
     // authenticated 401/403 (and by endDeadSession). Read here directly so the
     // re-auth modal surfaces even if the context flag path is swallowed. A
@@ -97,8 +105,8 @@ function AuthGate() {
             <Suspense fallback={<AppSuspenseFallback variant="viewport" />}>
                 {!isAuthenticated ? (
                     tenantMode
-                        ? <TenantLoginScreen onBackToAdmin={() => setTenantMode(false)} />
-                        : <LoginScreen onTenantMode={() => setTenantMode(true)} />
+                        ? <TenantLoginScreen onBackToAdmin={() => { window.location.hash = 'signin'; }} />
+                        : <LoginScreen onTenantMode={() => { window.location.hash = 'resident'; }} />
                 ) : role === 'tenant' ? (
                     <>
                         <TenantPortal />

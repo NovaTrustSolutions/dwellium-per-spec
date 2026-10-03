@@ -35,6 +35,8 @@ function passGate() {
 
 describe('LoginScreen local multi-step login', () => {
     beforeEach(() => {
+        // each view owns a URL hash now; jsdom keeps it across tests
+        window.location.hash = '';
         auth.login.mockReset();
         auth.login.mockResolvedValue({ success: true });
         auth.loginLocal.mockReset();

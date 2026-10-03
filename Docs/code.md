@@ -2,6 +2,13 @@
 
 Append-only log. Each entry: error → root cause → fix → prevention.
 
+## 2026-09-17 — Pre-login screens: keyboard reaches a hidden card, Back leaves the site, low-contrast resident text
+
+- **Error (measured on the live site, Playwright):** on the landing splash, real Tab presses reached the hidden "Access password" input (`visibleOnTop=false`); splash / staff card / resident view all shared `/`, so browser Back went to `about:blank`; resident H1 `textContent` was "Welcome to YourResident Portal"; resident placeholder/footer text 2.47–2.48:1, "Staff login" 3.93:1, white "Sign In" on its gradient 3.97→2.46:1 (WCAG 1.4.3 needs 4.5:1); gate input had no `<label>`/`id`/`name`/`autocomplete`; the background video autoplayed under `prefers-reduced-motion` (the global CSS rule only stops CSS animations).
+- **Root cause:** `.login-backdrop` was hidden with `opacity:0; pointer-events:none`, which does not remove it from the tab order or the accessibility tree; the three views were `useState` only; `Welcome to Your<br />` has no text space; resident greys used alpha 0.4 / opacity 0.6; `autoPlay={hasClicked}` never checked the motion preference.
+- **Fix (`fix/login-a11y-audit`):** `inert={!hasClicked}` on `.login-backdrop`; views own `#signin` / `#resident` with a `hashchange` listener (effect-time only, SSR-safe) in `LoginScreen.tsx` + `App.tsx`; `{' '}` before the `<br />`; alpha 0.4→0.8, opacity 0.6→0.85, button text `--tl-blue-900` (4.57–7.37:1); visible `<label htmlFor>` + `id`/`name`/`autoComplete`; `<main>` + one `h1` per view; 24px min target height; video gets no `<source>`/autoplay when `matchMedia('(prefers-reduced-motion: reduce)')` matches. Sign-in logic, `GATE_PASSWORD` and `localAccounts.ts` untouched (parked per FUCKUPS 2026-08-22).
+- **Prevention:** hiding UI with opacity/pointer-events is not enough — use `inert` (or unmount). Any test rendering `LoginScreen` must reset `window.location.hash = ''` in `beforeEach` (jsdom keeps the hash across tests). Compute contrast on the composited colour (alpha × inherited opacity), not the token.
+
 ## 2026-08-22 — Calendar / Inbox Zero sub-widgets dead in production (hard-coded API base)
 
 - **Error:** Strata → Calendar → Integrations tab never shows Google Calendar status/events in production; InboxZero Cold-email blocker / Reply tracker / NIF panels fail silently.

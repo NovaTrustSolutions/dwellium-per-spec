@@ -366,7 +366,8 @@
 }
 
 .tenant-login__input-field::placeholder {
-    color: rgba(176, 184, 200, 0.4);
+    /* 0.8 → ≥5.5:1 on the navy field (WCAG 1.4.3); 0.4 measured 2.47:1 */
+    color: rgba(176, 184, 200, 0.8);
 }
 
 .tenant-login__input-toggle {
@@ -378,6 +379,7 @@
     font-family: var(--tl-font-body);
     cursor: pointer;
     padding: 4px 8px;
+    min-height: 24px; /* WCAG 2.5.8 */
     text-transform: uppercase;
     letter-spacing: 0.08em;
     transition: var(--tl-transition);
@@ -432,6 +434,7 @@
 }
 
 .tenant-login__link-subtle {
+    min-height: 24px; /* WCAG 2.5.8 */
     font-size: 0.8125rem;
     color: var(--tl-blue-300);
     transition: var(--tl-transition);
@@ -451,7 +454,8 @@
     width: 100%;
     padding: 16px 32px;
     background: linear-gradient(135deg, var(--tl-blue-400), var(--tl-blue-300));
-    color: white;
+    /* navy on this gradient = 4.57–7.37:1; white was 3.97–2.46:1 */
+    color: var(--tl-blue-900);
     font-family: var(--tl-font-body);
     font-size: 0.9375rem;
     font-weight: 600;
@@ -618,9 +622,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.6875rem;
-    color: rgba(176, 184, 200, 0.4);
-    background: linear-gradient(to top, rgba(10, 22, 40, 0.8), transparent);
+    font-size: 0.75rem;
+    color: rgba(176, 184, 200, 0.8);
+    /* solid at the text line so contrast does not depend on the imagery behind */
+    background: linear-gradient(to top, rgba(10, 22, 40, 0.95) 60%, transparent);
 }
 
 .tenant-login__footer-links {
@@ -631,13 +636,16 @@
 .tenant-login__footer-links a,
 .tenant-login__footer-links button {
     transition: var(--tl-transition);
-    color: rgba(176, 184, 200, 0.4);
+    color: rgba(176, 184, 200, 0.8);
     text-decoration: none;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-family: var(--tl-font-body);
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px; /* WCAG 2.5.8 */
 }
 
 .tenant-login__footer-links a:hover,
@@ -652,7 +660,8 @@
     gap: 6px;
     font-size: 0.75rem;
     color: var(--tl-silver-400);
-    opacity: 0.6;
+    opacity: 0.85;
+    min-height: 24px; /* WCAG 2.5.8 */
     transition: var(--tl-transition);
     background: none;
     border: none;

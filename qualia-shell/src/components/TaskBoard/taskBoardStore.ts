@@ -21,7 +21,7 @@ import {
     applyAction, undo as undoModel, undoLastAi as undoLastAiModel, generateReport,
     createInitialBoard, makeCard, repairBoard, type ActionContext,
 } from './taskBoardModel';
-import { aiEndpoint, buildGmailComposeUrl, composeCardEmail, composeCardPrompt } from './taskRouting';
+import { agentUnavailableReason, aiEndpoint, aiRequestBody, buildGmailComposeUrl, composeCardEmail, readAgentReply } from './taskRouting';
 
 // Module-level holder updated DURING render by the consuming component
 // (TaskBoard.tsx) before useSyncExternalStore fires — mirrors WindowContext's
@@ -300,13 +300,16 @@ export function removeAttachment(cardId: string, attachmentId: string, actor: Ac
     return dispatch({ type: 'REMOVE_ATTACHMENT', cardId, attachmentId }, actor);
 }
 
-export interface RouteResult { status: 'sent' | 'queued' | 'drafted' | 'none'; detail: string; }
+export interface RouteResult { status: 'sent' | 'failed' | 'drafted' | 'none'; detail: string; reply?: string; }
+
+/** Newlines collapsed, cut to 300 chars: one readable audit line. */
+const oneLine = (r: string, n: number) => r.replace(/\s+/g, ' ').trim().slice(0, n).replace(/[\ud800-\udbff]$/, '');
+const replyLine = (r: string) => oneLine(r, 300);
 
 /**
- * Route a card to its assignee. AI targets POST to the agent endpoint best-effort
- * (QUEUED — never faked — when the backend is offline). Person targets open a
- * pre-filled Gmail draft the user reviews + sends (never auto-sent). Every outcome
- * is audited via LOG_EVENT so it appears in the card's timeline.
+ * Route a card to its assignee. AI targets POST to the agent endpoint; the outcome is
+ * logged exactly as it happened (sent / no reply / failed); there is no retry queue. Person targets open a pre-filled Gmail draft the user reviews + sends (never
+ * auto-sent). Every outcome is audited via LOG_EVENT so it appears in the card's timeline.
  */
 export async function routeCard(cardId: string): Promise<RouteResult> {
     const card = taskBoardStore.getSnapshot().cards.find(c => c.id === cardId);
@@ -315,27 +318,45 @@ export async function routeCard(cardId: string): Promise<RouteResult> {
 
     if (a.kind === 'ai') {
         const endpoint = aiEndpoint(a.id);
+        if (!endpoint) {
+            const detail = `Not sent: no agent called "${a.label}" exists`;
+            logEvent(detail, cardId);
+            return { status: 'failed', detail };
+        }
         const sameBoard = captureBoard();
         let res: Response | null = null;
+        let reply: string | null = null;
         try {
             res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: composeCardPrompt(card), source: 'task-board', cardId }),
+                body: JSON.stringify(aiRequestBody(a.id, card)),
             });
         } catch { /* offline: handled below */ }
+        if (res?.ok) {
+            try { reply = readAgentReply(await res.json()); } catch { /* non-JSON body = no reply */ }
+        }
         // The user switched board/account while the request was in flight: logging now would write onto the wrong board.
         if (!sameBoard()) return { status: 'none', detail: 'The board changed while sending; the result was not logged.' };
-        if (res?.ok) {
-            logEvent(`Sent "${card.title}" to AI · ${a.label}`, cardId);
+        if (!res) {
+            logEvent(`Not sent to AI · ${a.label} (backend offline)`, cardId);
+            return { status: 'failed', detail: `${a.label} is offline. Nothing was sent.` };
+        }
+        if (!res.ok) {
+            logEvent(`Not sent to AI · ${a.label} (HTTP ${res.status})`, cardId);
+            return { status: 'failed', detail: `${a.label} refused the request (HTTP ${res.status}). Nothing was sent.` };
+        }
+        if (!reply) {
+            logEvent(`Sent "${oneLine(card.title, 120)}" to AI · ${a.label} (no reply)`, cardId);
             return { status: 'sent', detail: `Sent to ${a.label}.` };
         }
-        if (res) {
-            logEvent(`Queued "${card.title}" for AI · ${a.label} (agent returned ${res.status})`, cardId);
-            return { status: 'queued', detail: `${a.label} unavailable (HTTP ${res.status}) — queued, not sent.` };
+        const unavailable = agentUnavailableReason(a.id, reply);
+        if (unavailable) {
+            logEvent(`Not handled: ${unavailable}`, cardId);
+            return { status: 'failed', detail: `${unavailable}, so this card was not handled.${a.id === 'stella' ? ' Add a key in Settings → API Keys.' : ''}` };
         }
-        logEvent(`Queued "${card.title}" for AI · ${a.label} (backend offline)`, cardId);
-        return { status: 'queued', detail: `${a.label} is offline — queued, not sent.` };
+        logEvent(`AI · ${a.label} replied: ${replyLine(reply)}`, cardId);
+        return { status: 'sent', detail: `Sent to ${a.label}.`, reply };
     }
 
     // person → compose an email DRAFT (never auto-send)

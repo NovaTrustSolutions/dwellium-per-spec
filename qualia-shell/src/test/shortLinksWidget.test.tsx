@@ -1753,3 +1753,105 @@ describe('ShortLinks widget — Strata properties + door-sheet deep link (plan 0
         expect(screen.getByRole('button', { name: 'QR door sheet' })).toBeInTheDocument();
     });
 });
+
+describe('phase 4 review regressions', () => {
+    const req = (units?: string[]) => ({ propertyId: 'woodland-parc', propertyName: 'Woodland Parc Townhomes', ...(units ? { units } : {}) });
+    const fire = (detail: unknown) => window.dispatchEvent(new CustomEvent('dwellium:open-door-sheet', { detail }));
+
+    it('Generate waits for the list (disabled + "Loading…") instead of minting nothing with a wrong reason', async () => {
+        seedDestinations();
+        let release: ((r: Response) => void) | null = null;
+        vi.stubGlobal('fetch', vi.fn(async () => new Promise<Response>(res => { release = res; })));
+        setPendingDeepLink('short-links', JSON.stringify(req(['2794-5'])));
+        render(<ShortLinks />);
+        await screen.findByLabelText('Destination pattern');
+        expect(screen.getByRole('button', { name: /Generate sheet/i })).toBeDisabled();
+        expect(screen.getByText('Loading…')).toBeInTheDocument();
+        release!(jsonResponse({ success: true, mode: 'builtin', data: [] }));
+        await waitFor(() => expect(screen.getByRole('button', { name: /Generate sheet/i })).toBeEnabled());
+    });
+
+    it('a needs-setup backend says so on the sheet instead of "not reachable"', async () => {
+        seedDestinations();
+        vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, needsSetup: true }, 503)));
+        setPendingDeepLink('short-links', JSON.stringify(req(['2794-5'])));
+        render(<ShortLinks />);
+        await screen.findByLabelText('Destination pattern');
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        expect(await screen.findByText(/not set up on this backend/)).toBeInTheDocument();
+    });
+
+    it('an empty roster explains itself', async () => {
+        seedDestinations();
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        fireEvent.change(screen.getByLabelText('Units'), { target: { value: '' } });
+        expect(screen.getByText(/No units for this property/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Generate sheet/i })).toBeDisabled();
+    });
+
+    it('a comma inside a unit label stays one unit ("12, Rear")', async () => {
+        seedDestinations();
+        const calls = stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        act(() => { fire(req(['12, Rear'])); });
+        await screen.findByLabelText('Destination pattern');
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        await waitFor(() => expect(calls.some(c => c.url.includes('/api/links/bulk'))).toBe(true));
+        const sent = calls.find(c => c.url.includes('/api/links/bulk'))!.body!.links as Array<{ key: string }>;
+        expect(sent).toHaveLength(1);
+        expect(sent[0].key).toBe('woodland-parc-unit-12-rear');
+    });
+
+    it('presets wait for the property list instead of showing the fallback as if it were Strata\'s', async () => {
+        live.properties = [];
+        const mod = await import('../components/StrataDashboard/useStrataQueries');
+        const spy = vi.spyOn(mod, 'useProperties').mockReturnValue({ data: undefined, isLoading: true, isError: false } as never);
+        try {
+            stubBackend([], {}, { mode: 'builtin' });
+            render(<ShortLinks />);
+            await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+            expect(screen.getByText('Loading properties…')).toBeInTheDocument();
+            expect(screen.queryByLabelText('Link presets')).not.toBeInTheDocument();
+        } finally { spy.mockRestore(); }
+    });
+
+    it('a new request resets a sheet that was already generated (G2)', async () => {
+        seedDestinations();
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        act(() => { fire(req(['A1'])); });
+        await screen.findByLabelText('Destination pattern');
+        fireEvent.click(screen.getByRole('button', { name: /Generate sheet/i }));
+        await screen.findByTestId('qr-door-sheet-print');
+        act(() => { fire(req(['B2'])); });
+        await waitFor(() => expect((screen.getByLabelText('Units') as HTMLTextAreaElement).value).toBe('B2'));
+        expect(screen.queryByTestId('qr-door-sheet-print')).not.toBeInTheDocument();
+    });
+
+    it('a live request on a mounted widget also drains the pending slot (G3)', async () => {
+        seedDestinations();
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        setPendingDeepLink('short-links', JSON.stringify(req(['A1'])));
+        act(() => { fire(req(['A1'])); });
+        await screen.findByLabelText('Destination pattern');
+        expect(takePendingDeepLink('short-links')).toBeUndefined();
+    });
+
+    it('changing the property re-seeds a roster the user had typed (G4)', async () => {
+        seedDestinations();
+        stubBackend([], {}, { mode: 'builtin' });
+        render(<ShortLinks />);
+        await waitFor(() => expect(screen.getByText(/No links/)).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet' }));
+        fireEvent.change(screen.getByLabelText('Units'), { target: { value: 'typed' } });
+        fireEvent.change(screen.getByLabelText('Property'), { target: { value: ANDY_PROPERTIES[1].id } });
+        expect((screen.getByLabelText('Units') as HTMLTextAreaElement).value).toBe(ANDY_PROPERTIES[1].units.join('\n'));
+    });
+});

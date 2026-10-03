@@ -173,7 +173,7 @@ export default function ShortLinks() {
     const [creating, setCreating] = useState(false);
 
     // Presets
-    const { properties } = useLinkProperties();
+    const { properties, loading: propertiesLoading } = useLinkProperties();
     const [pickedProperty, setPickedProperty] = useState<string | null>(null);
     const presetProp = properties.find(p => p.id === pickedProperty) ?? properties[0]; // never empty: Andy fallback
     const presetProperty = presetProp.id;
@@ -409,7 +409,7 @@ export default function ShortLinks() {
             <div className="short-links">
                 <QrDoorSheet
                     destinations={destinations}
-                    links={state.kind === 'ok' ? state.data.mode : 'unavailable'}
+                    links={state.kind === 'ok' ? state.data.mode : state.kind === 'loading' ? 'loading' : state.kind === 'needs-setup' ? 'needs-setup' : 'unavailable'}
                     onBack={() => { setDoorRequest(null); setMode('links'); }}
                     request={doorRequest?.request}
                     requestKey={doorRequest?.key}
@@ -482,7 +482,9 @@ export default function ShortLinks() {
 
             {state.kind === 'ok' && (
                 <>
-                    <section className="short-links__presets" aria-label="Link presets">
+                    {/* The property list decides which presets/destinations exist: never show the fallback list as if it were Strata's while Strata is still answering. */}
+                    {propertiesLoading && <p className="short-links__muted" role="status">Loading properties…</p>}
+                    {!propertiesLoading && <section className="short-links__presets" aria-label="Link presets">
                         <select
                             className="short-links__input short-links__input--key"
                             value={presetProperty}
@@ -508,7 +510,7 @@ export default function ShortLinks() {
                                 </button>
                             );
                         })}
-                    </section>
+                    </section>}
                     <details className="short-links__destinations">
                         <summary>Destinations — {presetProp.name}</summary>
                         <div className="short-links__destinations-grid">

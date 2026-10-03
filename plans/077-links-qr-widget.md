@@ -325,6 +325,19 @@ then a refute-first reviewer. Frontend only; the backend did not change.
 | "Print maintenance QR" on a Strata unit, "QR door sheet" on a property | One breadcrumb button in PropertiesModule → `openDoorSheet({propertyId, propertyName, units?})` (pending slot + live event + `openWidget('short-links')`); the widget opens its sheet on that property with that roster, or a transient entry when the property is unknown to it | doorSheetLink.ts, PropertiesModule.tsx |
 | "Short link + QR" in Scribe's PublishDialog | After publishing: Make short link → bulk upsert by key `doc-<slug>` (hash-suffixed when it would exceed 64 chars, so two long slugs can never share a link) → short URL, Copy, 120 px QR, Download SVG | PublishDialog.tsx |
 
+Review (refute-first, after the integration commit): 0 critical, 3 warnings, all reproduced. Fixed: W1 a
+duplicate property name got a `-2` tag that collided with a real "… 2" property and moved with list
+order, so one property's door codes could re-aim another's (tags now get an id-derived suffix and are
+order-independent); W2 Generate during the initial list load minted nothing and blamed an unreachable
+backend (Generate waits with "Loading…"; a needs-setup backend is named as such); W3 an empty roster
+disabled Generate silently (hint shown; a request with `units: []` means the whole roster). Low: a
+comma in a unit label split it in two (one per line now); a blank name / blank unit number from Strata
+produced a dead button (filtered / disabled); presets showed the fallback list while Strata was still
+loading ("Loading properties…"); archived/inactive properties are left out; the four untested guards
+the reviewer found now have tests. Noted, not changed: destinations typed under a fallback id do not
+migrate to the Strata id once Strata answers (they were only ever typed in dev); a short link made from
+a localhost origin targets localhost (make them on the app domain).
+
 Not done: PropertiesModule has no render test (its own test file states a full render is too costly);
 the two buttons are verified by the module's typecheck and by the deep-link module's tests only.
 No browser run inside the logged-in shell.

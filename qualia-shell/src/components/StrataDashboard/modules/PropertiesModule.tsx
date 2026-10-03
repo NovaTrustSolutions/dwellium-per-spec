@@ -965,12 +965,13 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 <span style={{ color: 'var(--s-accent, #6366f1)' }}>Unit {selectedUnit.unitNumber}</span>
                             </>
                         )}
-                        {selected && (
+                        {selected && selected.name.trim() && (
                             <button
                                 type="button"
                                 className="s-btn s-btn-ghost"
+                                disabled={!!selectedUnit && !String(selectedUnit.unitNumber ?? '').trim()}
                                 onClick={() => openDoorSheet(selectedUnit
-                                    ? { propertyId: selected.id, propertyName: selected.name, units: [selectedUnit.unitNumber] }
+                                    ? { propertyId: selected.id, propertyName: selected.name, units: [String(selectedUnit.unitNumber)] }
                                     : { propertyId: selected.id, propertyName: selected.name })}
                                 aria-label={selectedUnit ? `Print maintenance QR for unit ${selectedUnit.unitNumber}` : `QR door sheet for ${selected.name}`}
                             >

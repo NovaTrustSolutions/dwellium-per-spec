@@ -18,7 +18,7 @@ export function parseDoorSheetRequest(raw: unknown): DoorSheetRequest | null {
     if (!str(propertyId) || !str(propertyName)) return null;
     if (units === undefined) return { propertyId, propertyName };
     if (!Array.isArray(units) || !units.every(str)) return null;
-    return { propertyId, propertyName, units: [...units] };
+    return units.length ? { propertyId, propertyName, units: [...units] } : { propertyId, propertyName }; // [] = whole roster
 }
 
 /** Remember the request for an unmounted widget, tell a mounted one, open the widget. */

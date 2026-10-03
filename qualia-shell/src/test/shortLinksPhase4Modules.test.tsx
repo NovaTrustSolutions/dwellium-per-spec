@@ -54,8 +54,26 @@ describe('useLinkProperties', () => {
         const { result } = renderHook(() => useLinkProperties());
         expect(result.current.source).toBe('strata');
         expect(result.current.loading).toBe(false);
-        expect(result.current.properties.map(p => p.tag)).toEqual(['oak-park', 'oak-park-2', 'oak-park-3', 'elm']);
-        expect(result.current.properties[0]).toEqual({ id: 'p1', name: 'Oak Park', tag: 'oak-park', units: [] });
+        const tags = result.current.properties.map(p => p.tag);
+        expect(tags[3]).toBe('elm');
+        expect(new Set(tags).size).toBe(4); // all distinct
+        expect(tags.slice(0, 3).every(t => /^oak-park-[0-9a-f]{6}$/.test(t))).toBe(true); // every colliding one carries an id suffix, never a bare -2
+        expect(result.current.properties[0]).toMatchObject({ id: 'p1', name: 'Oak Park', units: [] });
+    });
+    it('tags never collide with another property\'s real name and do not depend on list order', () => {
+        const rows = [{ id: 'a', name: 'Oak Park' }, { id: 'b', name: 'Oak Park' }, { id: 'c', name: 'Oak Park 2' }];
+        q.props = { data: rows, isLoading: false, isError: false };
+        const first = renderHook(() => useLinkProperties()).result.current.properties.map(p => [p.id, p.tag]);
+        q.props = { data: [...rows].reverse(), isLoading: false, isError: false };
+        const second = renderHook(() => useLinkProperties()).result.current.properties.map(p => [p.id, p.tag]);
+        expect(new Set(first.map(x => x[1])).size).toBe(3);
+        expect(first.find(x => x[0] === 'c')![1]).toBe('oak-park-2'); // the real "Oak Park 2" keeps its own tag
+        expect(Object.fromEntries(second)).toEqual(Object.fromEntries(first)); // same tags whatever the order
+    });
+    it('leaves out archived/inactive properties and blank names', () => {
+        q.props = { data: [{ id: 'x', name: 'Live' }, { id: 'y', name: 'Old', status: 'archived' }, { id: 'z', name: 'Dark', status: 'inactive' }, { id: 'w', name: '   ' }], isLoading: false, isError: false };
+        const { result } = renderHook(() => useLinkProperties());
+        expect(result.current.properties.map(p => p.id)).toEqual(['x']);
     });
     it('is the fallback list and loading while the query loads', () => {
         q.props = { data: undefined, isLoading: true, isError: false };
@@ -130,5 +148,11 @@ describe('doorSheetLink', () => {
         for (const bad of [undefined, null, 'x', 3, { propertyId: 1, propertyName: 'n' }, { propertyId: 'p' }, { propertyId: 'p', propertyName: 'n', units: [''] }, { propertyId: 'p', propertyName: 'n', units: [1] }]) {
             expect(parseDoorSheetRequest(bad)).toBeNull();
         }
+    });
+});
+
+describe('doorSheetLink — units: [] means the whole roster', () => {
+    it('drops an empty units array instead of pinning an empty roster', () => {
+        expect(parseDoorSheetRequest({ propertyId: 'p', propertyName: 'P', units: [] })).toEqual({ propertyId: 'p', propertyName: 'P' });
     });
 });

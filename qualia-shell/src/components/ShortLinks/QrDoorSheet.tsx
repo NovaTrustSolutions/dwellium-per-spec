@@ -39,7 +39,7 @@ import { bulkCreateShortLinks } from './shortLinksApi';
 function parseUnits(text: string): string[] {
     const seen = new Set<string>();
     const out: string[] = [];
-    for (const raw of text.split(/[\n,]+/)) {
+    for (const raw of text.split(/\n+/)) { // one per line — a comma is part of a unit label ("12, Rear")
         const unit = raw.trim();
         if (unit && !seen.has(unit)) { seen.add(unit); out.push(unit); }
     }
@@ -102,7 +102,7 @@ export function printDoorSheet(g: Generated): void {
 interface QrDoorSheetProps {
     destinations: DestinationsMemory;
     /** Which shortener answered the list call; 'unavailable' = no backend to mint with. */
-    links: 'builtin' | 'dub' | 'unavailable';
+    links: 'builtin' | 'dub' | 'loading' | 'needs-setup' | 'unavailable';
     onBack: () => void;
     /** "Print maintenance QR" deep link: which property (and units) to open on. */
     request?: DoorSheetRequest | null;
@@ -202,8 +202,8 @@ export default function QrDoorSheet({ destinations, links, onBack, request, requ
         const cells: Cell[] = snap.units.map(unit => ({ unit, url: unitUrl(snap.pattern, unit), short: null }));
         const id = ++run.current;
         let fallback: string | null = null;
-        if (links === 'unavailable') {
-            fallback = 'Short links unavailable (the backend is not reachable) — these codes point straight at the destination';
+        if (links === 'unavailable' || links === 'needs-setup') {
+            fallback = `Short links unavailable (${links === 'needs-setup' ? 'short links are not set up on this backend' : 'the backend is not reachable'}) — these codes point straight at the destination`;
         } else {
             setBusy(true);
             const r = await bulkCreateShortLinks(cells.map(c => ({
@@ -233,7 +233,7 @@ export default function QrDoorSheet({ destinations, links, onBack, request, requ
                 </button>
                 <label className="qr-door-sheet__field">
                     Property
-                    <select className="short-links__input" value={property.id} onChange={e => pickProperty(e.target.value)} aria-label="Property">
+                    <select className="short-links__input" value={property.id} onChange={e => pickProperty(e.target.value)} aria-label="Property" disabled={list.loading}>
                         {options.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                 </label>
@@ -254,7 +254,7 @@ export default function QrDoorSheet({ destinations, links, onBack, request, requ
                 <div className="qr-door-sheet__actions">
                     <button
                         className="short-links__btn"
-                        disabled={!patternOk || units.length === 0 || busy}
+                        disabled={!patternOk || units.length === 0 || busy || links === 'loading' || list.loading}
                         onClick={() => void generate()}
                     >
                         <QrCode size={13} aria-hidden /> {busy ? 'Generating…' : 'Generate sheet'}
@@ -265,6 +265,8 @@ export default function QrDoorSheet({ destinations, links, onBack, request, requ
                         </button>
                     )}
                 </div>
+                {(links === 'loading' || list.loading) && <p className="short-links__muted">Loading…</p>}
+                {units.length === 0 && <p className="short-links__muted">No units for this property — paste the roster, one per line.</p>}
                 {!pattern.trim() && <p className="short-links__muted">{EMPTY_HINT}</p>}
                 {pattern.trim() && !patternOk && <p className="short-links__muted">The destination must be an http(s) URL.</p>}
                 {refusal && <p className="short-links__notice" role="status">{refusal}</p>}
